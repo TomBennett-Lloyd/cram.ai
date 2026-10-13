@@ -1,0 +1,153 @@
+# cram.ai — project plan
+
+- **Date:** 2026-10-13
+- **Status:** accepted by the owner in chat on 2026-10-13 (name, licence, exam realism, single-user scope, Windows installer); the model and hardware questions in §9 are still open.
+- **Lifetime:** this document seeds the first ADRs and the milestone issues. A section that an ADR supersedes is replaced by a pointer to that ADR; the milestones become issues and this file stops tracking them.
+
+## 0. The one-paragraph version
+
+Do **not** fine-tune a model per user. Fine-tuning teaches a model how to _sound_, not what is _true_, and it does not suppress what the base model already believes; a model fine-tuned on slides produces fluent slide-flavoured text with no way to tell a remembered fact from an invented one. Instead the slides go into a **search database that is the only source the model is ever allowed to speak from**, every sentence the tutor emits carries a citation to a specific slide, and a second **verifier** pass strips any sentence the cited slide does not support. "The slides take precedence over the base model" then stops being a prompt-engineering hope and becomes a mechanical property: a sentence that only the base model believes has no supporting slide, so it is deleted before the student sees it. That same mechanism also deletes any unsolicited "however, mainstream medicine says…" caveat, because that sentence is unsupported by the slides too. The whole thing runs on an open-weight model on the student's own Windows laptop, installed from a normal installer, and the identical code deploys to a private self-hosted server if that is ever needed. The code is public; no slide content, user data, or deployment address ever enters the repo.
+
+## 1. Why not per-user fine-tuning (so ADR 0001 can cite it)
+
+| Goal                                       | Fine-tuning per user                                                                        | Retrieval + citation + verification                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Answer only from the slides                | No mechanism. Weights blend slide text with pre-training; nothing marks the boundary.       | Structural: the generator only sees retrieved slides; unsupported text is cut. |
+| Slides override base knowledge             | Unreliable. Small LoRA runs barely move strongly held priors; large runs destroy the model. | Mechanical: a claim with no supporting slide fails verification.               |
+| Show the student where an answer came from | Impossible — weights have no provenance.                                                    | Every unit carries `lecture:slide` citations and the UI shows the slide.       |
+| Update when a lecture is added or fixed    | Retrain.                                                                                    | Re-index one file.                                                             |
+| Run on a laptop                            | Training needs a GPU with tens of GB; hours per user.                                       | Inference only; a 7–14B model fits consumer hardware.                          |
+| Test it                                    | Hard to measure what was learned.                                                           | A golden question set with known slide answers is a CI gate.                   |
+
+Fine-tuning has one legitimate future use here: **style** (the question-writing voice of a specific exam board), via a small LoRA on _synthetic_ data, if few-shot exemplars prove insufficient. That is stable behaviour, not knowledge, and would be one shared adapter, not one per user. Out of scope until measured need.
+
+## 2. Hard constraints
+
+Owned by `CLAUDE.md` § Hard constraints; this section carries no restatement.
+
+## 3. Architecture
+
+Four modules, one deployable (plus the model runtime, which is third-party software we bundle, not code we ship). Same "resist splitting" rule as cumulo's ADR 0001 — a second deployable needs an ADR.
+
+```
+ upload ─▶ ingest ─▶ index (SQLite per course) ◀─ retrieve ◀─ tutor features ◀─ web UI
+                                                       │
+                                            model gateway (one interface)
+                                                       │
+                      node-llama-cpp in-process (installed app)  |  Ollama / vLLM over HTTP (dev, server)
+```
+
+### 3.1 Ingest
+
+- Inputs: PDF and PPTX lecture decks; a text/PDF file of sample exam questions (and, ideally, a full sample paper so the exam _format_ can be mirrored — see §3.5).
+- Output: one **slide record** per slide: `{courseId, lectureId, lectureTitle, slideNo, title, body, speakerNotes, imageCaptions[], sourceHash}`. The slide is the natural chunk; long slides split by heading, never mid-bullet.
+- Image-only slides (diagrams, scanned tables) go through local OCR, and optionally a local vision model for a caption. **Derived text is flagged `derived: true`**; the UI shows it as such, and a citation to derived text displays the original image so the student checks it. This is the single largest quality risk (§9).
+- Sample exam questions are parsed into **style exemplars**: `{type: mcq | short | essay | case, stem, options?, marks?, sectionOf?}`. They are never used as a source of facts.
+
+### 3.2 Index
+
+- One SQLite file per course (`<dataDir>/<course>.sqlite`). Isolation, backup and deletion are a file operation. `better-sqlite3` + FTS5 for BM25 + `sqlite-vec` for embeddings. Hybrid retrieval with reciprocal rank fusion, then a local cross-encoder rerank when the candidate list is large.
+- Embeddings go through the model gateway, so every backend serves them the same way.
+- **Topic index**: at ingest, an LLM pass tags each slide with topics; tags are user-editable. "Revision notes for _category_" resolves category → the union of tagged slides plus semantic neighbours, across all lectures. The tag pass is the one place an LLM writes into the index, and its output is metadata, never content.
+
+### 3.3 Model gateway
+
+- One interface: chat completion with constrained JSON output, embeddings, rerank. Config picks the backend. No other code knows which model is running.
+- Backends: **`node-llama-cpp`** in-process (prebuilt llama.cpp binaries for Windows CPU, CUDA and Vulkan, and macOS Metal; this is what the installed app ships, so the installer has no second runtime to manage); **OpenAI-compatible HTTP** for Ollama during development and vLLM on a server.
+- Three **roles**, each independently configurable: `generator`, `verifier`, `embedder`. The verifier may be the same weights with a different prompt, or a small NLI cross-encoder; ADR 0003 decides after measurement.
+- Candidate models (an assumption to verify at ADR time, not a pin): Qwen3 8B or 14B at Q4 for the generator depending on the target machine (§9); Gemma 3 as the alternative; `nomic-embed-text` or `bge-m3` for embeddings; `bge-reranker` for rerank. Apache/permissive licences only.
+- The target machine is probably a laptop without a discrete GPU, so the design assumes **slow generation is acceptable when it is asynchronous**: exam papers are generated as background jobs into a pool (overnight is fine), notes are generated once per category and cached, and only Ask is interactive. Model choice is then driven by Ask latency and verifier accuracy, not by exam generation speed.
+
+### 3.4 Grounding contract (the core of the project)
+
+Every feature produces a list of **units**. A unit is `{text, citations: [slideId], kind}`. The pipeline is:
+
+1. **Retrieve** candidate slides (hybrid search, k tuned per feature).
+2. **Generate** units with a prompt that forbids any statement not in the supplied slides, requires a citation per unit, and makes "not in the slides" a valid output.
+3. **Resolve** citations mechanically: every cited id must exist and must be among the retrieved set. A unit with a dangling citation is dropped before verification.
+4. **Verify** each unit against its cited slide text only: "Is this statement fully supported by this passage?" → `supported | partial | unsupported`. `unsupported` is dropped; `partial` is dropped or rewritten once depending on the feature (exams: dropped; notes: rewritten once, then dropped).
+5. **Report** what was dropped in a collapsible "withheld" panel so the student can see the system working and report false negatives.
+
+Why this handles the alt-medicine case specifically: the base model's disagreement can only surface as a sentence, and that sentence has no supporting slide. Step 4 removes it. The eval set in §4 proves it stays removed.
+
+### 3.5 Features on top of the contract
+
+**Ask a question.** Retrieve → generate units → verify → render with slide thumbnails beside each citation. No supported unit → "Your slides don't cover this. Closest slides: …".
+
+**Revision notes by category.** Resolve category via the topic index → retrieve every member slide across lectures → generate an outline whose every bullet is a unit → verify → render grouped by sub-topic with a "sources" footer listing every lecture/slide drawn on. Extractive-first: the generator prefers the slide's own wording; synthesis is allowed only for ordering and headings.
+
+**Practice exam — realistic from the start (owner decision 2026-10-13).** Chunk-first, not topic-first: the generator never writes a question from a topic name. Flow: pick target slides (by category, or weighted across the course the way the sample paper weights its sections) → for each, generate `{question, goldAnswer, rubric[], marks, citations}` in the style of a sampled exemplar of the requested type → verify the gold answer _and each rubric point_ against the cited slide → drop any question whose gold answer or rubric fails. Questions therefore cannot ask for anything the slides do not contain, by construction, and the gold answer is stored with the question before the student sees it. Realism means: a **paper**, not a question list — sections and marks mirroring the sample paper's structure, a timer with the paper's duration, one-question-at-a-time or whole-paper navigation, flag-for-review, no answers visible until submission, then a marked script with per-question marks, the rubric verdicts, the source slides, and a history of attempts with scores over time.
+
+**Free-text grading.** Grading assesses meaning, so it is a judgement, not a fact, and an LLM judge is the right tool — but it judges against a **rubric whose every point is already a verified unit**. For each rubric point: "Does the student's answer express this point? `yes | partial | no` + the phrase that does." Score = points met / points total, weighted by marks. The student sees each rubric point, the verdict, and the source slide, so a disputed mark is self-checkable. Embedding similarity between answer and gold is logged as a sanity signal, never as the score.
+
+### 3.6 UI and packaging
+
+- Single-page app, same stack family as cumulo (React + TypeScript, design tokens, stylelint/eslint gates). Screens: courses, upload/ingest status, slide browser with topic tags, ask, notes, exam (sit / review / history), settings (model, data folder).
+- **Desktop app for a non-technical Windows user (owner decision 2026-10-13).** An Electron shell runs the Node server in its main process and loads the SPA; `node-llama-cpp` runs the model in-process; an NSIS installer is produced by `electron-builder` on a GitHub Actions Windows runner. First launch downloads the model files from Hugging Face with checksum verification into the app's data folder (the only outbound connection the app ever makes, and it carries no user data); everything after that is offline. Code signing is deferred: an unsigned installer shows a SmartScreen warning the user clicks through, and a signing certificate is a cost decision for the owner (§9).
+- Developer mode is the same server started with `pnpm dev` against Ollama. Electron is chosen over Tauri because the server is already Node and `node-llama-cpp` is a Node binding; one runtime, one installer.
+
+## 4. Evaluation is a gate, not a dashboard
+
+- **Synthetic eval course** in-repo (`eval/decks/`): a self-authored fictional subject (public and IP-free) of ~6 short lectures, written to include facts spread across lectures (for notes), near-duplicate concepts (for retrieval precision), image-only slides (for OCR), and a **contradiction set** — slides that assert things a general-knowledge model will "know" are wrong. The contradiction set is the regression test for "the slides win".
+- **Golden questions** (`eval/questions.jsonl`): `{question, expectedCitations, expectedAnswerUnits, mustNotContain[]}`. `mustNotContain` catches base-knowledge leakage and caveats.
+- **Metrics** per run: retrieval recall@k, citation validity (100% required), verifier precision/recall against hand labels, contradiction-set pass rate (100% required), exam answerability (every gold answer verifies), grading agreement with hand-marked answers.
+- **Two tiers**: deterministic pipeline logic (chunking, citation resolution, rubric arithmetic, index queries) is unit-tested in CI with recorded model outputs replayed through a fake gateway. Model-in-the-loop evals run locally via `pnpm eval` against the real backend and write a report; a PR touching prompts, models, retrieval or the gateway must attach it, enforced by `check:eval-report` in the style of cumulo's merge-ritual gate.
+
+## 5. Repo layout
+
+```
+apps/
+  server/       Node: upload, ingest, index, tutor endpoints; serves web in local mode
+  web/          React SPA
+  desktop/      Electron shell + electron-builder config (Windows installer)
+packages/
+  shared/       zod schemas: SlideRecord, Unit, Citation, ExamPaper, ExamQuestion, Rubric, StyleExemplar
+  ingest/       pdf/pptx → SlideRecord; OCR adapter
+  index/        SQLite schema, FTS5 + sqlite-vec, hybrid retrieval, topic index
+  gateway/      model gateway interface + node-llama-cpp and OpenAI-compatible adapters
+  grounding/    units, citation resolution, verifier, prompts (the contract, pure core)
+  tutor/        ask / notes / exam / grade, composed from grounding
+eval/           synthetic deck, golden questions, eval runner
+docs/           standards, adr, logs, this plan
+.claude/        agents, skills, hooks, scripts, workflow.json (ported from cumulo)
+```
+
+Pure core, effectful edges (`docs/standards/architecture.md`): `grounding` and `tutor` are functions of typed inputs plus a `ModelGateway` interface, so the whole contract is unit-testable with a fake gateway.
+
+## 6. Workflow
+
+Ported from cumulo at its current graduated state in the bootstrap commits; `CLAUDE.md` § Workflow and `.claude/workflow.json` own it. Project-specific gates to add by ticket: `check:no-course-content`, `check:no-network-egress`, `check:eval-report`. The AWS, Terraform and OIDC gates were not ported.
+
+## 7. ADRs to write first (each is an issue with the `adr` label)
+
+1. **0001 Grounding architecture** — retrieval + citation + verification, not fine-tuning; the unit contract; and `docs/standards/grounding.md`. §1 and §3.4 are the draft.
+2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable.
+3. **0003 Model roles and backends** — generator / verifier / embedder; `node-llama-cpp` vs HTTP backends; the measured model choice and licence against the target machine; whether the verifier is an LLM prompt or an NLI cross-encoder.
+4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it.
+5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics.
+6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; when to refuse to cite derived text.
+7. **0007 Desktop packaging** — Electron + node-llama-cpp + NSIS; model download on first launch; signing deferred.
+
+## 8. Milestones → issues
+
+- **M0 Bootstrap**: tooling baseline, ported `.claude/`, docs skeleton, CI, this plan, ADR 0001–0002. Human-reviewed.
+- **M1 Ingest + index + ask**: PDF/PPTX → SlideRecord; SQLite index; hybrid retrieval; gateway with the HTTP (Ollama) adapter; the grounding contract; Ask end-to-end in the browser with citations. Ships with the synthetic deck and the first golden questions.
+- **M2 Eval harness as gate**: contradiction set, recorded-output fixtures, `pnpm eval`, `check:eval-report`. Before notes and exams on purpose: every later feature lands with its metric.
+- **M3 Revision notes by category**: topic index at ingest, editable tags, notes generation, cross-lecture sources footer.
+- **M4 Exams + grading**: exemplar and sample-paper parsing, chunk-first generation, rubric verification, the exam-sitting UI (paper, timer, navigation, submission, marked script, history), rubric-based grading with per-point evidence, background generation pool.
+- **M5 Windows desktop app**: `node-llama-cpp` backend, Electron shell, model download with checksums, NSIS installer from CI, OCR for image slides (ADR 0006), first dry run on the real user's machine with findings as issues.
+- **M6 Self-hosted multi-user** — _when needed_ (owner decision 2026-10-13): docker-compose for server + vLLM, local accounts, per-user data directories, private-network binding, backup/delete runbook. Not scheduled.
+
+## 9. Open questions for the owner
+
+1. **The target Windows machine**: CPU, RAM, and whether it has a discrete GPU (and which). This decides the model size and whether Ask is interactive at all on CPU. An 8B model at Q4 needs ~6 GB of RAM and runs at a few tokens per second on a recent laptop CPU; a 14B needs ~10 GB and is noticeably slower without a GPU.
+2. **A sample deck** (not committed) to size the image-only-slide problem on during M1.
+3. **Windows testing**: development is on a Mac. CI can build the installer on a Windows runner, but someone has to run it. Options: a Windows VM on the Mac, or the first user's machine as the smoke test with a short checklist.
+4. **Code signing**: pay for a certificate (removes the SmartScreen warning) or accept the warning for a single known user.
+5. **Licence**: "same as cumulo" was the decision — and cumulo has **no licence file**, which makes it public source with all rights reserved rather than open source. This repo mirrors that for now; adding a licence file is its own decision.
+
+## 10. Bootstrap record
+
+1. Repo created at `~/Documents/Repos/cram.ai`, GitHub `TomBennett-Lloyd/cram.ai` (public), default branch `main`.
+2. Three bootstrap commits mirroring cumulo's: tooling baseline; agentic workflow; docs and this plan.
+3. Issues opened for ADR 0001–0002 and the M1 tickets.
