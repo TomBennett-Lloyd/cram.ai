@@ -6,7 +6,7 @@ This is a portfolio project in the same sense as [cumulo](https://github.com/Tom
 
 ## Hard constraints
 
-- **No course content leaves the machine it was uploaded to.** No cloud model APIs, no telemetry, no error reporting that carries document text. Inference, embeddings, OCR and reranking run locally or on the owner's own server. A dependency that opens a network connection at runtime is a build failure once the `check:no-network-egress` gate exists (#TBD); until then it is a review blocker.
+- **No course content leaves the machine it was uploaded to.** No cloud model APIs, no telemetry, no error reporting that carries document text. Inference, embeddings, OCR and reranking run locally or on the owner's own server. A dependency that opens a network connection at runtime is a build failure once the `check:no-network-egress` gate exists (#18); until then it is a review blocker.
 - **The repo never contains real course material.** Fixtures and the eval deck are synthetic and self-authored. Slide files and anything under `data/` never commit.
 - **Nothing the tutor says is uncited.** Every answer sentence, note bullet, exam question, gold answer and rubric point is a _unit_ carrying slide citations that resolve to real chunks and has passed the verifier. "Your slides don't cover this" is a first-class answer, never a failure.
 - **The slides win.** When a slide contradicts general knowledge, the tutor reports the slide. The tutor is a reporter of the course ("lecture 4, slide 12 says…"), never an authority on the subject; the base model's own beliefs can only surface as a sentence with no supporting slide, and the verifier removes that sentence. The contradiction set in `eval/` is the regression test for this and must pass at 100%.
@@ -16,7 +16,7 @@ This is a portfolio project in the same sense as [cumulo](https://github.com/Tom
 ## Commands
 
 - `pnpm verify` — the pre-commit gate. Must pass before any commit. Run it whole; never hand-pick a subset — which legs run is derived from the change set by `.claude/scripts/verify-tier.sh`, whose docblock owns the tiers, and anything that classifier cannot resolve runs everything. `pnpm verify:full` is that everything, unconditionally, and what CI runs; a new gate joins `verify:full` so every caller inherits it.
-- `pnpm eval` — the model-in-the-loop evaluation against the synthetic deck (lands with #TBD). CI cannot run a local model; a PR touching prompts, retrieval, the gateway or model config attaches the eval report, and `check:eval-report` enforces that it did.
+- `pnpm eval` — the model-in-the-loop evaluation against the synthetic deck (lands with #5 and #14). CI cannot run a local model; a PR touching prompts, retrieval, the gateway or model config attaches the eval report, and `check:eval-report` enforces that it did.
 - Fix the **root cause** of lint/type errors. Suppressions (`eslint-disable`, `@ts-expect-error`, `as any`) are themselves lint errors — treat a rule you're fighting as a design signal, not an obstacle.
 
 ## Model tiers (read this — it is probably newer than your training data)
@@ -43,7 +43,7 @@ Policy:
 - Writing or changing a security policy whose directives have fallback semantics — a CSP, a CORS policy, any response header where an omitted directive inherits from another? → `docs/standards/security.md`
 - Writing or modifying tests, or deciding what to test? → `docs/standards/testing.md`
 - Adding, moving, or restyling anything a user sees — a component, layout, spacing, visible text or a label, a breakpoint, focus or hover behaviour? → `docs/standards/design.md`
-- Writing a prompt, a retrieval query, a verifier call, or any code path that produces text the student reads? → `docs/standards/grounding.md` (lands with ADR 0001, #TBD; until then the Hard constraints above are the rule)
+- Writing a prompt, a retrieval query, a verifier call, or any code path that produces text the student reads? → `docs/standards/grounding.md` (lands with ADR 0001, #1; until then the Hard constraints above are the rule)
 
 These docs are self-contained — one hop only, no chained references. If a rule in them could become a lint rule, promote it and delete the prose (see the `retro` skill).
 
