@@ -1,0 +1,250 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  # `types:` replaces GitHub's defaults rather than extending them, so the three
+  # that came for free are re-listed here alongside the two this repo needs.
+  # `labeled`/`unlabeled` exist for the merge-ritual-gate job at the foot of
+  # this file; its comment (b) carries the reasoning and the cost.
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # actionlint is the one tool the composite needs that the runner image does
+      # not ship at all. shellcheck it does ship — at a version this repo will not
+      # accept, which the step after this one replaces; the two installs answer
+      # different problems and are deliberately not merged.
+      #
+      # (a) Why a direct download and not rhysd's official
+      #     `download-actionlint.bash`: that script is fetched from `main` — an
+      #     unpinned, mutable ref — and it verifies no checksum on what it
+      #     downloads. Read during planning, not assumed. Piping a moving script
+      #     into bash to install a linter that gates credentialed workflows is
+      #     the wrong trade for the ~5 lines it saves.
+      # (b) Why version AND SHA256 together: a tag can be moved. Pinning the
+      #     version alone means a re-tagged release swaps the binary silently;
+      #     the checksum is what makes that a loud failure instead.
+      # (c) Single owner. This step is the only pinned copy of the version in
+      #     the repo — local runs float on `brew install actionlint`, an accepted
+      #     CI-pins/local-floats skew ledgered on cumulo#108
+      #     (https://github.com/TomBennett-Lloyd/cumulo/issues/108).
+      #     Nothing else restates 1.7.12. shellcheck no longer keeps it company
+      #     there: cumulo#502 (https://github.com/TomBennett-Lloyd/cumulo/issues/502)
+      #     closed that skew after it cost two CI rounds, and the step below is what a
+      #     version both sides have to agree on looks like — the number moves out
+      #     of the workflow into a file both the installer and the gate read.
+      #     The skew survives here because actionlint runs in exactly one place.
+      # (d) Bump procedure: pick the new version, fetch that release's
+      #     `actionlint_<version>_checksums.txt` from the same GitHub releases
+      #     path, and update both strings in this one step. Nowhere else.
+      #
+      # This step's own `run:` block is linted by the gate it installs.
+      - name: Install actionlint (pinned)
+        run: |
+          curl -fsSL -o /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          tar -xzf /tmp/actionlint.tar.gz -C "$RUNNER_TEMP/actionlint" actionlint
+          echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+      # The runner image DOES ship shellcheck, and that was the problem
+      # (cumulo#502, https://github.com/TomBennett-Lloyd/cumulo/issues/502).
+      # It carries an older release than developers get from Homebrew — the
+      # versions, and the source they were verified against, are on the
+      # `pnpm verify:full` step below, which is the one site that owns them — so
+      # `pnpm verify` analysed local trees with a stricter linter than the one
+      # that judged them here: a `verify` whose green did not predict CI's, in the
+      # one direction that costs a round. In cumulo, two PRs paid it:
+      # cumulo#499 (SC2015, https://github.com/TomBennett-Lloyd/cumulo/pull/499) and
+      # cumulo#524 (SC2120/SC2119, https://github.com/TomBennett-Lloyd/cumulo/pull/524).
+      #
+      # This step installs the pinned release over the image's, so both sides run
+      # the same analyser. Note what is NOT here: a version. The number lives in
+      # .claude/scripts/shellcheck-pin.sh, and both readers of it — this install
+      # and the `lint:sh` gate, which refuses any other version — take it from
+      # there, so a bump is one commit in one file and CI cannot lag the gate.
+      # That is the difference from the actionlint step above, whose comment (c)
+      # says why it keeps its literals: this version needs two agreeing sides,
+      # and two sides carrying the same literal is a mirror waiting to drift
+      # (docs/standards/architecture.md rule 9).
+      #
+      # The install's own reasoning — direct release download, checksum as well
+      # as version, nothing written outside a temp directory — lives in that
+      # script's docblock and is not restated here. It appends its directory to
+      # $GITHUB_PATH itself, which is what puts the pinned binary ahead of the
+      # image's for every later step in this job, `pnpm verify:full` included.
+      - name: Install shellcheck (pinned)
+        run: bash .claude/scripts/install-shellcheck.sh
+      # One step, not one step per gate. Enumerating the gates here duplicates
+      # the composite's list, and the duplicate drifts: `pnpm test:scripts`
+      # was added to it and never reached CI, so the shell harness was
+      # green-by-absence. Calling the composite makes CI a caller like any other,
+      # so a gate added to it is automatically enforced here.
+      #
+      # `verify:full`, not `verify` (cumulo#476,
+      # https://github.com/TomBennett-Lloyd/cumulo/issues/476): `verify` derives a
+      # tier from the change set and runs only the markdown-observing gates when every
+      # changed path is a .md file. That saving is for the local iteration loop,
+      # where the composite is paid several times per PR. CI is the unskippable
+      # backstop and stays unconditional — deliberately, so a classifier bug can
+      # cost a fast local run and never a missed gate on a merge. A gate added to
+      # `verify:full` is still inherited here; widening the tier to CI is its own
+      # decision, with its own evidence.
+      # The cost is real but small: GitHub shows one step's timing and one
+      # failure marker instead of per-gate ones. The composite runs its gates in
+      # a fixed order and stops at the first failure, so the log still names the
+      # failing one. Which gates those are is deliberately not written here —
+      # package.json is the single place that list lives, and restating it would
+      # re-create exactly the duplicate this step exists to remove.
+      # Gate completeness beats step granularity.
+      #
+      # The shellcheck the composite shells out to is the pinned one installed
+      # above, not the image's — the caveat that used to sit here, that the runner
+      # lints with an older shellcheck than a developer does, is what cumulo#502
+      # closed.
+      #
+      # THIS COMMENT OWNS THE IMAGE'S SHELLCHECK VERSIONS, and it is the only site
+      # that carries them: verified against actions/runner-images rather than
+      # assumed — images/ubuntu/Ubuntu2404-Readme.md (ubuntu-latest today) lists
+      # 0.9.0-1 and Ubuntu2204-Readme.md lists 0.8.0-2. Restatement ledger, a
+      # floor rather than a census (swept in cumulo 2026-09-12, before the port
+      # to this repo, with
+      # `command grep -rnE '0\.9\.0|0\.8\.0|runner image' --include='*.sh'
+      # --include='*.yml' --include='*.md' .`): no other site carries either
+      # number. The sites that need the FACT that the image is older, rather than
+      # the figure, point here and carry no literal: the two steps above (the
+      # actionlint install's opening comment and the shellcheck install's), plus
+      # .claude/scripts/shellcheck-pin.sh and
+      # .claude/scripts/install-shellcheck.sh. That list is a floor like the sweep
+      # is — a new site pointing here does not have to be added to it to be
+      # correct, it just has to carry no number.
+      #
+      # That copy is now irrelevant rather than load-bearing: the install step
+      # puts the pinned binary ahead of it, and `lint:sh` refuses any version but
+      # the pin, so an image rollover that changed or dropped shellcheck could not
+      # silently change this job's verdict. If the install step ever fails, this
+      # step never runs.
+      - run: pnpm verify:full
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The mechanical half of the merge ritual: a PR labelled `awaiting-review`
+  # must carry its docs/review-feedback.md entry on the branch, where the
+  # reviewer it is waiting for can read it — not in somebody's memory of what to
+  # write once the merge is done. What the entry has to *say* is
+  # merge.mergeRitual in .claude/workflow.json, and is deliberately not restated
+  # here; this job only knows whether the file is in the diff.
+  #
+  # (a) Always runs, and the step decides — not a job-level `if:`. That is the
+  #     whole shape of this job. Branch protection counts a *skipped* required
+  #     context as satisfied, so a job-level condition that wrongly evaluates
+  #     false (a stale payload, an expression bug) fails open and leaves no
+  #     trace behind: the PR goes green having never been looked at. A step that
+  #     always runs prints its verdict either way, which is what keeps "gate
+  #     does not apply" distinguishable from "gate never ran". A one-way naming
+  #     coupling applies if this job is ever added to `main`'s required status
+  #     contexts: that list is branch-protection state, not something this file
+  #     declares, so renaming the job then leaves the context permanently
+  #     unreported — and an unreported required context blocks every PR.
+  #     Adding it to that list is a repo-settings action, and is deliberately
+  #     not done here.
+  # (b) Label staleness is this gate's normal case, not its edge case. The
+  #     ritual applies `awaiting-review` *after* CI has gone green, so every run
+  #     that exists at labelling time predates the label — the adversarial
+  #     ordering is the ordinary one. Two halves answer it. `labeled` and
+  #     `unlabeled` in the trigger at the top of this file guarantee a fresh run
+  #     on every label change (`unlabeled` included so that a PR labelled by
+  #     mistake and unlabelled again has its red run superseded by a green one,
+  #     rather than left standing); and the step reads *live* label state from
+  #     the API rather than from the event payload, so even a manual re-run of a
+  #     stale run reports what is true now instead of what was true then. What
+  #     that truth is supposed to be: the sanctioned sequence
+  #     (merge.humanAlwaysRule) puts the review-feedback entry on the branch
+  #     before the label goes on, so a labelled PR is green here from its first
+  #     labelled run — this gate is never the thing a PR is waiting on. So a red
+  #     merge-ritual-gate on a labelled PR never means "still waiting" — but
+  #     which red it is comes from the job's own `::error::`, not from the
+  #     conclusion: the missing-entry message reports a violated sequence and is
+  #     fixed on the branch, while the failed-read messages in comment (d) mean
+  #     the gate reached no verdict at all and are fixed by re-running the job.
+  #     The cost, stated rather than left to be rediscovered: `on:` is
+  #     workflow-level, so each label event re-runs every job in this file —
+  #     ~2–3 min of wall time, in parallel, $0 on a public repo. Accepted as it
+  #     stands; a `concurrency` group is the lever if label traffic ever grows.
+  #     One known-harmless edge worth recognising in the logs: taking the label
+  #     off at merge time fires a run against a just-merged PR.
+  # (c) The diff is read from `pulls/{n}/files` with `--paginate`, not from a
+  #     checkout. So no `fetch-depth` question arises — the kind the gitleaks
+  #     job above had to answer — and this job needs no setup steps at all: no
+  #     checkout, no pnpm, no node, in contrast to every other job here. The
+  #     `gh` CLI is preinstalled on the runner image.
+  # (d) Token and permissions: `github.token` reaches `gh` as GH_TOKEN, under a
+  #     job-level `permissions:` block granting `pull-requests: read` — enough
+  #     for both API reads, and a job-level block zeroes every other scope for
+  #     this job alone, leaving the other jobs' defaults untouched. And the
+  #     limit of what this buys: the gate is a floor, not a proof. It can see
+  #     that the file is in the diff and nothing beyond that, so a placeholder
+  #     line clears it just as a real one does — which is precisely why
+  #     merge.mergeRitual, and not this job, owns what the entry must say.
+  #     Both API reads therefore carry an explicit failure arm that names the PR
+  #     and which read failed, rather than letting `bash -e` abort the step on a
+  #     failed command substitution. The direction was already right — an
+  #     unreadable PR must fail closed, never skip the check — but the two
+  #     outcomes were indistinguishable to a reader: rate limit, 5xx or a
+  #     token-scope problem produced the same red conclusion as a genuine
+  #     violation, with no `::error::` of its own, and `gh pr checks` shows only
+  #     the job name and that conclusion. That distinction is load-bearing
+  #     because the documented response differs — a violated sequence is fixed
+  #     on the branch, an unread PR is fixed by re-running the job — so a silent
+  #     failed read sends a bounce at a branch with nothing to fix.
+  merge-ritual-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: awaiting-review PR carries its review-feedback line
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "push event - no PR to gate; nothing to check"
+            exit 0
+          fi
+          if ! labels=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.labels[].name'); then
+            echo "::error::could not read the labels of PR #$PR_NUMBER (GET repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER failed) - the gate reached NO verdict on this PR; re-run this job, do not change the branch"
+            exit 1
+          fi
+          if ! printf '%s\n' "$labels" | grep -Fxq 'awaiting-review'; then
+            echo "PR #$PR_NUMBER is not labelled 'awaiting-review'; gate does not apply"
+            exit 0
+          fi
+          if ! files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
+            echo "::error::could not read the changed files of PR #$PR_NUMBER (GET repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files failed) - the gate reached NO verdict on this PR; re-run this job, do not change the branch"
+            exit 1
+          fi
+          if printf '%s\n' "$files" | grep -Fxq 'docs/review-feedback.md'; then
+            echo "ok: awaiting-review PR touches docs/review-feedback.md"
+            exit 0
+          fi
+          echo "::error::PR #$PR_NUMBER carries 'awaiting-review' but its diff does not touch docs/review-feedback.md - merge.mergeRitual (.claude/workflow.json) requires the review-feedback entry on the branch"
+          exit 1

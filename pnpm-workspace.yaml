@@ -1,0 +1,29 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Supply-chain quarantine: a version published less than 24h ago is not resolved,
+# so a compromised release has to survive a day of public scrutiny before it can
+# reach this repo. 1440 minutes is pnpm's own default — the point of writing it
+# down is `minimumReleaseAgeStrict` below, which pnpm auto-enables only when the
+# age is set EXPLICITLY. Left implicit, pnpm 11.18 runs the policy in "loose"
+# mode: an install that trips the cutoff does not fail, it appends the offending
+# versions to `minimumReleaseAgeExclude` in this file and proceeds. The gate
+# quietly writes its own exemption, and the exemption is then committed. See
+# cumulo#92 (https://github.com/TomBennett-Lloyd/cumulo/issues/92) for the
+# reproduction; `check:supply-chain-policy` in `verify` is the backstop for the
+# paths strict mode does not cover (`pnpm audit --fix`, and an approved
+# interactive prompt), which can still add entries below.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+
+allowBuilds:
+  # esbuild is not in the tree yet; it is listed ahead of time because every
+  # likely route in (vite, vitest, tsx) brings it transitively. Its install
+  # script exists to fetch a platform binary when the optional per-platform
+  # package is unavailable; pnpm installs @esbuild/<platform>, and esbuild's JS
+  # API resolves that binary at runtime. So the script has nothing to do, and
+  # not running arbitrary install-time code is the safer default. Verified in
+  # cumulo (a tsx-run script ran with it disabled), not yet in this repo —
+  # re-check when esbuild first lands in pnpm-lock.yaml.
+  esbuild: false

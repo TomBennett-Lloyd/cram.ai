@@ -1,0 +1,47 @@
+{
+  "name": "cram-ai",
+  "private": true,
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "verify:root": "echo \"verify root: $(git rev-parse --show-toplevel) [$(git rev-parse -q --verify HEAD >/dev/null && git rev-parse --abbrev-ref HEAD || echo 'no commits yet')]\"",
+    "lint": "pnpm lint:js && pnpm lint:css && pnpm lint:sh && pnpm lint:workflows",
+    "lint:js": "eslint --max-warnings 0 .",
+    "lint:css": "stylelint \"**/*.css\" --max-warnings 0 --allow-empty-input",
+    "lint:sh": "bash .claude/scripts/lint-shell.sh",
+    "lint:workflows": "bash .claude/scripts/lint-workflows.sh",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "test:scripts": "bash .claude/scripts/run-script-tests.sh",
+    "check:adr-index": "bash .claude/scripts/check-adr-index.sh",
+    "check:comment-density": "bash .claude/scripts/check-comment-density.sh",
+    "check:ledgers": "bash .claude/scripts/check-ledgers.sh",
+    "check:markdown-links": "bash .claude/scripts/check-markdown-links.sh",
+    "check:module-names": "bash .claude/scripts/check-module-names.sh",
+    "check:node-types": "bash .claude/scripts/check-node-types.sh",
+    "check:supply-chain-policy": "bash .claude/scripts/check-supply-chain-policy.sh",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "pnpm verify:root && bash .claude/scripts/verify-tier.sh",
+    "verify:full": "pnpm verify:root && pnpm lint && pnpm typecheck && pnpm check:comment-density && pnpm test && pnpm check:adr-index && pnpm check:ledgers && pnpm check:module-names && pnpm check:node-types && pnpm check:supply-chain-policy && pnpm check:markdown-links && pnpm test:scripts && pnpm format:check",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks && git config commit.cleanup whitespace || true"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mts,cts}": "eslint --no-warn-ignored --max-warnings 0 --cache --cache-location node_modules/.cache/eslint-precommit/",
+    "*.css": "stylelint --max-warnings 0",
+    "*": "prettier --check --ignore-unknown"
+  },
+  "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.7.2",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.6",
+    "stylelint": "^17.14.1",
+    "stylelint-declaration-strict-value": "^1.11.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}
