@@ -54,10 +54,26 @@ A category going quiet across consecutive reviews is the evidence for graduating
 ## 2026-10-14 — issue #1 — plan-feedback-quote-anchored-synthesis
 
 - **Category**: plan
-- **Feedback**: three points on the issue #1 plan, given in chat. (1) "we need it to be a bit less verbatim than exact quotes from the slides, every statement needs to be backed up by exact quotes from slides but the statements themselves should be able to summarise across all the available information". (2) The student's notes are a future source, and must not contradict the lectures unless that is intentional. (3) Naturopathic medicine is an example of the subject class the tutor serves, not the use case.
+- **Feedback**: "we need it to be a bit less verbatim than exact quotes from the slides, every statement needs to be backed up by exact quotes from slides but the statements themselves should be able to summarise across all the available information"
 - **Why**: the information a student needs is distributed across a course, so a tutor limited to slide wording cannot compile it; anchoring every claim to substring-checked quotes keeps synthesis exactly as mechanical to verify as extraction was.
-- **How applied**: `docs/adr/0001-grounding-architecture.md` § Decision (b), (c), (d), (h) and (i); `docs/standards/grounding.md` rules 1, 3, 4 and 9; `docs/plan.md` §3.5; #21 opened for notes as a second source.
-- **Verdict**: owner-directed in chat 2026-10-14, applied before execution.
+- **How applied**: `docs/adr/0001-grounding-architecture.md` § Decision (b), (c), (d) and (h); `docs/standards/grounding.md` rules 1, 3, 4 and 9; `docs/plan.md` §3.5.
+- **Verdict**: owner-directed in chat 2026-10-14, applied before execution
+
+## 2026-10-14 — issue #1 — plan-feedback-notes-as-future-source
+
+- **Category**: plan
+- **Feedback**: (paraphrase) the student's own notes may in future join the slides as a source, and must not contradict the lectures unless that is intentional.
+- **Why**: admitting a second source kind changes trust and precedence, which is an ADR-sized decision, so the ADR names the kind without admitting it.
+- **How applied**: `docs/adr/0001-grounding-architecture.md` § Decision (i); `docs/standards/grounding.md` rule 9; #21 opened (parked).
+- **Verdict**: owner-directed in chat 2026-10-14, applied before execution
+
+## 2026-10-14 — issue #1 — plan-feedback-subject-class-not-one-subject
+
+- **Category**: plan
+- **Feedback**: "naturopathic medicine is just an example not the only use case"
+- **Why**: the mechanism is for the class of subject whose slides deliberately differ from what a general model knows, and naming one subject as the use case would misdescribe the product in an immutable record.
+- **How applied**: `docs/adr/0001-grounding-architecture.md` § Context states the class, with naturopathic medicine as one example.
+- **Verdict**: owner-directed in chat 2026-10-14, applied before execution
 
 ## 2026-10-14 — issue #1 — adr-0001-grounding-architecture
 

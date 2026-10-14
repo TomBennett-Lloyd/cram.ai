@@ -21,7 +21,7 @@ Three positions were settled when the owner accepted `docs/plan.md` on 2026-10-1
 `docs/standards/grounding.md` turns this decision into the rule every text-producing feature follows.
 
 - **(a) No per-user fine-tuning.** A student's course never trains any weights. Course content reaches the model only through the prompt, at inference time.
-- **(b) The unit is the only vehicle for model-produced text the student reads.** A unit is `{text, citations[], kind}`, and a citation is `{sourceId, quote}`: the id of a source and a verbatim span of that source's text. The schema is owned by `@cram/shared` once #8 lands; this ADR fixes the shape, not the field types. Three things a model produces reach the student without being units, and none may carry a claim about the subject: a label from a closed enum (a verifier or grading verdict), a topic tag (a noun phrase in the course index that the student can edit — metadata, never a statement), and a fixed system string that carries no model text. That list is closed; `docs/standards/grounding.md` rule 1 restates it as the rule.
+- **(b) The unit is the only vehicle for model-produced text the student reads.** A unit is `{text, citations[], kind}`, and a citation is `{sourceId, quote}`: the id of a source and a verbatim span of that source's text. The schema is owned by `@cram/shared` once #8 lands; this ADR fixes the shape, not the field types. Two things a model produces reach the student without being units, and neither may carry a claim about the subject: a label from a closed enum (a verifier or grading verdict), and a topic tag (a noun phrase in the course index that the student can edit — metadata, never a statement). That list is closed; `docs/standards/grounding.md` rule 1 restates it as the rule.
 - **(c) Every request runs one pipeline.**
   1. **Retrieve** candidate sources from the course index; nothing else enters the generator's prompt as a source of facts.
   2. **Generate** units from the retrieved sources only, each carrying its citations; an empty list is a valid output, and is how the tutor says the slides do not cover the request.
@@ -40,7 +40,7 @@ Three positions were settled when the owner accepted `docs/plan.md` on 2026-10-1
 
 ## Options considered
 
-**1. Per-user fine-tuning.** What it would buy is real: no retrieval step, no verifier latency, and a tutor that sounds like the course. What it cannot buy is the comparison below, drafted in `docs/plan.md` §1, trued to #3 and #5 on the way in, and owned here from this ADR on.
+**1. Per-user fine-tuning.** What it would buy is real: no retrieval step, no verifier latency, and a tutor that sounds like the course. What it cannot buy is the comparison below, drafted in `docs/plan.md` §1 and owned here from this ADR on.
 
 | Goal                                       | Fine-tuning per user                                                                        | Retrieval + citation + verification                                            |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
