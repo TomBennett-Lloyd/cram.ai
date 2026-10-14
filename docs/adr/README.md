@@ -100,4 +100,4 @@ shape a sweep that reaches it.
 
 ## Index
 
-_No ADRs yet._
+- [0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning](0001-grounding-architecture.md)
