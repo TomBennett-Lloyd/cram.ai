@@ -81,7 +81,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Feedback**: the PR asks the owner to decide:
   - accept `docs/adr/0001-grounding-architecture.md` § Decision (a)–(i), in particular the quote-anchored citation shape, the verifier contract in (d) with its implementation deferred to ADR 0003, and that contract's closed policy set for `partial`;
   - accept `docs/standards/grounding.md` rules 1–9, in particular rule 3's substring test and rule 9's synthesis rule;
-  - accept the `docs/plan.md` §1 and §3.4 pointer replacements;
+  - accept the `docs/plan.md` §1, §3.4 and §3.5 pointer replacements, and the `README.md` pointer to `docs/standards/grounding.md` rule 4;
   - accept the one-line `CLAUDE.md` re-point.
 - **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0001 at `proposed`, the standard, and the pointers; revised in place on the branch if review asks.

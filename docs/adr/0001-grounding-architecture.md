@@ -67,7 +67,7 @@ Rejected: it fails the subject class in Context at exactly the point that matter
 
 ## Consequences
 
-**Easier.** The base model's beliefs are excluded mechanically: a sentence only the base model believes has no quote that supports it, and is withheld before the student sees it. Every unit carries the source and span it rests on, so the UI can show provenance rather than assert it. A lecture added or corrected is re-indexed, not retrained. Resolution and the verifier contract sit in a pure core over a model-gateway interface (`docs/standards/architecture.md` rule 3), so every guarantee in (c) and (d) is testable against a fake gateway with no model running.
+**Easier.** The base model's beliefs are excluded mechanically: a sentence only the base model believes has no quote that supports it, and is withheld. Every unit carries the source and span it rests on, so the UI can show provenance rather than assert it. A lecture added or corrected is re-indexed, not retrained. Resolution and the verifier contract sit in a pure core over a model-gateway interface (`docs/standards/architecture.md` rule 3), so every guarantee in (c) and (d) is testable against a fake gateway with no model running.
 
 **Harder.** Latency, on every request that has a student waiting. The withheld report is its own design problem: it must show what was dropped without the dropped text reading as something the slides say. And no student-visible text path is exempt — every feature pays the verifier, so no feature is as cheap as its generation step alone.
 

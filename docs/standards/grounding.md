@@ -4,7 +4,7 @@
 
 ## Rules
 
-1. **Units only.** Every model-produced text the student reads is a unit `{text, citations[], kind}`, and each citation is `{sourceId, quote}`. The schema is `@cram/shared`'s `Unit` (#8), defined once (`architecture.md` rule 2). Model output reaches the student as a unit that passed rules 3 and 4, or as one of exactly two things that are not units and carry no claim about the subject: a label from a closed enum (a verifier verdict, a grading verdict); and a topic tag (a noun phrase in the course index that the student can edit — metadata, never a statement). The list is closed and owned by `docs/adr/0001-grounding-architecture.md` § Decision (b).
+1. **Units only.** Every model-produced text the student reads is a unit `{text, citations[], kind}`, and each citation is `{sourceId, quote}`. The schema is `@cram/shared`'s `Unit` (#8), defined once (`architecture.md` rule 2). Model output reaches the student as a unit, or as one of exactly two things that are not units and carry no claim about the subject: a label from a closed enum (a verifier verdict, a grading verdict); and a topic tag (a noun phrase in the course index that the student can edit — metadata, never a statement). The list is closed and owned by `docs/adr/0001-grounding-architecture.md` § Decision (b).
 
 2. **The pipeline order is fixed:** retrieve → generate → resolve → verify → report. No feature skips or reorders a stage. The generator's prompt forbids claims the supplied sources do not support and requires at least one quoted citation per unit. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (c).
 
