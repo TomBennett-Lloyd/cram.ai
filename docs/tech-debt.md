@@ -39,13 +39,13 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-14 — "never reaches the screen" wording predates the withheld panel
 
 - Where: `README.md` ("a sentence with no supporting slide never reaches the screen"), `docs/plan.md` §0 ("deleted before the student sees it")
-- What: both predate `docs/standards/grounding.md` rule 7, under which a withheld unit's text is shown in the withheld panel, marked withheld and never rendered as an answer. The sentences are true of answers and false of the panel. The README is public copy, so the owner picks the wording; `plan.md` §0 follows it.
+- What: both predate `docs/standards/grounding.md` rule 7, under which a withheld unit's text is shown in the withheld panel, marked withheld and never rendered as an answer. The sentences are true of answers and false of the panel; `plan.md` §0 follows the README's wording.
 - Source: #1 review cycle 2
 
 ## 2026-10-14 — plan.md §3.5 feature flows skip resolve and report
 
 - Where: `docs/plan.md` §3.5 (Ask, Notes, Exam paragraphs)
-- What: the flows read "generate → verify → render", omitting the resolve and report stages `docs/standards/grounding.md` rule 2 fixes, and the exam flow drops failed questions with no withheld report. They were drafted before the standard. The fix is each feature ticket's (#13 and the M4 tickets) rather than a plan edit, since the plan's flows are superseded by the standard the moment a feature lands; question stems as units are #24's.
+- What: Ask reads "generate units → verify → render" and Notes "generate an outline whose every bullet is a unit → verify → render", omitting the resolve and report stages `docs/standards/grounding.md` rule 2 fixes; the exam flow ends "drop any question whose gold answer or rubric fails" with no withheld report. They were drafted before the standard. The fix is each feature ticket's (Ask: #13; notes: M3; exams: M4) rather than a plan edit, since the plan's flows are superseded by the standard the moment a feature lands; question stems as units are #24's.
 - Source: #1 review cycle 2
 
 ## 2026-10-14 — ADR 0001 (d) ledger sweep has no citation arm
