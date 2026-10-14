@@ -50,3 +50,23 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - A category with no entries at all has never been exercised. That is absence of evidence, not evidence of quiet, and cannot on its own graduate a gate.
 
 ---
+
+## 2026-10-14 — issue #1 — plan-feedback-quote-anchored-synthesis
+
+- **Category**: plan
+- **Feedback**: three points on the issue #1 plan, given in chat. (1) "we need it to be a bit less verbatim than exact quotes from the slides, every statement needs to be backed up by exact quotes from slides but the statements themselves should be able to summarise across all the available information". (2) The student's notes are a future source, and must not contradict the lectures unless that is intentional. (3) Naturopathic medicine is an example of the subject class the tutor serves, not the use case.
+- **Why**: the information a student needs is distributed across a course, so a tutor limited to slide wording cannot compile it; anchoring every claim to substring-checked quotes keeps synthesis exactly as mechanical to verify as extraction was.
+- **How applied**: `docs/adr/0001-grounding-architecture.md` § Decision (b), (c), (d), (h) and (i); `docs/standards/grounding.md` rules 1, 3, 4 and 9; `docs/plan.md` §3.5; #21 opened for notes as a second source.
+- **Verdict**: owner-directed in chat 2026-10-14, applied before execution.
+
+## 2026-10-14 — issue #1 — adr-0001-grounding-architecture
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0001-grounding-architecture.md` § Decision (a)–(i), in particular the quote-anchored citation shape, the verifier contract in (d) with its implementation deferred to ADR 0003, and that contract's closed policy set for `partial`;
+  - accept `docs/standards/grounding.md` rules 1–9, in particular rule 3's substring test and rule 9's synthesis rule;
+  - accept the `docs/plan.md` §1 and §3.4 pointer replacements;
+  - accept the one-line `CLAUDE.md` re-point.
+- **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed — ADR 0001 at `proposed`, the standard, and the pointers; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge

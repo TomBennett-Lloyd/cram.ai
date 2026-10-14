@@ -43,7 +43,7 @@ Policy:
 - Writing or changing a security policy whose directives have fallback semantics — a CSP, a CORS policy, any response header where an omitted directive inherits from another? → `docs/standards/security.md`
 - Writing or modifying tests, or deciding what to test? → `docs/standards/testing.md`
 - Adding, moving, or restyling anything a user sees — a component, layout, spacing, visible text or a label, a breakpoint, focus or hover behaviour? → `docs/standards/design.md`
-- Writing a prompt, a retrieval query, a verifier call, or any code path that produces text the student reads? → `docs/standards/grounding.md` (lands with ADR 0001, #1; until then the Hard constraints above are the rule)
+- Writing a prompt, a retrieval query, a verifier call, or any code path that produces text the student reads? → `docs/standards/grounding.md`
 
 These docs are self-contained — one hop only, no chained references. If a rule in them could become a lint rule, promote it and delete the prose (see the `retro` skill).
 

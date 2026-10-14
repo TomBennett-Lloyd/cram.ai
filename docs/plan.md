@@ -10,16 +10,7 @@ Do **not** fine-tune a model per user. Fine-tuning teaches a model how to _sound
 
 ## 1. Why not per-user fine-tuning (so ADR 0001 can cite it)
 
-| Goal                                       | Fine-tuning per user                                                                        | Retrieval + citation + verification                                            |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Answer only from the slides                | No mechanism. Weights blend slide text with pre-training; nothing marks the boundary.       | Structural: the generator only sees retrieved slides; unsupported text is cut. |
-| Slides override base knowledge             | Unreliable. Small LoRA runs barely move strongly held priors; large runs destroy the model. | Mechanical: a claim with no supporting slide fails verification.               |
-| Show the student where an answer came from | Impossible — weights have no provenance.                                                    | Every unit carries `lecture:slide` citations and the UI shows the slide.       |
-| Update when a lecture is added or fixed    | Retrain.                                                                                    | Re-index one file.                                                             |
-| Run on a laptop                            | Training needs a GPU with tens of GB; hours per user.                                       | Inference only; a 7–14B model fits consumer hardware.                          |
-| Test it                                    | Hard to measure what was learned.                                                           | A golden question set with known slide answers is a CI gate.                   |
-
-Fine-tuning has one legitimate future use here: **style** (the question-writing voice of a specific exam board), via a small LoRA on _synthetic_ data, if few-shot exemplars prove insufficient. That is stable behaviour, not knowledge, and would be one shared adapter, not one per user. Out of scope until measured need.
+Superseded by `docs/adr/0001-grounding-architecture.md` § Options considered, which now carries the comparison and the style-LoRA deferral; this section carries no restatement.
 
 ## 2. Hard constraints
 
@@ -60,21 +51,13 @@ Four modules, one deployable (plus the model runtime, which is third-party softw
 
 ### 3.4 Grounding contract (the core of the project)
 
-Every feature produces a list of **units**. A unit is `{text, citations: [slideId], kind}`. The pipeline is:
-
-1. **Retrieve** candidate slides (hybrid search, k tuned per feature).
-2. **Generate** units with a prompt that forbids any statement not in the supplied slides, requires a citation per unit, and makes "not in the slides" a valid output.
-3. **Resolve** citations mechanically: every cited id must exist and must be among the retrieved set. A unit with a dangling citation is dropped before verification.
-4. **Verify** each unit against its cited slide text only: "Is this statement fully supported by this passage?" → `supported | partial | unsupported`. `unsupported` is dropped; `partial` is dropped or rewritten once depending on the feature (exams: dropped; notes: rewritten once, then dropped).
-5. **Report** what was dropped in a collapsible "withheld" panel so the student can see the system working and report false negatives.
-
-Why this handles the alt-medicine case specifically: the base model's disagreement can only surface as a sentence, and that sentence has no supporting slide. Step 4 removes it. The eval set in §4 proves it stays removed.
+Owned by `docs/standards/grounding.md` (the rule) and `docs/adr/0001-grounding-architecture.md` (the decision and the verifier contract); this section carries no restatement.
 
 ### 3.5 Features on top of the contract
 
 **Ask a question.** Retrieve → generate units → verify → render with slide thumbnails beside each citation. No supported unit → "Your slides don't cover this. Closest slides: …".
 
-**Revision notes by category.** Resolve category via the topic index → retrieve every member slide across lectures → generate an outline whose every bullet is a unit → verify → render grouped by sub-topic with a "sources" footer listing every lecture/slide drawn on. Extractive-first: the generator prefers the slide's own wording; synthesis is allowed only for ordering and headings.
+**Revision notes by category.** Resolve category via the topic index → retrieve every member slide across lectures → generate an outline whose every bullet is a unit → verify → render grouped by sub-topic with a "sources" footer listing every lecture/slide drawn on. Statements synthesise across lectures and every claim is anchored by verbatim quotes (`docs/standards/grounding.md` rule 9).
 
 **Practice exam — realistic from the start (owner decision 2026-10-13).** Chunk-first, not topic-first: the generator never writes a question from a topic name. Flow: pick target slides (by category, or weighted across the course the way the sample paper weights its sections) → for each, generate `{question, goldAnswer, rubric[], marks, citations}` in the style of a sampled exemplar of the requested type → verify the gold answer _and each rubric point_ against the cited slide → drop any question whose gold answer or rubric fails. Questions therefore cannot ask for anything the slides do not contain, by construction, and the gold answer is stored with the question before the student sees it. Realism means: a **paper**, not a question list — sections and marks mirroring the sample paper's structure, a timer with the paper's duration, one-question-at-a-time or whole-paper navigation, flag-for-review, no answers visible until submission, then a marked script with per-question marks, the rubric verdicts, the source slides, and a history of attempts with scores over time.
 
@@ -120,7 +103,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 
 ## 7. ADRs to write first (each is an issue with the `adr` label)
 
-1. **0001 Grounding architecture** — retrieval + citation + verification, not fine-tuning; the unit contract; and `docs/standards/grounding.md`. §1 and §3.4 are the draft.
+1. **0001 Grounding architecture** — retrieval + citation + verification, not fine-tuning; the unit contract; and `docs/standards/grounding.md`. Written — `docs/adr/0001-grounding-architecture.md` (#1); §1 and §3.4 above now point at it.
 2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable.
 3. **0003 Model roles and backends** — generator / verifier / embedder; `node-llama-cpp` vs HTTP backends; the measured model choice and licence against the target machine; whether the verifier is an LLM prompt or an NLI cross-encoder.
 4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it.
