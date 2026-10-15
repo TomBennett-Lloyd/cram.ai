@@ -86,3 +86,15 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0001 at `proposed`, the standard, and the pointers; revised in place on the branch if review asks.
 - **Verdict**: approved in chat 2026-10-15 — "okay i think that PR looks good" — with no revisions requested; ADR 0001 flipped to `accepted` in the verdict commit and the PR merged.
+
+## 2026-10-15 — issue #2 — adr-0002-deployables
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0002-deployables.md` § Decision (a)–(g), in particular the one-deployable count reconciled against the three `apps/*` directories in (a), the model runtime outside the count in (c), the per-mode loopback binding in (d), M6 as a configuration of the same artefact in (e), #26's placement in (f), and the evidence-backed bar for a second deployable in (g);
+  - accept the `docs/plan.md` §3 lead-paragraph pointer and the §7 item 2 true-up;
+  - accept the `docs/standards/architecture.md` rule 4 path cite;
+  - accept the `docs/adr/README.md` example-row re-numbering.
+- **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed — ADR 0002 at `proposed` and the pointers; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge

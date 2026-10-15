@@ -12,7 +12,7 @@ _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13.
 
 3. **Pure core, effectful edges.** Chunking, citation resolution, rubric arithmetic and grading are pure functions of typed inputs plus a model-gateway interface — no I/O, no clocks, no env access. File parsing, SQLite, HTTP and the model backend live in thin adapter modules at the edges. This is what keeps the interesting code trivially testable and the adapters boring.
 
-4. **Deployable boundaries are the ones in the ADR — resist fragmenting further.** The deployables are the ones the deployables ADR 0002 records. A new deployable needs an ADR arguing for it (independent scaling/failure/deploy cadence), not just a new concern. New concerns default to new _modules_ inside existing deployables.
+4. **Deployable boundaries are the ones in the ADR — resist fragmenting further.** The deployables are the ones `docs/adr/0002-deployables.md` records. A new deployable needs an ADR arguing for it (independent scaling/failure/deploy cadence), not just a new concern. New concerns default to new _modules_ inside existing deployables.
 
 5. **No `utils/` dumping ground.** Name modules by domain (`chunking.ts`, `rubric.ts`), not by genericness. If code has no domain name, question whether it belongs here at all. The `check:module-names` gate in `verify` enforces this — a bare `utils.*` module fails the build, not just review.
 
