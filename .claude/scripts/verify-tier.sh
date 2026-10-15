@@ -88,11 +88,12 @@
 # documented to the author as "you changed code by accident", so it must not fire
 # on prose.
 #
-# esbuild is a dependency of vite already, and is RESOLVED, never installed —
-# $ROOT's node_modules first, then the repository holding this script, which is
-# the same directory in production and is what lets verify-tier.test.sh classify
-# throwaway fixture repositories that have no node_modules of their own. No
-# binary, or a binary that errors on a file, is a full run.
+# esbuild is a root devDependency declared for this rung (#30), and is
+# RESOLVED, never installed — $ROOT's node_modules first, then the repository
+# holding this script, which is the same directory in production and is what
+# lets verify-tier.test.sh classify throwaway fixture repositories that have no
+# node_modules of their own. No binary, or a binary that errors on a file, is a
+# full run.
 #
 # WHAT STILL RUNS UNDER THIS RUNG, because comments are observable:
 #
