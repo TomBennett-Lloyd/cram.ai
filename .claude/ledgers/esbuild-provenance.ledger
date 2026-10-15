@@ -5,3 +5,4 @@ sweep: esbuild\b.{0,80}(devDependenc|dependency of|arriv|bring|transitiv)|(arriv
 scope: :!pnpm-lock.yaml
 carrier: pnpm-workspace.yaml
 carrier: .claude/scripts/verify-tier.test.sh
+excluded: docs/friction-log.md
