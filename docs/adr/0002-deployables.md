@@ -36,7 +36,7 @@ The count below uses one definition. A _deployable_ is an artefact that is built
   - Index row: `docs/adr/README.md` § Index (this ADR's row, whose title states the count).
   - Non-carriers: `docs/adr/README.md`'s opening paragraph, and `docs/standards/architecture.md`'s Trigger line and rule 6.
   - Past-tense record: `docs/review-feedback.md`'s `adr-0002-deployables` entry (its heading and the ask citing this file by path).
-  - Outside the sweep, left standing: `docs/plan.md` §0, whose "the identical code deploys to a private self-hosted server" paraphrases (e).
+  - Outside the sweep, left standing: `docs/plan.md` §0, whose "the identical code deploys to a private self-hosted server" paraphrases (e), and `docs/plan.md` §3.6, whose "one runtime, one installer" partly restates (a) and is ADR 0007's surface.
 
 ## Options considered
 
