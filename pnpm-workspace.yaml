@@ -18,12 +18,9 @@ minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 
 allowBuilds:
-  # esbuild is not in the tree yet; it is listed ahead of time because every
-  # likely route in (vite, vitest, tsx) brings it transitively. Its install
-  # script exists to fetch a platform binary when the optional per-platform
-  # package is unavailable; pnpm installs @esbuild/<platform>, and esbuild's JS
-  # API resolves that binary at runtime. So the script has nothing to do, and
-  # not running arbitrary install-time code is the safer default. Verified in
-  # cumulo (a tsx-run script ran with it disabled), not yet in this repo —
-  # re-check when esbuild first lands in pnpm-lock.yaml.
+  # esbuild is a root devDependency because .claude/scripts/verify-tier.sh's
+  # source-prose rung runs it. pnpm installs @esbuild/<platform> and the bin shim
+  # resolves that binary at runtime, so the rung works without the install
+  # script, and not running install-time code is the safer default. The
+  # source-prose cases in .claude/scripts/verify-tier.test.sh run that shim.
   esbuild: false
