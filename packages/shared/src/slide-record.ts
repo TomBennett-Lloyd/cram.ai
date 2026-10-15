@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NonBlankText } from './non-blank-text';
 
 export const CourseId = z.string().min(1).brand<'CourseId'>();
 export type CourseId = z.infer<typeof CourseId>;
@@ -14,14 +15,14 @@ export const SourceHash = z.string().min(1).brand<'SourceHash'>();
 export type SourceHash = z.infer<typeof SourceHash>;
 
 /**
- * One slide as ingest emits it. Every text field may be empty: a slide with no
- * extractable text is a record, not an error (#9). `derived` marks text produced
- * by OCR or captioning rather than read from the deck (ADR 0006, #6).
+ * One slide as ingest emits it. A slide with no extractable text is a record,
+ * not an error (#9). `derived` marks text produced by OCR or captioning rather
+ * than read from the deck (ADR 0006, #6).
  */
 export const SlideRecord = z.object({
   courseId: CourseId,
   lectureId: LectureId,
-  lectureTitle: z.string().min(1),
+  lectureTitle: NonBlankText,
   slideNo: SlideNo,
   title: z.string(),
   body: z.string(),

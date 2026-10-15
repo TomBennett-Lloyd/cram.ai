@@ -22,6 +22,14 @@ describe('StyleExemplar', () => {
     expect(StyleExemplar.safeParse({ ...mcq, options: ['Nucleus'] }).success).toBe(false);
   });
 
+  it('refuses a multiple-choice question with no options', () => {
+    expect(StyleExemplar.safeParse({ type: 'mcq', stem: mcq.stem }).success).toBe(false);
+  });
+
+  it('refuses a blank stem', () => {
+    expect(StyleExemplar.safeParse({ ...mcq, stem: ' ' }).success).toBe(false);
+  });
+
   it('refuses options on a short-answer question', () => {
     expect(StyleExemplar.safeParse({ ...mcq, type: 'short' }).success).toBe(false);
   });

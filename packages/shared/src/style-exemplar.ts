@@ -1,23 +1,25 @@
 import { z } from 'zod';
+import { NonBlankText } from './non-blank-text';
 
-const marks = z.number().int().positive().optional();
+/** The marks a question is worth, as distinct from marks awarded (`docs/standards/typing.md` rule 1). */
+export const MarksAvailable = z.number().int().positive().brand<'MarksAvailable'>();
+export type MarksAvailable = z.infer<typeof MarksAvailable>;
 
 /**
  * A sample exam question, parsed for its style and never used as a source of
- * facts (`docs/plan.md` §3.1). Only `mcq` carries options; the strict objects
- * refuse options on any other type.
+ * facts (`docs/plan.md` §3.1).
  */
 export const StyleExemplar = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('mcq'),
-    stem: z.string().regex(/\S/),
-    options: z.array(z.string().regex(/\S/)).min(2),
-    marks,
+    stem: NonBlankText,
+    options: z.array(NonBlankText).min(2),
+    marks: MarksAvailable.optional(),
   }),
   z.strictObject({
     type: z.enum(['short', 'essay', 'case']),
-    stem: z.string().regex(/\S/),
-    marks,
+    stem: NonBlankText,
+    marks: MarksAvailable.optional(),
   }),
 ]);
 export type StyleExemplar = z.infer<typeof StyleExemplar>;

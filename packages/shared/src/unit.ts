@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Citation } from './citation';
+import { NonBlankText } from './non-blank-text';
 
 /** The text kinds `CLAUDE.md` § Hard constraints requires to be units. */
 export const UnitKind = z.enum([
@@ -18,7 +19,7 @@ export type UnitKind = z.infer<typeof UnitKind>;
  * (`docs/standards/grounding.md` rule 3).
  */
 export const Unit = z.object({
-  text: z.string().regex(/\S/),
+  text: NonBlankText,
   citations: z.array(Citation),
   kind: UnitKind,
 });

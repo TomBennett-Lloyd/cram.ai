@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const Verdict = z.enum(['supported', 'partial', 'unsupported']);
 export type Verdict = z.infer<typeof Verdict>;
 
-/** Every verdict but `supported` withholds its unit (`docs/standards/grounding.md` rule 7). */
+/** Why a unit is withheld (`docs/standards/grounding.md` rule 7). */
 export const WithheldReason = z.enum([
   'dangling-citation',
   ...Verdict.exclude(['supported']).options,

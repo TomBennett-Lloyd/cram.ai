@@ -32,6 +32,10 @@ describe('SlideRecord', () => {
     expect(SlideRecord.safeParse(slide({ slideNo: 1.5 })).success).toBe(false);
   });
 
+  it('refuses a blank lecture title', () => {
+    expect(SlideRecord.safeParse(slide({ lectureTitle: '  ' })).success).toBe(false);
+  });
+
   it('refuses an empty lecture id', () => {
     expect(SlideRecord.safeParse(slide({ lectureId: '' })).success).toBe(false);
   });

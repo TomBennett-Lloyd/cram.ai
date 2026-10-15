@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NonBlankText } from './non-blank-text';
 
 /** Names one source. How a slide's id is minted is ingest's and the index's (#10, #11). */
 export const SourceId = z.string().min(1).brand<'SourceId'>();
@@ -11,6 +12,6 @@ export type SourceId = z.infer<typeof SourceId>;
  */
 export const Citation = z.object({
   sourceId: SourceId,
-  quote: z.string().regex(/\S/),
+  quote: NonBlankText,
 });
 export type Citation = z.infer<typeof Citation>;
