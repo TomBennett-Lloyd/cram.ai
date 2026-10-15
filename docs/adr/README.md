@@ -15,7 +15,7 @@ then non-empty text — which is where supersession is recorded, since ADRs are 
 than edited:
 
 ```
-- [0002 — Deployables](0002-deployables.md) — superseded by 0007
+- [0042 — Example decision](0042-example-decision.md) — superseded by 0043
 ```
 
 The suffix is optional but not free-form: `— ` with nothing after it, or an annotation that
@@ -101,3 +101,4 @@ shape a sweep that reaches it.
 ## Index
 
 - [0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning](0001-grounding-architecture.md)
+- [0002 — Deployables: one app plus a bundled model runtime; local-first; nothing public](0002-deployables.md)
