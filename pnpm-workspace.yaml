@@ -18,10 +18,9 @@ minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
 
 allowBuilds:
-  # esbuild is a root devDependency because verify-tier.sh's source-prose rung
-  # runs it (#30). Its install script only fetches a platform binary when the
-  # optional @esbuild/<platform> package is missing; pnpm installs that package
-  # and the bin shim resolves it at runtime, so the script has nothing to do and
-  # not running install-time code is the safer default. Re-verified in #30: with
-  # the script disabled, node_modules/.bin/esbuild minifies.
+  # esbuild is a root devDependency because .claude/scripts/verify-tier.sh's
+  # source-prose rung runs it. pnpm installs @esbuild/<platform> and the bin shim
+  # resolves that binary at runtime, so the rung works without the install
+  # script, and not running install-time code is the safer default. The
+  # source-prose cases in .claude/scripts/verify-tier.test.sh run that shim.
   esbuild: false

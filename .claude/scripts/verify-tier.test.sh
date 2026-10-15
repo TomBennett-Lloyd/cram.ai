@@ -31,10 +31,12 @@
 #
 # The emit proof needs an esbuild binary, and the fixtures have no node_modules
 # of their own — the classifier resolves one from the repository holding it,
-# which is this one (esbuild is a root devDependency, #30). Before `pnpm install`
-# the cases that need it print SKIP with the reason and are counted as skipped,
-# never as passed. The no-binary fallback case runs a copy of the classifier held
-# outside any repository, so it runs whether or not esbuild is installed here.
+# which is this one. Where that repository has no node_modules at all, the cases
+# that need it print SKIP with the reason and are counted as skipped, never as
+# passed. Where node_modules exists without esbuild they FAIL: that is the
+# devDependency gone missing, and rung 2 silently always-full (#30). The
+# no-binary fallback case runs a copy of the classifier held outside any
+# repository, so it runs either way.
 #
 # Every fixture carries a *.test.ts file in its base commit, and not for
 # decoration: the soundness guard refuses to certify a change set it could not
@@ -83,13 +85,19 @@ else
 fi
 skipped=0
 
-# begin_with_esbuild <name> -> begins the case and returns 0 when esbuild is installed here;
-# otherwise prints SKIP with the reason and returns 1, so the body never runs and `end`
-# never reports a PASS. Written `if begin_with_esbuild …; then … end; fi`.
+# begin_with_esbuild <name> -> begins the case and returns 0 when esbuild is installed here.
+# Otherwise returns 1, so the body never runs: a FAIL when node_modules is installed without
+# esbuild, a SKIP with the reason when nothing is installed. Written
+# `if begin_with_esbuild …; then … end; fi`.
 begin_with_esbuild() {
   begin "$1"
   [ "$HAVE_ESBUILD" = 1 ] && return 0
-  printf 'SKIP %s — no esbuild installed under %s/node_modules to prove an emit with\n' \
+  if [ -n "$TOOL_REPO" ] && [ -d "$TOOL_REPO/node_modules" ]; then
+    bad "node_modules is installed but holds no esbuild, the root devDependency rung 2 runs"
+    end
+    return 1
+  fi
+  printf 'SKIP %s — no node_modules under %s, so no esbuild to prove an emit with\n' \
     "$1" "${TOOL_REPO:-<no repository>}"
   skipped=$((skipped + 1))
   return 1
@@ -329,8 +337,8 @@ end
 # what it buys: the tier line, the legs that can still see a comment, and the observing set.
 #
 # The fail-closed path for a checkout with no esbuild binary is the first case below. It
-# runs a copy of the classifier from a directory no repository contains, so the lookup's
-# second root is empty and the fixture's missing node_modules is the whole search; the
+# runs a copy of the classifier from a directory no repository contains, so its TOOLROOT is
+# empty and find_esbuild searches only the fixture's missing node_modules; the
 # ceiling stops git finding a repository above $TMP_ROOT if $TMPDIR sits inside one.
 
 begin "with no esbuild reachable, a comment-only edit is the full tier, and the reason names esbuild"
