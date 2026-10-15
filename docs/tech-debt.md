@@ -89,3 +89,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: the `course-content-patterns` and `contradiction-set-bar` ledgers under `.claude/ledgers/`, their `sweep:` lines; the `docs/plan.md` carriers of the latter
 - What: `docs/standards/architecture.md` rule 9 says a carrier cites the owner by name and the sweep's first arm is that citation. Both ledgers sweep the literal only, and `docs/plan.md`'s §4 metrics line and §7 item 5 restate the contradiction-set bar without citing `CLAUDE.md` § Hard constraints. No carrier is missed today (the #18 review's synonym sweep found none outside the lists); a paraphrase that drops the literal would be.
 - Source: #18 review
+
+## 2026-10-15 — check:no-network-egress exempts a name absent anywhere from the stale check
+
+- Where: `.claude/scripts/check-no-network-egress.sh`, the stale-entry loop over the allow-list
+- What: an entry whose name is an absent optional variant under one parent but installed and clean under another reads `absent` rather than stale. On a platform where the variant installs, the scan reports it stale as it should, so CI on that platform still catches it. Keying the exemption on name plus version, or on "no installed occurrence", would close it.
+- Source: #18 confirmation pass

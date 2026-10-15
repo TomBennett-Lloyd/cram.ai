@@ -91,7 +91,8 @@ elif ! (cd "$ROOT" && pnpm -r ls --prod --json --depth Infinity) >"$SCRATCH/ls.j
   exit 2
 fi
 
-# Prints `name<TAB>version<TAB>dir` once per third-party package directory.
+# Prints `name<TAB>version<TAB>dir` once per installed third-party package directory, and
+# `name<TAB>version<TAB>-` for an absent optional one.
 WALK_PROGRAM=''
 IFS= read -r -d '' WALK_PROGRAM <<'NODE' || true
 'use strict';
@@ -105,7 +106,6 @@ const optionalOf = (dir) => {
   if (!fs.existsSync(file)) return {};
   return JSON.parse(fs.readFileSync(file, "utf8")).optionalDependencies || {};
 };
-// Prints `name<TAB>version<TAB>-` for an optional dependency that is not installed.
 // pnpm marks a repeat occurrence `deduped` and expands only one of them, in an order
 // that is not this walk's, so a seen path is skipped for emission but always walked.
 const walk = (deps, parentDir) => {
