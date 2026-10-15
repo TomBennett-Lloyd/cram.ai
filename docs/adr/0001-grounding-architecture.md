@@ -1,6 +1,6 @@
 # 0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-14
 - **Issue:** #1
 

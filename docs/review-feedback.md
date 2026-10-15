@@ -77,7 +77,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-14 — issue #1 — adr-0001-grounding-architecture
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide:
   - accept `docs/adr/0001-grounding-architecture.md` § Decision (a)–(i), in particular the quote-anchored citation shape, the verifier contract in (d) with its implementation deferred to ADR 0003, and that contract's closed policy set for `partial`;
   - accept `docs/standards/grounding.md` rules 1–9, in particular rule 3's substring test and rule 9's synthesis rule;
@@ -85,4 +85,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept the one-line `CLAUDE.md` re-point.
 - **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0001 at `proposed`, the standard, and the pointers; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved in chat 2026-10-15 — "okay i think that PR looks good" — with no revisions requested; ADR 0001 flipped to `accepted` in the verdict commit and the PR merged.
