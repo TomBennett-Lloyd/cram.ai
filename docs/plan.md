@@ -18,7 +18,7 @@ Owned by `CLAUDE.md` § Hard constraints; this section carries no restatement.
 
 ## 3. Architecture
 
-Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime's place outside it, and the bar for a second deployable); this paragraph carries no restatement. The diagram and §3.1–3.6 below describe the modules inside that one deployable and are not superseded.
+Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime's place outside it, and the bar for a second deployable); this paragraph carries no restatement.
 
 ```
  upload ─▶ ingest ─▶ index (SQLite per course) ◀─ retrieve ◀─ tutor features ◀─ web UI
