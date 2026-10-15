@@ -23,3 +23,8 @@ Entry format:
 
 - Phase: process
 - Observed: on CI run 38810233861 the `gitleaks` check-run sat at status `in_progress` with conclusion `success` and every step completed, so `gh pr checks` showed it pending and `gh pr checks --watch` never exited; the lane read the job through `gh api .../actions/jobs/<id>` instead. `merge-pr.sh` was not caught by it only because `update-branch` moved the head and a fresh run replaced the stuck one. One occurrence.
+
+## 2026-10-15 — PR #38
+
+- Phase: review
+- Observed: issue #30's own sweep regex (`esbuild.{0,80}(vite|vitest|tsx)` and friends) missed a third carrier of the "vite brings esbuild" claim, `verify-tier.test.sh`'s header "it arrives with vite", because that line never says "esbuild". The reviewer's broader patterns caught it, and the lane banked them in `.claude/ledgers/esbuild-provenance.ledger`. Second sweep-shaped miss today (PR #33's entry is the first): a sweep built from the claim's keyword misses paraphrases of the claim.
