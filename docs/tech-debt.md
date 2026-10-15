@@ -53,3 +53,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0001-grounding-architecture.md` § Decision (d), the restatement-ledger sentence
 - What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. No carrier is missed today; add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
 - Source: #1 review cycle 2
+
+## 2026-10-15 — merge-pr.sh member loop expands pr_commits unguarded
+
+- Where: `.claude/scripts/merge-pr.sh`, classify step, the `other_member` loop (`for m in "${pr_commits[@]}"`)
+- What: under bash 3.2 with `set -u`, an empty `pr_commits` faults with "unbound variable" inside that loop. A PR always has a commit, so the branch is unreachable, and the fault fails closed before any merge step. The guard `[ "${#pr_closes[@]}" -gt 1 ]` should also require `"${#pr_commits[@]}" -gt 0`, the same class of fault #27 fixed for `pr_closes`.
+- Source: PR #28 confirmation pass

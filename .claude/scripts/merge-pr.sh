@@ -408,6 +408,32 @@ elif [ "${#pr_lanes[@]}" -eq 1 ]; then
     *) merge_reason="the lane report names #${pr_lanes[0]} but no Closes line does" ;;
   esac
 else
+  # A body with no lane declaration has one more declaration to read: the head
+  # branch is cut as `<n>-<slug>` (.claude/skills/execute/SKILL.md step 1,
+  # .claude/agents/ticket-agent.md § 1), and that leading number names the
+  # ticket. When the Closes list names it too and no commit subject names
+  # another Closes issue, the PR is that one ticket — the other Closes lines are
+  # issues the same diff resolved on the way, not batch members (#27). The
+  # commit-subject guard is what keeps a header-less task-orchestrator batch,
+  # which also sits on an `<n>-<slug>` branch with its anchor among the Closes,
+  # on the rebase arm: a curated batch names each member in a subject. A branch
+  # number no Closes line names says nothing, and the count decides.
+  head_issue=""
+  [[ "$pr_head_ref" =~ ^([0-9]+)- ]] && head_issue="${BASH_REMATCH[1]}"
+  other_member=""
+  if [ -n "$head_issue" ] && [ "${#pr_closes[@]}" -gt 1 ]; then
+    for n in "${pr_closes[@]}"; do
+      [ "$n" = "$head_issue" ] && continue
+      for m in "${pr_commits[@]}"; do
+        case "$m" in
+          *"#$n"*)
+            other_member=$n
+            break 2
+            ;;
+        esac
+      done
+    done
+  fi
   case "${#pr_closes[@]}" in
     0) merge_reason="no Closes line in the PR body" ;;
     1)
@@ -415,9 +441,18 @@ else
       merge_reason="single issue #${pr_closes[0]} -> squash"
       ;;
     *)
-      merge_method="--rebase"
       closes_list=$(printf ' #%s' "${pr_closes[@]}")
-      merge_reason="batch of ${#pr_closes[@]} issues (${closes_list# }) -> rebase"
+      if [ -n "$head_issue" ] && [ -z "$other_member" ] && [[ " ${pr_closes[*]} " == *" $head_issue "* ]]; then
+        also=""
+        for n in "${pr_closes[@]}"; do
+          [ "$n" = "$head_issue" ] || also+=" #$n"
+        done
+        merge_method="--squash"
+        merge_reason="single issue #$head_issue by head branch '$pr_head_ref', also closing$also -> squash"
+      else
+        merge_method="--rebase"
+        merge_reason="batch of ${#pr_closes[@]} issues (${closes_list# }) -> rebase"
+      fi
       ;;
   esac
 fi
