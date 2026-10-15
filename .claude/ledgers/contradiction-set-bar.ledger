@@ -1,0 +1,7 @@
+# The contradiction set's pass bar (docs/standards/architecture.md rule 9).
+owner: CLAUDE.md
+claim: the contradiction set in eval/ must pass at 100% — CLAUDE.md § Hard constraints, "The slides win"
+sweep: contradiction.set.*(100\s?%|\bbar\b)|100\s?%.*contradiction|\.claude/ledgers/contradiction-set-bar\.ledger
+carrier: docs/plan.md
+carrier: docs/standards/grounding.md
+carrier: docs/adr/0001-grounding-architecture.md

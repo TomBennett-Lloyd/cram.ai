@@ -24,6 +24,9 @@
 # THE ALLOW-LIST FORMAT (this header is its one owner). One entry per line:
 # `<npm package name> <reason>`, the reason non-empty; `#` lines and blank lines ignored. It
 # keys on the name, so one entry covers every installed version.
+# Every site naming the allow-list's path is listed in
+# .claude/ledgers/network-egress-allowlist-path.ledger: a move that misses `merge.humanAlways`
+# lets entries auto-merge.
 #
 # Both directions fail (exit 1): a detected package with no entry, an entry with no reason,
 # and an entry naming a package the scan no longer detects — the check-ledgers.sh rule, so
