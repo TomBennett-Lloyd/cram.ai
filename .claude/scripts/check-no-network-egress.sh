@@ -10,9 +10,10 @@
 # `pnpm ls -r --prod --json --depth Infinity` reports the installed tree, walked with `node`
 # (check-node-types.sh states why JSON is not read in bash). Workspace packages are not
 # third-party and are not scanned (first-party network code is review's to hold); their
-# dependencies are. A dependency a manifest declares
-# that the installed tree lacks is exit 2: an uninstalled tree scans clean, and that is a
-# broken check, not a verdict.
+# dependencies are. A listed dependency the installed tree lacks is exit 2 — an uninstalled
+# tree scans clean, and that is a broken check, not a verdict — unless its parent declares it
+# optional: pnpm lists every platform variant of an optional binary and installs one, so the
+# others are absent, unscanned, and an entry naming one is not stale.
 #
 # DETECTION is a static scan of each package's .js/.mjs/.cjs, bundled node_modules included,
 # one arm per way in:
@@ -20,7 +21,8 @@
 #            reach the network on the package's behalf
 #   global   uses a network global (GLOBAL_RE); a member call such as `cache.fetch(` is not one
 #   native   ships a native addon (*.node, binding.gyp), which no source scan can read
-# It is a floor: `require(name)` with a computed name evades it. A false positive is
+# It is a floor: `require(name)` with a computed name evades it, and so does an optional
+# dependency not installed on the platform the gate runs on. A false positive is
 # allow-listed with a reason that says so.
 #
 # THE ALLOW-LIST FORMAT (this header is its one owner). One entry per line:
@@ -103,6 +105,7 @@ const optionalOf = (dir) => {
   if (!fs.existsSync(file)) return {};
   return JSON.parse(fs.readFileSync(file, "utf8")).optionalDependencies || {};
 };
+// Prints `name<TAB>version<TAB>-` for an optional dependency that is not installed.
 // pnpm marks a repeat occurrence `deduped` and expands only one of them, in an order
 // that is not this walk's, so a seen path is skipped for emission but always walked.
 const walk = (deps, parentDir) => {
@@ -110,10 +113,8 @@ const walk = (deps, parentDir) => {
     const dir = dep.path || "";
     if (dir.split(path.sep).includes("node_modules")) {
       if (!fs.existsSync(dir)) {
-        // pnpm lists every platform variant of an optional binary; only one installs.
-        if (!(name in optionalOf(parentDir))) {
-          problems.push(`${name}: installed path missing: ${dir}`);
-        }
+        if (name in optionalOf(parentDir)) process.stdout.write(`${name}\t${dep.version}\t-\n`);
+        else problems.push(`${name}: installed path missing: ${dir}`);
         continue;
       }
       if (!seen.has(dir)) {
@@ -167,7 +168,12 @@ first_native() {
 
 scanned=0
 : >"$SCRATCH/detected.tsv"
+: >"$SCRATCH/absent.names"
 while IFS="$(printf '\t')" read -r name version dir; do
+  if [ "$dir" = "-" ]; then
+    printf '%s\n' "$name" >>"$SCRATCH/absent.names"
+    continue
+  fi
   scanned=$((scanned + 1))
   hit=$(first_hit "$dir" "$BUILTIN_RE") || exit 2
   arm=builtin
@@ -215,6 +221,7 @@ if [ ${#blockers[@]} -ne 0 ]; then
 fi
 
 allowed=()
+absent=()
 while IFS="$(printf '\t')" read -r name version arm hit; do
   if grep -qxF -- "$name" "$SCRATCH/allowed.names"; then
     allowed+=("  allowed $name@$version — $arm: $hit")
@@ -225,7 +232,9 @@ done <"$SCRATCH/detected.tsv"
 
 while IFS= read -r name; do
   if ! cut -f1 "$SCRATCH/detected.tsv" | grep -qxF -- "$name"; then
-    if cut -f1 "$SCRATCH/census.tsv" | grep -qxF -- "$name"; then
+    if grep -qxF -- "$name" "$SCRATCH/absent.names"; then
+      absent+=("  absent $name — an optional dependency not installed on this platform")
+    elif cut -f1 "$SCRATCH/census.tsv" | grep -qxF -- "$name"; then
       errors+=("$name is allow-listed but the scan no longer detects it — strike the entry")
     else
       errors+=("$name is allow-listed but is not a production dependency — strike the entry")
@@ -245,7 +254,7 @@ if [ ${#errors[@]} -ne 0 ]; then
   exit 1
 fi
 
-for item in ${allowed[@]+"${allowed[@]}"}; do
+for item in ${allowed[@]+"${allowed[@]}"} ${absent[@]+"${absent[@]}"}; do
   printf '%s\n' "$item"
 done
 printf 'check-no-network-egress: OK — %d production package(s) scanned, %d network-capable, all allow-listed\n' \

@@ -317,15 +317,33 @@ expect_rc 0 "$rc"
 expect_stdout "OK — 1 production package(s) scanned"
 end
 
+begin "an absent optional dependency of the project itself is skipped, and its entry is not stale"
+fixture top_level_variant
+printf '{"name":"app","optionalDependencies":{"top-linux-x64":"1.0.0"}}\n' >"$DIR/packages/app/package.json" || exit 2
+printf '[{"name":"app","path":"%s","optionalDependencies":{%s}}]\n' \
+  "$DIR/packages/app" "$(dep top-linux-x64)" >"$DIR/ls.json" || exit 2
+allow "top-linux-x64 ships a native addon on linux-x64 only"
+run_check
+expect_rc 0 "$rc"
+expect_stdout "absent top-linux-x64 — an optional dependency not installed on this platform"
+expect_stdout "OK — 0 production package(s) scanned, 0 network-capable"
+end
+
+# chmod 000 does not stop root reading the file, so under root the case cannot be built.
 begin "a package file the scan cannot read is exit 2, not a clean scan"
+if [ "$(id -u)" -eq 0 ]; then
+  printf 'SKIP unreadable-file case — running as root, which reads a mode-000 file\n'
+fi
 fixture unreadable
 pkg locked index.js 'module.exports = 1;'
 must chmod 000 "$(pkg_dir locked)/index.js"
 tree "$(dep locked)" locked
-run_check
-expect_rc 2 "$rc"
-expect_stderr "grep failed in"
-expect_not_stdout "OK"
+if [ "$(id -u)" -ne 0 ]; then
+  run_check
+  expect_rc 2 "$rc"
+  expect_stderr "grep failed in"
+  expect_not_stdout "OK"
+fi
 end
 
 begin "a listed package directory that does not exist is exit 2"
