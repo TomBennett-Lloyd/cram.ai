@@ -1,3 +1,3 @@
-# Production dependencies allowed to reach the network — `<package> <reason>` per line.
+# Production dependencies allowed to reach the network.
 # Owned by .claude/scripts/check-no-network-egress.sh, whose header owns this format; every
 # entry is an owner decision under CLAUDE.md § Hard constraints.

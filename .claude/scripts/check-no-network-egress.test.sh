@@ -137,12 +137,13 @@ end
 begin "every network global is detected"
 fixture global
 pkg g-fetch index.js 'const response = await fetch(url);'
-pkg g-globalthis index.js 'const f = globalThis.fetch;'
+pkg g-globalthis index.js 'const f = globalThis.fetch'
+pkg g-window index.js 'window.fetch(url);'
 pkg g-websocket dist/x.mjs 'const socket = new WebSocket(url);'
 pkg g-xhr index.js 'const request = new XMLHttpRequest();'
 pkg g-eventsource index.js 'const events = new EventSource(url);'
 pkg g-beacon index.js 'navigator.sendBeacon(url, body);'
-names=(g-fetch g-globalthis g-websocket g-xhr g-eventsource g-beacon)
+names=(g-fetch g-globalthis g-window g-websocket g-xhr g-eventsource g-beacon)
 fragment=""
 for name in "${names[@]}"; do
   fragment="$fragment${fragment:+,}$(dep "$name")"
@@ -150,7 +151,7 @@ done
 tree "$fragment" "${names[@]}"
 run_check
 expect_rc 1 "$rc"
-expect_stderr "6 problem(s)"
+expect_stderr "7 problem(s)"
 for name in "${names[@]}"; do
   expect_stderr "ERROR $name@1.0.0 can reach the network and is not allow-listed — global:"
 done
@@ -180,6 +181,29 @@ expect_rc 1 "$rc"
 expect_stderr "1 problem(s)"
 [ "$(printf '%s\n' "$err" | grep -c 'ERROR inner@1.0.0')" -eq 1 ] ||
   bad "expected exactly one ERROR for inner; got: $err"
+end
+
+# pnpm expands one occurrence of a repeated path and marks the rest `deduped`, in its own
+# order: here the walk meets the truncated `mid` first.
+begin "a package met first as a deduped occurrence still has its dependencies scanned"
+fixture deduped_first
+pkg outer index.js 'module.exports = 1;'
+pkg mid index.js 'module.exports = 2;'
+pkg leaky index.js 'require("net");'
+tree "$(dep outer "$(dep mid)"),$(dep mid "$(dep leaky)")" outer mid
+run_check
+expect_rc 1 "$rc"
+expect_stderr "ERROR leaky@1.0.0 can reach the network and is not allow-listed — builtin:"
+end
+
+begin "a dependency bundled under a package's own node_modules is scanned as that package"
+fixture bundled
+pkg host index.js 'module.exports = require("bundled");'
+pkg host node_modules/bundled/index.js 'require("https");'
+tree "$(dep host)" host
+run_check
+expect_rc 1 "$rc"
+expect_stderr "ERROR host@1.0.0 can reach the network and is not allow-listed — builtin: node_modules/bundled/index.js"
 end
 
 begin "a workspace link is not scanned, its dependencies are; unsaved entries are ignored"
@@ -280,6 +304,27 @@ tree "" ghost
 run_check
 expect_rc 2 "$rc"
 expect_stderr "app declares ghost, which is not installed"
+expect_not_stdout "OK"
+end
+
+begin "an uninstalled platform variant of a parent's optional dependency is skipped"
+fixture platform_variant
+pkg native-host package.json '{"optionalDependencies":{"native-host-linux-x64":"1.0.0"}}'
+pkg native-host index.js 'module.exports = 1;'
+tree "$(dep native-host "$(dep native-host-linux-x64)")" native-host
+run_check
+expect_rc 0 "$rc"
+expect_stdout "OK — 1 production package(s) scanned"
+end
+
+begin "a package file the scan cannot read is exit 2, not a clean scan"
+fixture unreadable
+pkg locked index.js 'module.exports = 1;'
+must chmod 000 "$(pkg_dir locked)/index.js"
+tree "$(dep locked)" locked
+run_check
+expect_rc 2 "$rc"
+expect_stderr "grep failed in"
 expect_not_stdout "OK"
 end
 

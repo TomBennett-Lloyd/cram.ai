@@ -6,3 +6,4 @@ carrier: docs/plan.md
 carrier: docs/standards/grounding.md
 carrier: docs/adr/0001-grounding-architecture.md
 excluded: docs/review-feedback.md
+excluded: docs/tech-debt.md

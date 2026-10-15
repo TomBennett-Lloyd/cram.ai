@@ -9,11 +9,13 @@
 # CENSUS. Every transitive production dependency of every workspace importer, as
 # `pnpm ls -r --prod --json --depth Infinity` reports the installed tree, walked with `node`
 # (check-node-types.sh states why JSON is not read in bash). Workspace packages are not
-# third-party and are not scanned; their dependencies are. A dependency a manifest declares
+# third-party and are not scanned (first-party network code is review's to hold); their
+# dependencies are. A dependency a manifest declares
 # that the installed tree lacks is exit 2: an uninstalled tree scans clean, and that is a
 # broken check, not a verdict.
 #
-# DETECTION is a static scan of each package's .js/.mjs/.cjs, one arm per way in:
+# DETECTION is a static scan of each package's .js/.mjs/.cjs, bundled node_modules included,
+# one arm per way in:
 #   builtin  imports a socket or process-spawn builtin (BUILTIN_RE) — a spawned process can
 #            reach the network on the package's behalf
 #   global   uses a network global (GLOBAL_RE); a member call such as `cache.fetch(` is not one
@@ -96,17 +98,31 @@ const path = require("node:path");
 const projects = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 const seen = new Set();
 const problems = [];
-const walk = (deps) => {
+const optionalOf = (dir) => {
+  const file = path.join(dir, "package.json");
+  if (!fs.existsSync(file)) return {};
+  return JSON.parse(fs.readFileSync(file, "utf8")).optionalDependencies || {};
+};
+// pnpm marks a repeat occurrence `deduped` and expands only one of them, in an order
+// that is not this walk's, so a seen path is skipped for emission but always walked.
+const walk = (deps, parentDir) => {
   for (const [name, dep] of Object.entries(deps || {})) {
     const dir = dep.path || "";
     if (dir.split(path.sep).includes("node_modules")) {
-      if (seen.has(dir)) continue;
-      seen.add(dir);
-      if (!fs.existsSync(dir)) problems.push(`${name}: installed path missing: ${dir}`);
-      else process.stdout.write(`${name}\t${dep.version}\t${dir}\n`);
+      if (!fs.existsSync(dir)) {
+        // pnpm lists every platform variant of an optional binary; only one installs.
+        if (!(name in optionalOf(parentDir))) {
+          problems.push(`${name}: installed path missing: ${dir}`);
+        }
+        continue;
+      }
+      if (!seen.has(dir)) {
+        seen.add(dir);
+        process.stdout.write(`${name}\t${dep.version}\t${dir}\n`);
+      }
     }
-    walk(dep.dependencies);
-    walk(dep.optionalDependencies);
+    walk(dep.dependencies, dir);
+    walk(dep.optionalDependencies, dir);
   }
 };
 for (const project of projects) {
@@ -116,8 +132,8 @@ for (const project of projects) {
       problems.push(`${project.name || project.path} declares ${name}, which is not installed`);
     }
   }
-  walk(project.dependencies);
-  walk(project.optionalDependencies);
+  walk(project.dependencies, project.path);
+  walk(project.optionalDependencies, project.path);
 }
 if (problems.length) {
   for (const p of problems) process.stderr.write(`check-no-network-egress: ${p}\n`);
@@ -129,16 +145,23 @@ NODE
 node -e "$WALK_PROGRAM" "$SCRATCH/ls.json" >"$SCRATCH/census.tsv" || exit 2
 
 # first_hit <dir> <ERE> — prints the first `file:line: text` in dir's JS matching ERE.
+# Returns 2 when grep could not read the package: an unread file is not a clean one.
 first_hit() {
-  grep -rnIE --include='*.js' --include='*.mjs' --include='*.cjs' --exclude-dir=node_modules \
-    -e "$2" "$1" >"$SCRATCH/hits" 2>/dev/null
+  grep -rnIE --include='*.js' --include='*.mjs' --include='*.cjs' -e "$2" "$1" \
+    >"$SCRATCH/hits" 2>"$SCRATCH/hits.err"
+  if [ $? -gt 1 ]; then
+    printf 'check-no-network-egress: grep failed in %s: %s\n' "$1" "$(head -n1 "$SCRATCH/hits.err")" >&2
+    return 2
+  fi
   head -n1 "$SCRATCH/hits" | cut -c1-200
 }
 
-# first_native <dir> — prints the first native-addon file under dir.
+# first_native <dir> — prints the first native-addon file under dir; 2 when find failed.
 first_native() {
-  find "$1" -name node_modules -prune -o -type f \( -name '*.node' -o -name binding.gyp \) \
-    -print >"$SCRATCH/hits" 2>/dev/null
+  if ! find "$1" -type f \( -name '*.node' -o -name binding.gyp \) >"$SCRATCH/hits" 2>"$SCRATCH/hits.err"; then
+    printf 'check-no-network-egress: find failed in %s: %s\n' "$1" "$(head -n1 "$SCRATCH/hits.err")" >&2
+    return 2
+  fi
   head -n1 "$SCRATCH/hits"
 }
 
@@ -146,14 +169,14 @@ scanned=0
 : >"$SCRATCH/detected.tsv"
 while IFS="$(printf '\t')" read -r name version dir; do
   scanned=$((scanned + 1))
-  hit=$(first_hit "$dir" "$BUILTIN_RE")
+  hit=$(first_hit "$dir" "$BUILTIN_RE") || exit 2
   arm=builtin
   if [ -z "$hit" ]; then
-    hit=$(first_hit "$dir" "$GLOBAL_RE")
+    hit=$(first_hit "$dir" "$GLOBAL_RE") || exit 2
     arm=global
   fi
   if [ -z "$hit" ]; then
-    hit=$(first_native "$dir")
+    hit=$(first_native "$dir") || exit 2
     arm=native
   fi
   if [ -n "$hit" ]; then

@@ -103,7 +103,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 - **Category**: pending — filled at merge
 - **Feedback**: the PR asks the owner to decide:
-  - accept `check:no-network-egress` as the enforcement of `CLAUDE.md` § Hard constraints' first bullet, including what it counts as network-capable: a socket or `child_process` builtin import, a network global, or a native addon — the last two arms flag packages that may never touch a socket, so their allow-list entries say so;
+  - accept `check:no-network-egress` as the enforcement of `CLAUDE.md` § Hard constraints' first bullet, including what it counts as network-capable: a socket or `child_process` builtin import, a network global, or a native addon — the `child_process` and native-addon arms flag packages that may never touch a socket, so their allow-list entries say so;
+  - accept that the gate scans third-party packages only: the issue names "the model backend adapter" as an expected entry, but `docs/plan.md` makes that adapter first-party code, which the gate does not scan and review holds instead — an allow-list entry for it would fail as "not a production dependency";
   - accept `.claude/network-egress.allowlist` joining `.claude/workflow.json` → `merge.humanAlways` (and `CLAUDE.md` § Workflow's list of those paths), a divergence from the issue's text: without it the allow-list, being no source extension, would auto-merge on green CI;
   - accept the re-worded first hard-constraint bullet in `CLAUDE.md`;
   - accept #22 riding this PR: `.claude/ledgers/contradiction-set-bar.ledger` and its pointer on `CLAUDE.md`'s "The slides win" bullet.
