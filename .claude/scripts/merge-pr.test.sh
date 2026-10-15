@@ -719,6 +719,50 @@ expect_stdout 'closed by the merge: #21 #22'
 end
 
 # ==========================================================================================
+# 9b. a `<n>-<slug>` branch whose ticket the Closes list names is ONE issue, however
+#     many Closes lines ride with it
+# ==========================================================================================
+# The plan-issue → execute → review-loop lane writes no declaration into the body;
+# its declaration is the branch name. #25 closed its ticket and a discovered issue
+# the same diff resolved, and was refused as a two-member batch (#27).
+begin "a <n>-slug branch naming a Closes issue squashes despite a second Closes line"
+fixture branch-declared
+saved_head_ref=$HEAD_REF
+HEAD_REF=21-lane
+V_BODY="Closes #21. Closes #22."
+V_COMMITS="#21: the change,#21: review cycle 1"
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_stdout "single issue #21 by head branch '21-lane', also closing #22 -> squash"
+expect_not_stdout 'batch of 2 issues'
+expect_called "pr merge $PR --squash"
+expect_not_called "pr merge $PR --rebase"
+expect_stdout 'closed by the merge: #21 #22'
+HEAD_REF=$saved_head_ref
+end
+
+# ==========================================================================================
+# 9c. a branch number no Closes line names declares nothing — the count still decides
+# ==========================================================================================
+begin "a <n>-slug branch whose number no Closes line names falls through to the count"
+fixture branch-undeclared
+saved_head_ref=$HEAD_REF
+HEAD_REF=99-lane
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second"
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_stdout 'batch of 2 issues (#21 #22) -> rebase'
+expect_not_stdout 'by head branch'
+expect_called "pr merge $PR --rebase"
+HEAD_REF=$saved_head_ref
+end
+
+# ==========================================================================================
 # 10. a batch whose history is not curated is refused BEFORE anything is touched
 # ==========================================================================================
 begin "a batch whose commits do not match its member issues is refused at classify"

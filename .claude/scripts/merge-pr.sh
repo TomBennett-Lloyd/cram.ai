@@ -408,6 +408,16 @@ elif [ "${#pr_lanes[@]}" -eq 1 ]; then
     *) merge_reason="the lane report names #${pr_lanes[0]} but no Closes line does" ;;
   esac
 else
+  # A body with no lane declaration still carries one every lane here writes: the
+  # head branch is cut as `<n>-<slug>` (execute step 1, ticket-agent rule 1), and
+  # that leading number names the ticket. When the Closes list names it too, the
+  # PR is that one ticket — the other Closes lines are issues the same diff
+  # resolved on the way, not batch members. #25 carried `Closes #1. Closes #23.`
+  # from the plan-issue → execute → review-loop lane, which declares nothing in
+  # the body, and was refused as a two-member batch on curated history (#27). A
+  # branch number no Closes line names says nothing, and the count decides.
+  head_issue=""
+  [[ "$pr_head_ref" =~ ^([0-9]+)- ]] && head_issue="${BASH_REMATCH[1]}"
   case "${#pr_closes[@]}" in
     0) merge_reason="no Closes line in the PR body" ;;
     1)
@@ -415,9 +425,17 @@ else
       merge_reason="single issue #${pr_closes[0]} -> squash"
       ;;
     *)
-      merge_method="--rebase"
       closes_list=$(printf ' #%s' "${pr_closes[@]}")
-      merge_reason="batch of ${#pr_closes[@]} issues (${closes_list# }) -> rebase"
+      case " ${pr_closes[*]} " in
+        *" $head_issue "*)
+          merge_method="--squash"
+          merge_reason="single issue #$head_issue by head branch '$pr_head_ref', also closing${closes_list// #$head_issue/} -> squash"
+          ;;
+        *)
+          merge_method="--rebase"
+          merge_reason="batch of ${#pr_closes[@]} issues (${closes_list# }) -> rebase"
+          ;;
+      esac
       ;;
   esac
 fi
