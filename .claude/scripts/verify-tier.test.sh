@@ -31,9 +31,12 @@
 #
 # The emit proof needs an esbuild binary, and the fixtures have no node_modules
 # of their own — the classifier resolves one from the repository holding it,
-# which is this one. Where none is installed (it arrives with vite), the cases
+# which is this one. Where that repository has no node_modules at all, the cases
 # that need it print SKIP with the reason and are counted as skipped, never as
-# passed, and the one case asserting the no-binary fallback runs instead.
+# passed. Where node_modules exists without esbuild they FAIL: that is the
+# devDependency gone missing, and rung 2 silently always-full (#30). The
+# no-binary fallback case runs a copy of the classifier held outside any
+# repository, so it runs either way.
 #
 # Every fixture carries a *.test.ts file in its base commit, and not for
 # decoration: the soundness guard refuses to certify a change set it could not
@@ -82,18 +85,20 @@ else
 fi
 skipped=0
 
-# begin_needing <with|without> <name> -> begins the case and returns 0 when the checkout's
-# esbuild state is the one named; otherwise prints SKIP with the reason and returns 1, so
-# the body never runs and `end` never reports a PASS. Written `if begin_needing …; then … end; fi`.
-begin_needing() {
-  local need="$1" why
-  begin "$2"
-  case "$need:$HAVE_ESBUILD" in
-    with:1 | without:0) return 0 ;;
-    with:0) why="no esbuild installed under ${TOOL_REPO:-<no repository>}/node_modules to prove an emit with" ;;
-    *) why="esbuild is installed here, so the no-binary fallback cannot be reached without removing it" ;;
-  esac
-  printf 'SKIP %s — %s\n' "$2" "$why"
+# begin_with_esbuild <name> -> begins the case and returns 0 when esbuild is installed here.
+# Otherwise returns 1, so the body never runs: a FAIL when node_modules is installed without
+# esbuild, a SKIP with the reason when nothing is installed. Written
+# `if begin_with_esbuild …; then … end; fi`.
+begin_with_esbuild() {
+  begin "$1"
+  [ "$HAVE_ESBUILD" = 1 ] && return 0
+  if [ -n "$TOOL_REPO" ] && [ -d "$TOOL_REPO/node_modules" ]; then
+    bad "node_modules is installed but holds no esbuild, the root devDependency rung 2 runs"
+    end
+    return 1
+  fi
+  printf 'SKIP %s — no node_modules under %s, so no esbuild to prove an emit with\n' \
+    "$1" "${TOOL_REPO:-<no repository>}"
   skipped=$((skipped + 1))
   return 1
 }
@@ -270,7 +275,7 @@ end
 # ==========================================================================================
 # 4. anything else is the full composite
 # ==========================================================================================
-if begin_needing with "a source file whose emit changed is the full tier, and the offending path is named"; then
+if begin_with_esbuild "a source file whose emit changed is the full tier, and the offending path is named"; then
   must fixture edited_ts
   write_in src/app.ts 'export const a = 2;'
   run_tier
@@ -287,7 +292,7 @@ fi
 # a classifier that asked "does this touch markdown" instead of "is this ALL markdown" would
 # skip the compiler and the tests over a source edit. The source-prose rung does not rescue
 # it either — that rung's question is about the emit, and this emit moved.
-if begin_needing with "markdown plus a source file whose emit changed is the full tier"; then
+if begin_with_esbuild "markdown plus a source file whose emit changed is the full tier"; then
   must fixture mixed
   write_in docs/tier-fixture-guide.md '# Guide, revised'
   write_in src/app.ts 'export const a = 2;'
@@ -304,7 +309,7 @@ fi
 # configured for the extension this repository actually writes, so a .MD file is not
 # self-evidently covered by the docs tier's gates — and no esbuild loader claims it
 # either, so the source-prose rung cannot take it. It gets the composite.
-if begin_needing with "an upper-case .MD extension is not the docs tier"; then
+if begin_with_esbuild "an upper-case .MD extension is not the docs tier"; then
   must fixture upper_md
   write_in docs/TIER-FIXTURE.MD '# Shouty'
   run_tier
@@ -331,22 +336,24 @@ end
 # moved token, an unhandled extension — so what these cases own is the positive answer and
 # what it buys: the tier line, the legs that can still see a comment, and the observing set.
 #
-# The fail-closed path for a checkout with no esbuild binary is the first case below, and it
-# runs only where esbuild is not installed — the inverse of every case that needs the
-# binary, so on any one checkout exactly one side of that line runs and the other skips.
+# The fail-closed path for a checkout with no esbuild binary is the first case below. It
+# runs a copy of the classifier from a directory no repository contains, so its TOOLROOT is
+# empty and find_esbuild searches only the fixture's missing node_modules; the
+# ceiling stops git finding a repository above $TMP_ROOT if $TMPDIR sits inside one.
 
-if begin_needing without "with no esbuild installed, a comment-only edit is the full tier, and the reason names esbuild"; then
-  must fixture no_esbuild
-  write_in src/app.ts 'export const a = 1; // now with a note'
-  run_tier
-  expect_rc 0 "$rc"
-  expect_stdout "verify tier: full — 1 file(s); no esbuild binary under node_modules to prove an unchanged emit with"
-  expect_stdout "would run: pnpm verify:full"
-  expect_not_stdout "verify tier: source-prose"
-  end
-fi
+begin "with no esbuild reachable, a comment-only edit is the full tier, and the reason names esbuild"
+must fixture no_esbuild
+must mkdir -p "$ROOT/tool"
+must cp "$TIER" "$ROOT/tool/verify-tier.sh"
+write_in src/app.ts 'export const a = 1; // now with a note'
+capture env GIT_CEILING_DIRECTORIES="$ROOT" bash "$ROOT/tool/verify-tier.sh" --dry-run "$WT"
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s); no esbuild binary under node_modules to prove an unchanged emit with"
+expect_stdout "would run: pnpm verify:full"
+expect_not_stdout "verify tier: source-prose"
+end
 
-if begin_needing with "a comment-only .ts edit is the source-prose tier, and runs exactly the legs that can see a comment"; then
+if begin_with_esbuild "a comment-only .ts edit is the source-prose tier, and runs exactly the legs that can see a comment"; then
   must fixture comment_only_ts
   write_in src/app.ts 'export const a = 1; // now with a note'
   for interpreter in $BASHES; do
@@ -368,7 +375,7 @@ fi
 # exactly right, because the pragma changes no behaviour and exactly wrong if the tier then
 # skipped tsc, the only gate that reads it. What tsc then says is tsc's business (see this
 # file's header).
-if begin_needing with "a @ts-expect-error hidden in a comment does not defeat the proof, and typecheck still runs"; then
+if begin_with_esbuild "a @ts-expect-error hidden in a comment does not defeat the proof, and typecheck still runs"; then
   must fixture pragma_in_comment
   write_in src/app.ts 'export const a = 1; // @ts-expect-error'
   run_tier
@@ -380,7 +387,7 @@ fi
 
 # A .css comment is observable by stylelint and by nothing else in the composite, so the leg
 # list is the assertion: stylelint present, eslint absent (it was given no file it handles).
-if begin_needing with "a comment-only .css edit is the source-prose tier, and stylelint is the leg that runs"; then
+if begin_with_esbuild "a comment-only .css edit is the source-prose tier, and stylelint is the leg that runs"; then
   must fixture comment_only_css
   write_in src/app.css '.a { color: red; }'
   seed_origin 'style: a stylesheet to comment on'
@@ -396,7 +403,7 @@ fi
 
 # A file with no emit to compare against is not a file with an unchanged emit. This is the
 # state a comment-only branch reaches the moment it also adds a module.
-if begin_needing with "an untracked source file is the full tier"; then
+if begin_with_esbuild "an untracked source file is the full tier"; then
   must fixture new_source
   write_in src/brand-new.ts 'export const b = 1;'
   run_tier
@@ -411,7 +418,7 @@ fi
 # naming the file it lives in. Asserted as a delta in one repository rather than as two
 # fixtures, because the claim is about the test CHANGING — a selection that was already
 # correct before the change would pass a two-fixture version of this case.
-if begin_needing with "a test that gains a readFileSync joins the observing set, and vitest runs it from its package"; then
+if begin_with_esbuild "a test that gains a readFileSync joins the observing set, and vitest runs it from its package"; then
   must fixture observing_data
   write_in pkg/package.json '{ "name": "@fixture/pkg", "private": true }'
   write_in pkg/src/reader.test.ts "it('reads nothing', () => {});"
@@ -435,7 +442,7 @@ fi
 
 # Arm (b), and the reason it exists: a contract test that names the file it asserts about
 # observes a comment in it without reading anything at run time.
-if begin_needing with "a test naming the changed file's basename joins the observing set"; then
+if begin_with_esbuild "a test naming the changed file's basename joins the observing set"; then
   must fixture observing_basename
   write_in pkg/package.json '{ "name": "@fixture/pkg", "private": true }'
   write_in pkg/src/names.test.ts "it('knows app.ts', () => {});"
@@ -452,7 +459,7 @@ fi
 # selected to run however loudly it observes the change — a tier stricter than the composite
 # it stands in for is a spurious red, and a spurious red is how a gate gets bypassed. This
 # case is what goes red if the suffix filter is ever dropped as redundant.
-if begin_needing with "a browser spec that reads files is not selected, because the composite never runs one"; then
+if begin_with_esbuild "a browser spec that reads files is not selected, because the composite never runs one"; then
   must fixture observing_spec
   write_in pkg/package.json '{ "name": "@fixture/pkg", "private": true }'
   write_in pkg/e2e/browser.spec.ts "test('reads', () => readFileSync('app.ts'));"
@@ -469,7 +476,7 @@ fi
 # Markdown rides along: the count is what was PROVEN, not what changed, and the gates that
 # can observe a .md rejoin the list. Without this, a prose PR that also touches one comment
 # would silently stop checking its own links.
-if begin_needing with "markdown alongside a comment-only source edit keeps the markdown gates"; then
+if begin_with_esbuild "markdown alongside a comment-only source edit keeps the markdown gates"; then
   must fixture prose_and_source
   write_in docs/tier-fixture-guide.md '# Guide, revised'
   write_in src/app.ts 'export const a = 1; // now with a note'
