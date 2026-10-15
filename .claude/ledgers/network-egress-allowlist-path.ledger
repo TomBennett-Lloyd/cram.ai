@@ -5,3 +5,4 @@ sweep: network-egress\.allowlist|\.claude/ledgers/network-egress-allowlist-path\
 carrier: .claude/workflow.json
 carrier: CLAUDE.md
 carrier: .claude/scripts/check-no-network-egress.test.sh
+excluded: docs/review-feedback.md

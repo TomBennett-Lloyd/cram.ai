@@ -98,3 +98,15 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0002 at `proposed` and the pointers; revised in place on the branch if review asks.
 - **Verdict**: approved in chat 2026-10-16 — "PR 41 sounds good" — no revisions requested; ADR 0002 flipped to `accepted` in this commit and the PR merged as proposed.
+
+## 2026-10-15 — issue #18 — no-network-egress-gate-and-allowlist-ownership
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `check:no-network-egress` as the enforcement of `CLAUDE.md` § Hard constraints' first bullet, including what it counts as network-capable: a socket or `child_process` builtin import, a network global, or a native addon — the last two arms flag packages that may never touch a socket, so their allow-list entries say so;
+  - accept `.claude/network-egress.allowlist` joining `.claude/workflow.json` → `merge.humanAlways` (and `CLAUDE.md` § Workflow's list of those paths), a divergence from the issue's text: without it the allow-list, being no source extension, would auto-merge on green CI;
+  - accept the re-worded first hard-constraint bullet in `CLAUDE.md`;
+  - accept #22 riding this PR: `.claude/ledgers/contradiction-set-bar.ledger` and its pointer on `CLAUDE.md`'s "The slides win" bullet.
+- **Why**: `CLAUDE.md` and `.claude/workflow.json` are `humanAlways` paths, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
