@@ -13,3 +13,8 @@ Entry format:
 ```
 
 ---
+
+## 2026-10-15 — PR #33
+
+- Phase: review
+- Observed: three of the seven FIX-NOW findings on #17 were restatement sites of the gate's name or its banned set — `docs/plan.md` still listing `check:no-course-content` as "to add", the missing `.claude/ledgers/` entry, and the `.gitignore` comment — found at review, not at plan time. The ticket-agent lane's plan comment (`.claude/agents/ticket-agent.md` § 2) has no rule-9 sweep step; the planner lane does (`.claude/skills/plan-issue/SKILL.md` step 4). One ticket so far.
