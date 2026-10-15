@@ -1,0 +1,27 @@
+# Grounding standards
+
+**Trigger:** writing a prompt, a retrieval query, a verifier call, or any code path that produces text the student reads.
+
+## Rules
+
+1. **Units only.** Every model-produced text the student reads is a unit `{text, citations[], kind}`, and each citation is `{sourceId, quote}`. The schema is `@cram/shared`'s `Unit` (#8), defined once (`architecture.md` rule 2). Model output reaches the student as a unit, or as one of exactly two things that are not units and carry no claim about the subject: a label from a closed enum (a verifier verdict, a grading verdict); and a topic tag (a noun phrase in the course index that the student can edit — metadata, never a statement). The list is closed and owned by `docs/adr/0001-grounding-architecture.md` § Decision (b).
+
+2. **The pipeline order is fixed:** retrieve → generate → resolve → verify → report. No feature skips or reorders a stage. The generator's prompt forbids claims the supplied sources do not support and requires at least one quoted citation per unit. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (c).
+
+3. **Resolution precedes verification, and a quote is a substring or it is nothing.** Every citation must name a source that exists, that was in the retrieved set for that call, _and_ whose text contains the citation's `quote` verbatim (whitespace-normalised, nothing else normalised). A citation failing any of the three makes its unit `dangling-citation`: withheld, never sent to the verifier. That covers a citation to a slide that exists but was not retrieved, and a quote that paraphrases the slide rather than copying it. A unit with zero citations is `dangling-citation`. Resolution is mechanical; no model is involved. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (c).
+
+4. **The verifier contract.** Input: one unit's text plus the quoted spans of its citations — all of them, from however many sources — and nothing else: not the question, not the rest of the cited slides, not the other retrieved sources. The verdict is judged against the union of the quotes, so a unit citing three slides whose quotes together support it, though none alone does, is `supported`. Output: exactly one of `supported | partial | unsupported` (owner: `docs/adr/0001-grounding-architecture.md` § Decision (d); implementation: ADR 0003, #3). `unsupported` is withheld, always. `partial` is per feature and named: the feature's module declares one policy from that ADR's closed set — `drop`, or `rewrite-once` (the rewrite is re-verified like any unit; a second `partial` is dropped, and an `unsupported` rewrite is withheld as `unsupported`) — and the withheld report names the policy applied. No feature passes `partial` through.
+
+5. **"Not in your slides" is a result.** A request with no surviving unit returns a fixed system string plus the closest retrieved slides. It is a first-class result: never an error value, never a model-written apology, never a model-written answer from general knowledge. Owner: `CLAUDE.md` § Hard constraints, "Nothing the tutor says is uncited".
+
+6. **"Your slides say", never "this is true".** No prompt — generator, rewriter, verifier, topic tagger, grader — asserts the subject true or false, correct or incorrect, or compares it with general knowledge; a prompt describes what a cited slide says. No prompt instructs the model to add caveats, corrections or a "mainstream view". Owner: `CLAUDE.md` § Hard constraints, "The slides win".
+
+7. **Withheld is reported, never silent.** Every withheld unit is surfaced to the student with its reason, one of `dangling-citation | unsupported | partial`, in a panel marked withheld. That panel is the one place a failed unit's text appears, and it is never rendered as an answer. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (c).
+
+8. **The contradiction set passes at 100%** — the bar `CLAUDE.md` § Hard constraints, "The slides win", sets. The set in `eval/` is the regression test for rule 6, and any failure in it is red. How it gates a merge is ADR 0005's (#5).
+
+9. **Statements synthesise; quotes anchor.** A unit's text may summarise across any number of slides and lectures and is never required to use slide wording. No prompt asks for extractive output, and no feature limits synthesis to ordering or headings. What a unit may not do is carry a claim its quotes do not entail — rule 4 is the whole test. Sources are slides today; a second source kind (the student's notes, #21) joins only by ADR. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (h) and (i).
+
+## Why
+
+The argument for retrieval, quote-anchored citation and verification over fine-tuning or prompt-only grounding is recorded in [docs/adr/0001-grounding-architecture.md](../adr/0001-grounding-architecture.md), and these rules restate its decision as checks a feature can be held to. Every rule above names the section that owns it, so a change to the decision starts there.
