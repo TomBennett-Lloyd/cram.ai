@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 # Course-content gate: no tracked path is a slide or index binary, or lives under data/.
 #
-#   directory   any directory component named data
-#   extension   any component ending .pdf .pptx .ppt .key .sqlite, or holding .sqlite-
-#
 # CLAUDE.md § Hard constraints: the repo never contains real course material. The
 # course-content block in .gitignore is the floor that keeps these paths out of `git add`;
 # this gate is the rule, and check-no-course-content.test.sh's parity case fails if the
-# floor names a pattern the gate does not flag.
+# floor names a pattern the gate does not flag. Every copy of the banned set is listed in
+# .claude/ledgers/course-content-patterns.ledger.
 #
 # Components, not basenames, so a Keynote bundle (deck.key/Index.zip) is caught; matched
 # case-insensitively, because .gitignore is case-sensitive on a Linux checkout and
 # LECTURE.PDF passes the floor there.
 #
 # The census is the index (`git ls-files`), so a `git add -f` fails before it is committed
-# and CI checks exactly what HEAD holds. An empty index passes: absence of the checked
-# surface is a pass, the bootstrap rule the sibling check-*.sh gates state.
+# and CI checks exactly what HEAD holds. An empty index passes.
 #
 # No dependencies: bash (3.2, which macOS ships as /bin/bash) and git.
 #

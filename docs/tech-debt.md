@@ -59,3 +59,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/merge-pr.sh`, classify step, the `other_member` loop (`for m in "${pr_commits[@]}"`)
 - What: under bash 3.2 with `set -u`, an empty `pr_commits` faults with "unbound variable" inside that loop. A PR always has a commit, so the branch is unreachable, and the fault fails closed before any merge step. The guard `[ "${#pr_closes[@]}" -gt 1 ]` should also require `"${#pr_commits[@]}" -gt 0`, the same class of fault #27 fixed for `pr_closes`.
 - Source: PR #28 confirmation pass
+
+## 2026-10-15 — verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it
+
+- Where: `.claude/scripts/verify-tier.sh` — the RUNG 2 header ("The legs are emitted in `verify:full`'s own order") against `build_source_prose_legs`
+- What: `build_source_prose_legs` appends `check:ledgers` before `check:adr-index` and the observing tests after every `check:*` leg, while `verify:full` in `package.json` runs `test`, then `check:adr-index`, then `check:ledgers`. A red under rung 2 can therefore stop at a different leg than the composite would. Either reorder the builder or delete the claim.
+- Source: #17 review (found while adding `check:no-course-content` to the `.md`-conditional legs; pre-existing on main)

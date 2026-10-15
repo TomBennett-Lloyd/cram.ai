@@ -2,13 +2,12 @@
 # Test harness for check-no-course-content.sh, its neighbour in this directory.
 #
 # Every fixture is a throwaway `git init` under the temp tree `harness_init_tmp` makes, and
-# every banned path is staged with `git add -f` — the one way past the .gitignore floor, and
-# so the one way this gate's failure path can be reached. The offending cases are the gate's
+# every banned path is staged with `git add -f`. The offending cases are the gate's
 # negative controls, committed rather than run once by hand (docs/standards/testing.md rule 4).
 #
 # One case runs the gate with NO argument, against the real repo (testing.md rule 7), and one
 # reads the real .gitignore's course-content block: every pattern in it must be flagged by
-# the gate, so the floor and the rule cannot drift apart.
+# the gate.
 #
 # Usage: bash .claude/scripts/check-no-course-content.test.sh   (or `pnpm test:scripts`)
 # Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke.
@@ -115,7 +114,7 @@ expect_stdout "check-no-course-content: OK"
 end
 
 # ==========================================================================================
-# 6. POSITIVE CONTROLS: every banned extension
+# 6. every banned extension
 # ==========================================================================================
 begin "every banned extension fails the gate"
 for ext in pdf pptx ppt key sqlite; do
@@ -142,6 +141,16 @@ expect_stderr "ERROR Week2.PpTx"
 expect_stderr "2 tracked path(s)"
 end
 
+# -z is what makes this pass: without it git octal-escapes and quotes the name, and the
+# closing quote defeats the extension's end anchor.
+begin "a non-ASCII file name fails"
+fixture non_ascii
+stage "lectures/Week 3 – Entropy.pdf"
+run_check "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "ERROR lectures/Week 3 – Entropy.pdf"
+end
+
 begin "sqlite sidecar files fail"
 fixture sqlite_sidecars
 stage "index.sqlite-wal"
@@ -161,7 +170,7 @@ expect_stderr "ERROR decks/week1.key/Index.zip"
 end
 
 # ==========================================================================================
-# 7. POSITIVE CONTROLS: data/ at any depth, any case
+# 7. data/ at any depth, any case
 # ==========================================================================================
 begin "anything under a data/ directory fails, at any depth"
 fixture data_dirs

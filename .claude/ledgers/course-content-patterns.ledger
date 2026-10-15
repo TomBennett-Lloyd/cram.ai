@@ -1,0 +1,6 @@
+# The path patterns that mark course content (docs/standards/architecture.md rule 9).
+owner: .claude/scripts/check-no-course-content.sh
+claim: the banned extension set and data/ directory that check-no-course-content.sh enforces
+sweep: \bpptx\b.*\bkey\b|^\*\.pptx$|\.claude/ledgers/course-content-patterns\.ledger
+carrier: .gitignore
+carrier: .claude/scripts/check-no-course-content.test.sh
