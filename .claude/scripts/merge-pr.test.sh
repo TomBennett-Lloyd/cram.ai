@@ -763,6 +763,48 @@ HEAD_REF=$saved_head_ref
 end
 
 # ==========================================================================================
+# 9d. the "also closing" list is built from the array, so a head issue that is a prefix
+#     of another Closes number does not eat it
+# ==========================================================================================
+begin "a head issue that prefixes another Closes number still lists that number"
+fixture branch-prefix
+saved_head_ref=$HEAD_REF
+HEAD_REF=2-lane
+V_BODY="Closes #2. Closes #23."
+V_COMMITS="#2: the change"
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_stdout "single issue #2 by head branch '2-lane', also closing #23 -> squash"
+HEAD_REF=$saved_head_ref
+end
+
+# ==========================================================================================
+# 9e. a header-less batch on an <anchor>-slug branch stays on the rebase arm, because a
+#     commit subject names a member other than the anchor
+# ==========================================================================================
+# A task-orchestrator batch also sits on an `<n>-<slug>` branch with its anchor among
+# the Closes; without its TASK REPORT header the branch arm would squash it. The
+# curated history is the tell: a member other than the anchor is named in a subject.
+begin "a <n>-slug branch whose commits name another Closes issue falls through to the count"
+fixture branch-batch-subjects
+saved_head_ref=$HEAD_REF
+HEAD_REF=21-lane
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second"
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_stdout 'batch of 2 issues (#21 #22) -> rebase'
+expect_not_stdout 'by head branch'
+expect_called "pr merge $PR --rebase"
+expect_not_called "pr merge $PR --squash"
+HEAD_REF=$saved_head_ref
+end
+
+# ==========================================================================================
 # 10. a batch whose history is not curated is refused BEFORE anything is touched
 # ==========================================================================================
 begin "a batch whose commits do not match its member issues is refused at classify"
