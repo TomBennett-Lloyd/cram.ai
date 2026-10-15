@@ -58,7 +58,7 @@ TIER="$SCRIPTS/verify-tier.sh"
 . "$SCRIPTS/harness-lib.sh"
 harness_init_tmp
 
-DOCS_LEGS="pnpm check:adr-index && pnpm check:ledgers && pnpm check:markdown-links && pnpm format:check"
+DOCS_LEGS="pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm format:check"
 
 # Whether esbuild is installed is decided from what sits in node_modules, never from
 # verify-tier.sh's own lookup: a lookup that broke while esbuild is installed must red the
@@ -192,7 +192,7 @@ end
 # The change set has three parts and no single git command reports all of them, so each part
 # gets its own case: drop one of the three collections and exactly one of these goes red —
 # and, worse than red, an uncollected part would make a mixed change set look markdown-only.
-begin "an edited markdown file alone is the docs tier, and runs only the four md gates"
+begin "an edited markdown file alone is the docs tier, and runs only the markdown-observing gates"
 must fixture edited_md
 write_in docs/tier-fixture-guide.md '# Guide, revised'
 for interpreter in $BASHES; do
@@ -302,7 +302,7 @@ fi
 
 # Case matters, and this is the fail-closed direction: prettier and the link checker are
 # configured for the extension this repository actually writes, so a .MD file is not
-# self-evidently covered by the docs tier's four gates — and no esbuild loader claims it
+# self-evidently covered by the docs tier's gates — and no esbuild loader claims it
 # either, so the source-prose rung cannot take it. It gets the composite.
 if begin_needing with "an upper-case .MD extension is not the docs tier"; then
   must fixture upper_md
@@ -466,7 +466,7 @@ if begin_needing with "a browser spec that reads files is not selected, because 
   end
 fi
 
-# Markdown rides along: the count is what was PROVEN, not what changed, and the two gates that
+# Markdown rides along: the count is what was PROVEN, not what changed, and the gates that
 # can observe a .md rejoin the list. Without this, a prose PR that also touches one comment
 # would silently stop checking its own links.
 if begin_needing with "markdown alongside a comment-only source edit keeps the markdown gates"; then
@@ -478,7 +478,7 @@ if begin_needing with "markdown alongside a comment-only source edit keeps the m
   expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only"
   expect_stdout "  docs/tier-fixture-guide.md"
   expect_stdout "  src/app.ts"
-  expect_stdout "pnpm check:adr-index && pnpm check:markdown-links"
+  expect_stdout "pnpm check:adr-index && pnpm check:no-course-content && pnpm check:markdown-links"
   expect_stdout "pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.ts"
   end
 fi

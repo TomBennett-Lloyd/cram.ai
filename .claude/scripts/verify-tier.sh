@@ -31,8 +31,9 @@
 # ---------------------------------------------------------------------------
 # RUNG 1 — docs (cumulo#476)
 #
-# For a markdown-only change set only five legs can observe the change:
-# verify:root, check:adr-index, check:ledgers, check:markdown-links, format:check.
+# For a markdown-only change set only these legs can observe the change:
+# verify:root, check:adr-index, check:ledgers, check:no-course-content (a .md under
+# data/ is course content), check:markdown-links, format:check.
 # The rest are never given a .md file at all, or read manifests and TypeScript.
 #
 # THE SOUNDNESS GUARD, and where it differs from cumulo#476's wording. The rung rests
@@ -106,7 +107,8 @@
 #     on this rung changes (cumulo#553).
 #   * check:ledgers — sweeps prose for declared carriers, and a comment-only edit
 #     can add or lose one (cumulo#535).
-#   * check:adr-index and check:markdown-links, when the set also holds .md.
+#   * check:adr-index, check:no-course-content and check:markdown-links, when the
+#     set also holds .md — the one type this rung admits without an emit proof.
 #   * the observing tests, below.
 #
 # The legs are emitted in `verify:full`'s own order, so a red under this tier
@@ -566,6 +568,7 @@ build_source_prose_legs() {
   append_leg "pnpm check:ledgers"
   if grep -qE '\.md$' "$CHANGED"; then
     append_leg "pnpm check:adr-index"
+    append_leg "pnpm check:no-course-content"
     append_leg "pnpm check:markdown-links"
   fi
 
@@ -670,9 +673,9 @@ case "$tier" in
   docs)
     printf 'verify tier: docs — %d file(s); %s\n' "$changed_count" "$reason"
     print_list
-    # The five legs that can observe markdown at all; verify:root is not among
+    # The legs that can observe markdown at all; verify:root is not among
     # them because `verify` has already run it before reaching this script.
-    legs="pnpm check:adr-index && pnpm check:ledgers && pnpm check:markdown-links && pnpm format:check"
+    legs="pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm format:check"
     ;;
   source-prose)
     printf 'verify tier: source-prose — %d file(s) proven comment-only; observing tests: %s\n' \
