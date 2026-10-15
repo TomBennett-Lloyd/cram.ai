@@ -99,7 +99,7 @@ Pure core, effectful edges (`docs/standards/architecture.md`): `grounding` and `
 
 ## 6. Workflow
 
-Ported from cumulo at its current graduated state in the bootstrap commits; `CLAUDE.md` § Workflow and `.claude/workflow.json` own it. Project-specific gates to add by ticket: `check:no-course-content`, `check:no-network-egress`, `check:eval-report`. The AWS, Terraform and OIDC gates were not ported.
+Ported from cumulo at its current graduated state in the bootstrap commits; `CLAUDE.md` § Workflow and `.claude/workflow.json` own it. Project-specific gates to add by ticket: `check:no-network-egress`, `check:eval-report`. The AWS, Terraform and OIDC gates were not ported.
 
 ## 7. ADRs to write first (each is an issue with the `adr` label)
 
