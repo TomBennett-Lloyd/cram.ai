@@ -37,7 +37,7 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 
 ### 3.2 Index
 
-- One SQLite file per course (`<dataDir>/<course>.sqlite`). Isolation, backup and deletion are a file operation. `better-sqlite3` + FTS5 for BM25 + `sqlite-vec` for embeddings. Hybrid retrieval with reciprocal rank fusion, then a local cross-encoder rerank when the candidate list is large.
+- Owned by `docs/adr/0004-storage.md` (the one-file-per-course unit, what lives in it, the retrieval substrate and its fusion, deletability and portability, the no-migration rule with its un-defer trigger, the encryption deferral, and the bar for a second store); this bullet carries no restatement. After fusion, a local cross-encoder rerank when the candidate list is large is retrieval's (#11), with the model ADR 0003's (#3).
 - Embeddings go through the model gateway, so every backend serves them the same way.
 - **Topic index**: at ingest, an LLM pass tags each slide with topics; tags are user-editable. "Revision notes for _category_" resolves category → the union of tagged slides plus semantic neighbours, across all lectures. The tag pass is the one place an LLM writes into the index, and its output is metadata, never content.
 
@@ -106,7 +106,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 1. **0001 Grounding architecture** — retrieval + citation + verification, not fine-tuning; the unit contract; and `docs/standards/grounding.md`. Written — `docs/adr/0001-grounding-architecture.md` (#1); §1 and §3.4 above now point at it.
 2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable. Written — `docs/adr/0002-deployables.md` (#2); §3's lead paragraph above now points at it.
 3. **0003 Model roles and backends** — generator / verifier / embedder; `node-llama-cpp` vs HTTP backends; the measured model choice and licence against the target machine; whether the verifier is an LLM prompt or an NLI cross-encoder.
-4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it.
+4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it. Written — `docs/adr/0004-storage.md` (#4); §3.2's first bullet above now points at it.
 5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics.
 6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; when to refuse to cite derived text.
 7. **0007 Desktop packaging** — Electron + node-llama-cpp + NSIS; model download on first launch; signing deferred.
