@@ -126,3 +126,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/plan.md` §9, questions 3 (Windows testing) and 4 (code signing)
 - What: the owner's comment on #7 (2026-10-13) decided both — a free VM on the dev Mac for installer/UI testing with the user's laptop for the performance measurement, and code signing skipped — yet §9 still lists them as open. ADR 0005's review cycle 3 caught a comment restating q3 as open. Either strike the two questions or mark them decided with the #7 cite.
 - Source: #5 review cycle 3
+
+## 2026-10-16 — the Closes-keyword parse is embedded twice
+
+- Where: `.claude/scripts/fill-verdict.sh`, the node program in its `pr` step; `.claude/scripts/merge-pr.sh`, `pr_facts`
+- What: both scripts embed the same closing-keyword regex in their own `node -e` program, and only a comment in `fill-verdict.sh` keeps the two in step (`docs/standards/structure.md` rule 7). Pulling it out means restructuring `pr_facts`, which also parses lanes, checks and commits, and that does not belong in #50.
+- Source: #50 review
+
+## 2026-10-16 — feedbackLogLedger does not list fill-verdict.sh as a prose carrier
+
+- Where: `.claude/workflow.json` → `feedbackLogLedger`; `.claude/scripts/fill-verdict.sh` header
+- What: `fill-verdict.sh` reads the path from `feedbackLog`, so it does not carry the path executably. Its header does name `docs/review-feedback.md` in prose, and the ledger, which says it is a floor, does not list it. `.claude/workflow.json` is `humanAlways`, so this waits for the next PR that edits that file anyway.
+- Source: #50 review

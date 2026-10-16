@@ -60,7 +60,9 @@ the section before you dispatch.
    cap**: past that, report to the owner instead of bouncing a third time. Then the merge
    chain of `.claude/skills/review-loop/SKILL.md` step 5, unchanged — including the
    `humanAlways` ritual, and the merge-time `Category`/`Verdict` fill, which reaches the agent
-   as a bounce because only it writes to its worktree.
+   as a bounce because only it writes to its worktree; the agent does it with
+   `bash .claude/scripts/fill-verdict.sh <pr> --category <category> --verdict "<text>"`, and on
+   an `/execute`-path branch, which has no lane agent, you run that script yourself.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
    `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
    poll, a merge taken only from `CLEAN`, and then, only once the PR reports `MERGED`, the
