@@ -37,7 +37,7 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 
 ### 3.2 Index
 
-- Owned by `docs/adr/0004-storage.md` (the one-file-per-course unit, what lives in it, the retrieval substrate and its fusion, deletability and portability, the no-migration-before-multi-user rule, the encryption deferral, and the bar for a second store); this bullet carries no restatement. After fusion, a local cross-encoder rerank when the candidate list is large is retrieval's (#11), with the model ADR 0003's (#3).
+- Owned by `docs/adr/0004-storage.md` (the one-file-per-course unit, what lives in it, the retrieval substrate and its fusion, deletability and portability, the no-migration rule with its un-defer trigger, the encryption deferral, and the bar for a second store); this bullet carries no restatement. After fusion, a local cross-encoder rerank when the candidate list is large is retrieval's (#11), with the model ADR 0003's (#3).
 - Embeddings go through the model gateway, so every backend serves them the same way.
 - **Topic index**: at ingest, an LLM pass tags each slide with topics; tags are user-editable. "Revision notes for _category_" resolves category → the union of tagged slides plus semantic neighbours, across all lectures. The tag pass is the one place an LLM writes into the index, and its output is metadata, never content.
 

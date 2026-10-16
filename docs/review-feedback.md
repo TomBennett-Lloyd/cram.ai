@@ -124,7 +124,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 - **Category**: pending — filled at merge
 - **Feedback**: the PR asks the owner to decide:
-  - accept `docs/adr/0004-storage.md` § Decision (a)–(h), in particular (a) the file-is-the-course rule with no cross-course registry, (b) the closed list of what lives in the file including the uploaded decks and rendered slide images stored inside it, (c) FTS5 + `sqlite-vec` + reciprocal-rank fusion in code with the embedder identity recorded in the file and the dimension left to ADR 0003, (d) the no-migration-before-multi-user rule with its un-defer trigger, (e) deletion and portability as file operations, (f) the evidence-backed bar for a second store with M6's accounts placed outside it, and (g) the encryption deferral and its two un-defer triggers;
+  - accept `docs/adr/0004-storage.md` § Decision (a)–(h), in particular (a) the file-is-the-course rule with no cross-course registry, (b) the closed list of what lives in the file including the uploaded decks and rendered slide images stored inside it, (c) FTS5 + `sqlite-vec` + reciprocal-rank fusion in code with the embedder identity recorded in the file and the dimension left to ADR 0003, (d) the no-migration rule with its un-defer trigger with its un-defer trigger, (e) deletion and portability as file operations, (f) the evidence-backed bar for a second store with M6's accounts placed outside it, and (g) the encryption deferral and its two un-defer triggers;
   - accept the `docs/plan.md` §3.2 pointer and the §7 item 4 true-up;
   - accept the `README.md` cite;
   - accept the `docs/adr/README.md` index row numbered 0004 ahead of 0003.
