@@ -51,6 +51,8 @@ The branch squash-merges, so commit count is free; every commit subject begins `
 
 **A docblock takes one form, and prose findings are fixed by subtraction.** What the symbol is for; the one non-obvious constraint the code cannot express; a citation for the why (an ADR by filename, a standard's rule by number, an issue, or the test that asserts it). A FIX-NOW on a comment is answered by **delete**, **cite** or **move-to-test**, never by writing more (`docs/standards/prose.md` rule 6).
 
+**Mutate every guard you add before the first `reviewer` dispatch.** A refusal arm, a tie-break, a boundary check: delete each in turn, run the harness, and give any guard whose deletion goes red nowhere a case before review sees it (`docs/standards/testing.md` rule 8 for the mutant loop). PRs #58 and #61 each shipped guards no case protected, and the reviewer's own mutants found them at the cost of a cycle (#62).
+
 **Commit every verified step.** The branch squash-merges, so commit count is free; what is not free is work held uncommitted when the process dies — batch 3 of cumulo#467 lost five files' worth of trimming to a dropped connection, twice. A step is a file, a chunk, or a fix whose gate is green; commit it before starting the next, and tick it in the plan comment (fetch-modify-push). A successor resumes from ticks and `git log`, never from anyone's memory.
 
 ## 5. Escalation — stop triggers, each mechanical
