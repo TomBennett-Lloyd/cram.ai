@@ -118,8 +118,8 @@
 # Skipped, provably unaffected: every other package's vitest; stylelint when no
 # .css changed; the shell harnesses when none is selected; and the check:* gates
 # that read code SHAPE — module-names reads filenames, node-types and
-# supply-chain-policy read manifests. None of them
-# can change under an unchanged emit.
+# supply-chain-policy read manifests, no-network-egress reads the installed
+# dependency tree. None of them can change under an unchanged emit.
 #
 # THE OBSERVING TESTS, selected mechanically. A test can observe a comment in
 # exactly two ways, and each gets an arm: it reads files as data (readFileSync,

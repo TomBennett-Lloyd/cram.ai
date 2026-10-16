@@ -77,3 +77,21 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/standards/architecture.md` § Why, first sentence
 - What: ported cumulo wording that restates ADR 0002 § Decision (a)'s count in the plural and does not cite it. Banked in ADR 0002's restatement ledger under (g).
 - Source: #2 review cycle 1
+
+## 2026-10-15 — check:no-network-egress's `--depth Infinity` is pinned by no test
+
+- Where: `.claude/scripts/check-no-network-egress.sh`, the `pnpm ls` invocation; `.claude/scripts/check-no-network-egress.test.sh`, the no-argument real-repo case
+- What: the harness reaches the shipped `pnpm ls` call only through the real tree, whose production dependencies have no dependencies of their own today, so a `--depth 0` mutant passes every case and would scan top-level packages only. Pin it once the first production dependency with transitive dependencies lands: assert the real-repo census exceeds the declared count, or assert the invocation.
+- Source: #18 review
+
+## 2026-10-15 — declared ledgers' sweeps carry no owner-citation arm
+
+- Where: the `course-content-patterns` and `contradiction-set-bar` ledgers under `.claude/ledgers/`, their `sweep:` lines; the `docs/plan.md` carriers of the latter
+- What: `docs/standards/architecture.md` rule 9 says a carrier cites the owner by name and the sweep's first arm is that citation. Both ledgers sweep the literal only, and `docs/plan.md`'s §4 metrics line and §7 item 5 restate the contradiction-set bar without citing `CLAUDE.md` § Hard constraints. No carrier is missed today (the #18 review's synonym sweep found none outside the lists); a paraphrase that drops the literal would be.
+- Source: #18 review
+
+## 2026-10-15 — check:no-network-egress exempts a name absent anywhere from the stale check
+
+- Where: `.claude/scripts/check-no-network-egress.sh`, the stale-entry loop over the allow-list
+- What: an entry whose name is an absent optional variant under one parent but installed and clean under another reads `absent` rather than stale. On a platform where the variant installs, the scan reports it stale as it should, so CI on that platform still catches it. Keying the exemption on name plus version, or on "no installed occurrence", would close it.
+- Source: #18 confirmation pass
