@@ -26,7 +26,9 @@ This replaces both the planner dispatch and the PLAN CHECKPOINT stop, so it is t
 
 Post ONE issue comment headed `## Plan (ticket-agent lane)`: the files you will touch, the approach in a few sentences, what verifies it, and any divergence from the issue's spec stated as a divergence — [cumulo#476's plan comment](https://github.com/TomBennett-Lloyd/cumulo/issues/476#issuecomment-5584726538) is the model. Apply label `planned`. Then proceed without waiting, because you enforce the gates yourself:
 
-- An `adr` label (`.claude/workflow.json` → `planApproval.alwaysRequiredFor`), or a question only the owner can answer → post the plan, return `STATUS: BLOCKED — owner decision: <question>`, write no code.
+- An `adr` label (`.claude/workflow.json` → `planApproval.alwaysRequiredFor`), or a question only the owner can answer → post the plan and return `STATUS: BLOCKED — owner decision: <the plan summary and the questions>`, with nothing on the branch. The owner's answer comes back through the top-level (`.claude/skills/run-issue/SKILL.md` ticket-agent lane, step 3) as one of two bounces (owner decision 2026-10-16, #49):
+  - `PROCEED — <the owner's words, verbatim>` → execute per rules 3–8, unchanged; every `REVISE` before it lands as a `plan` entry in `docs/review-feedback.md` in your first commit. When the plan touches a `humanAlways` path, rule 7's pre-label `docs/review-feedback.md` entry and label order apply, and the merge owner's verdict-fill bounce is yours to commit.
+  - `REVISE — <feedback>` → revise the plan comment (fetch-modify-push) and return BLOCKED again.
 - **One-honest-PR test.** If the work cannot ship as one PR that is its own revert unit — it needs two PRs, or mixes a `humanAlways` edit with unrelated source, or spans surfaces whose acceptance cannot be told in one report — return `STATUS: BLOCKED — needs splitting: <proposed issues>`; the top-level splits it or composes a batch. This stop is what the lane has instead of a size tier at admission (owner decision 2026-09-10, recorded in `.claude/workflow.json` → `orchestration.routeRule`): a tier is a prediction made before anyone has read the files, and this is a measurement made after.
 
 Plan revisions edit that one comment fetch-modify-push (`.claude/agents/task-orchestrator.md` rule 8(b)), led by a `Footprint change: +<files>` line whenever files are added.
@@ -39,6 +41,7 @@ Planning, implementation, tests and fix rounds run in your own context. No plann
 - **(b) `consultant`** on STRUGGLING (rule 5(a)).
 - **(c) `reviewer`** for the first full review pass, and **`confirmation-reviewer`** for every confirmation pass on fix commits (rule 6).
 - **(d) `implementer`**, only when the ticket has two or more surfaces disjoint in verification — the test in `.claude/skills/plan-issue/SKILL.md` step 4, not mere `Files:` disjointness — and only when the plan comment declared the sub-dispatch before it went out. Owner decision 2026-09-10 (cumulo#468), verbatim: "Parallel `implementer` sub-dispatch inside a lane: allowed with declaration". You remain the only git-writer.
+- **(e) `planner`** for an `adr` issue's plan, on Fable (`conserve` → Opus, noted in the plan comment), whose plan you post as rule 2's plan comment: the proposal the owner accepted on 2026-10-16 (#49) kept ADR planning on Fable and moved only execution and review inline.
 
 ## 4. Gates and commits
 
@@ -83,7 +86,7 @@ Classify per `.claude/workflow.json` → `merge.autoRule` and `merge.humanAlways
 
 The `## Lane report` is posted where it outlives you: the PR body when a PR exists, an issue comment otherwise. Your chat return is a courtesy copy. No interim narration — nothing should reach the top-level between your dispatch and this report, which is the lane's cost advantage stated as a rule.
 
-A bounce round (`FIX — <finding>`, `REBASE — <context>`) ends in a refreshed report. A rebase runs `git -c core.commentChar=';' -c commit.cleanup=strip rebase` — every subcommand, `--continue` included — then the subject-and-body check, the `docs/tech-debt.md` union rule and the marker sweep exactly as `.claude/skills/review-loop/SKILL.md` step 5 states them; then re-verify and force-push your own branch only.
+A bounce round (`PROCEED` or `REVISE` per rule 2, `FIX — <finding>`, `REBASE — <context>`) ends in a refreshed report. A rebase runs `git -c core.commentChar=';' -c commit.cleanup=strip rebase` — every subcommand, `--continue` included — then the subject-and-body check, the `docs/tech-debt.md` union rule and the marker sweep exactly as `.claude/skills/review-loop/SKILL.md` step 5 states them; then re-verify and force-push your own branch only.
 
 ```
 ## Lane report — issue #<n>
