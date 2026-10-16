@@ -116,7 +116,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 - **Category**: plan
 - **Feedback**: "with ADR 0004, we probably want to be careful about being too strict on backwards compatibility till we're in a multi user scenario as that will add unnesscesarry bloat while we're iterating quickly"
-- **Why**: migration code written while the schema changes weekly slows iteration, and the decks stored inside the course file make a rebuild always possible, so compatibility is deferred to a named trigger rather than owed from the first schema.
+- **Why**: migration code is bloat while the project is iterating quickly, and the decks stored inside the course file make a rebuild always possible, so compatibility is deferred to a named trigger rather than owed from the first schema.
 - **How applied**: `docs/adr/0004-storage.md` § Decision (d), § Options considered F, § Consequences.
 - **Verdict**: owner-directed in chat 2026-10-16, applied before execution
 

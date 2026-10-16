@@ -69,8 +69,8 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-15 — rule 9's recorded sweep commit is the parent of the swept tree
 
 - Where: `docs/standards/architecture.md` rule 9, the sentence on a ledger not yet declared ("records the commit it was run at (`git rev-parse --short HEAD`)")
-- What: a sweep run before the commit that carries its ledger sentence records that commit's parent. It happened (shown at `9d90f16`, whose ledger lists the `docs/adr/README.md` § Index row that is absent at its recorded `5a5f86c`) on ADR 0001 (`bb8a720`) and ADR 0002 (`5a5f86c`, then `9d90f16`, then `15c9b94`). Fix candidates: record the commit after committing (a two-commit dance), or phrase the recipe as "the parent commit of the change that carries this sentence".
-- Source: #2 review cycle 1
+- What: a sweep run before the commit that carries its ledger sentence records that commit's parent. It happened (shown at `9d90f16`, whose ledger lists the `docs/adr/README.md` § Index row that is absent at its recorded `5a5f86c`) on ADR 0001 (`bb8a720`) and ADR 0002 (`5a5f86c`, then `9d90f16`, then `15c9b94`). A rebase or squash-merge also leaves the recorded SHA unreachable from the merged history: `git merge-base --is-ancestor 4840fa2 5f4f745` and `git merge-base --is-ancestor 15c9b94 origin/main` both return 1. Fix candidates: record the commit after committing (a two-commit dance), phrase the recipe as "the parent commit of the change that carries this sentence", record a `main` SHA after the merge, or record the merge-base.
+- Source: #2 review cycle 1; #4 review cycle 1
 
 ## 2026-10-15 — architecture.md § Why paraphrases ADR 0002's count without citing it
 
@@ -95,3 +95,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-no-network-egress.sh`, the stale-entry loop over the allow-list
 - What: an entry whose name is an absent optional variant under one parent but installed and clean under another reads `absent` rather than stale. On a platform where the variant installs, the scan reports it stale as it should, so CI on that platform still catches it. Keying the exemption on name plus version, or on "no installed occurrence", would close it.
 - Source: #18 confirmation pass
+
+## 2026-10-16 — .gitignore's data/ comment paraphrases ADR 0004's unit
+
+- Where: `.gitignore`, the course-content comment above `data/`
+- What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
+- Source: #4 review cycle 1
