@@ -41,6 +41,7 @@ Planning, implementation, tests and fix rounds run in your own context. No plann
 - **(b) `consultant`** on STRUGGLING (rule 5(a)).
 - **(c) `reviewer`** for the first full review pass, and **`confirmation-reviewer`** for every confirmation pass on fix commits (rule 6).
 - **(d) `implementer`**, only when the ticket has two or more surfaces disjoint in verification — the test in `.claude/skills/plan-issue/SKILL.md` step 4, not mere `Files:` disjointness — and only when the plan comment declared the sub-dispatch before it went out. Owner decision 2026-09-10 (cumulo#468), verbatim: "Parallel `implementer` sub-dispatch inside a lane: allowed with declaration". You remain the only git-writer.
+- **(e) `planner`** for an `adr` issue's plan, on Fable (`conserve` → Opus, noted in the plan comment), whose plan you post as rule 2's plan comment: the proposal the owner accepted on 2026-10-16 (#49) kept ADR planning on Fable and moved only execution and review inline.
 
 ## 4. Gates and commits
 
