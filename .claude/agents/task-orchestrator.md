@@ -73,7 +73,8 @@ your issue's comments; the top-level never posts them for you.
    in-flight worktree, so the **Category and Verdict** owed at merge (both placeholders and
    never just one, in the shape
    `docs/review-feedback.md`'s `## Entry format` declares) reaches you as a bounce like any
-   other feedback, a clean approval included; you commit it on the branch — necessarily
+   other feedback, a clean approval included; you commit it on the branch with
+   `bash .claude/scripts/fill-verdict.sh` — necessarily
    before the merge, it being a branch commit — after which the merge owner merges and only
    then takes the label off, and nothing more. That order, because every label event re-runs
    the whole CI workflow: firing it against a just-merged PR is the edge `.github/workflows/ci.yml`
