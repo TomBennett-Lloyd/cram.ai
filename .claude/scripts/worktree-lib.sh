@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for the worktree lifecycle scripts (reap / rebranch).
+# Shared helpers for the scripts in this directory that act on worktrees.
 # Sourced, never executed.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -92,6 +92,25 @@ is_clean() {
   local status
   status=$(git -C "$1" --no-optional-locks status --porcelain 2>/dev/null) || return 1
   [ -z "$status" ]
+}
+
+# worktree_holding <repo> <branch> -> the path of the worktree of <repo> that has <branch>
+# checked out, or nothing; non-zero only when `git worktree list` itself fails.
+worktree_holding() {
+  local list line cur=""
+  list=$(git -C "$1" worktree list --porcelain 2>&1) || return 1
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*) cur=${line#worktree } ;;
+      "branch refs/heads/$2")
+        printf '%s\n' "$cur"
+        return 0
+        ;;
+    esac
+  done <<EOF
+$list
+EOF
+  return 0
 }
 
 # fetch_main <main-dir> -> best-effort refresh of the base ref is_merged compares against.
