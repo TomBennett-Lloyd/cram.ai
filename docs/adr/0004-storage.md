@@ -1,6 +1,6 @@
 # 0004 — Storage: one SQLite file per course; FTS5 + sqlite-vec; no shared store
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-16
 - **Issue:** #4
 
