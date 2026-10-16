@@ -35,8 +35,21 @@ the section before you dispatch.
    lane report arriving. Silence until that report is the healthy state; do not poll. If the
    notification is lost the report is still durable: `gh pr view <n> --json body`, or the
    issue's comments.
-3. **Diff check** — your first touchpoint, and your only read of the code. `git rev-parse
-<branch>` must equal the report's HEAD, or stop and reconcile before anything else. Check
+3. **Approval relay** — a touchpoint only an `adr` issue, or a plan holding a question only
+   the owner can answer, reaches. The agent posts its plan comment and returns
+   `STATUS: BLOCKED — owner decision: <the plan summary and the questions>`; put that
+   summary and the plan comment's link to the owner in chat, and send the answer back to the
+   warm agent verbatim — `PROCEED — <the owner's words>` or `REVISE — <feedback>`
+   (`.claude/agents/ticket-agent.md` rule 2), a `REVISE` returning to this step.
+   `planApproval.alwaysRequiredFor` is enforced twice — by the agent's stop, and by your own
+   `gh issue view <n> --json labels` on its first report, so an `adr` issue that reaches step
+   4 without this relay goes back to it — and never skipped: a `PROCEED` the owner did not
+   give is not one to send. `/plan-issue` + `/execute` is no longer the default path for an
+   `adr` issue (owner decision 2026-10-16, #49); they remain for batches and for a lane that
+   returns `BLOCKED — needs splitting`.
+4. **Diff check** — your first touchpoint past any approval relay, and your only read of
+   the code. `git rev-parse <branch>` must equal the report's HEAD, or stop and reconcile
+   before anything else. Check
    the changed files against the plan comment's files (drift named, or none); every `Verify`
    and `CI` field pasted rather than summarised; CI green on the reported head. Then read
    `gh pr diff <n>` for three things: scope (only this ticket's work), suppressions
@@ -57,12 +70,12 @@ the section before you dispatch.
    a `humanAlways` PR whose entry still carries the `pending — filled at merge` placeholder
    is refused outright — so the fill above stays a bounce to the agent, and every judgement
    this prose owns stays yours.
-4. **Rebase hand-off** — your second touchpoint, and only when `main` moved. After every
+5. **Rebase hand-off** — your next touchpoint, and only when `main` moved. After every
    merge, `gh pr view --json mergeStateStatus` on each open lane PR. `BEHIND` → run
    `gh pr update-branch` yourself; it is mechanical. `DIRTY` → `REBASE — <what merged since
 this branch was cut, which files, what the union rule expects>` to the warm agent, which
    rebases per its rule 8 and re-reports. The second merger rebases, always; merges serialise.
-5. **Release**: PR merged, issue closed, no bounce open → the `## Lane report` in the PR body
+6. **Release**: PR merged, issue closed, no bounce open → the `## Lane report` in the PR body
    is the retro's first-hand input; run `/retro`; remove the row. A wedged agent (no report,
    no branch movement) gets the worktree and the issue inspected FIRST, then `TaskStop`, then
    a fresh `RESUME issue #n` dispatch — the new agent reconciles from `git log main..<branch>`, A dead lane is recognised, not diagnosed: the task shows no progress or an `ENOTFOUND` / stall-watchdog failure, its output file is a few hundred bytes, and `ps` shows no process under the worktree — a 0-byte background task entry alongside it is a ghost of a command whose owner died, safe to stop. Then `RESUME`: the new agent audits uncommitted work against the plan comment's ticks before adding to it, and never re-does a step whose files exist.
@@ -117,7 +130,7 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    report's branch commit list must show commit count == surviving-member count, each
    commit referencing its member issue, and `git log --oneline main..<branch>` must match
    it (CI green AND curated history are both required; either failing blocks the merge).
-   `merge-pr.sh` (ticket-agent lane, step 3) runs this chain for a batch too, and knows
+   `merge-pr.sh` (ticket-agent lane, step 4) runs this chain for a batch too, and knows
    the two differences: it checks the curated history itself and refuses without it, and
    it never runs `gh pr update-branch` on a `--rebase` PR — it reports the bounce below
    instead of taking it, since only the branch's owner can curate and force-push.

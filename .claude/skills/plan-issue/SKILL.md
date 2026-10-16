@@ -7,6 +7,8 @@ Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. C
 
 You are orchestrating the planning phase for one GitHub issue.
 
+A single issue of any label, `adr` included, takes the ticket-agent lane by default (`.claude/skills/run-issue/SKILL.md`); this skill remains for batches and for a lane that returns `STATUS: BLOCKED — needs splitting`.
+
 1. `gh issue view <n> --comments` — read the issue in full.
 2. Model selection: planner runs on **Fable** (`model: 'fable'` — see CLAUDE.md Model tiers). First read `~/.local/state/claude-budget/mode` (missing file → `normal`): if it reads `conserve`, run it on Opus instead and note the downgrade in the plan comment.
 3. Pull the main checkout first (`git -C <main-checkout> pull`). Worktrees are cut from a freshly fetched `origin/main`, but the planner reads the parked checkout — cumulo#178's planner drafted against a main that predated two merges, targeting a file one PR had renamed and re-creating a fixture another had already extracted, costing a full revision round. Then spawn the `planner` agent with: the full issue content, pointers to relevant code areas, and any constraints from the conversation. Do not pre-chew the plan for it.
