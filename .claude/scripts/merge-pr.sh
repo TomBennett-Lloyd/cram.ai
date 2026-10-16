@@ -27,7 +27,8 @@
 # .github/workflows/ci.yml comment (d) says so in terms: it sees that the file is
 # in the diff and nothing beyond that, so a placeholder clears it exactly as a
 # real entry does. This refusal is that gap, and it is the one step here that is
-# a gate rather than a convenience.
+# a gate rather than a convenience. The fill itself is
+# .claude/scripts/fill-verdict.sh, run on the branch once the owner has decided.
 #
 # Usage:
 #   merge-pr.sh [--method squash|rebase] <pr-number> [repo-root]
@@ -727,23 +728,6 @@ fi
 
 TECH_DEBT_PATH='docs/tech-debt.md'
 
-worktree_holding() { # worktree_holding <branch> -> that worktree's path on stdout, or nothing
-  local list line cur=""
-  list=$(git -C "$repo_root" worktree list --porcelain 2>&1) || return 1
-  while IFS= read -r line; do
-    case "$line" in
-      "worktree "*) cur=${line#worktree } ;;
-      "branch refs/heads/$1")
-        printf '%s\n' "$cur"
-        return 0
-        ;;
-    esac
-  done <<EOF
-$list
-EOF
-  return 0
-}
-
 # tech_debt_union_plan <merge-base blob> <base-tip blob> <branch blob> <out-file> <scratch dir>
 #   -> 0 the union is written to <out-file>, a one-line summary on stdout
 #      1 refused, the reason on stdout
@@ -1087,7 +1071,7 @@ tech_debt_union() {
   # The lane's worktree, resolved from the branch exactly as the worktree step does.
   # No worktree means there is nowhere to do this that is not somebody else's checkout,
   # and creating one would make this step the owner of a lifecycle it does not own.
-  wt=$(worktree_holding "$pr_head_ref") || {
+  wt=$(worktree_holding "$repo_root" "$pr_head_ref") || {
     union_reason="git worktree list failed in $repo_root"
     return 1
   }
@@ -1730,12 +1714,8 @@ fi
 # here as well, and reap is run FROM that cwd so its own guard sees the same
 # truth: a guard that depends on this script not having cd'd is a guard that one
 # refactor removes.
-#
-# worktree_holding is defined above, beside the tech-debt union step: that step
-# runs during update-branch and resolves the lane's worktree the same way, and a
-# helper cannot be defined after its first caller.
 
-wt=$(worktree_holding "$pr_head_ref") || fail 'worktree' "git worktree list failed in $repo_root"
+wt=$(worktree_holding "$repo_root" "$pr_head_ref") || fail 'worktree' "git worktree list failed in $repo_root"
 
 if [ -z "$wt" ]; then
   step 'worktree' "none holds '$pr_head_ref'"
