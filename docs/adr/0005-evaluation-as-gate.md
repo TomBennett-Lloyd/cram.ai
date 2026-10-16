@@ -1,6 +1,6 @@
 # 0005 — Evaluation as a merge gate: the synthetic deck, the contradiction set, two tiers, the metrics and their bars
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-16
 - **Issue:** #5
 
