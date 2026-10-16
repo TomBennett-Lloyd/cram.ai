@@ -10,7 +10,7 @@ Bootstrapped 2026-10-13. No features yet; the plan is in [`docs/plan.md`](docs/p
 
 ## How it works (in one paragraph)
 
-Slides are parsed into one record per slide and indexed in a local SQLite file (full-text and vector search, fused). Every feature — ask, notes, exams, grading — produces a list of _units_, each carrying citations to specific slides. Citations are resolved mechanically against the index, then a verifier pass checks each unit against its quotes (`docs/standards/grounding.md` rule 4) and drops anything unsupported. Generation and verification run on an open-weight model through a local backend; nothing is sent anywhere. A synthetic evaluation course in `eval/`, including a set of deliberately counter-intuitive "facts", is the regression test that the slides keep winning.
+Slides are parsed into one record per slide and indexed in a local SQLite file (full-text and vector search, fused — `docs/adr/0004-storage.md`). Every feature — ask, notes, exams, grading — produces a list of _units_, each carrying citations to specific slides. Citations are resolved mechanically against the index, then a verifier pass checks each unit against its quotes (`docs/standards/grounding.md` rule 4) and drops anything unsupported. Generation and verification run on an open-weight model through a local backend; nothing is sent anywhere. A synthetic evaluation course in `eval/`, including a set of deliberately counter-intuitive "facts", is the regression test that the slides keep winning.
 
 ## Local checks
 

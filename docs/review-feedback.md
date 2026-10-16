@@ -111,3 +111,23 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` and `.claude/workflow.json` are `humanAlways` paths, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved in chat 2026-10-16 — "PR 42 sounds good too" — no revisions requested; the PR merged as proposed.
+
+## 2026-10-16 — issue #4 — plan-feedback-no-backwards-compat-before-multi-user
+
+- **Category**: plan
+- **Feedback**: "with ADR 0004, we probably want to be careful about being too strict on backwards compatibility till we're in a multi user scenario as that will add unnesscesarry bloat while we're iterating quickly"
+- **Why**: migration code written while the schema changes weekly slows iteration, and the decks stored inside the course file make a rebuild always possible, so compatibility is deferred to a named trigger rather than owed from the first schema.
+- **How applied**: `docs/adr/0004-storage.md` § Decision (d), § Options considered F, § Consequences.
+- **Verdict**: owner-directed in chat 2026-10-16, applied before execution
+
+## 2026-10-16 — issue #4 — adr-0004-storage
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0004-storage.md` § Decision (a)–(h), in particular (a) the file-is-the-course rule with no cross-course registry, (b) the closed list of what lives in the file including the uploaded decks and rendered slide images stored inside it, (c) FTS5 + `sqlite-vec` + reciprocal-rank fusion in code with the embedder identity recorded in the file and the dimension left to ADR 0003, (d) the no-migration-before-multi-user rule with its un-defer trigger, (e) deletion and portability as file operations, (f) the evidence-backed bar for a second store with M6's accounts placed outside it, and (g) the encryption deferral and its two un-defer triggers;
+  - accept the `docs/plan.md` §3.2 pointer and the §7 item 4 true-up;
+  - accept the `README.md` cite;
+  - accept the `docs/adr/README.md` index row numbered 0004 ahead of 0003.
+- **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed — ADR 0004 at `proposed` and the pointers; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
