@@ -28,3 +28,8 @@ Entry format:
 
 - Phase: review
 - Observed: issue #30's own sweep regex (`esbuild.{0,80}(vite|vitest|tsx)` and friends) missed a third carrier of the "vite brings esbuild" claim, `verify-tier.test.sh`'s header "it arrives with vite", because that line never says "esbuild". The reviewer's broader patterns caught it, and the lane banked them in `.claude/ledgers/esbuild-provenance.ledger`. Second sweep-shaped miss today (PR #33's entry is the first): a sweep built from the claim's keyword misses paraphrases of the claim.
+
+## 2026-10-16 — PR #48
+
+- Phase: process
+- Observed: `merge-pr.sh 48`'s checks poll sat for twelve minutes on a head whose three checks `gh pr checks` already reported as `pass`; killed and re-run, the same script merged in under a minute. Second stuck poll in two days (PR #32's was a gitleaks check-run reporting `in_progress` with conclusion `success`); this time the stuck state was not captured before the kill. The merge owner's own process was partly to blame on the retry: a `pgrep -f 'merge-pr.sh 48'` guard matched the shell running the guard. The path these ADRs took also cost more than the lane path: `/execute` + `/review-loop` had the Fable orchestrator run every verify, commit, rebase and merge step itself — #49 and #50 (owner decision 2026-10-16) move `adr` issues onto the ticket-agent lane and script the verdict fill.
