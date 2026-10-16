@@ -139,8 +139,10 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept `docs/adr/0005-evaluation-as-gate.md` § Decision (a)–(j), in particular the golden-question schema in (c) with `expectedAnswerUnits` dropped and `mustNotContain` as substrings, the metric definitions and the single owned bar in (d), the recording-key rule in (e), the committed report and newest-on-`main` baseline rule in (f), `check:eval-report` as a `verify:full` leg rather than a CI-only job in (g), and the ticket split in (h);
   - accept the `docs/plan.md` §4 pointer and §7 item 5 true-up;
   - accept the `docs/standards/grounding.md` rule 8 path cite;
-  - accept the one-line `CLAUDE.md` § Commands re-point;
-  - accept the ADR joining `.claude/ledgers/contradiction-set-bar.ledger` as a carrier.
+  - accept the one-line `CLAUDE.md` § Commands re-point, whose parenthetical now cites #47 for the runner and the gate;
+  - accept the ADR joining `.claude/ledgers/contradiction-set-bar.ledger` as a carrier;
+  - accept the machine-class rule in (e) and (f): tier 2 runs on the developer's machine, the baseline is per machine class, and a target-class run before a release is M5's to schedule;
+  - decide whether `check:eval-report` in (g) should also read the two absolute-bar results from the committed report, which the ADR leaves as a presence floor.
 - **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0005 at `proposed` and the pointers; revised in place on the branch if review asks.
 - **Verdict**: pending — filled at merge

@@ -89,6 +89,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: the `course-content-patterns` and `contradiction-set-bar` ledgers under `.claude/ledgers/`, their `sweep:` lines; the `docs/plan.md` carriers of the latter
 - What: `docs/standards/architecture.md` rule 9 says a carrier cites the owner by name and the sweep's first arm is that citation. Both ledgers sweep the literal only, and `docs/plan.md`'s §4 metrics line and §7 item 5 restate the contradiction-set bar without citing `CLAUDE.md` § Hard constraints. No carrier is missed today (the #18 review's synonym sweep found none outside the lists); a paraphrase that drops the literal would be.
 - Source: #18 review
+- Update (2026-10-16, #5): `contradiction-set-bar` ledger — `docs/plan.md`'s §4 metrics line left, replaced by ADR 0005's pointer; §7 item 5 still restates the bar ("the 100% metrics").
 
 ## 2026-10-15 — check:no-network-egress exempts a name absent anywhere from the stale check
 
@@ -101,3 +102,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.gitignore`, the course-content comment above `data/`
 - What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
 - Source: #4 review cycle 1
+
+## 2026-10-16 — plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14
+
+- Where: `docs/plan.md` §8, the M2 line ("contradiction set"); `docs/adr/0005-evaluation-as-gate.md` § Decision (a) and (h); #14's body ("a first contradiction set")
+- What: the milestone line lists the contradiction set as an M2 deliverable, while ADR 0005 and #14 deliver it with the deck under M1. Pre-existing milestone prose, now cited from `CLAUDE.md` § Commands and ADR 0005 (i).
+- Source: #5 review cycle 1
+
+## 2026-10-16 — ADR 0005 (g) lists the trigger path set its script will own
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (g) (`packages/grounding`, `packages/index`, `packages/gateway`)
+- What: (g) names the gate script as the set's only owner, yet lists the members itself. When #47 lands the script, it declares that set's ledger with ADR 0005 (g) as a carrier (already in #47's body); this entry closes when #47 does.
+- Source: #5 review cycle 1
