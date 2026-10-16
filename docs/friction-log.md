@@ -28,3 +28,8 @@ Entry format:
 
 - Phase: process
 - Observed: on retrying a stuck `merge-pr.sh 48`, the merge owner's `pgrep -f 'merge-pr.sh 48'` guard matched the shell running the guard itself. (The stuck poll this entry first recorded is now issue #55's, and the ADR-path cost is #49's and #50's.)
+
+## 2026-10-16 — PR #64
+
+- Phase: review
+- Observed: the lane's pre-review mutation pass covered only the arms it had already written cases for, so cycle 1 still found a regression (a log deleted on one side unioned into a headerless fragment) and two unpinned mirror arms. The lane was dispatched before #63 landed the "mutate every guard you add" sentence in `.claude/agents/ticket-agent.md` § 4; the next source ticket is the first to run under it.
