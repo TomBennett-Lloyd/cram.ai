@@ -47,12 +47,12 @@ HUMAN_ALWAYS_DEFAULT='["docs/adr/**",".claude/workflow.json","CLAUDE.md"]'
 # anything else, which means it wrote a merge commit onto the branch.
 UPDATE_NOOP='PR branch already up-to-date'
 UPDATE_WROTE="Updated branch $HEAD_REF"
-# The third answer, and the one the docs/tech-debt.md union cases turn on: GitHub
+# The third answer, and the one the append-only-log union cases turn on: GitHub
 # answers a 422 when the base and the head both changed the same region.
 UPDATE_CONFLICT='failed to update branch: merge conflict between base and head'
 
-# The one path the union step will resolve, spelled once here so a case that changes
-# it changes it everywhere — including in the assertions about what came out.
+# The tech-debt log's path, spelled once here so a case that changes it changes it
+# everywhere — including in the assertions about what came out.
 TD='docs/tech-debt.md'
 
 ROOT=""
@@ -372,7 +372,7 @@ call_line() { # call_line <prefix> -> 1-based line number of the first matching 
   printf '%s\n' "${n:-0}"
 }
 
-# --- the docs/tech-debt.md union fixtures ------------------------------------------------------
+# --- the append-only-log union fixtures --------------------------------------------------------
 #
 # These cases need MORE git than the rest of the file, not less. The union step
 # fetches a base, runs merge-tree, merges in the lane's worktree, commits and pushes
@@ -404,7 +404,7 @@ TD_BRANCH_ENTRY='
 - Source: #3
 '
 
-# The same log with its HEADER edited — above the final "## " heading, nowhere near the
+# The same log with its HEADER edited — above the first "## " heading, nowhere near the
 # tail the two lanes collide on. This is the shape cumulo#524 was refused over (issue
 # cumulo#525): an earlier merge had added a restatement ledger to main, so the whole-blob
 # test saw main diverge from the merge base and refused a tail-only conflict.
@@ -418,9 +418,9 @@ How this log is kept. Restatement ledger: the executable carrier is merge-pr.sh.
 - Source: #1
 '
 
-# And the same header line moved a DIFFERENT way, so that the two edits collide above
-# the anchor rather than below it. Same line, incompatible text: the region test has to
-# refuse this one exactly as loudly as it admits the one above.
+# And the same header line moved a DIFFERENT way, so that the two edits collide in the
+# header itself. Same line, incompatible text: refused exactly as loudly as the one
+# above is admitted.
 TD_BASE_LEDGERED_OTHERWISE='# Tech-debt log
 
 How this log is kept. Restatement ledger: nobody has classified the prose carriers.
@@ -431,11 +431,9 @@ How this log is kept. Restatement ledger: nobody has classified the prose carrie
 - Source: #1
 '
 
-# The anchor is the merge base's FINAL "## " heading, and the step needs it to name
-# exactly one line in each of the three blobs. These three break that in each of the
-# three available ways: a side that no longer carries the line at all (a retitling, or
-# a triage pass that pruned the entry — docs/tech-debt.md records having been pruned
-# wholesale before), a base that repeats it, and a side that appends a second copy.
+# Entries are matched by heading, so these three move one: a side that retitled the
+# final entry (20s), a base that repeats a heading (20t), and a side that appends a
+# second copy of one (20u).
 TD_BASE_RENAMED='# Tech-debt log
 
 How this log is kept.
@@ -468,8 +466,124 @@ TD_BRANCH_ENTRY_REUSING_HEADING='
 - Source: #3
 '
 
-td_fixture() { # td_fixture <name> — a repo with a real origin, TD_BASE on main, a lane worktree
+# Two more logs for the cases that are not about docs/tech-debt.md. Each carries an
+# `Entry format` fence holding a "## " line, as the real files do, so every case over
+# them also asserts that fenced text is not read as an entry heading.
+RF='docs/review-feedback.md'
+FL='docs/friction-log.md'
+
+RF_KEPT='# Review-feedback log
+
+How this log is kept.
+
+## Entry format
+
+```
+## YYYY-MM-DD — [PR/issue #n — ]<short-slug>
+```
+
+## 2026-10-01 — PR #1 — the entry that was already here
+
+- **Category**: plan
+- **Verdict**: approved
+'
+
+RF_DOOMED='
+## 2026-10-02 — PR #2 — the entry main deletes
+
+- **Category**: plan
+- **Verdict**: approved
+'
+
+RF_DOOMED_EDITED='
+## 2026-10-02 — PR #2 — the entry main deletes
+
+- **Category**: plan
+- **Verdict**: approved, and the branch adds a note to it
+'
+
+RF_BASE="$RF_KEPT$RF_DOOMED"
+
+RF_MAIN_ENTRY='
+## 2026-10-16 — PR #3 — the entry another lane merged first
+
+- **Category**: plan
+'
+
+# Its fence quotes a heading the base already has: read as a heading, it would be a
+# second copy and refuse the union.
+RF_BRANCH_ENTRY='
+## 2026-10-16 — PR #4 — the entry this lane logged
+
+- **Category**: convention
+- **Feedback**: quote the heading, as in
+
+```
+## 2026-10-01 — PR #1 — the entry that was already here
+```
+'
+
+# PR #61's rebase, in miniature: the branch consumed the PR #32 entry whole and the
+# PR #48 entry in part, while main appended PR #58's.
+FL_HEAD='# Friction log
+
+Entry format:
+
+```
+## YYYY-MM-DD — PR #n
+- Phase: planning | implementation | review | process
+```
+
+---
+'
+
+FL_33='
+## 2026-10-15 — PR #33
+
+- Phase: review
+- Observed: an entry nobody touches
+'
+
+FL_32='
+## 2026-10-15 — PR #32
+
+- Phase: process
+- Observed: an entry the branch consumes whole
+'
+
+FL_48='
+## 2026-10-16 — PR #48
+
+- Phase: process
+- Observed: an entry the branch consumes in part. This second sentence is the part it consumes.
+'
+
+FL_48_TRIMMED='
+## 2026-10-16 — PR #48
+
+- Phase: process
+- Observed: an entry the branch consumes in part.
+'
+
+FL_58='
+## 2026-10-16 — PR #58
+
+- Phase: review
+- Observed: the entry main appended
+'
+
+FL_60='
+## 2026-10-16 — PR #60
+
+- Phase: process
+- Observed: the entry this lane logged
+'
+
+FL_BASE="$FL_HEAD$FL_33$FL_32$FL_48"
+
+td_fixture() { # td_fixture <name> [<path> <whole file>]… — TD_BASE and any extra logs on main, a lane worktree
   fixture "$1"
+  shift
   # The SUBJECT commits here, so an identity has to exist somewhere git will find one.
   # `gitc` passes identity per command and cannot reach a commit this harness does not
   # make, so repo-local config it is — written inside a temp fixture, never on the box.
@@ -480,24 +594,36 @@ td_fixture() { # td_fixture <name> — a repo with a real origin, TD_BASE on mai
   must gitc "$REPO" remote add origin "$ROOT/origin.git"
   must mkdir -p "$REPO/docs"
   must printf '%s' "$TD_BASE" >"$REPO/$TD"
+  while [ "$#" -ge 2 ]; do
+    must printf '%s' "$2" >"$REPO/$1"
+    shift 2
+  done
   must gitc "$REPO" add -A
-  must gitc "$REPO" commit --quiet -m 'the log as both sides found it'
+  must gitc "$REPO" commit --quiet -m 'the logs as both sides found them'
   must gitc "$REPO" push --quiet origin main
   must gitc "$REPO" worktree add --quiet -b "$HEAD_REF" "$ROOT/wt" HEAD
 }
 
-td_main_writes() { # td_main_writes <the whole tech-debt log, as main has it>
-  must printf '%s' "$1" >"$REPO/$TD"
+main_writes() { # main_writes <path> <whole file> [<path> <whole file>]…
+  while [ "$#" -ge 2 ]; do
+    must printf '%s' "$2" >"$REPO/$1"
+    shift 2
+  done
   must gitc "$REPO" commit --quiet -am 'another lane merged first'
   must gitc "$REPO" push --quiet origin main
 }
 
-# td_branch_writes — the lane's own copy, pushed, and V_OID moved to the sha GitHub
+td_main_writes() { main_writes "$TD" "$1"; }
+
+# branch_writes — the lane's own copies, pushed, and V_OID moved to the sha GitHub
 # would then be answering. That last line is not bookkeeping: the union step refuses to
 # resolve a branch whose local tip and headRefOid disagree, so a fixture that left
 # V_OID at "aaa111" would test the guard rather than the resolution.
-td_branch_writes() { # td_branch_writes <the whole tech-debt log, as the lane has it>
-  must printf '%s' "$1" >"$ROOT/wt/$TD"
+branch_writes() { # branch_writes <path> <whole file> [<path> <whole file>]…
+  while [ "$#" -ge 2 ]; do
+    must printf '%s' "$2" >"$ROOT/wt/$1"
+    shift 2
+  done
   must gitc "$ROOT/wt" commit --quiet -am 'the lane logs its own finding'
   must gitc "$ROOT/wt" push --quiet origin "$HEAD_REF"
   V_OID=$(gitc "$ROOT/wt" rev-parse HEAD) || {
@@ -505,6 +631,8 @@ td_branch_writes() { # td_branch_writes <the whole tech-debt log, as the lane ha
     exit 2
   }
 }
+
+td_branch_writes() { branch_writes "$TD" "$1"; }
 
 # td_views — the read sequence every union case shares: DIRTY at classify, then one
 # post-push read still answering the head the push replaced (the cumulo#501 shape, which
@@ -521,7 +649,6 @@ td_views() {
 }
 
 origin_branch_sha() { git -C "$ROOT/origin.git" rev-parse "$HEAD_REF"; }
-origin_branch_td() { git -C "$ROOT/origin.git" show "$HEAD_REF:$TD"; }
 
 expect_no_merge_in_progress() {
   ! git -C "$ROOT/wt" rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 ||
@@ -531,6 +658,49 @@ expect_no_merge_in_progress() {
 expect_branch_unpushed() { # expect_branch_unpushed <sha the branch must still be at>
   [ "$(origin_branch_sha)" = "$1" ] ||
     bad "the branch was pushed despite the refusal (origin is at $(origin_branch_sha), expected $1)"
+}
+
+origin_branch_file() { git -C "$ROOT/origin.git" show "$HEAD_REF:$1"; }
+origin_branch_td() { origin_branch_file "$TD"; }
+
+# conflict_once / conflict_always — update-branch answers a conflict on its first call
+# and the no-op after it (the union resolved it), or a conflict on every call.
+conflict_once() {
+  must printf '%s\n' "$UPDATE_CONFLICT" >"$STATE/update-branch.1"
+  must printf '1\n' >"$STATE/update-branch.1.rc"
+  must printf '%s\n' "$UPDATE_NOOP" >"$STATE/update-branch.out"
+}
+conflict_always() {
+  must printf '%s\n' "$UPDATE_CONFLICT" >"$STATE/update-branch.out"
+  must printf '1\n' >"$STATE/update-branch.rc"
+}
+
+# expect_union <path> <the whole file the branch must now hold> — the run merged, and
+# what it pushed is that file byte for byte, read out of the origin.
+expect_union() {
+  expect_rc 0
+  expect_called "pr merge $PR --squash"
+  [ "$(origin_branch_file "$1")" = "$(printf '%s' "$2")" ] ||
+    bad "the union pushed for $1 is not the expected file; got:
+$(origin_branch_file "$1")"
+  expect_no_merge_in_progress
+}
+
+# expect_union_refused <branch sha before> <stderr fragment>… — refused before the
+# worktree was touched: nothing formatted, pushed or merged, no merge left in progress.
+expect_union_refused() {
+  local before="$1" fragment
+  shift
+  expect_rc 1
+  expect_stderr 'update-branch — FAILED'
+  expect_stderr 'the conflict is not one this script may resolve'
+  for fragment in "$@"; do
+    expect_stderr "$fragment"
+  done
+  expect_not_called "pr merge $PR --squash"
+  expect_branch_unpushed "$before"
+  expect_no_merge_in_progress
+  [ ! -f "$STATE/prettier.log" ] || bad "prettier ran on a resolution that was refused"
 }
 
 # ==========================================================================================
@@ -1708,7 +1878,7 @@ must printf '%s\n' "$UPDATE_NOOP" >"$STATE/update-branch.out"
 td_views
 run_merge
 expect_rc 0
-expect_stdout "gh reports a conflict; asking whether it is the $TD append collision"
+expect_stdout 'gh reports a conflict; asking whether it is an append-only-log collision'
 expect_stdout "$TD unioned and pushed"
 expect_stdout 'base appended 1 entr(ies), the branch 1'
 expect_stdout 'the update moved the head'
@@ -1737,46 +1907,49 @@ st=$(git -C "$ROOT/wt" status --porcelain)
 end
 
 # ==========================================================================================
-# 20b. an edit INSIDE the base's final entry is refused, naming the file and the line
+# 20b. one side's edit to an entry the base already had is kept beside both appends
 # ==========================================================================================
-# The refusal that gives case 20 its meaning. "Both sides appended" is what makes the
-# answer arithmetic; a side that rewrote text the base already had is a judgement call,
-# and a judgement call silently taken is a mangled log the squash merge makes permanent.
-#
-# The scope of that refusal is the region from the base's final "## " heading DOWN, not
-# the whole file — 20q next door is the same shape above the heading, and is unioned.
-# `- Source: #1` is line 8 of TD_BASE and the last line of its last entry, so this case
-# also pins the reported line number to the whole-file count rather than the count
-# within the tail region, which is the difference the anchor introduced.
-begin "a conflict where one side edited the base's final entry is refused, naming the line"
+# An entry is merged three ways, so an edit only one side made is that side's to keep
+# (#60: PR #61's rebase trimmed the base's final entry beside main's append).
+begin "an edit one side made to the base's final entry survives the union"
 td_fixture union-edit
-# main both rewrites the last line of the entry that was already there AND appends.
+td_edited="${TD_BASE%- Source: #1
+}- Source: #1, and also #9
+"
+td_main_writes "$td_edited$TD_MAIN_ENTRY"
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+conflict_once
+td_views
+run_merge
+expect_union "$TD" "$td_edited$TD_MAIN_ENTRY$TD_BRANCH_ENTRY"
+expect_stdout 'base appended 1 entr(ies), the branch 1; 1 edited in place; 3 entr(ies) in all'
+end
+
+# ==========================================================================================
+# 20b-ii. …but an entry both sides edited incompatibly is refused, naming it
+# ==========================================================================================
+begin "an entry both sides edited to different text is refused rather than unioned"
+td_fixture union-edit-both
 td_main_writes "${TD_BASE%- Source: #1
 }- Source: #1, and also #9
 $TD_MAIN_ENTRY"
-td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+td_branch_writes "${TD_BASE%- Source: #1
+}- Source: #1, and also #7
+$TD_BRANCH_ENTRY"
 before_sha=$(origin_branch_sha)
-must printf '%s\n' "$UPDATE_CONFLICT" >"$STATE/update-branch.out"
-must printf '1\n' >"$STATE/update-branch.rc"
+conflict_always
 td_views
 run_merge
-expect_rc 1
-expect_stderr 'update-branch — FAILED'
-expect_stderr 'the conflict is not one this script may resolve'
-expect_stderr "$TD: the base side changes line 8 of the merge-base copy"
-expect_stderr 'the entry that was already here'
-expect_stderr 'never an edit to text the base already had'
-expect_not_called "pr merge $PR --squash"
+expect_union_refused "$before_sha" \
+  "$TD: the entry \"## 2026-09-01 — the entry that was already here\" was changed on both sides" \
+  'does not merge: git merge-file leaves 1 conflict(s) there'
 [ -f "$STATE/merged" ] && bad "the PR merged despite the refusal"
-expect_branch_unpushed "$before_sha"
-expect_no_merge_in_progress
-[ -f "$STATE/prettier.log" ] && bad "prettier ran on a resolution that was refused"
 end
 
 # ==========================================================================================
 # 20c. a second conflicted file is refused, and the set is named
 # ==========================================================================================
-begin "a conflicted set wider than docs/tech-debt.md is refused, naming every member"
+begin "a conflicted set reaching past the append-only logs is refused, naming every member"
 td_fixture union-two-files
 must printf 'as the base had it\n' >"$REPO/notes.txt"
 must gitc "$REPO" add -A
@@ -1798,7 +1971,8 @@ expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'the conflicted set is'
 expect_stderr 'notes.txt'
-expect_stderr "resolves $TD and only $TD, alone"
+expect_stderr 'this step resolves only the append-only logs'
+expect_stderr 'and notes.txt is not one'
 expect_not_called "pr merge $PR --squash"
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
@@ -1850,30 +2024,38 @@ expect_branch_unpushed "$before_sha"
 end
 
 # ==========================================================================================
-# 20f. an append that extends the last entry instead of starting a new one is refused
+# 20f. an append with no heading of its own stays inside the entry it extends
 # ==========================================================================================
-# It sits below the base's final "## " heading, so cumulo#513's own proposed test admits it —
-# and concatenating the two sides would then splice one entry's body into another's.
-# docs/tech-debt.md records this shape about itself ("An Update appended to a
-# sweep-defined entry joins that entry's own sweep"). Whole entries or nothing.
-begin "a tail append carrying no heading of its own is refused, not unioned"
+# Text appended under the last entry is an edit to THAT entry, so it is kept with it and
+# the other side's new entry follows — never spliced between its heading and its body.
+begin "a tail append carrying no heading of its own stays in the entry it extends"
 td_fixture union-no-heading
 td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
 td_branch_writes "${TD_BASE}- Update: and one more thing about that same entry
 "
-before_sha=$(origin_branch_sha)
-must printf '%s\n' "$UPDATE_CONFLICT" >"$STATE/update-branch.out"
-must printf '1\n' >"$STATE/update-branch.rc"
+conflict_once
 td_views
 run_merge
-expect_rc 1
-expect_stderr 'update-branch — FAILED'
-expect_stderr 'the branch side appends'
-expect_stderr 'and one more thing about that same entry'
-expect_stderr 'extends the last existing entry rather than starting a new one'
-expect_not_called "pr merge $PR --squash"
-expect_branch_unpushed "$before_sha"
-expect_no_merge_in_progress
+expect_union "$TD" "${TD_BASE}- Update: and one more thing about that same entry
+$TD_MAIN_ENTRY"
+expect_stdout 'base appended 1 entr(ies), the branch 0; 1 edited in place'
+end
+
+# ==========================================================================================
+# 20f-ii. …and two such appends to the same entry are refused
+# ==========================================================================================
+begin "both sides extending the same entry without a heading is refused"
+td_fixture union-no-heading-both
+td_main_writes "${TD_BASE}- Update: what main adds to that entry
+"
+td_branch_writes "${TD_BASE}- Update: what the branch adds to that entry
+"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  'the entry that was already here" was changed on both sides and does not merge'
 end
 
 # ==========================================================================================
@@ -2179,7 +2361,7 @@ run_merge
 expect_rc 0
 expect_stdout "$TD unioned and pushed"
 expect_stdout 'base appended 1 entr(ies), the branch 1'
-expect_stdout 'the region above the final base entry heading had moved and merged cleanly'
+expect_stdout 'the header above the first entry had moved and merged cleanly'
 expect_called "pr merge $PR --squash"
 [ "$(origin_branch_sha)" != "$before_sha" ] || bad "the resolution was never pushed"
 resolved=$(origin_branch_td)
@@ -2215,10 +2397,8 @@ run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'the conflict is not one this script may resolve'
-expect_stderr "$TD: the region above"
-expect_stderr 'the entry that was already here'
+expect_stderr "$TD: the header above the first entry was changed on both sides"
 expect_stderr 'does not merge: git merge-file leaves 1 conflict(s) there'
-expect_stderr 'only when everything above the tail merges on its own'
 expect_not_called "pr merge $PR --squash"
 [ -f "$STATE/merged" ] && bad "the PR merged despite the refusal"
 expect_branch_unpushed "$before_sha"
@@ -2227,46 +2407,47 @@ expect_no_merge_in_progress
 end
 
 # ==========================================================================================
-# 20s. a side that no longer carries the anchor heading is refused
+# 20s. a side that retitled the base's final entry deleted it and appended the new title
 # ==========================================================================================
-# The anchor is what makes 20q possible: the head region can only be cut off a side by
-# finding the merge base's final "## " heading IN that side. A side that retitled or
-# pruned that entry has no such line. What the guard buys is a NAMED refusal, not a
-# rescue: without it `indexOf` answers -1, `offsetOfLine(lines, -1)` sums every element
-# but the last and so answers the whole length, the side reads as all head and no tail,
-# and `mustExtend` refuses anyway — with "changes line 5 of the merge-base copy", which
-# sends the merge owner to the heading itself rather than telling them their side no
-# longer has it. So the assertion below is on the message, and that is the whole point
-# of the arm. Pruning is a live shape here: docs/tech-debt.md records having been pruned
-# wholesale by a triage pass.
-begin "a side that no longer holds the base's final entry heading is refused"
-td_fixture union-anchor-gone
+# Entries are matched by heading, so a retitle reads as a deletion plus an addition: the
+# other side left the old entry alone, so the deletion is authoritative.
+begin "a retitled final entry is kept under its new title, with both appends after it"
+td_fixture union-retitled
 td_main_writes "$TD_BASE_RENAMED$TD_MAIN_ENTRY"
 td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
-before_sha=$(origin_branch_sha)
-must printf '%s\n' "$UPDATE_CONFLICT" >"$STATE/update-branch.out"
-must printf '1\n' >"$STATE/update-branch.rc"
+conflict_once
 td_views
 run_merge
-expect_rc 1
-expect_stderr 'update-branch — FAILED'
-expect_stderr "$TD: the base side no longer holds the line"
-expect_stderr 'the entry that was already here'
-expect_stderr 'rewritten or removed an entry the base already had'
-expect_not_called "pr merge $PR --squash"
-expect_branch_unpushed "$before_sha"
-expect_no_merge_in_progress
-[ -f "$STATE/prettier.log" ] && bad "prettier ran on a resolution that was refused"
+expect_union "$TD" "$TD_BASE_RENAMED$TD_MAIN_ENTRY$TD_BRANCH_ENTRY"
+expect_stdout 'base appended 2 entr(ies), the branch 1; 1 deleted; 3 entr(ies) in all'
 end
 
 # ==========================================================================================
-# 20t. a base that repeats its final heading anchors nothing
+# 20s-ii. an entry inserted ABOVE one the base already had is refused
 # ==========================================================================================
-# Two entries titled identically. "The last '## ' line" still picks one, but the cut
-# made in each SIDE is made by content, so it would land on the first copy while the
-# base was split at the second — and the tail comparison would then be between two
-# different regions. Refused at the base rather than split at a guess.
-begin "a merge base whose final entry heading is repeated verbatim is refused"
+begin "a side that inserts a new entry above an existing one is refused"
+td_fixture union-inserted
+td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
+td_branch_writes "${TD_BASE%%## *}## 2026-09-05 — an entry slipped in above
+
+- Where: the branch
+
+## ${TD_BASE#*## }$TD_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$TD: the branch side adds the entry \"## 2026-09-05 — an entry slipped in above\" above" \
+  'never inserted above one'
+end
+
+# ==========================================================================================
+# 20t. a base that repeats an entry heading matches nothing
+# ==========================================================================================
+# Two entries titled identically cannot be matched across the three copies, so the base
+# is refused rather than merged at a guess.
+begin "a merge base that repeats an entry heading verbatim is refused"
 td_fixture union-anchor-doubled
 must printf '%s' "$TD_BASE_DOUBLED" >"$REPO/$TD"
 must gitc "$REPO" commit --quiet -am 'the log grows a second entry with the same title'
@@ -2283,21 +2464,19 @@ td_views
 run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
-expect_stderr "$TD: the merge-base copy holds 2 lines reading"
-expect_stderr 'a heading repeated verbatim anchors nothing'
+expect_stderr "$TD: the merge-base copy holds 2 entries headed"
+expect_stderr 'a heading repeated verbatim matches nothing'
 expect_not_called "pr merge $PR --squash"
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 end
 
 # ==========================================================================================
-# 20u. …and so does a side that appends a second copy of it
+# 20u. …and so does a side that appends a second copy of one
 # ==========================================================================================
-# The other end of the same guard, and the one a base check cannot catch: the base is
-# fine and the BRANCH appends an entry whose heading is character-for-character the
-# base's last one. Cutting that side by content picks the first copy, and everything
-# below it — an entry the base already had — would be read as appended tail.
-begin "a side that appends a second copy of the anchor heading is refused"
+# The same guard on a side: the base is fine and the BRANCH appends an entry whose
+# heading is character-for-character one the base already had.
+begin "a side that appends a second copy of an existing entry heading is refused"
 td_fixture union-anchor-reused
 td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
 td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY_REUSING_HEADING"
@@ -2308,11 +2487,137 @@ td_views
 run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
-expect_stderr "$TD: the branch side holds 2 lines reading"
-expect_stderr 'no longer names one place in it'
+expect_stderr "$TD: the branch copy holds 2 entries headed"
+expect_stderr 'a heading repeated verbatim matches nothing'
 expect_not_called "pr merge $PR --squash"
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
+end
+
+# ==========================================================================================
+# 20v. docs/review-feedback.md: both sides append one entry — unioned, base first
+# ==========================================================================================
+# The issue's first fixture (#60). Its count is the arithmetic the plan checks itself
+# against: main's entries plus the one the branch added.
+begin "two lanes that both appended a review-feedback entry are unioned, base first"
+td_fixture union-feedback "$RF" "$RF_BASE"
+main_writes "$RF" "$RF_BASE$RF_MAIN_ENTRY"
+branch_writes "$RF" "$RF_BASE$RF_BRANCH_ENTRY"
+conflict_once
+td_views
+run_merge
+expect_union "$RF" "$RF_BASE$RF_MAIN_ENTRY$RF_BRANCH_ENTRY"
+expect_stdout "$RF unioned and pushed ($RF: base appended 1 entr(ies), the branch 1; 5 entr(ies) in all)"
+# Headings outside fences, counted independently of the subject's own parser.
+count_headings() { awk '/^```/ { fenced = !fenced; next } !fenced && /^## / { n++ } END { print n + 0 }'; }
+main_count=$(printf '%s' "$RF_BASE$RF_MAIN_ENTRY" | count_headings)
+union_count=$(origin_branch_file "$RF" | count_headings)
+[ "$union_count" -eq $((main_count + 1)) ] ||
+  bad "the union holds $union_count entries, expected main's $main_count + 1"
+grep -qxF -- "--write $RF" "$STATE/prettier.log" ||
+  bad "prettier was not run over $RF (log: $(cat "$STATE/prettier.log" 2>/dev/null))"
+end
+
+# ==========================================================================================
+# 20w. an entry main deleted and the branch edited is refused
+# ==========================================================================================
+# A deletion is authoritative only over text the other side left alone; against an edit
+# it is a judgement call, and the issue's second fixture (#60).
+begin "a branch edit to an entry main deleted is refused, naming the entry"
+td_fixture union-delete-vs-edit "$RF" "$RF_BASE"
+main_writes "$RF" "$RF_KEPT$RF_MAIN_ENTRY"
+branch_writes "$RF" "$RF_KEPT$RF_DOOMED_EDITED$RF_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$RF: the base side deletes the entry \"## 2026-10-02 — PR #2 — the entry main deletes\", which the branch side edits" \
+  'a deletion is authoritative only over an entry the other side left as it was'
+end
+
+# ==========================================================================================
+# 20x. docs/friction-log.md: the branch consumed entries while main appended one
+# ==========================================================================================
+# The issue's third fixture, in PR #61's shape: the branch's deletion and its trim both
+# stand, main's append is kept, and the untouched entry is untouched.
+begin "a friction-log branch that deleted and trimmed entries beside main's append is unioned"
+td_fixture union-friction "$FL" "$FL_BASE"
+main_writes "$FL" "$FL_BASE$FL_58"
+branch_writes "$FL" "$FL_HEAD$FL_33$FL_48_TRIMMED"
+conflict_once
+td_views
+run_merge
+expect_union "$FL" "$FL_HEAD$FL_33$FL_48_TRIMMED$FL_58"
+expect_stdout "$FL: base appended 1 entr(ies), the branch 0; 1 deleted; 1 edited in place; 3 entr(ies) in all"
+end
+
+# ==========================================================================================
+# 20y. two logs conflicted in one update are unioned in one commit
+# ==========================================================================================
+begin "a conflicted set of two append-only logs is unioned whole, both files in one commit"
+td_fixture union-two-logs "$FL" "$FL_BASE"
+main_writes "$TD" "$TD_BASE$TD_MAIN_ENTRY" "$FL" "$FL_BASE$FL_58"
+branch_writes "$TD" "$TD_BASE$TD_BRANCH_ENTRY" "$FL" "$FL_BASE$FL_60"
+conflict_once
+td_views
+run_merge
+expect_union "$TD" "$TD_BASE$TD_MAIN_ENTRY$TD_BRANCH_ENTRY"
+expect_union "$FL" "$FL_BASE$FL_58$FL_60"
+expect_stdout "$FL: base appended 1 entr(ies), the branch 1; 5 entr(ies) in all | $TD: base appended 1 entr(ies), the branch 1; 3 entr(ies) in all"
+grep -qxF -- "--write $FL $TD" "$STATE/prettier.log" ||
+  bad "prettier was not run over both logs in one call (log: $(cat "$STATE/prettier.log" 2>/dev/null))"
+subject=$(git -C "$ROOT/origin.git" log -1 --format=%s "$HEAD_REF")
+[ "$subject" = "#12: $FL, $TD — union with 'main' (both sides' entries kept)" ] ||
+  bad "the resolution commit's subject is $subject"
+end
+
+# ==========================================================================================
+# 20z. the remaining shapes the plan refuses: a reorder, a heading both sides added, and
+#      an unclosed fence
+# ==========================================================================================
+begin "a side that reorders entries the base already had is refused"
+td_fixture union-reorder "$RF" "$RF_BASE"
+main_writes "$RF" "$RF_BASE$RF_MAIN_ENTRY"
+branch_writes "$RF" "${RF_KEPT%%## 2026-10-01*}${RF_DOOMED#
+}
+## 2026-10-01${RF_KEPT#*## 2026-10-01}$RF_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$RF: the branch side moves the entry \"## 2026-10-01 — PR #1 — the entry that was already here\" above" \
+  'never reorders it'
+end
+
+begin "an entry heading both sides added is refused rather than chosen between"
+td_fixture union-same-heading
+td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
+td_branch_writes "$TD_BASE${TD_MAIN_ENTRY%- Source: #2
+}- Source: #3
+"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$TD: both sides add an entry headed \"## 2026-09-11 — the entry another lane merged first\""
+end
+
+begin "a side whose copy ends inside an unclosed fence is refused"
+td_fixture union-open-fence
+td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY
+\`\`\`
+## not a heading, but nothing closes the fence
+"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$TD: the branch copy ends inside an unclosed code fence"
 end
 
 # ==========================================================================================

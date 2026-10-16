@@ -120,7 +120,7 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    reported HEAD — mismatch: stop, reconcile from the issue ledger before anything else);
    cross-check the classification against the changed-file list; check the changed files
    against other in-flight tasks. Then the merge chain of review-loop step 5 (which owns
-   update-branch, the tech-debt union routine, the settle-then-watch, and all of the
+   update-branch, the append-only-log union routine, the settle-then-watch, and all of the
    ritual still owed at merge time — filling that PR's review-feedback entry
    **Category and Verdict**, both placeholders and never just one, on
    the branch, in the shape `docs/review-feedback.md`'s `## Entry format` declares, which
@@ -158,7 +158,7 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    branch's docs/review-feedback.md entry in the commit that responds — an on-branch
    edit, so it is never yours to make; an approval with no changes relays the same way,
    as the Category and Verdict to fill), branch-side merge fallout beyond the sanctioned
-   tech-debt union routine, a post-merge verification failure, or a question from you or the owner —
+   append-only-log union routine, a post-merge verification failure, or a question from you or the owner —
    goes to the warm agent by SendMessage. You never edit an in-flight worktree. Each
    mutating bounce ends in a refreshed TASK REPORT; re-verify it as in step 4.
 6. **Release**: when the PR is merged, the surviving ticket(s) are closed (a batch's
