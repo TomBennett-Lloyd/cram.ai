@@ -106,7 +106,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-16 — plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14
 
 - Where: `docs/plan.md` §8, the M2 line ("contradiction set"); `docs/adr/0005-evaluation-as-gate.md` § Decision (a) and (h); #14's body ("a first contradiction set")
-- What: the milestone line lists the contradiction set as an M2 deliverable, while ADR 0005 and #14 deliver it with the deck under M1. Pre-existing milestone prose, now cited from `CLAUDE.md` § Commands and ADR 0005 (i).
+- What: the milestone line lists the contradiction set as an M2 deliverable, while ADR 0005 and #14 deliver it with the deck under M1. Pre-existing milestone prose, now cited from ADR 0005 § Context and (h), which name §8 M2.
 - Source: #5 review cycle 1
 
 ## 2026-10-16 — ADR 0005 (g) lists the trigger path set its script will own
@@ -114,3 +114,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (g) (`packages/grounding`, `packages/index`, `packages/gateway`)
 - What: (g) names the gate script as the set's only owner, yet lists the members itself. When #47 lands the script, it declares that set's ledger with ADR 0005 (g) as a carrier (already in #47's body); this entry closes when #47 does.
 - Source: #5 review cycle 1
+
+## 2026-10-16 — grading agreement's hand-marked inputs have no delivering ticket
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (d) (the grading-agreement row) and (h)
+- What: the metric needs committed synthetic student answers with per-rubric-point hand marks; (h) gives #14 only the hand labels of `eval/labels/` (the verifier metric's input), and rubric points arrive with M4, so no ticket delivers the marks. Name the ticket when M4 is ticketed.
+- Source: #5 review cycle 2
+
+## 2026-10-16 — ADR 0005 Option 4 says reports are comparable only when pins match; (f)'s baseline keys on machine class alone
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Options considered 4, against § Decision (f)
+- What: (f) picks the baseline by machine class, so a PR that moves a pin is compared against an old-pin report (the intent); Option 4's "comparable only when their pins and machine class match" invites skipping the regression argument exactly when a pin moves. The decision text governs; the option text is stale.
+- Source: #5 review cycle 2
