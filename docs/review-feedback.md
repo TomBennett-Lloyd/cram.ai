@@ -131,3 +131,16 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0004 at `proposed` and the pointers; revised in place on the branch if review asks.
 - **Verdict**: approved in chat 2026-10-16 — "approve adr 0004" — no revisions requested; ADR 0004 flipped to `accepted` in this commit and the PR merged as proposed.
+
+## 2026-10-16 — issue #5 — adr-0005-evaluation-as-gate
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0005-evaluation-as-gate.md` § Decision (a)–(j), in particular the golden-question schema in (c) with `expectedAnswerUnits` dropped and `mustNotContain` as substrings, the metric definitions and the single owned bar in (d), the recording-key rule in (e), the committed report and newest-on-`main` baseline rule in (f), `check:eval-report` as a `verify:full` leg rather than a CI-only job in (g), and the ticket split in (h);
+  - accept the `docs/plan.md` §4 pointer and §7 item 5 true-up;
+  - accept the `docs/standards/grounding.md` rule 8 path cite;
+  - accept the one-line `CLAUDE.md` § Commands re-point;
+  - accept the ADR joining `.claude/ledgers/contradiction-set-bar.ledger` as a carrier.
+- **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed — ADR 0005 at `proposed` and the pointers; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge

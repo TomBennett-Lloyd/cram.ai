@@ -18,7 +18,7 @@
 
 7. **Withheld is reported, never silent.** Every withheld unit is surfaced to the student with its reason, one of `dangling-citation | unsupported | partial`, in a panel marked withheld. That panel is the one place a failed unit's text appears, and it is never rendered as an answer. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (c).
 
-8. **The contradiction set passes at 100%** — the bar `CLAUDE.md` § Hard constraints, "The slides win", sets. The set in `eval/` is the regression test for rule 6, and any failure in it is red. How it gates a merge is ADR 0005's (#5).
+8. **The contradiction set passes at 100%** — the bar `CLAUDE.md` § Hard constraints, "The slides win", sets. The set in `eval/` is the regression test for rule 6, and any failure in it is red. How it gates a merge is `docs/adr/0005-evaluation-as-gate.md` § Decision (g)'s.
 
 9. **Statements synthesise; quotes anchor.** A unit's text may summarise across any number of slides and lectures and is never required to use slide wording. No prompt asks for extractive output, and no feature limits synthesis to ordering or headings. What a unit may not do is carry a claim its quotes do not entail — rule 4 is the whole test. Sources are slides today; a second source kind (the student's notes, #21) joins only by ADR. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (h) and (i).
 
