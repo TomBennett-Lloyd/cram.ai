@@ -137,7 +137,7 @@ your issue's comments; the top-level never posts them for you.
    ships NOTHING: drop its commit in curation (no revert commits — nothing of it reaches
    main), post a status comment on its issue, strike its `Closes` line — the batch ships
    without it. On a "curate onto latest main" bounce: rebase onto fresh main, resolve
-   docs/tech-debt.md per the union rules, with the marker sweep and the rebase hygiene
+   every append-only log per the union rules, with the marker sweep and the rebase hygiene
    `review-loop` step 5 states (`core.commentChar`, subject-and-body check), re-verify,
    force-push, re-report. **History honesty is mechanical, not inferred**: for every file
    the branch ADDS, assert no earlier commit references it (`git log --oneline -S<path>`,

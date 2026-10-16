@@ -63,7 +63,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 : "${MERGE_PR_RETRY_SECONDS:=10}"                      # between those attempts, between state re-reads, and after a union push
 : "${MERGE_PR_EXPECTED_CHECKS:=0}"                     # a floor the operator can raise; see the checks step
 : "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # re-reads allowed for an eventually-consistent state
-: "${MERGE_PR_PRETTIER_CMD:=pnpm exec prettier}"       # formatter the tech-debt union re-runs; see that step
+: "${MERGE_PR_PRETTIER_CMD:=pnpm exec prettier}"       # formatter the append-only-log union re-runs; see that step
 : "${MERGE_PR_GH_TIMEOUT_SECONDS:=60}"                 # the time box on every gh call; see gh_call
 : "${MERGE_PR_READ_RETRIES:=3}"                        # retries of a failed checks-poll read before the step fails
 
@@ -758,108 +758,40 @@ else
   esac
 fi
 
-# --- the docs/tech-debt.md append collision ------------------------------------------------------
+# --- the append-only-log collision ---------------------------------------------------------------
 #
-# Four PRs on 2026-09-11 (cumulo#492, cumulo#499, cumulo#511, cumulo#512) arrived DIRTY for one reason:
-# every lane appends its SYSTEMIC findings to the tail of docs/tech-debt.md, so any
-# two lanes that both log debt collide on the last line. The resolution was the same
-# three moves each time — main's appended entries first, the branch's after, markers
-# stripped, prettier — and it was done by hand at the merge owner's keyboard, because
-# .claude/agents/ticket-agent.md rule 1 forbids the lane from doing it. Issue cumulo#513 is
-# that resolution, and ONLY that.
-#
-# The scope is deliberately narrow, and narrow in the refusing direction. What is
-# automated is the one collision whose correct answer is arithmetic rather than
-# judgement: both sides appended whole entries to the tail, and everything above that
-# tail merges on its own. Everything else — a second conflicted file, a side that
-# edited the base's last entry or anything else from its final `## ` heading down,
-# two sides that changed the region above that heading in ways git cannot reconcile, a
-# side that appended into the last entry's body rather than starting a new one — is a
-# REFUSAL naming the file and the region, and lands back at
-# the merge owner's keyboard exactly as it does today. The cost of refusing wrongly is
-# one hand resolution; the cost of unioning wrongly is a silently mangled log that the
-# squash merge then makes permanent, which is why every unclear case refuses.
-#
-# The analysis happens in the repository root and touches no worktree, no branch and
-# no commit: nothing a refusal would leave for the merge owner to undo. What it does
-# write is a fetch's own writes, plus the unreachable tree merge-tree --write-tree
-# leaves behind. (Deliberately not enumerated further. Two passes running, a careful
-# list of what a `git fetch` writes has been falsified by one more thing it writes —
-# FETCH_HEAD, then the remote-tracking refs — and a claim that cannot be completed is
-# better made in the form that does not need completing.) Only once every test has
-# passed is anything applied, and then only in the lane's own worktree.
-#
-# Note for a future rename: this step matches the literal path docs/tech-debt.md and
-# is therefore an EXECUTABLE carrier of it, the way the feedback step is for
-# docs/review-feedback.md. That path's restatement ledger is the paragraph under
-# `# Tech-debt log` in docs/tech-debt.md itself — go there first, and note that the
-# harness next door carries the literal too. The failure direction here is at least
-# quiet-and-closed rather than quiet-and-open: a renamed log stops conflicting under
-# this name, merge-tree reports the new name, and the conflicted-set test refuses
-# with that name in the message.
+# Lanes append entries to the tail of the logs below, so two lanes that both log
+# something collide there and update-branch answers a conflict (cumulo#513 for
+# docs/tech-debt.md; #60 for the other two). The one resolution that is arithmetic
+# rather than judgement is automated: an entry-by-entry union, with everything
+# else refused for the merge owner. Refusing wrongly costs one hand resolution;
+# unioning wrongly is a mangled log the squash merge makes permanent.
 
-TECH_DEBT_PATH='docs/tech-debt.md'
+# The logs this step may resolve, declared once: .claude/skills/review-loop/SKILL.md
+# step 5 cites this name rather than listing them. Each path is an executable carrier
+# of that log's name (the path ledgers that exist: docs/tech-debt.md's header, and
+# .claude/workflow.json → feedbackLogLedger), and a rename that misses this list fails
+# closed: the conflict arrives under a path the list lacks, and the conflicted-set test
+# refuses naming it.
+APPEND_ONLY_LOGS=('docs/review-feedback.md' 'docs/tech-debt.md' 'docs/friction-log.md')
 
-# tech_debt_union_plan <merge-base blob> <base-tip blob> <branch blob> <out-file> <scratch dir>
+is_append_only_log() { # is_append_only_log <path> -> 0 when <path> is one of APPEND_ONLY_LOGS
+  local p
+  for p in "${APPEND_ONLY_LOGS[@]}"; do
+    [ "$p" = "$1" ] && return 0
+  done
+  return 1
+}
+
+# log_union_plan <merge-base blob> <base-tip blob> <branch blob> <out-file> <scratch dir> <path>
 #   -> 0 the union is written to <out-file>, a one-line summary on stdout
 #      1 refused, the reason on stdout
 #      2 the question could not be asked at all, the reason on stdout
 #
-# The whole decision, and none of the consequences. Three blobs are read — the file
-# at the merge base (O), at the base tip (A) and at the branch head (B).
-#
-# cumulo#513 tested the WHOLE BLOB: A and B each had to begin with O byte for byte. That is
-# a test of the file, and the thing being resolved is a conflict. Its first live run
-# (cumulo#524, issue cumulo#525) refused a tail-only collision because cumulo#513's own merge had
-# added a restatement ledger to this log's header, so main's line 14 no longer matched
-# the merge base — a clean, already-merged edit nowhere near the conflict, and the
-# strictly-stronger test was strictly stronger than the truth.
-#
-# What is tested now is the CONFLICT REGION, which is what issue cumulo#513 proposed in the
-# first place: every conflicted hunk must lie after the base's final `## ` heading,
-# and must hold no deletion against the base on either side. Both halves are asked
-# through the base's final heading line H, which anchors all three blobs:
-#
-#   1. H is O's last line starting with `## `, and must appear exactly ONCE in each of
-#      O, A and B. A side that no longer holds it has renamed or deleted the base's
-#      last entry heading, and there is then no anchor and no tail. Refuse, naming it.
-#   2. Split each blob at the start of its H: O = Ohead + Orest, and likewise A and B.
-#   3. `git merge-file -p Ahead Ohead Bhead`, over slices written to <scratch dir> —
-#      which is the mktemp -d tech_debt_union made, and is a parameter rather than a
-#      path derived from <out-file> so that "this function writes nowhere but the
-#      scratch directory" is visible in the signature. Exit 0 means the region ABOVE
-#      the final heading merges cleanly, so no conflicted hunk lies there: the issue's
-#      "every hunk sits after the base's final `## ` heading", asked of the merger
-#      rather than reconstructed from marker line numbers. A conflict count back from
-#      merge-file is the refusal; a failure to run it at all is rc 2, and the two are
-#      kept apart because one is an answer and the other is a broken question.
-#   4. Orest must be an exact string prefix of Arest and of Brest. Within the region
-#      the hunks live in, that is the issue's "no `-` lines against the base on either
-#      side", plus a narrowing: additions must come at the END of that region rather
-#      than spliced into the base's last entry. A side that is not an extension gets
-#      the first line it changed, and H — which is the only `## ` heading Orest can
-#      contain — because "docs/tech-debt.md conflicts" is not something a merge owner
-#      can act on.
-#
-# So the refusal cumulo#513 wrote for "a side edited text the base already had" has NARROWED,
-# deliberately and in exactly one direction: from the whole file to the region from H
-# down. An edit above H is now the merger's business, and step 3 is where it is settled.
-#
-# Why not parse merge-file's own markers and map the hunks back to base line numbers:
-# `-p` output carries none, and the hunk that matters here — both sides appending at
-# EOF — has an EMPTY base section, so its position in the base is exactly the thing
-# that cannot be recovered from the output. Asking the merger about the head region
-# decides the same question with the answer it does give.
-#
-# Each tail must then OPEN A NEW `## ` ENTRY, and this survives the change to the
-# region test rather than being subsumed by it — sitting after the base's final
-# heading is PRECISELY what a body-continuation append does. The reason is a shape
-# this log has already recorded about itself (its 2026-09-11 entry "An Update appended
-# to a sweep-defined entry joins that entry's own sweep"): text appended at EOF with
-# no heading of its own extends the LAST EXISTING ENTRY, and concatenating the two
-# sides would then interleave one entry's body with another entry's heading. Whole
-# entries or nothing.
-tech_debt_union_plan() {
+# A three-way merge per entry, keyed by "## " heading, under the union rule
+# .claude/skills/review-loop/SKILL.md step 5 owns. Fenced lines are not headings: every
+# log's `Entry format` fence holds one. Cases: step 20 of merge-pr.test.sh.
+log_union_plan() {
   node -e '
 const fs = require("fs");
 const path = require("path");
@@ -870,7 +802,8 @@ const say = (code, msg) => {
   process.stdout.write(msg + "\n");
   process.exit(code);
 };
-const refuse = (msg) => say(1, msg);
+const refuse = (msg) => say(1, target + ": " + msg);
+const q = JSON.stringify;
 
 let O, A, B;
 try {
@@ -880,229 +813,196 @@ try {
 } catch (e) {
   say(2, "could not read the three " + target + " blobs: " + e.message);
 }
-
-// No base copy means the file was ADDED on both sides. There is no common prefix to
-// append to, so "keep both tails" has no meaning here and the union is a guess.
 if (O.length === 0) {
-  refuse(
-    target +
-      ": the merge base has no copy of this file, so neither side is an append to a shared tail — nothing here is arithmetic"
-  );
+  refuse("the merge base has no copy of this file, so neither side is an append to a shared log");
 }
-if (!O.endsWith("\n")) {
-  refuse(
-    target +
-      ": the merge-base copy does not end with a newline, so an appended entry does not start on a line of its own"
-  );
-}
-
-const baseLines = O.split("\n");
-let anchorAt = -1;
-for (let i = baseLines.length - 1; i >= 0; i--) {
-  if (baseLines[i].startsWith("## ")) {
-    anchorAt = i;
-    break;
+for (const [text, side] of [[A, "base"], [B, "branch"]]) {
+  if (text.length === 0) {
+    refuse("the " + side + " side has no copy of this file — a log deleted or emptied on one side is not an append");
   }
 }
-if (anchorAt < 0) {
-  refuse(
-    target +
-      ": the merge-base copy holds no \"## \" entry heading — this is not the append-only log this step knows how to union"
-  );
-}
-// H anchors all three blobs. It has to name exactly one place in each of them, so a
-// log that repeats a heading line verbatim is refused rather than split at a guess.
-const H = baseLines[anchorAt];
-const occurrences = (lines) => lines.filter((l) => l === H).length;
-if (occurrences(baseLines) !== 1) {
-  refuse(
-    target +
-      ": the merge-base copy holds " +
-      occurrences(baseLines) +
-      " lines reading " +
-      JSON.stringify(H) +
-      " — the tail is anchored on the final entry heading, and a heading repeated verbatim anchors nothing"
-  );
-}
 
-// Character offset of the start of line <n>, in a text split into <lines>.
-const offsetOfLine = (lines, n) => lines.slice(0, n).reduce((a, l) => a + l.length + 1, 0);
-
-const headEnd = offsetOfLine(baseLines, anchorAt);
-const oHead = O.slice(0, headEnd);
-const oRest = O.slice(headEnd);
-
-// The same cut in a side, made at ITS copy of H rather than at a line number: the
-// point of the change is that a side may legitimately have grown or shrunk above H.
-const cutAtAnchor = (text, side) => {
-  const lines = text.split("\n");
-  const n = occurrences(lines);
-  if (n === 0) {
-    refuse(
-      target +
-        ": the " +
-        side +
-        " side no longer holds the line " +
-        JSON.stringify(H) +
-        ", which is the final entry heading of the merge base and the line this step anchors the tail on — that side has rewritten or removed an entry the base already had"
-    );
-  }
-  if (n > 1) {
-    refuse(
-      target +
-        ": the " +
-        side +
-        " side holds " +
-        n +
-        " lines reading " +
-        JSON.stringify(H) +
-        ", so the merge base final entry heading no longer names one place in it and the tail cannot be cut off"
-    );
-  }
-  const at = offsetOfLine(lines, lines.indexOf(H));
-  return [text.slice(0, at), text.slice(at)];
+// Trailing blank lines are dropped from every part, and the union rejoins the parts
+// with one blank line, which is the shape prettier gives these files.
+const trimTail = (lines) => {
+  const out = lines.slice();
+  while (out.length && out[out.length - 1].trim() === "") out.pop();
+  return out.join("\n");
 };
 
-const [aHead, aRest] = cutAtAnchor(A, "base");
-const [bHead, bRest] = cutAtAnchor(B, "branch");
+// -> { head, entries: [{ heading, text }] }
+const parse = (text, copy) => {
+  const lines = text.split("\n");
+  const head = [];
+  const entries = [];
+  let current = head;
+  let fence = null;
+  for (const line of lines) {
+    const run = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (run) {
+      if (fence === null) fence = run[1];
+      else if (run[1][0] === fence[0] && run[1].length >= fence.length && line.trim() === run[1]) fence = null;
+    } else if (fence === null && line.startsWith("## ")) {
+      current = [];
+      entries.push({ heading: line, lines: current });
+    }
+    current.push(line);
+  }
+  if (fence !== null) {
+    refuse("the " + copy + " copy ends inside an unclosed code fence, so its entry headings cannot be told from fenced text");
+  }
+  return { head: trimTail(head), entries: entries.map((e) => ({ heading: e.heading, text: trimTail(e.lines) })) };
+};
 
-// The region ABOVE the anchor, put to the merger itself. A clean edit there — one
-// side, or both in places git can reconcile — is not this collision and must not
-// refuse; a conflict there is, and does. Slices go to the scratch directory the
-// caller passed, which is the one place this function is allowed to write.
-const slice = (name, text) => {
-  const p = path.join(scratch, name);
-  fs.writeFileSync(p, text);
+const byHeading = (doc, copy) => {
+  const map = new Map();
+  for (const e of doc.entries) {
+    if (map.has(e.heading)) {
+      const n = doc.entries.filter((x) => x.heading === e.heading).length;
+      refuse(
+        "the " + copy + " copy holds " + n + " entries headed " + q(e.heading) +
+          " — entries are matched by heading, and a heading repeated verbatim matches nothing"
+      );
+    }
+    map.set(e.heading, e.text);
+  }
+  return map;
+};
+
+const o = parse(O, "merge-base");
+const a = parse(A, "base");
+const b = parse(B, "branch");
+if (o.entries.length === 0) {
+  refuse("the merge-base copy holds no \"## \" entry heading — this is not an append-only log this step knows how to union");
+}
+const oMap = byHeading(o, "merge-base");
+const aMap = byHeading(a, "base");
+const bMap = byHeading(b, "branch");
+const oOrder = new Map(o.entries.map((e, i) => [e.heading, i]));
+
+// A side keeps the base entries it holds in the base order, and every entry it adds
+// comes after the last of them.
+const mustOnlyAppend = (doc, side) => {
+  let last = -1;
+  let added = null;
+  for (const e of doc.entries) {
+    const at = oOrder.get(e.heading);
+    if (at === undefined) {
+      if (added === null) added = e.heading;
+      continue;
+    }
+    if (added !== null) {
+      refuse(
+        "the " + side + " side adds the entry " + q(added) + " above " + q(e.heading) +
+          ", which the merge base already had — this step unions entries appended at the tail, never inserted above one"
+      );
+    }
+    if (at < last) {
+      refuse(
+        "the " + side + " side moves the entry " + q(e.heading) + " above " + q(o.entries[last].heading) +
+          " — this step keeps the merge base order and never reorders it"
+      );
+    }
+    last = at;
+  }
+};
+mustOnlyAppend(a, "base");
+mustOnlyAppend(b, "branch");
+
+let slices = 0;
+const slice = (text) => {
+  const p = path.join(scratch, "slice-" + slices++);
+  fs.writeFileSync(p, text === "" ? "" : text + "\n");
   return p;
 };
-let mergedHead;
-try {
-  mergedHead = execFileSync(
-    "git",
-    [
-      "merge-file",
-      "-p",
-      "--quiet",
-      slice("head-base", aHead),
-      slice("head-merge-base", oHead),
-      slice("head-branch", bHead),
-    ],
-    // maxBuffer is declared rather than defaulted: the head slice is almost the whole
-    // log (H sits near EOF), the log only grows between triage passes, and Node caps
-    // a child at 1 MiB unless told otherwise. Past the ceiling execFileSync throws
-    // with status null, which lands on say(2) — the safe direction, but a refusal
-    // whose reason is a buffer size is a bad afternoon for whoever reads it.
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 }
-  );
-} catch (e) {
-  // git merge-file exits with the number of conflicts it left, and with something
-  // >= 128 when it could not run at all — a distinction worth keeping, because the
-  // first is an answer and the second is a broken question.
-  if (typeof e.status === "number" && e.status > 0 && e.status < 128) {
-    refuse(
-      target +
-        ": the region above " +
-        JSON.stringify(H) +
-        " — the final entry heading of the merge base — does not merge: git merge-file leaves " +
-        e.status +
-        " conflict(s) there. This step unions tail appends, and only when everything above the tail merges on its own"
+// One side changed it: that side wins. Both did: git merge-file decides, and a
+// conflict count back is the refusal while a failure to run is rc 2.
+const merge3 = (what, mine, base, theirs) => {
+  if (mine === theirs || theirs === base) return mine;
+  if (mine === base) return theirs;
+  let merged;
+  try {
+    merged = execFileSync(
+      "git",
+      ["merge-file", "-p", "--quiet", slice(mine), slice(base), slice(theirs)],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 }
     );
+  } catch (e) {
+    if (typeof e.status === "number" && e.status > 0 && e.status < 128) {
+      refuse(what + " was changed on both sides and does not merge: git merge-file leaves " + e.status + " conflict(s) there");
+    }
+    say(2, "could not merge " + what + " in " + target + ": " + e.message);
   }
-  say(2, "could not merge the region above " + JSON.stringify(H) + " in " + target + ": " + e.message);
+  return trimTail(merged.split("\n"));
+};
+
+const head = merge3("the header above the first entry", a.head, o.head, b.head);
+
+const kept = [];
+let deleted = 0;
+let edited = 0;
+for (const e of o.entries) {
+  const h = e.heading;
+  if (aMap.has(h) && bMap.has(h)) {
+    const text = merge3("the entry " + q(h), aMap.get(h), e.text, bMap.get(h));
+    if (text !== e.text) edited++;
+    kept.push({ heading: h, text });
+    continue;
+  }
+  for (const [map, keeper, deleter] of [[aMap, "base", "branch"], [bMap, "branch", "base"]]) {
+    if (map.has(h) && map.get(h) !== e.text) {
+      refuse(
+        "the " + deleter + " side deletes the entry " + q(h) + ", which the " + keeper +
+          " side edits — a deletion is authoritative only over an entry the other side left as it was"
+      );
+    }
+  }
+  deleted++;
 }
-// mergedHead needs no trailing-newline check before oRest is concatenated onto it:
-// all three slices are cut at a line start, so each is either empty or ends in a
-// newline, and merge-file over newline-terminated inputs answers in kind.
 
-// H is the LAST "## " line of O and oRest starts at it, so H is the only entry heading
-// oRest can contain — every line the test below can object to falls under it.
-const restLines = oRest.split("\n");
-
-const mustExtend = (rest, side) => {
-  if (rest.startsWith(oRest)) return;
-  // Where the two first disagree. The loop always stops below restLines.length once
-  // startsWith has failed: a side matching every line INCLUDING the empty element
-  // after the trailing newline necessarily begins with oRest, which is the case above.
-  const lines = rest.split("\n");
-  const n = Math.min(lines.length, restLines.length);
-  let i = 0;
-  while (i < n && lines[i] === restLines[i]) i++;
-  refuse(
-    target +
-      ": the " +
-      side +
-      " side " +
-      (i >= lines.length ? "deletes" : "changes") +
-      " line " +
-      (anchorAt + i + 1) +
-      " of the merge-base copy, under the entry " +
-      JSON.stringify(H) +
-      " — from that final heading down, this step unions tail appends and never an edit to text the base already had"
-  );
-};
-
-mustExtend(aRest, "base");
-mustExtend(bRest, "branch");
-
-const entriesIn = (tail) => tail.split("\n").filter((l) => l.startsWith("## ")).length;
-
-const mustOpenAnEntry = (tail, side) => {
-  if (tail.length === 0) return; // that side appended nothing; the union is the other tail
-  if (!tail.endsWith("\n")) {
-    refuse(
-      target +
-        ": the " +
-        side +
-        " side appends a tail that does not end with a newline, so concatenating the two sides would run that tail into the line the other one starts with"
-    );
+const aNew = a.entries.filter((e) => !oMap.has(e.heading));
+const bNew = b.entries.filter((e) => !oMap.has(e.heading));
+for (const e of bNew) {
+  if (aMap.has(e.heading)) {
+    refuse("both sides add an entry headed " + q(e.heading) + " — this step unions distinct entries and never chooses between two versions of one");
   }
-  const lines = tail.split("\n");
-  let k = 0;
-  while (k < lines.length && lines[k].trim() === "") k++;
-  if (k >= lines.length) {
-    refuse(target + ": the " + side + " side appends only blank lines");
-  }
-  if (!lines[k].startsWith("## ")) {
-    refuse(
-      target +
-        ": the " +
-        side +
-        " side appends " +
-        JSON.stringify(lines[k]) +
-        " with no \"## \" heading of its own, which extends the last existing entry rather than starting a new one — this step unions whole entries only"
-    );
-  }
-};
+}
 
-const aTail = aRest.slice(oRest.length);
-const bTail = bRest.slice(oRest.length);
-mustOpenAnEntry(aTail, "base");
-mustOpenAnEntry(bTail, "branch");
+const entries = [...kept, ...aNew, ...bNew];
+const union = [head, ...entries.map((e) => e.text)].filter((t) => t !== "").join("\n\n") + "\n";
 
-// The order is the rule the four hand resolutions used: main first, the branch after.
-// The head region is whatever the merger made of it, which is how an edit above the
-// anchor survives the resolution instead of being silently reverted to the base.
+// The heading-set arithmetic, from the three copies rather than from what was built:
+// the merge base headings both sides still hold, then the additions of each side, base
+// side first. A mismatch is this function wrong, not the logs.
+const added = (doc) => doc.entries.map((e) => e.heading).filter((h) => !oMap.has(h));
+const want = [
+  ...o.entries.map((e) => e.heading).filter((h) => aMap.has(h) && bMap.has(h)),
+  ...added(a),
+  ...added(b),
+];
+const got = parse(union, "union").entries.map((e) => e.heading);
+if (got.join("\n") !== want.join("\n")) {
+  say(2, "the union of " + target + " does not come out as the merge base headings both sides kept plus both sides additions — refusing a result this step cannot account for");
+}
+
 try {
-  fs.writeFileSync(outPath, mergedHead + oRest + aTail + bTail);
+  fs.writeFileSync(outPath, union);
 } catch (e) {
   say(2, "could not write the union: " + e.message);
 }
-say(
-  0,
-  "base appended " +
-    entriesIn(aTail) +
-    " entr(ies), the branch " +
-    entriesIn(bTail) +
-    (mergedHead === oHead
-      ? ""
-      : "; the region above the final base entry heading had moved and merged cleanly")
-);
-' "$1" "$2" "$3" "$4" "$5" "$TECH_DEBT_PATH"
+const notes = [];
+if (deleted > 0) notes.push(deleted + " deleted");
+if (edited > 0) notes.push(edited + " edited in place");
+if (head !== o.head) notes.push("the header above the first entry had moved and merged cleanly");
+notes.push(got.length + " entr(ies) in all");
+say(0, "base appended " + aNew.length + " entr(ies), the branch " + bNew.length + "; " + notes.join("; "));
+' "$1" "$2" "$3" "$4" "$5" "$6"
 }
 
 union_reason=""
 union_summary=""
 union_new_sha=""
+union_paths=""
 
 union_abort() { # union_abort <worktree> <scratch dir> <reason> — undo and refuse
   git -C "$1" merge --abort >/dev/null 2>&1
@@ -1110,25 +1010,24 @@ union_abort() { # union_abort <worktree> <scratch dir> <reason> — undo and ref
   union_reason="$3"
 }
 
-# tech_debt_union -> 0 resolved, committed and pushed; 1 refused with $union_reason set.
-# Split from the plan function above on the read-only/writing line: everything that
-# can say no happens before this function touches anything.
-tech_debt_union() {
+# log_union -> 0 resolved, committed and pushed; 1 refused with $union_reason set.
+log_union() {
   local base_sha merge_base tip wt out rc dir conflicted status subject line past_oid
-  local seen_paths prettier_cmd
+  local seen_paths summaries prettier_cmd p i
   seen_paths=()
+  summaries=()
   past_oid=0
   union_reason=""
   union_summary=""
+  union_paths=""
 
   [ -n "$pr_base_ref" ] || {
     union_reason="gh reported no base branch for this PR, so there is nothing to union against"
     return 1
   }
 
-  # The base by its full ref, so FETCH_HEAD names exactly one thing, and its sha read
-  # once and used everywhere after: a second rev-parse could answer a different commit
-  # if another process fetches between the two.
+  # The base by its full ref, and its sha read once: a second rev-parse could answer
+  # a different commit if another process fetches between the two.
   out=$(git -C "$repo_root" fetch --quiet origin "refs/heads/$pr_base_ref" 2>&1)
   rc=$?
   [ "$rc" -eq 0 ] || {
@@ -1140,9 +1039,8 @@ tech_debt_union() {
     return 1
   }
 
-  # The lane's worktree, resolved from the branch exactly as the worktree step does.
-  # No worktree means there is nowhere to do this that is not somebody else's checkout,
-  # and creating one would make this step the owner of a lifecycle it does not own.
+  # The lane's own worktree; creating one would make this step the owner of a
+  # lifecycle it does not own.
   wt=$(worktree_holding "$repo_root" "$pr_head_ref") || {
     union_reason="git worktree list failed in $repo_root"
     return 1
@@ -1156,8 +1054,6 @@ tech_debt_union() {
     return 1
   }
 
-  # Dirty means somebody's uncommitted work is in there. A merge would either refuse
-  # halfway or sweep it into the resolution commit, and neither is this script's to do.
   status=$(git -C "$wt" --no-optional-locks status --porcelain 2>&1)
   rc=$?
   [ "$rc" -eq 0 ] || {
@@ -1169,10 +1065,8 @@ tech_debt_union() {
     return 1
   }
 
-  # What is on disk must be what GitHub is talking about. If the lane pushed a commit
-  # this checkout has not got — or never pushed one it has — the union would be
-  # computed against a branch nobody is merging, and the lease below would be a lease
-  # on the wrong sha.
+  # What is on disk must be what GitHub is merging, or the lease below is a lease on
+  # the wrong sha.
   tip=$(git -C "$wt" rev-parse HEAD 2>&1) || {
     union_reason="could not read HEAD in $wt: $tip"
     return 1
@@ -1182,10 +1076,8 @@ tech_debt_union() {
     return 1
   }
 
-  # The conflicted set, without a checkout: merge-tree does the whole merge in the
-  # object store. rc 0 means git can merge these two cleanly, so whatever
-  # update-branch was complaining about is not a conflict this step can see, and
-  # guessing at it is exactly what this step must not do.
+  # The conflicted set, merged in the object store without a checkout. rc 0 means
+  # git merges these cleanly, so the conflict gh reported is not one visible here.
   conflicted=$(git -C "$repo_root" merge-tree --write-tree --name-only "$base_sha" "$tip" 2>&1)
   rc=$?
   case "$rc" in
@@ -1200,10 +1092,8 @@ tech_debt_union() {
       ;;
   esac
 
-  # merge-tree --write-tree prints the merged tree's oid, then one line per conflicted
-  # path, then a blank line, then its informational messages. Only the middle section
-  # is the conflicted set, so the read stops at the blank line rather than swallowing
-  # "CONFLICT (content): Merge conflict in …" as a filename.
+  # The tree oid, then one conflicted path per line, then a blank line, then
+  # informational messages — only the middle section is the set.
   while IFS= read -r line; do
     if [ "$past_oid" = "0" ]; then
       past_oid=1
@@ -1215,10 +1105,17 @@ tech_debt_union() {
 $conflicted
 EOF
 
-  if [ "${#seen_paths[@]}" -ne 1 ] || [ "${seen_paths[0]}" != "$TECH_DEBT_PATH" ]; then
-    union_reason="the conflicted set is$(printf ' %s' ${seen_paths[@]+"${seen_paths[@]}"}) — this step resolves $TECH_DEBT_PATH and only $TECH_DEBT_PATH, alone"
+  [ "${#seen_paths[@]}" -gt 0 ] || {
+    union_reason="git merge-tree reported a conflict but named no conflicted path"
     return 1
-  fi
+  }
+  for p in "${seen_paths[@]}"; do
+    is_append_only_log "$p" || {
+      union_reason="the conflicted set is$(printf ' %s' "${seen_paths[@]}") — this step resolves only the append-only logs (${APPEND_ONLY_LOGS[*]}), and $p is not one"
+      return 1
+    }
+  done
+  union_paths="${seen_paths[*]}"
 
   merge_base=$(git -C "$repo_root" merge-base "$base_sha" "$tip" 2>&1) || {
     union_reason="could not find the merge base of '$pr_base_ref' and '$pr_head_ref': $merge_base"
@@ -1229,27 +1126,34 @@ EOF
     union_reason="could not create a scratch directory for the union"
     return 1
   }
-  # `git show` of a path that does not exist at that commit exits non-zero and writes
-  # nothing; an empty base blob is a case tech_debt_union_plan refuses by name, so the
-  # failure is allowed through to it rather than handled twice.
-  git -C "$repo_root" show "$merge_base:$TECH_DEBT_PATH" >"$dir/base" 2>/dev/null
-  git -C "$repo_root" show "$base_sha:$TECH_DEBT_PATH" >"$dir/a" 2>/dev/null
-  git -C "$repo_root" show "$tip:$TECH_DEBT_PATH" >"$dir/b" 2>/dev/null
+  i=0
+  for p in "${seen_paths[@]}"; do
+    mkdir "$dir/$i" || {
+      rm -rf "$dir"
+      union_reason="could not create a scratch directory for $p"
+      return 1
+    }
+    # A path missing at a commit writes nothing, and the plan refuses any empty copy
+    # by name.
+    git -C "$repo_root" show "$merge_base:$p" >"$dir/$i/base" 2>/dev/null
+    git -C "$repo_root" show "$base_sha:$p" >"$dir/$i/a" 2>/dev/null
+    git -C "$repo_root" show "$tip:$p" >"$dir/$i/b" 2>/dev/null
+    out=$(log_union_plan "$dir/$i/base" "$dir/$i/a" "$dir/$i/b" "$dir/$i/union" "$dir/$i" "$p")
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+      union_reason="$out"
+      rm -rf "$dir"
+      return 1
+    fi
+    summaries+=("$p: $out")
+    i=$((i + 1))
+  done
+  union_summary=$(printf '%s | ' "${summaries[@]}")
+  union_summary=${union_summary% | }
 
-  out=$(tech_debt_union_plan "$dir/base" "$dir/a" "$dir/b" "$dir/union" "$dir")
-  rc=$?
-  if [ "$rc" -ne 0 ]; then
-    union_reason="$out"
-    rm -rf "$dir"
-    return 1
-  fi
-  union_summary="$out"
+  # ---- from here on the worktree is being written to; every failure runs union_abort.
 
-  # ---- from here on the worktree is being written to; every failure runs union_abort,
-  # which puts the tree back the way it was found before it refuses.
-
-  # --no-ff, because this is precisely the merge commit `gh pr update-branch` would
-  # have written had it been able to resolve the conflict itself.
+  # --no-ff: the merge commit `gh pr update-branch` would have written itself.
   out=$(git -C "$wt" -c core.commentChar=';' merge --no-ff --no-commit "$base_sha" 2>&1)
   rc=$?
   if [ "$rc" -eq 0 ]; then
@@ -1258,42 +1162,40 @@ EOF
   fi
 
   conflicted=$(git -C "$wt" diff --name-only --diff-filter=U 2>&1)
-  if [ "$conflicted" != "$TECH_DEBT_PATH" ]; then
-    union_abort "$wt" "$dir" "the merge left $(printf '%s' "$conflicted" | tr '\n' ' ')unresolved, not $TECH_DEBT_PATH alone — the tree moved under the analysis"
+  if [ "$(printf '%s\n' "$conflicted" | sort)" != "$(printf '%s\n' "${seen_paths[@]}" | sort)" ]; then
+    union_abort "$wt" "$dir" "the merge left $(printf '%s' "$conflicted" | tr '\n' ' ')unresolved, not the analysed $union_paths — the tree moved under the analysis"
     return 1
   fi
 
-  cat "$dir/union" >"$wt/$TECH_DEBT_PATH" || {
-    union_abort "$wt" "$dir" "could not write the union into $wt/$TECH_DEBT_PATH"
-    return 1
-  }
+  i=0
+  for p in "${seen_paths[@]}"; do
+    cat "$dir/$i/union" >"$wt/$p" || {
+      union_abort "$wt" "$dir" "could not write the union into $wt/$p"
+      return 1
+    }
+    i=$((i + 1))
+  done
 
-  # Prettier, because format:check is part of `pnpm verify` and a resolution that
-  # reddens it just moves the merge owner's work rather than removing it. Read into an
-  # array so the knob can carry arguments without this line word-splitting a variable.
+  # format:check is part of `pnpm verify`. An array, so the knob can carry arguments.
   read -r -a prettier_cmd <<<"$MERGE_PR_PRETTIER_CMD"
-  out=$( (cd "$wt" && "${prettier_cmd[@]}" --write "$TECH_DEBT_PATH") 2>&1)
+  out=$( (cd "$wt" && "${prettier_cmd[@]}" --write "${seen_paths[@]}") 2>&1)
   rc=$?
   if [ "$rc" -ne 0 ]; then
-    union_abort "$wt" "$dir" "prettier exited $rc over $TECH_DEBT_PATH: $out"
+    union_abort "$wt" "$dir" "prettier exited $rc over $union_paths: $out"
     return 1
   fi
 
-  # The marker sweep .claude/skills/review-loop/SKILL.md step 5 requires of every
-  # conflict resolution, in both of its spellings — the ERE grep and `git diff HEAD
-  # --check`, which reads staged and unstaged content alike and so speaks whether or
-  # not the resolved file has been added yet. Three of the union's four parts are
-  # verbatim slices of the three blobs, and the fourth — the merged head region —
-  # reaches this point only when merge-file exited 0, which is to say only when it wrote
-  # no markers. So a marker here would mean the resolution is not what this step thinks
-  # it is.
-  if grep -nE '^(<<<<<<<|=======|>>>>>>>)' "$wt/$TECH_DEBT_PATH" >/dev/null 2>&1; then
-    union_abort "$wt" "$dir" "the resolved $TECH_DEBT_PATH still holds conflict markers — refusing to commit it"
-    return 1
-  fi
+  # .claude/skills/review-loop/SKILL.md step 5's marker sweep, both spellings, after
+  # the formatter: a marker here means the resolution is not what the plan computed.
+  for p in "${seen_paths[@]}"; do
+    if grep -nE '^(<<<<<<<|=======|>>>>>>>)' "$wt/$p" >/dev/null 2>&1; then
+      union_abort "$wt" "$dir" "the resolved $p still holds conflict markers — refusing to commit it"
+      return 1
+    fi
+  done
 
-  out=$(git -C "$wt" add -- "$TECH_DEBT_PATH" 2>&1) || {
-    union_abort "$wt" "$dir" "could not stage the resolved $TECH_DEBT_PATH: $out"
+  out=$(git -C "$wt" add -- "${seen_paths[@]}" 2>&1) || {
+    union_abort "$wt" "$dir" "could not stage the resolved $union_paths: $out"
     return 1
   }
 
@@ -1304,41 +1206,14 @@ EOF
     return 1
   fi
 
-  # Both overrides, and the real reason for each — measured on git 2.50.1 rather than
-  # carried over from the rebase rule, which is about a different mechanism:
-  #
-  #   - commit.cleanup=strip so the message does not depend on repo-local config. The
-  #     `prepare` script in package.json writes commit.cleanup=whitespace, and a clone
-  #     that has not run it has git's own default instead. `-m` defaults to whitespace
-  #     either way today, so this is belt and braces, not a repair.
-  #   - core.commentChar=';' because it MUST travel with strip. Every commit subject
-  #     here begins '#<issue>', strip deletes comment lines, and
-  #     `git -c commit.cleanup=strip commit -m '#513: …'` aborts with "empty commit
-  #     message" — the subject is the whole message. With the swap it survives.
-  #
-  # What this pairing is NOT: it is not the rebase trap. `commit -m` never reads
-  # MERGE_MSG, so there is no ';'-prefixed Conflicts block here to preserve — that is
-  # .claude/skills/review-loop/SKILL.md step 5's rule, about `rebase`, and the artifact
-  # it warns of is recorded in docs/friction-log.md's 2026-08-11 entry (cumulo#366's
-  # commentChar repair), not its 2026-09-11 one.
-  #
-  # This commit runs the repo's own pre-commit hook, and that is a dependency worth
-  # naming rather than discovering: .githooks/pre-commit hard-fails without gitleaks and
-  # without node_modules, and runs lint-staged over the WHOLE staged index — which,
-  # mid-merge, is every file the base brought in, not the one file resolved here. It
-  # fails in the safe direction (a non-zero commit reaches union_abort and the run
-  # refuses), but it does make the one-invocation path conditional on the lane
-  # worktree's toolchain, and the operator meets the hook's own text wrapped in "could
-  # not commit the resolution". --no-verify is deliberately not used: this commit puts
-  # somebody else's merged content into a tree, and a secret scan is the one check that
-  # is cheaper to run than to skip.
-  #
-  # The '#<issue>:' prefix is the repo's subject form, and it is conditional because the
-  # Closes list can legitimately be empty here: a PR with no Closes line reaches the
-  # merge steps only under an explicit --method, and classify has already refused it
-  # otherwise. An empty array indexed under `set -u` aborts the run, which would turn a
-  # resolvable collision into a crash with a merge left in progress.
-  subject="$TECH_DEBT_PATH — union with '$pr_base_ref' (both sides appended entries)"
+  # commit.cleanup=strip makes the message independent of repo-local config, and
+  # core.commentChar=';' must travel with it or strip deletes the '#<issue>:' subject
+  # (.claude/skills/review-loop/SKILL.md step 5). The pre-commit hook runs, over the
+  # whole mid-merge index; it fails toward union_abort, and --no-verify would skip the
+  # secret scan on content this commit brings in. The prefix is conditional because a
+  # PR merged under an explicit --method may have no Closes line, and an empty array
+  # indexed under `set -u` aborts the run mid-merge.
+  subject="${union_paths// /, } — union with '$pr_base_ref' (both sides' entries kept)"
   [ "${#pr_closes[@]}" -gt 0 ] && subject="#${pr_closes[0]}: $subject"
   out=$(git -C "$wt" -c core.commentChar=';' -c commit.cleanup=strip commit -m "$subject" 2>&1)
   rc=$?
@@ -1347,30 +1222,21 @@ EOF
     return 1
   fi
 
-  # A lease, never a bare --force. The push is a fast-forward — the branch only gained
-  # a merge commit — so the lease is not what makes it legal; it is what makes it
-  # REFUSE if the remote moved while the analysis ran, which is the one way the whole
-  # decision above could have been taken against a branch that no longer exists. The
-  # expected value is GitHub's own headRefOid, not a remote-tracking ref, so it does
-  # not depend on this checkout having fetched recently.
+  # A lease on GitHub's own headRefOid: the push is a fast-forward, and the lease is
+  # what makes it refuse if the remote moved while the analysis ran.
   out=$(git -C "$wt" push --force-with-lease="$pr_head_ref:$pr_head_sha" \
     origin "HEAD:refs/heads/$pr_head_ref" 2>&1)
   rc=$?
   if [ "$rc" -ne 0 ]; then
-    # NOT aborted: the merge is already committed, and `git merge --abort` has nothing
-    # left to undo. This is also the one failure a bare re-run does NOT repair, which is
-    # the opposite of how the rest of this script behaves and so is said out loud: the
-    # worktree tip is now the resolution commit while GitHub still answers the old head,
-    # so the tip guard above refuses the next run with a message about a disagreement
-    # rather than about this push. The repair is to push the branch by hand and re-run.
+    # Not aborted — the merge is committed. The tip guard above refuses a bare re-run,
+    # so the message says how to repair it.
     rm -rf "$dir"
     union_reason="the resolution is committed on '$pr_head_ref' but the push failed (git push exited $rc). A re-run will NOT retry it — push $wt by hand, then re-run: $out"
     return 1
   fi
 
-  # The sha the resolution put on the branch. update_branch_step needs it: if the
-  # retried update-branch WRITES rather than answering the no-op, the head it replaced
-  # is this one and not the head read at classify time.
+  # update_branch_step needs the sha this put on the branch: a retried update-branch
+  # that writes has replaced this head, not the classify-time one.
   union_new_sha=$(git -C "$wt" rev-parse HEAD 2>/dev/null)
 
   rm -rf "$dir"
@@ -1404,7 +1270,7 @@ checks_baseline=0
 # a head that has not moved YET from one that was never going to.
 #
 # TWO shas, not one, and the plural is load-bearing. A run can supersede a head
-# twice: the tech-debt union pushes over the head read at classify time, and a
+# twice: the append-only-log union pushes over the head read at classify time, and a
 # retried update-branch can then write over the union's own head. The gate is an
 # inequality, so excluding only the LATEST superseded sha leaves the earlier one
 # admissible — and the earlier one is exactly what a lagging GitHub answers. That
@@ -1416,7 +1282,7 @@ superseded_union_sha=""
 await_new_head=0
 update_answer=""
 
-# The tech-debt union is attempted AT MOST ONCE per run. A second conflict after a
+# The append-only-log union is attempted AT MOST ONCE per run. A second conflict after a
 # resolution that reported success means either main moved again — which a re-run
 # handles, and which this run has no budget to chase — or the step resolved something
 # other than what update-branch was complaining about. Retrying either would spend
@@ -1451,7 +1317,7 @@ update_branch_step() {
         *)
           await_new_head=1
           update_answer=${out%%$'\n'*}
-          # A write after a tech-debt resolution replaced the sha that resolution
+          # A write after a log union replaced the sha that resolution
           # pushed, so that sha joins the superseded set — ADDED to it, never swapped
           # for the classify-time head, which GitHub can still be answering.
           [ -n "$union_new_sha" ] && superseded_union_sha="$union_new_sha"
@@ -1467,7 +1333,8 @@ update_branch_step() {
         ;;
       # The conflicted update. GitHub answers this 422 when the base and the head have
       # both changed the same region, and by far the commonest instance here is the one
-      # cumulo#513 is about: two lanes that both appended an entry to docs/tech-debt.md.
+      # cumulo#513 and #60 are about: two lanes that both appended an entry to one of
+      # APPEND_ONLY_LOGS.
       #
       # Matching on the bare word is broad on purpose, in the only direction it can be
       # safely broad: every arm here leads either to the union step — which makes its
@@ -1478,11 +1345,11 @@ update_branch_step() {
       # before the step existed.
       *"conflict"* | *"not mergeable"*)
         if [ "$union_attempted" = "1" ]; then
-          fail 'update-branch' "gh reports a conflict again after the $TECH_DEBT_PATH resolution this run already pushed. Either the base moved under it, in which case re-run, or the conflict was never the one that step resolves — gh said: $out"
+          fail 'update-branch' "gh reports a conflict again after the $union_paths union this run already pushed. Either the base moved under it, in which case re-run, or the conflict was never the one that step resolves — gh said: $out"
         fi
         union_attempted=1
-        step 'update-branch' "gh reports a conflict; asking whether it is the $TECH_DEBT_PATH append collision"
-        if ! tech_debt_union; then
+        step 'update-branch' "gh reports a conflict; asking whether it is an append-only-log collision"
+        if ! log_union; then
           fail 'update-branch' "the conflict is not one this script may resolve: $union_reason"
         fi
         # The head has moved, and the gate that makes the checks step wait for it is
@@ -1492,8 +1359,8 @@ update_branch_step() {
         # caching, which is cumulo#501's defect reached through a different door.
         await_new_head=1
         pre_update_sha="$pr_head_sha"
-        update_answer="merge-pr resolved the $TECH_DEBT_PATH append collision on the branch and pushed it"
-        step 'update-branch' "$TECH_DEBT_PATH unioned and pushed ($union_summary); re-running update-branch"
+        update_answer="merge-pr unioned $union_paths on the branch and pushed it"
+        step 'update-branch' "$union_paths unioned and pushed ($union_summary); re-running update-branch"
         # No attempt is consumed. The attempt budget bounds the head-sha race; this arm
         # is bounded by union_attempted, which allows exactly one pass through it. Taking
         # an attempt here would make MERGE_PR_UPDATE_RETRIES=1 fall out of the loop with
