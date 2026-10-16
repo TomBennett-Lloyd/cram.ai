@@ -102,3 +102,4 @@ shape a sweep that reaches it.
 
 - [0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning](0001-grounding-architecture.md)
 - [0002 — Deployables: one app plus a bundled model runtime; local-first; nothing public](0002-deployables.md)
+- [0004 — Storage: one SQLite file per course; FTS5 + sqlite-vec; no shared store](0004-storage.md)
