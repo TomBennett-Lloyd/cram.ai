@@ -101,7 +101,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-15 — issue #18 — no-network-egress-gate-and-allowlist-ownership
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide:
   - accept `check:no-network-egress` as the enforcement of `CLAUDE.md` § Hard constraints' first bullet, including what it counts as network-capable: a socket or `child_process` builtin import, a network global, or a native addon — the `child_process` and native-addon arms flag packages that may never touch a socket, so their allow-list entries say so;
   - accept that the gate scans third-party packages only: the issue names "the model backend adapter" as an expected entry, but `docs/plan.md` makes that adapter first-party code, which the gate does not scan and review holds instead — an allow-list entry for it would fail as "not a production dependency";
@@ -110,4 +110,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept #22 riding this PR: `.claude/ledgers/contradiction-set-bar.ledger` and its pointer on `CLAUDE.md`'s "The slides win" bullet.
 - **Why**: `CLAUDE.md` and `.claude/workflow.json` are `humanAlways` paths, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved in chat 2026-10-16 — "PR 42 sounds good too" — no revisions requested; the PR merged as proposed.
