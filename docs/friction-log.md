@@ -28,8 +28,3 @@ Entry format:
 
 - Phase: process
 - Observed: on retrying a stuck `merge-pr.sh 48`, the merge owner's `pgrep -f 'merge-pr.sh 48'` guard matched the shell running the guard itself. (The stuck poll this entry first recorded is now issue #55's, and the ADR-path cost is #49's and #50's.)
-
-## 2026-10-16 — PR #58
-
-- Phase: review
-- Observed: the lane's first harness for `fill-verdict.sh` covered four refusal guards that could each be deleted without any case failing; the cycle-1 reviewer found it, and only mutation-checking each guard after the fixes exposed the rest. `docs/standards/testing.md` asks for negative controls, and `.claude/agents/planner.md` asks that a prescribed mutant be shown to bite, but nothing asks the lane to mutate each guard it writes before its first review dispatch. One ticket so far.
