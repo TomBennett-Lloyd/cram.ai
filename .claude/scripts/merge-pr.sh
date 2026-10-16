@@ -65,7 +65,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 : "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # re-reads allowed for an eventually-consistent state
 : "${MERGE_PR_PRETTIER_CMD:=pnpm exec prettier}"       # formatter the tech-debt union re-runs; see that step
 : "${MERGE_PR_GH_TIMEOUT_SECONDS:=60}"                 # the time box on every gh call; see gh_call
-: "${MERGE_PR_READ_RETRIES:=3}"                        # consecutive failed reads the checks poll absorbs
+: "${MERGE_PR_READ_RETRIES:=3}"                        # retries of a failed checks-poll read before the step fails
 
 # `files` is deliberately NOT in this list. `gh pr view --json files` is
 # `files(first: 100)` with no truncation signal, and the humanAlways decision made
@@ -96,14 +96,11 @@ for knob in MERGE_PR_POLL_INTERVAL_SECONDS MERGE_PR_POLL_TIMEOUT_SECONDS \
       ;;
   esac
 done
-# A zero time box would kill every gh call before it answered, and zero read
-# attempts would fail the poll before its first read.
-for knob in MERGE_PR_GH_TIMEOUT_SECONDS MERGE_PR_READ_RETRIES; do
-  if [ "${!knob}" -lt 1 ]; then
-    printf 'merge-pr: %s must be at least 1, got "%s"\n' "$knob" "${!knob}" >&2
-    exit 2
-  fi
-done
+# A zero time box would kill every gh call before it answered.
+if [ "$MERGE_PR_GH_TIMEOUT_SECONDS" -lt 1 ]; then
+  printf 'merge-pr: MERGE_PR_GH_TIMEOUT_SECONDS must be at least 1, got "%s"\n' "$MERGE_PR_GH_TIMEOUT_SECONDS" >&2
+  exit 2
+fi
 
 usage() {
   cat >&2 <<'EOF'
@@ -234,15 +231,17 @@ process.stdin.on("data", (d) => (raw += d)).on("end", () => {
   put("url", pr.url);
   for (const l of pr.labels || []) put("label", l && l.name);
   for (const c of pr.commits || []) put("commit", c && c.messageHeadline);
-  // One record per check, the latest run of it. A label event re-runs the whole
-  // workflow on the same head, so the rollup carries two entries per job name
-  // (PR #53 at 696a6e9: six entries, three names). Counted raw, they inflate the
-  // floor the next head is held to, and a superseded entry still pending blocks
-  // a head whose fresh run is green (issue #55). The key includes the workflow
-  // name so that two workflows with a job of the same name both stay counted.
-  // "Latest" is the later startedAt, which is also the run GitHub itself reads.
-  // On a tie, the entry that is not yet a SUCCESS wins: a tie must never be
-  // settled toward green.
+  // One record per check: the latest run of each (workflow, name), so that a
+  // label re-run is counted once (issue #55). "Latest" is the later real
+  // startedAt. Whenever that cannot decide (a tie, or a run with no start time
+  // yet, which gh spells as empty or 0001-01-01), the entry that is not a
+  // SUCCESS wins, so the undecidable case is never settled toward green.
+  const realStart = (t) => (t && !String(t).startsWith("0001-") ? String(t) : "");
+  const green = (e) => e.status === "COMPLETED" && e.conclusion === "SUCCESS";
+  const supersedes = (e, h) => {
+    if (e.startedAt && h.startedAt && e.startedAt !== h.startedAt) return e.startedAt > h.startedAt;
+    return green(h) && !green(e);
+  };
   const latest = new Map();
   for (const c of pr.statusCheckRollup || []) {
     // Two shapes share this array. A CheckRun carries status + conclusion; a
@@ -257,17 +256,10 @@ process.stdin.on("data", (d) => (raw += d)).on("end", () => {
       status = c.state === "PENDING" || c.state === "EXPECTED" ? "PENDING" : "COMPLETED";
       conclusion = c.state;
     }
-    const entry = { name, status, conclusion, startedAt: String((c && c.startedAt) || "") };
+    const entry = { name, status, conclusion, startedAt: realStart(c && c.startedAt) };
     const key = String((c && c.workflowName) || "") + "\u0000" + name;
     const held = latest.get(key);
-    const green = (e) => e.status === "COMPLETED" && e.conclusion === "SUCCESS";
-    if (
-      !held ||
-      entry.startedAt > held.startedAt ||
-      (entry.startedAt === held.startedAt && green(held) && !green(entry))
-    ) {
-      latest.set(key, entry);
-    }
+    if (!held || supersedes(entry, held)) latest.set(key, entry);
   }
   for (const e of latest.values()) put("check", e.name, e.status, e.conclusion);
   // The closing keywords GitHub itself honours, and the reason this is read from
@@ -321,9 +313,8 @@ process.stdin.on("data", (d) => (raw += d)).on("end", () => {
 # gh_call <gh args…> -> gh's stdout and stderr on stdout, and gh's exit code; 124
 # when the call outlived MERGE_PR_GH_TIMEOUT_SECONDS and was killed.
 #
-# Every gh call in this script goes through here. A request that never answers
-# would otherwise freeze the step it sits in with nothing printed, and that is what
-# issue #55 found behind three stuck checks polls. Neither `timeout` nor `gtimeout`
+# Every gh call in this script goes through here, so that a request that never
+# answers fails its step instead of freezing it (issue #55). Neither `timeout` nor `gtimeout`
 # can be assumed to exist (the owner's machine has neither) and gh documents no
 # request timeout of its own, so the box is a watchdog written for bash 3.2.
 # gh's output goes to a file, never to the caller's pipe: the caller captures with
@@ -337,12 +328,18 @@ gh_call() {
   }
   "$MERGE_PR_GH_CMD" "$@" >"$out_file" 2>&1 &
   pid=$!
+  # The watcher's own sleep must die with it. A TERM can land between `sleep &`
+  # and `spid=$!`, when the trap has no pid to kill, so the trap also sets a flag
+  # that is checked once the pid is known.
   (
+    stop=0
     spid=""
-    trap 'kill "$spid" 2>/dev/null; exit 0' TERM
+    trap 'stop=1; [ -n "$spid" ] && kill "$spid" 2>/dev/null' TERM
     sleep "$MERGE_PR_GH_TIMEOUT_SECONDS" &
     spid=$!
+    [ "$stop" = 1 ] && kill "$spid" 2>/dev/null
     wait "$spid"
+    [ "$stop" = 1 ] && exit 0
     : >"$out_file.timed-out"
     kill -TERM "$pid" 2>/dev/null
   ) >/dev/null 2>&1 &
@@ -1434,8 +1431,7 @@ update_branch_step() {
     rc=$?
     # A timed-out write is not retried, because whether it landed is unknown. If it
     # did, the retry answers "already up to date", which leaves the await gate
-    # disarmed while GitHub is still answering the replaced head (cumulo#501). A
-    # re-run starts from a fresh read once that window has passed.
+    # disarmed while GitHub is still answering the replaced head (cumulo#501).
     if [ "$rc" -eq 124 ]; then
       fail 'update-branch' "the call timed out, so whether it wrote is unknown — re-run: $out"
     fi
@@ -1615,9 +1611,8 @@ checks_verdict() { # -> ready:<n> | pending:<present>:<expected>:<pending> | fai
   printf 'pending:%s:%s:%s\n' "$total" "$expected" "$pending"
 }
 
-# One stderr line per poll read, whatever it found. The poll used to print nothing
-# between update-branch and its verdict, so the three stuck runs issue #55 is about
-# left no record of which of its waits they were in.
+# One stderr line per poll read, whatever it found, so that a stuck poll leaves a
+# record of which wait it was in (issue #55).
 poll_log() { # poll_log <message>
   printf 'merge-pr: checks poll %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >&2
 }
@@ -1642,8 +1637,8 @@ else
     # dropped request should not cost the run.
     if ! read_pr; then
       poll_read_failures=$((poll_read_failures + 1))
-      poll_log "read failed ($poll_read_failures of $MERGE_PR_READ_RETRIES): $last_error"
-      [ "$poll_read_failures" -lt "$MERGE_PR_READ_RETRIES" ] ||
+      poll_log "read failed ($poll_read_failures in a row, $MERGE_PR_READ_RETRIES retries allowed): $last_error"
+      [ "$poll_read_failures" -le "$MERGE_PR_READ_RETRIES" ] ||
         fail 'checks' "$poll_read_failures consecutive reads failed; the last: $last_error"
       sleep "$MERGE_PR_POLL_INTERVAL_SECONDS"
       continue

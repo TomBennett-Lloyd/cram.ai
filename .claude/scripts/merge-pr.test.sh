@@ -1219,23 +1219,53 @@ end
 # ==========================================================================================
 # 12g. two runs started in the same second are never settled toward green
 # ==========================================================================================
-# The pending run is listed first, so a subject breaking the tie by array position
-# reads the SUCCESS and merges. The case also pins the poll's log line: the read
-# names what it is waiting on.
+# Run in both orders, so neither "first wins" nor "last wins" can pass it. The case
+# also pins the poll's log line: the read names what it is waiting on.
 begin "a startedAt tie between a pending and a green run stays pending"
-fixture rerun-tie
-V_CHECKS="checks:IN_PROGRESS:@$T_NEW,checks:COMPLETED:SUCCESS@$T_NEW"
-write_view default
-write_merged_view
-POLL_TIMEOUT=0
-run_merge
-POLL_TIMEOUT=30
-expect_rc 1
-expect_stderr 'timed out'
-expect_stderr '1 still pending'
-expect_stderr 'head=aaa111 await_new_head=0 merge_state=CLEAN'
-expect_stderr 'waiting_on=[checks=IN_PROGRESS]'
-expect_not_called "pr merge $PR --squash"
+tie=0
+for order in "checks:IN_PROGRESS:@$T_NEW,checks:COMPLETED:SUCCESS@$T_NEW" \
+  "checks:COMPLETED:SUCCESS@$T_NEW,checks:IN_PROGRESS:@$T_NEW"; do
+  case_ctx="order $order"
+  tie=$((tie + 1))
+  fixture "rerun-tie-$tie"
+  V_CHECKS="$order"
+  write_view default
+  write_merged_view
+  POLL_TIMEOUT=0
+  run_merge
+  POLL_TIMEOUT=30
+  expect_rc 1
+  expect_stderr 'timed out'
+  expect_stderr '1 still pending'
+  expect_stderr 'head=aaa111 await_new_head=0 merge_state=CLEAN'
+  expect_stderr 'waiting_on=[checks=IN_PROGRESS]'
+  expect_not_called "pr merge $PR --squash"
+done
+case_ctx=""
+end
+
+# ==========================================================================================
+# 12g-ii. a re-run with no start time yet is newer than any run that has one
+# ==========================================================================================
+# A queued run has not started: gh answers its startedAt empty, or as the zero time
+# 0001-01-01T00:00:00Z (seen live on PR #59's completedAt). A string comparison
+# ranks both below every real timestamp, which would keep the older green run.
+begin "a queued re-run with no start time holds the check pending over an older green run"
+for unset in "" "@0001-01-01T00:00:00Z"; do
+  case_ctx="startedAt '${unset#@}'"
+  fixture "rerun-queued${unset:+-zero}"
+  V_CHECKS="checks:COMPLETED:SUCCESS@$T_OLD,checks:QUEUED:$unset"
+  write_view default
+  write_merged_view
+  POLL_TIMEOUT=0
+  run_merge
+  POLL_TIMEOUT=30
+  expect_rc 1
+  expect_stderr '1 still pending'
+  expect_stderr 'waiting_on=[checks=QUEUED]'
+  expect_not_called "pr merge $PR --squash"
+done
+case_ctx=""
 end
 
 # ==========================================================================================
@@ -1260,12 +1290,12 @@ end
 # cumulo#488: the chain died on `error connecting to api.github.com` and left the PR
 # open with no signal. The property under test is that the repair is a re-run —
 # the script keeps no state of its own, so the second run re-reads and proceeds.
-# The poll absorbs MERGE_PR_READ_RETRIES consecutive failures (2 here), so the
-# outage outlasts that budget: reads 2 and 3 both fail.
+# The poll retries a failed read MERGE_PR_READ_RETRIES times (2 here), so the
+# outage outlasts that: reads 2, 3 and 4 all fail.
 begin "a re-run after a mid-poll network failure resumes and completes"
 fixture resume
 write_view default
-for n in 2 3; do
+for n in 2 3 4; do
   must printf 'error connecting to api.github.com\n' >"$STATE/view.$n"
   must printf '1\n' >"$STATE/view.$n.rc"
 done
@@ -1273,12 +1303,12 @@ write_merged_view
 run_merge
 expect_rc 1
 expect_stderr 'checks — FAILED'
-expect_stderr '2 consecutive reads failed'
+expect_stderr '3 consecutive reads failed'
 expect_stderr 'api.github.com'
 expect_not_called "pr merge $PR --squash"
 [ -f "$STATE/merged" ] && bad "the failed run merged anyway"
 
-must rm -f "$STATE/view.2" "$STATE/view.2.rc" "$STATE/view.3" "$STATE/view.3.rc"
+for n in 2 3 4; do must rm -f "$STATE/view.$n" "$STATE/view.$n.rc"; done
 reset_calls
 run_merge
 expect_rc 0
@@ -1290,14 +1320,13 @@ end
 # ==========================================================================================
 # 13b. a poll read that hangs is killed at the time box, retried, then fails the step
 # ==========================================================================================
-# Issue #55: three checks polls sat on green heads, and one candidate cause was a gh
-# call that never answered. Every read now carries a time box. The stub holds each
-# read for 30 s against a 1 s box, so a subject without the box takes a minute and
-# then fails the elapsed-time assertion below as well as the message ones.
+# Issue #55: every read carries a time box. The stub holds each read for 30 s
+# against a 1 s box, so a subject without the box takes 90 s and then fails the
+# elapsed-time assertion below as well as the message ones.
 begin "a poll read that outlives the time box is retried, then fails the checks step"
 fixture read-hangs
 write_view default
-for n in 2 3; do must printf '30\n' >"$STATE/view.$n.hang"; done
+for n in 2 3 4; do must printf '30\n' >"$STATE/view.$n.hang"; done
 write_merged_view
 GH_TIMEOUT=1
 started=$SECONDS
@@ -1306,12 +1335,12 @@ elapsed=$((SECONDS - started))
 GH_TIMEOUT=60
 expect_rc 1
 expect_stderr 'checks — FAILED'
-expect_stderr 'read failed (1 of 2)'
-expect_stderr '2 consecutive reads failed'
+expect_stderr 'read failed (2 in a row, 2 retries allowed)'
+expect_stderr '3 consecutive reads failed'
 expect_stderr 'did not answer within 1s'
 expect_not_called "pr merge $PR --squash"
 views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
-[ "$views" -eq 3 ] || bad "expected classify plus two poll reads, got $views pr view calls"
+[ "$views" -eq 4 ] || bad "expected classify plus a read and its two retries, got $views pr view calls"
 [ "$elapsed" -lt 20 ] || bad "the run took ${elapsed}s against a 1s time box"
 end
 
@@ -1327,7 +1356,7 @@ GH_TIMEOUT=1
 run_merge
 GH_TIMEOUT=60
 expect_rc 0
-expect_stderr 'read failed (1 of 2)'
+expect_stderr 'read failed (1 in a row, 2 retries allowed)'
 expect_called "pr merge $PR --squash"
 expect_stdout "done — PR #$PR MERGED"
 end

@@ -138,3 +138,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/workflow.json` → `feedbackLogLedger`; `.claude/scripts/fill-verdict.sh` header
 - What: `fill-verdict.sh` reads the path from `feedbackLog`, so it does not carry the path executably. Its header does name `docs/review-feedback.md` in prose, and the ledger, which says it is a floor, does not list it. `.claude/workflow.json` is `humanAlways`, so this waits for the next PR that edits that file anyway.
 - Source: #50 review
+
+## 2026-10-16 — merge-pr.sh's `*_RETRIES` knobs count different things
+
+- Where: `.claude/scripts/merge-pr.sh` env knobs block (`MERGE_PR_CONFIRM_RETRIES`, `MERGE_PR_UPDATE_RETRIES`, `MERGE_PR_READ_RETRIES`) and the loops that read them in the merge, issues, update-branch and checks steps
+- What: one suffix, three meanings. `MERGE_PR_CONFIRM_RETRIES` is described as "re-reads allowed", but its `attempt=1 … -lt N` loops give N-1 re-reads. `MERGE_PR_UPDATE_RETRIES` counts attempts and says so. `MERGE_PR_READ_RETRIES` counts retries after the first read. Pick one meaning for the whole family, then rename or re-describe the knobs and their loops to match.
+- Source: #55 review cycle 1
