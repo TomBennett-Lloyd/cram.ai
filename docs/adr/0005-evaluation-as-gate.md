@@ -67,7 +67,7 @@ Two standing documents deferred to this ADR: `docs/adr/0001-grounding-architectu
 
 - Recordings go stale on every prompt change and must be re-recorded; by design a miss is red, so a prompt change costs a tier-2 run before tier 1 is green again.
 - A presence floor is satisfied by a stale report, so freshness is the review's to check.
-- Reports are comparable only when their pins and machine class match, which is why a report carries both.
+- Reports are compared within a machine class, so a PR that moves a pin is argued against an old-pin baseline, which is why a report carries both the class and the pins.
 - `pnpm eval` is slow on a CPU-only machine.
 - The baseline rule has no mechanical comparator until two reports exist.
 

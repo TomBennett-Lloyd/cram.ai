@@ -118,11 +118,11 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-16 — grading agreement's hand-marked inputs have no delivering ticket
 
 - Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (d) (the grading-agreement row) and (h)
-- What: the metric needs committed synthetic student answers with per-rubric-point hand marks; (h) gives #14 only the hand labels of `eval/labels/` (the verifier metric's input), and rubric points arrive with M4, so no ticket delivers the marks. Name the ticket when M4 is ticketed.
+- What: the metric needs committed synthetic student answers with per-rubric-point hand marks; (h) gives #14 only the hand labels of `eval/labels/` (the verifier metric's input), and rubric points arrive with M4, so no ticket delivers the marks. Name the ticket when M4's grading work is ticketed (#24 is M4 but does not deliver marks).
 - Source: #5 review cycle 2
 
-## 2026-10-16 — ADR 0005 Option 4 says reports are comparable only when pins match; (f)'s baseline keys on machine class alone
+## 2026-10-16 — plan.md §9 q3 and q4 are listed as open but the owner decided them on 2026-10-13
 
-- Where: `docs/adr/0005-evaluation-as-gate.md` § Options considered 4, against § Decision (f)
-- What: (f) picks the baseline by machine class, so a PR that moves a pin is compared against an old-pin report (the intent); Option 4's "comparable only when their pins and machine class match" invites skipping the regression argument exactly when a pin moves. The decision text governs; the option text is stale.
-- Source: #5 review cycle 2
+- Where: `docs/plan.md` §9, questions 3 (Windows testing) and 4 (code signing)
+- What: the owner's comment on #7 (2026-10-13) decided both — a free VM on the dev Mac for installer/UI testing with the user's laptop for the performance measurement, and code signing skipped — yet §9 still lists them as open. ADR 0005's review cycle 3 caught a comment restating q3 as open. Either strike the two questions or mark them decided with the #7 cite.
+- Source: #5 review cycle 3
