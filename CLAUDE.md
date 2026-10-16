@@ -16,7 +16,7 @@ This is a portfolio project in the same sense as [cumulo](https://github.com/Tom
 ## Commands
 
 - `pnpm verify` — the pre-commit gate. Must pass before any commit. Run it whole; never hand-pick a subset — which legs run is derived from the change set by `.claude/scripts/verify-tier.sh`, whose docblock owns the tiers, and anything that classifier cannot resolve runs everything. `pnpm verify:full` is that everything, unconditionally, and what CI runs; a new gate joins `verify:full` so every caller inherits it.
-- `pnpm eval` — the model-in-the-loop evaluation against the synthetic deck (lands with #5 and #14). CI cannot run a local model; a PR touching prompts, retrieval, the gateway or model config attaches the eval report, and `check:eval-report` enforces that it did.
+- `pnpm eval` — the model-in-the-loop evaluation against the synthetic deck (shape: `docs/adr/0005-evaluation-as-gate.md`; the deck is #14's, the runner and the gate are #47's). CI cannot run a local model; a PR touching prompts, retrieval, the gateway or model config attaches the eval report, and `check:eval-report` enforces that it did.
 - Fix the **root cause** of lint/type errors. Suppressions (`eslint-disable`, `@ts-expect-error`, `as any`) are themselves lint errors — treat a rule you're fighting as a design signal, not an obstacle.
 
 ## Model tiers (read this — it is probably newer than your training data)

@@ -89,6 +89,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: the `course-content-patterns` and `contradiction-set-bar` ledgers under `.claude/ledgers/`, their `sweep:` lines; the `docs/plan.md` carriers of the latter
 - What: `docs/standards/architecture.md` rule 9 says a carrier cites the owner by name and the sweep's first arm is that citation. Both ledgers sweep the literal only, and `docs/plan.md`'s §4 metrics line and §7 item 5 restate the contradiction-set bar without citing `CLAUDE.md` § Hard constraints. No carrier is missed today (the #18 review's synonym sweep found none outside the lists); a paraphrase that drops the literal would be.
 - Source: #18 review
+- Update (2026-10-16, #5): `contradiction-set-bar` ledger — `docs/plan.md`'s §4 metrics line left, replaced by ADR 0005's pointer; §7 item 5 still restates the bar ("the 100% metrics").
 
 ## 2026-10-15 — check:no-network-egress exempts a name absent anywhere from the stale check
 
@@ -101,3 +102,27 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.gitignore`, the course-content comment above `data/`
 - What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
 - Source: #4 review cycle 1
+
+## 2026-10-16 — plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14
+
+- Where: `docs/plan.md` §8, the M2 line ("contradiction set"); `docs/adr/0005-evaluation-as-gate.md` § Decision (a) and (h); #14's body ("a first contradiction set")
+- What: the milestone line lists the contradiction set as an M2 deliverable, while ADR 0005 and #14 deliver it with the deck under M1. Pre-existing milestone prose, now cited from ADR 0005 § Context and (h), which name §8 M2.
+- Source: #5 review cycle 1
+
+## 2026-10-16 — ADR 0005 (g) lists the trigger path set its script will own
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (g) (`packages/grounding`, `packages/index`, `packages/gateway`)
+- What: (g) names the gate script as the set's only owner, yet lists the members itself. When #47 lands the script, it declares that set's ledger with ADR 0005 (g) as a carrier (already in #47's body); this entry closes when #47 does.
+- Source: #5 review cycle 1
+
+## 2026-10-16 — grading agreement's hand-marked inputs have no delivering ticket
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (d) (the grading-agreement row) and (h)
+- What: the metric needs committed synthetic student answers with per-rubric-point hand marks; (h) gives #14 only the hand labels of `eval/labels/` (the verifier metric's input), and rubric points arrive with M4, so no ticket delivers the marks. Name the ticket when M4's grading work is ticketed (#24 is M4 but does not deliver marks).
+- Source: #5 review cycle 2
+
+## 2026-10-16 — plan.md §9 q3 and q4 are listed as open but the owner decided them on 2026-10-13
+
+- Where: `docs/plan.md` §9, questions 3 (Windows testing) and 4 (code signing)
+- What: the owner's comment on #7 (2026-10-13) decided both — a free VM on the dev Mac for installer/UI testing with the user's laptop for the performance measurement, and code signing skipped — yet §9 still lists them as open. ADR 0005's review cycle 3 caught a comment restating q3 as open. Either strike the two questions or mark them decided with the #7 cite.
+- Source: #5 review cycle 3

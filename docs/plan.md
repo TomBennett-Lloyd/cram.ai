@@ -71,10 +71,7 @@ Owned by `docs/standards/grounding.md` (the rule) and `docs/adr/0001-grounding-a
 
 ## 4. Evaluation is a gate, not a dashboard
 
-- **Synthetic eval course** in-repo (`eval/decks/`): a self-authored fictional subject (public and IP-free) of ~6 short lectures, written to include facts spread across lectures (for notes), near-duplicate concepts (for retrieval precision), image-only slides (for OCR), and a **contradiction set** — slides that assert things a general-knowledge model will "know" are wrong. The contradiction set is the regression test for "the slides win".
-- **Golden questions** (`eval/questions.jsonl`): `{question, expectedCitations, expectedAnswerUnits, mustNotContain[]}`. `mustNotContain` catches base-knowledge leakage and caveats.
-- **Metrics** per run: retrieval recall@k, citation validity (100% required), verifier precision/recall against hand labels, contradiction-set pass rate (100% required), exam answerability (every gold answer verifies), grading agreement with hand-marked answers.
-- **Two tiers**: deterministic pipeline logic (chunking, citation resolution, rubric arithmetic, index queries) is unit-tested in CI with recorded model outputs replayed through a fake gateway. Model-in-the-loop evals run locally via `pnpm eval` against the real backend and write a report; a PR touching prompts, models, retrieval or the gateway must attach it, enforced by `check:eval-report` in the style of cumulo's merge-ritual gate.
+Owned by `docs/adr/0005-evaluation-as-gate.md` (the eval course, the contradiction set, the golden-question schema, the metrics and their bars, the two tiers, the report and the `check:eval-report` gate's shape); this section carries no restatement.
 
 ## 5. Repo layout
 
@@ -107,7 +104,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable. Written — `docs/adr/0002-deployables.md` (#2); §3's lead paragraph above now points at it.
 3. **0003 Model roles and backends** — generator / verifier / embedder; `node-llama-cpp` vs HTTP backends; the measured model choice and licence against the target machine; whether the verifier is an LLM prompt or an NLI cross-encoder.
 4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it. Written — `docs/adr/0004-storage.md` (#4); §3.2's first bullet above now points at it.
-5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics.
+5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics. Written — `docs/adr/0005-evaluation-as-gate.md` (#5); §4 above now points at it.
 6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; when to refuse to cite derived text.
 7. **0007 Desktop packaging** — Electron + node-llama-cpp + NSIS; model download on first launch; signing deferred.
 
