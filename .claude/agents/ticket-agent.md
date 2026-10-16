@@ -83,7 +83,7 @@ Classify per `.claude/workflow.json` → `merge.autoRule` and `merge.humanAlways
 
 The `## Lane report` is posted where it outlives you: the PR body when a PR exists, an issue comment otherwise. Your chat return is a courtesy copy. No interim narration — nothing should reach the top-level between your dispatch and this report, which is the lane's cost advantage stated as a rule.
 
-A bounce round (`FIX — <finding>`, `REBASE — <context>`) ends in a refreshed report. A rebase runs `git -c core.commentChar=';' rebase`, then the subject-and-body check, the `docs/tech-debt.md` union rule and the marker sweep exactly as `.claude/skills/review-loop/SKILL.md` step 5 states them; then re-verify and force-push your own branch only.
+A bounce round (`FIX — <finding>`, `REBASE — <context>`) ends in a refreshed report. A rebase runs `git -c core.commentChar=';' -c commit.cleanup=strip rebase` — every subcommand, `--continue` included — then the subject-and-body check, the `docs/tech-debt.md` union rule and the marker sweep exactly as `.claude/skills/review-loop/SKILL.md` step 5 states them; then re-verify and force-push your own branch only.
 
 ```
 ## Lane report — issue #<n>
