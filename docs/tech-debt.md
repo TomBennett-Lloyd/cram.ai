@@ -101,3 +101,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.gitignore`, the course-content comment above `data/`
 - What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
 - Source: #4 review cycle 1
+
+## 2026-10-16 — the Closes-keyword parse is embedded twice
+
+- Where: `.claude/scripts/fill-verdict.sh`, the node program in its `pr` step; `.claude/scripts/merge-pr.sh`, `pr_facts`
+- What: both scripts embed the same closing-keyword regex in their own `node -e` program, and only a comment in `fill-verdict.sh` keeps the two in step (`docs/standards/structure.md` rule 7). Pulling it out means restructuring `pr_facts`, which also parses lanes, checks and commits, and that does not belong in #50.
+- Source: #50 review
+
+## 2026-10-16 — feedbackLogLedger does not list fill-verdict.sh as a prose carrier
+
+- Where: `.claude/workflow.json` → `feedbackLogLedger`; `.claude/scripts/fill-verdict.sh` header
+- What: `fill-verdict.sh` reads the path from `feedbackLog`, so it does not carry the path executably. Its header does name `docs/review-feedback.md` in prose, and the ledger, which says it is a floor, does not list it. `.claude/workflow.json` is `humanAlways`, so this waits for the next PR that edits that file anyway.
+- Source: #50 review

@@ -6,8 +6,8 @@
 # merge-pr.sh refuses an unfilled entry and never fills one (its header says why); this script
 # is the fill, and it writes only what the caller passes — the verdict is the caller's.
 #
-# Every refusal is taken before anything is written, and a failure after the write (verify, the
-# commit) restores the tree, so the repair for any non-zero exit is to fix the cause and re-run.
+# Every refusal is taken before anything is written, and a failure of verify or of the commit
+# restores the tree.
 #
 # Usage:
 #   fill-verdict.sh <pr> --category <category> --verdict "<text>"
@@ -20,8 +20,8 @@
 #     repo-root   the repository to act in (default: the one holding this script)
 #
 # Exit:  0 filled, committed (and pushed)
-#        1 refused or failed — the message names the step; nothing is left half-done
-#        2 no verdict at all (usage, no node, no repo)
+#        1 refused or failed — the message names the step
+#        2 no verdict at all (usage, no repo)
 set -uo pipefail
 export PATH="/opt/homebrew/bin:$PATH"
 
@@ -33,7 +33,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 : "${FILL_VERDICT_VERIFY_CMD:=pnpm verify}"     # the pre-commit gate, run in the worktree
 
 # The placeholder docs/review-feedback.md's `## Entry format` owns; this file is a carrier on that
-# file's ledger. If the literal moves without this line, no entry matches and every run refuses.
+# file's ledger.
 PLACEHOLDER='pending — filled at merge'
 
 usage() {
@@ -41,7 +41,7 @@ usage() {
 usage: fill-verdict.sh <pr> --category <category> --verdict "<text>"
                        [--worktree <path>] [--no-push] [repo-root]
 
-Exit: 0 filled and committed, 1 refused or failed (a re-run resumes), 2 no verdict.
+Exit: 0 filled and committed, 1 refused or failed, 2 no verdict.
 EOF
   exit 2
 }
@@ -210,11 +210,17 @@ try {
 }
 ' "$wt/.claude/workflow.json" 2>&1) || fail 'fill' ".claude/workflow.json gives no feedbackLog path: $feedback_log"
 
+# Only an entry this branch added is this PR's; one an earlier PR left unfilled is not (the same
+# rule as merge-pr.sh's feedback step).
+added_headings=$(git -C "$wt" diff "$merge_base" HEAD -- "$feedback_log" | sed -n 's/^+\(## .*\)$/\1/p')
+
 # Validates every edit before making any: the entry, the category, each ADR's Status. Prints the
 # flipped ADR numbers, one per line.
+fill_err=$(mktemp "${TMPDIR:-/tmp}/fill-verdict-$pr_number.XXXXXX") || fail 'fill' "mktemp failed"
 flipped=$(cd "$wt" && node -e '
 const fs = require("fs");
-const [log, issue, pr, category, verdict, placeholder, ...adrs] = process.argv.slice(1);
+const [log, added, issue, pr, category, verdict, placeholder, ...adrs] = process.argv.slice(1);
+const addedHeadings = new Set(added.split("\n"));
 const refuse = (msg) => {
   process.stderr.write(msg + "\n");
   process.exit(1);
@@ -241,18 +247,18 @@ let cur = null;
 lines.forEach((l, i) => {
   if (/^```/.test(l)) fence = !fence;
   if (fence || !/^## /.test(l)) {
-    if (cur && l === catLine) cur.cat = i;
-    if (cur && l === verLine) cur.ver = i;
+    if (cur && !fence && l === catLine) cur.cat = i;
+    if (cur && !fence && l === verLine) cur.ver = i;
     return;
   }
-  cur = heading.test(l) ? { title: l, cat: -1, ver: -1 } : null;
+  cur = heading.test(l) && addedHeadings.has(l) ? { title: l, cat: -1, ver: -1 } : null;
   if (cur) entries.push(cur);
 });
 const both = entries.filter((e) => e.cat >= 0 && e.ver >= 0);
 const half = entries.filter((e) => (e.cat >= 0) !== (e.ver >= 0));
 if (half.length) refuse("entry \"" + half[0].title + "\" carries one placeholder, not both — fill it by hand; this script fills both or neither");
 if (both.length !== 1)
-  refuse(both.length + " entries headed issue #" + issue + " or PR #" + pr + " carry both placeholders in " + log + "; exactly one must. Already filled? Check git log -1 and push it");
+  refuse(both.length + " entries this branch added headed issue #" + issue + " or PR #" + pr + " carry both placeholders in " + log + "; exactly one must. Already filled? Check git log -1 and push it");
 
 const flips = [];
 for (const path of adrs) {
@@ -272,13 +278,27 @@ for (const [path, text] of flips) {
   fs.writeFileSync(path, text);
   console.log(/^docs\/adr\/(\d+)-/.exec(path)[1]);
 }
-' "$feedback_log" "$issue" "$pr_number" "$category" "$verdict" "$PLACEHOLDER" ${adrs[@]+"${adrs[@]}"} 2>&1) ||
-  fail 'fill' "$flipped"
+' "$feedback_log" "$added_headings" "$issue" "$pr_number" "$category" "$verdict" "$PLACEHOLDER" ${adrs[@]+"${adrs[@]}"} 2>"$fill_err")
+fill_rc=$?
+fill_msg=$(cat "$fill_err")
+rm -f "$fill_err"
+[ "$fill_rc" -eq 0 ] || fail 'fill' "$fill_msg"
 
 changed=("$feedback_log" ${adrs[@]+"${adrs[@]}"})
-restore() { git -C "$wt" restore --staged --worktree -- "${changed[@]}" 2>/dev/null; }
+restore() { # restore <step> <why> — undo the fill, or exit 1 saying the tree still holds it
+  local out
+  out=$(git -C "$wt" restore --staged --worktree -- "${changed[@]}" 2>&1) ||
+    fail "$1" "$2; and restoring the tree FAILED, so $wt still holds the fill: $out"
+}
 adr_clause=""
-for n in $flipped; do adr_clause="$adr_clause; ADR $n accepted"; done
+for n in $flipped; do
+  case "$n" in '' | *[!0-9]*)
+    restore 'fill' "node printed '$n' where an ADR number belongs"
+    fail 'fill' "node printed '$n' where an ADR number belongs; tree restored"
+    ;;
+  esac
+  adr_clause="$adr_clause; ADR $n accepted"
+done
 step 'fill' "$feedback_log entry filled${adr_clause:+, ${adr_clause#; }}"
 
 # --- step: verify ---------------------------------------------------------------------------
@@ -291,14 +311,14 @@ verify_tail=$(tail -n 20 "$verify_out")
 rm -f "$verify_out"
 step 'verify' "rc=$verify_rc; ${root_line:-no verify root line}"
 if [ "$verify_rc" -ne 0 ]; then
-  restore
+  restore 'verify' "$FILL_VERDICT_VERIFY_CMD exited $verify_rc"
   fail 'verify' "$FILL_VERDICT_VERIFY_CMD exited $verify_rc; tree restored. Last lines:
 $verify_tail"
 fi
 verify_root=${root_line#verify root: }
 verify_root=${verify_root% \[*}
 if [ -z "$root_line" ] || [ "$(canon "$verify_root")" != "$wt" ]; then
-  restore
+  restore 'verify' "the verify root line does not name $wt"
   fail 'verify' "the verify root line does not name $wt; tree restored"
 fi
 
@@ -308,11 +328,11 @@ fi
 # deletes `#`-led lines unless the comment character moves; fill-verdict.test.sh pins both flags.
 subject="#$issue: verdict — $category$adr_clause"
 out=$(git -C "$wt" add -- "${changed[@]}" 2>&1) || {
-  restore
+  restore 'commit' "git add failed: $out"
   fail 'commit' "git add failed: $out"
 }
 out=$(git -C "$wt" -c core.commentChar=';' -c commit.cleanup=strip commit -m "$subject" 2>&1) || {
-  restore
+  restore 'commit' "git commit failed: $out"
   fail 'commit' "git commit failed; tree restored: $out"
 }
 landed=$(git -C "$wt" log -1 --format=%s)

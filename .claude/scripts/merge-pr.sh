@@ -611,10 +611,10 @@ fi
 #   - the LITERAL moving is a QUIET PASS. The field lines are `- **Category**:`
 #     and `- **Verdict**:`, a different string, so they go on matching; only the
 #     placeholder test below stops matching, and a gate that stops matching is a
-#     gate that opens. Nothing anywhere says so — which is why the ledger in
-#     docs/review-feedback.md names this file as the literal's one executable
-#     carrier, and why that ledger is the only thing standing between a reworded
-#     placeholder and a humanAlways PR merged with no verdict.
+#     gate that opens. Nothing anywhere says so — which is why this file is on
+#     the Carriers bullet of the placeholder ledger in docs/review-feedback.md, and
+#     why that ledger is the only thing standing between a reworded placeholder and
+#     a humanAlways PR merged with no verdict.
 
 feedback_state() { # -> 0 entry present and filled; 1 refuse (reason on stdout); 2 unreadable
   local diff rc spool added

@@ -40,7 +40,8 @@ EOF
 cat >"$STUB/verify" <<'EOF'
 #!/usr/bin/env bash
 git status --porcelain >"$STUB_DIR/verify-saw"
-echo "verify root: $(git rev-parse --show-toplevel) [$(git rev-parse --abbrev-ref HEAD)]"
+[ -n "${VERIFY_STUB_NOROOT-}" ] ||
+  echo "verify root: ${VERIFY_STUB_ROOT:-$(git rev-parse --show-toplevel)} [$(git rev-parse --abbrev-ref HEAD)]"
 exit "${VERIFY_STUB_RC:-0}"
 EOF
 must chmod +x "$STUB/gh"
@@ -89,6 +90,8 @@ fixture() {
 EOF
   entry 7 older plan approved >>"$ROOT/$LOG"
   entry 51 decoy "$PH" "$PH" >>"$ROOT/$LOG"
+  # An entry an earlier PR for #50 left unfilled: on main, so never this branch's to fill.
+  [ -z "${FIXTURE_OLD_50-}" ] || entry 50 earlier-pr "$PH" "$PH" >>"$ROOT/$LOG"
   printf '# 0000 — Template\n\n- **Status:** proposed | accepted | superseded by NNNN\n\n## Context\n' >"$ROOT/docs/adr/0000-template.md"
   printf '# 0001 — Old\n\n- **Status:** accepted\n\n## Context\n\n- **Status:** proposed\n' >"$ROOT/docs/adr/0001-old.md"
   must git -C "$ROOT" add -A
@@ -159,13 +162,16 @@ done
 begin 'ADR flip: the added proposed ADR is accepted; main-only and template ADRs untouched'
 fixture adr
 printf '# 0007 — New\n\n- **Status:** proposed\n\n## Context\n\n- **Status:** proposed\n' >"$WT/docs/adr/0007-new.md"
+printf 'A template edit.\n' >>"$WT/docs/adr/0000-template.md"
 seal
+old_template=$(cat "$WT/docs/adr/0000-template.md")
 old_0001=$(cat "$WT/docs/adr/0001-old.md")
 run 50 --category approved-no-changes --verdict 'approved' "$ROOT"
 expect_rc 0
 [ "$(sed -n 3p "$WT/docs/adr/0007-new.md")" = '- **Status:** accepted' ] || bad "0007 not flipped"
 [ "$(sed -n 7p "$WT/docs/adr/0007-new.md")" = '- **Status:** proposed' ] || bad "a Status below the header was rewritten"
 [ "$(cat "$WT/docs/adr/0001-old.md")" = "$old_0001" ] || bad "0001 changed"
+[ "$(cat "$WT/docs/adr/0000-template.md")" = "$old_template" ] || bad "the template changed"
 [ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — approved-no-changes; ADR 0007 accepted" ] ||
   bad "subject: $(git -C "$WT" log -1 --format=%s)"
 end
@@ -184,6 +190,42 @@ seal 'no closing keyword here'
 run 50 --category plan --verdict 'revised' --no-push "$ROOT"
 expect_rc 0
 [ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — plan" ] || bad "subject: $(git -C "$WT" log -1 --format=%s)"
+end
+
+begin 'an entry headed PR #<pr> is found; the subject still takes the issue number'
+fixture prheading
+must git -C "$WT" checkout -q -- "$LOG"
+printf '\n## 2026-10-16 — PR #77 — the-ask\n\n- **Category**: %s\n- **Verdict**: %s\n' "$PH" "$PH" >>"$WT/$LOG"
+seal
+run 77 --category plan --verdict 'revised' --no-push "$ROOT"
+expect_rc 0
+grep -qxF -- '- **Verdict**: revised' "$WT/$LOG" || bad "the PR-headed entry was not filled"
+[ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — plan" ] || bad "subject: $(git -C "$WT" log -1 --format=%s)"
+end
+
+begin 'placeholder lines inside a fence in the entry are not the fields'
+fixture fence
+must git -C "$WT" checkout -q -- "$LOG"
+fence=$(printf '\140\140\140')
+example=$(printf '%s\n- **Category**: %s\n- **Verdict**: %s\n%s' "$fence" "$PH" "$PH" "$fence")
+printf '\n## 2026-10-16 — issue #50 — the-ask\n\n- **Category**: %s\n\n%s\n\n- **Verdict**: %s\n\n%s\n' \
+  "$PH" "$example" "$PH" "$example" >>"$WT/$LOG"
+seal
+run 50 --category plan --verdict 'revised' --no-push "$ROOT"
+expect_rc 0
+[ "$(grep -A2 -F 'issue #50 — the-ask' "$WT/$LOG" | tail -n 1)" = '- **Category**: plan' ] || bad "the real Category was not filled"
+[ "$(grep -A9 -F 'issue #50 — the-ask' "$WT/$LOG" | tail -n 1)" = '- **Verdict**: revised' ] || bad "the real Verdict was not filled"
+# Header two, decoy two, and the four fenced lines.
+[ "$(placeholders_in "$WT/$LOG")" = 8 ] || bad "a fenced placeholder was filled: $(placeholders_in "$WT/$LOG") left"
+end
+
+begin 'an unfilled #50 entry already on main is left alone; the branch-added one is filled'
+FIXTURE_OLD_50=1 fixture old50
+seal
+run 50 --category plan --verdict 'revised' --no-push "$ROOT"
+expect_rc 0
+grep -A4 -F 'earlier-pr' "$WT/$LOG" | grep -qF -- "- **Verdict**: $PH" || bad "the main entry was filled"
+grep -A4 -F 'the-ask' "$WT/$LOG" | grep -qxF -- '- **Verdict**: revised' || bad "the branch entry was not filled"
 end
 
 begin '--no-push commits and leaves origin where it was'
@@ -205,7 +247,7 @@ printf 'unrelated\n' >"$WT/notes.md"
 seal
 run 50 --category approved-no-changes --verdict approved "$ROOT"
 expect_rc 1
-expect_stderr '0 entries headed issue #50'
+expect_stderr '0 entries this branch added headed issue #50'
 expect_untouched
 [ ! -e "$STUB/verify-saw" ] || bad "verify ran after a refusal"
 end
@@ -216,7 +258,7 @@ entry 50 second-ask "$PH" "$PH" >>"$WT/$LOG"
 seal
 run 50 --category approved-no-changes --verdict approved "$ROOT"
 expect_rc 1
-expect_stderr '2 entries headed issue #50'
+expect_stderr '2 entries this branch added headed issue #50'
 expect_untouched
 end
 
@@ -309,6 +351,24 @@ expect_rc 1
 expect_stdout 'verify — rc=1'
 expect_stderr 'tree restored'
 grep -qF "$LOG" "$STUB/verify-saw" 2>/dev/null || bad "verify did not see the fill"
+expect_untouched
+end
+
+begin 'a verify root naming another tree restores the tree and commits nothing'
+fixture otherroot
+seal
+VERIFY_STUB_ROOT=/elsewhere run 50 --category approved-no-changes --verdict approved "$ROOT"
+expect_rc 1
+expect_stderr "does not name $WT"
+expect_untouched
+end
+
+begin 'a verify with no root line restores the tree and commits nothing'
+fixture noroot
+seal
+VERIFY_STUB_NOROOT=1 run 50 --category approved-no-changes --verdict approved "$ROOT"
+expect_rc 1
+expect_stdout 'no verify root line'
 expect_untouched
 end
 
