@@ -2341,13 +2341,10 @@ end
 # ==========================================================================================
 # 20q. a header main edited EARLIER does not refuse a tail-only conflict
 # ==========================================================================================
-# Issue cumulo#525, and the reason the test moved from the blob to the conflict region. cumulo#513
-# tested the whole file — main had to be a byte-for-byte extension of the merge base —
-# and its first live run (cumulo#524) hit a main whose header had acquired a restatement
-# ledger in an earlier merge. The conflict was still tail-only and the union was still
-# safe; the test refused anyway, and the resolution was done by hand. So: the edit is
-# above the anchor, only one side made it, and it must (a) not refuse and (b) SURVIVE
-# into what gets pushed, rather than being quietly reverted to the merge base.
+# Issue cumulo#525: cumulo#513's first live run (cumulo#524) refused a main whose header
+# had acquired a restatement ledger in an earlier merge. Only one side made the edit, so
+# it must (a) not refuse and (b) SURVIVE into what gets pushed, rather than being
+# quietly reverted to the merge base.
 begin "a clean header edit on main does not refuse a tail-only conflict, and survives the union"
 td_fixture union-ledgered-header
 td_main_writes "$TD_BASE_LEDGERED$TD_MAIN_ENTRY"
@@ -2381,10 +2378,9 @@ end
 # ==========================================================================================
 # 20r. …but a header BOTH sides moved incompatibly is still refused
 # ==========================================================================================
-# The other half of 20q, and what stops it from being a licence to union anything. The
-# conflict is no longer tail-only: the two sides changed the same header line to
-# different text, which is a judgement call the merge owner takes and this step does
-# not. Refused before the worktree is touched, so nothing is pushed and nothing merges.
+# The other half of 20q, and what stops it from being a licence to union anything: the
+# two sides changed the same header line to different text, which is a judgement call
+# the merge owner takes and this step does not. Refused before the worktree is touched, so nothing is pushed and nothing merges.
 begin "a header edit both sides made incompatibly is refused rather than unioned"
 td_fixture union-header-conflict
 td_main_writes "$TD_BASE_LEDGERED$TD_MAIN_ENTRY"
@@ -2442,13 +2438,29 @@ expect_union_refused "$before_sha" \
   'never inserted above one'
 end
 
+begin "a base side that inserted a new entry above an existing one is refused too"
+td_fixture union-inserted-on-main
+td_main_writes "${TD_BASE%%## *}## 2026-09-05 — an entry main slipped in above
+
+- Where: main
+
+## ${TD_BASE#*## }$TD_MAIN_ENTRY"
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$TD: the base side adds the entry \"## 2026-09-05 — an entry main slipped in above\" above"
+end
+
 # ==========================================================================================
 # 20t. a base that repeats an entry heading matches nothing
 # ==========================================================================================
 # Two entries titled identically cannot be matched across the three copies, so the base
 # is refused rather than merged at a guess.
 begin "a merge base that repeats an entry heading verbatim is refused"
-td_fixture union-anchor-doubled
+td_fixture union-heading-doubled
 must printf '%s' "$TD_BASE_DOUBLED" >"$REPO/$TD"
 must gitc "$REPO" commit --quiet -am 'the log grows a second entry with the same title'
 must gitc "$REPO" push --quiet origin main
@@ -2477,7 +2489,7 @@ end
 # The same guard on a side: the base is fine and the BRANCH appends an entry whose
 # heading is character-for-character one the base already had.
 begin "a side that appends a second copy of an existing entry heading is refused"
-td_fixture union-anchor-reused
+td_fixture union-heading-reused
 td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
 td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY_REUSING_HEADING"
 before_sha=$(origin_branch_sha)
@@ -2497,8 +2509,8 @@ end
 # ==========================================================================================
 # 20v. docs/review-feedback.md: both sides append one entry — unioned, base first
 # ==========================================================================================
-# The issue's first fixture (#60). Its count is the arithmetic the plan checks itself
-# against: main's entries plus the one the branch added.
+# The issue's first fixture (#60): the union holds main's entries plus the one the
+# branch added.
 begin "two lanes that both appended a review-feedback entry are unioned, base first"
 td_fixture union-feedback "$RF" "$RF_BASE"
 main_writes "$RF" "$RF_BASE$RF_MAIN_ENTRY"
@@ -2534,6 +2546,34 @@ run_merge
 expect_union_refused "$before_sha" \
   "$RF: the base side deletes the entry \"## 2026-10-02 — PR #2 — the entry main deletes\", which the branch side edits" \
   'a deletion is authoritative only over an entry the other side left as it was'
+end
+
+begin "a branch deletion of an entry main edited is refused, naming the entry"
+td_fixture union-edit-vs-delete "$RF" "$RF_BASE"
+main_writes "$RF" "$RF_KEPT$RF_DOOMED_EDITED$RF_MAIN_ENTRY"
+branch_writes "$RF" "$RF_KEPT$RF_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$RF: the branch side deletes the entry \"## 2026-10-02 — PR #2 — the entry main deletes\", which the base side edits"
+end
+
+# A log deleted on one side is a modify/delete conflict on that path, and its "union"
+# would be the other side's additions alone, headerless.
+begin "a log main deleted while the branch appended to it is refused"
+td_fixture union-log-deleted "$FL" "$FL_BASE"
+must gitc "$REPO" rm --quiet "$FL"
+must gitc "$REPO" commit --quiet -m 'another lane deleted the log'
+must gitc "$REPO" push --quiet origin main
+branch_writes "$FL" "$FL_BASE$FL_60"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_union_refused "$before_sha" \
+  "$FL: the base side has no copy of this file"
 end
 
 # ==========================================================================================

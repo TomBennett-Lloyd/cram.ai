@@ -766,15 +766,13 @@ fi
 # rather than judgement is automated: an entry-by-entry union, with everything
 # else refused for the merge owner. Refusing wrongly costs one hand resolution;
 # unioning wrongly is a mangled log the squash merge makes permanent.
-#
-# Nothing is written outside a scratch directory until every test has passed, and
-# then only in the lane's own worktree.
 
 # The logs this step may resolve, declared once: .claude/skills/review-loop/SKILL.md
 # step 5 cites this name rather than listing them. Each path is an executable carrier
-# of that log's name — docs/tech-debt.md's header holds its path ledger — and a rename
-# that misses this list fails closed: the conflict arrives under a path the list lacks,
-# and the conflicted-set test refuses naming it.
+# of that log's name (the path ledgers that exist: docs/tech-debt.md's header, and
+# .claude/workflow.json → feedbackLogLedger), and a rename that misses this list fails
+# closed: the conflict arrives under a path the list lacks, and the conflicted-set test
+# refuses naming it.
 APPEND_ONLY_LOGS=('docs/review-feedback.md' 'docs/tech-debt.md' 'docs/friction-log.md')
 
 is_append_only_log() { # is_append_only_log <path> -> 0 when <path> is one of APPEND_ONLY_LOGS
@@ -790,15 +788,9 @@ is_append_only_log() { # is_append_only_log <path> -> 0 when <path> is one of AP
 #      1 refused, the reason on stdout
 #      2 the question could not be asked at all, the reason on stdout
 #
-# A three-way merge per entry, keyed by "## " heading (fenced lines are not headings:
-# every log's `Entry format` fence holds one). The rule is .claude/skills/review-loop/
-# SKILL.md step 5's: both sides' additions kept, base first; a deletion on either side
-# authoritative; the result checked by heading-set arithmetic. Text before the first
-# heading, and an entry both sides changed, go through `git merge-file`, whose
-# conflict is a refusal. Also refused: a deletion of an entry the other side edited, a
-# new entry anywhere but after the side's last surviving base entry, a reorder, a
-# heading repeated within a copy or added by both sides. Cases: step 20 of
-# merge-pr.test.sh.
+# A three-way merge per entry, keyed by "## " heading, under the union rule
+# .claude/skills/review-loop/SKILL.md step 5 owns. Fenced lines are not headings: every
+# log's `Entry format` fence holds one. Cases: step 20 of merge-pr.test.sh.
 log_union_plan() {
   node -e '
 const fs = require("fs");
@@ -823,6 +815,11 @@ try {
 }
 if (O.length === 0) {
   refuse("the merge base has no copy of this file, so neither side is an append to a shared log");
+}
+for (const [text, side] of [[A, "base"], [B, "branch"]]) {
+  if (text.length === 0) {
+    refuse("the " + side + " side has no copy of this file — a log deleted or emptied on one side is not an append");
+  }
 }
 
 // Trailing blank lines are dropped from every part, and the union rejoins the parts
@@ -974,13 +971,18 @@ for (const e of bNew) {
 const entries = [...kept, ...aNew, ...bNew];
 const union = [head, ...entries.map((e) => e.text)].filter((t) => t !== "").join("\n\n") + "\n";
 
-// The heading-set arithmetic: what came out is the merge base headings less the
-// deletions, then the base side additions, then the branch side additions — in that
-// order and that number. A mismatch is this function wrong, not the logs.
+// The heading-set arithmetic, from the three copies rather than from what was built:
+// the merge base headings both sides still hold, then the additions of each side, base
+// side first. A mismatch is this function wrong, not the logs.
+const added = (doc) => doc.entries.map((e) => e.heading).filter((h) => !oMap.has(h));
+const want = [
+  ...o.entries.map((e) => e.heading).filter((h) => aMap.has(h) && bMap.has(h)),
+  ...added(a),
+  ...added(b),
+];
 const got = parse(union, "union").entries.map((e) => e.heading);
-const want = entries.map((e) => e.heading);
-if (got.length !== o.entries.length - deleted + aNew.length + bNew.length || got.join("\n") !== want.join("\n")) {
-  say(2, "the union of " + target + " does not come out as the merge base headings less deletions plus both sides additions — refusing a result this step cannot account for");
+if (got.join("\n") !== want.join("\n")) {
+  say(2, "the union of " + target + " does not come out as the merge base headings both sides kept plus both sides additions — refusing a result this step cannot account for");
 }
 
 try {
@@ -1009,7 +1011,6 @@ union_abort() { # union_abort <worktree> <scratch dir> <reason> — undo and ref
 }
 
 # log_union -> 0 resolved, committed and pushed; 1 refused with $union_reason set.
-# Everything that can say no runs before the worktree is touched.
 log_union() {
   local base_sha merge_base tip wt out rc dir conflicted status subject line past_oid
   local seen_paths summaries prettier_cmd p i
@@ -1132,8 +1133,8 @@ EOF
       union_reason="could not create a scratch directory for $p"
       return 1
     }
-    # A path missing at a commit writes nothing, and the plan refuses an empty
-    # merge-base copy by name.
+    # A path missing at a commit writes nothing, and the plan refuses any empty copy
+    # by name.
     git -C "$repo_root" show "$merge_base:$p" >"$dir/$i/base" 2>/dev/null
     git -C "$repo_root" show "$base_sha:$p" >"$dir/$i/a" 2>/dev/null
     git -C "$repo_root" show "$tip:$p" >"$dir/$i/b" 2>/dev/null

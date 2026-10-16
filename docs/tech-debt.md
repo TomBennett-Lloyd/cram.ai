@@ -144,3 +144,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/merge-pr.sh` env knobs block (`MERGE_PR_CONFIRM_RETRIES`, `MERGE_PR_UPDATE_RETRIES`, `MERGE_PR_READ_RETRIES`) and the loops that read them in the merge, issues, update-branch and checks steps
 - What: one suffix, three meanings. `MERGE_PR_CONFIRM_RETRIES` is described as "re-reads allowed", but its `attempt=1 … -lt N` loops give N-1 re-reads. `MERGE_PR_UPDATE_RETRIES` counts attempts and says so. `MERGE_PR_READ_RETRIES` counts retries after the first read. Pick one meaning for the whole family, then rename or re-describe the knobs and their loops to match.
 - Source: #55 review cycle 1
+
+## 2026-10-16 — the log-path ledgers trail `APPEND_ONLY_LOGS`
+
+- Where: `.claude/workflow.json` → `feedbackLogLedger`; `docs/friction-log.md` (no path ledger); `.claude/scripts/merge-pr.sh` `APPEND_ONLY_LOGS`; `.claude/scripts/merge-pr.test.sh` `RF`, `FL`
+- What: `APPEND_ONLY_LOGS` carries `docs/review-feedback.md` executably, but `feedbackLogLedger` names only merge-pr.sh's feedback step. `docs/friction-log.md` has two executable carriers now (the array and the harness's `FL`) plus its prose ones, and no path ledger, which `docs/standards/architecture.md` rule 9 owes from the second carrier. The workflow.json half waits for a PR that is `humanAlways` anyway, beside the fill-verdict.sh entry above.
+- Source: #60 review cycle 1
+
+## 2026-10-16 — merge-pr.sh's post-analysis union guards have no case
+
+- Where: `.claude/scripts/merge-pr.sh` `log_union` (the post-merge conflicted-set comparison and the `git diff HEAD --check` refusal); `.claude/scripts/merge-pr.test.sh` step 20
+- What: both guards fire only if the tree changes between the merge-tree analysis and the worktree merge, so no fixture reaches them. A mutant that removes the conflicted-set comparison passes every case. Covering them needs a seam between the two steps. This predates #60, which rewrote the comparison as a sorted-set check.
+- Source: #60 review cycle 1
