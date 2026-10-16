@@ -64,6 +64,8 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 : "${MERGE_PR_EXPECTED_CHECKS:=0}"                     # a floor the operator can raise; see the checks step
 : "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # re-reads allowed for an eventually-consistent state
 : "${MERGE_PR_PRETTIER_CMD:=pnpm exec prettier}"       # formatter the tech-debt union re-runs; see that step
+: "${MERGE_PR_GH_TIMEOUT_SECONDS:=60}"                 # the time box on every gh call; see gh_call
+: "${MERGE_PR_READ_RETRIES:=3}"                        # consecutive failed reads the checks poll absorbs
 
 # `files` is deliberately NOT in this list. `gh pr view --json files` is
 # `files(first: 100)` with no truncation signal, and the humanAlways decision made
@@ -86,13 +88,21 @@ PR_JSON_FIELDS='baseRefName,body,commits,headRefName,headRefOid,labels,mergeStat
 # up front makes it a usage error instead.
 for knob in MERGE_PR_POLL_INTERVAL_SECONDS MERGE_PR_POLL_TIMEOUT_SECONDS \
   MERGE_PR_UPDATE_RETRIES MERGE_PR_RETRY_SECONDS MERGE_PR_EXPECTED_CHECKS \
-  MERGE_PR_CONFIRM_RETRIES; do
+  MERGE_PR_CONFIRM_RETRIES MERGE_PR_GH_TIMEOUT_SECONDS MERGE_PR_READ_RETRIES; do
   case "${!knob}" in
     '' | *[!0-9]*)
       printf 'merge-pr: %s must be a non-negative integer, got "%s"\n' "$knob" "${!knob}" >&2
       exit 2
       ;;
   esac
+done
+# A zero time box would kill every gh call before it answered, and zero read
+# attempts would fail the poll before its first read.
+for knob in MERGE_PR_GH_TIMEOUT_SECONDS MERGE_PR_READ_RETRIES; do
+  if [ "${!knob}" -lt 1 ]; then
+    printf 'merge-pr: %s must be at least 1, got "%s"\n' "$knob" "${!knob}" >&2
+    exit 2
+  fi
 done
 
 usage() {
@@ -224,6 +234,16 @@ process.stdin.on("data", (d) => (raw += d)).on("end", () => {
   put("url", pr.url);
   for (const l of pr.labels || []) put("label", l && l.name);
   for (const c of pr.commits || []) put("commit", c && c.messageHeadline);
+  // One record per check, the latest run of it. A label event re-runs the whole
+  // workflow on the same head, so the rollup carries two entries per job name
+  // (PR #53 at 696a6e9: six entries, three names). Counted raw, they inflate the
+  // floor the next head is held to, and a superseded entry still pending blocks
+  // a head whose fresh run is green (issue #55). The key includes the workflow
+  // name so that two workflows with a job of the same name both stay counted.
+  // "Latest" is the later startedAt, which is also the run GitHub itself reads.
+  // On a tie, the entry that is not yet a SUCCESS wins: a tie must never be
+  // settled toward green.
+  const latest = new Map();
   for (const c of pr.statusCheckRollup || []) {
     // Two shapes share this array. A CheckRun carries status + conclusion; a
     // StatusContext (the older commit-status API, which the rollup still mixes
@@ -237,8 +257,19 @@ process.stdin.on("data", (d) => (raw += d)).on("end", () => {
       status = c.state === "PENDING" || c.state === "EXPECTED" ? "PENDING" : "COMPLETED";
       conclusion = c.state;
     }
-    put("check", name, status, conclusion);
+    const entry = { name, status, conclusion, startedAt: String((c && c.startedAt) || "") };
+    const key = String((c && c.workflowName) || "") + "\u0000" + name;
+    const held = latest.get(key);
+    const green = (e) => e.status === "COMPLETED" && e.conclusion === "SUCCESS";
+    if (
+      !held ||
+      entry.startedAt > held.startedAt ||
+      (entry.startedAt === held.startedAt && green(held) && !green(entry))
+    ) {
+      latest.set(key, entry);
+    }
   }
+  for (const e of latest.values()) put("check", e.name, e.status, e.conclusion);
   // The closing keywords GitHub itself honours, and the reason this is read from
   // the body rather than from "closingIssuesReferences": the body is what the PR
   // author wrote and what a reviewer read, and the squash-vs-rebase decision has
@@ -285,6 +316,50 @@ process.stdin.on("data", (d) => (raw += d)).on("end", () => {
 ' "$1"
 }
 
+# --- gh, time-boxed --------------------------------------------------------------------------
+
+# gh_call <gh args…> -> gh's stdout and stderr on stdout, and gh's exit code; 124
+# when the call outlived MERGE_PR_GH_TIMEOUT_SECONDS and was killed.
+#
+# Every gh call in this script goes through here. A request that never answers
+# would otherwise freeze the step it sits in with nothing printed, and that is what
+# issue #55 found behind three stuck checks polls. Neither `timeout` nor `gtimeout`
+# can be assumed to exist (the owner's machine has neither) and gh documents no
+# request timeout of its own, so the box is a watchdog written for bash 3.2.
+# gh's output goes to a file, never to the caller's pipe: the caller captures with
+# `$(…)`, which waits for every process holding that pipe to close it, and the
+# watchdog would then make every call take the full box.
+gh_call() {
+  local out_file pid watcher rc
+  out_file=$(mktemp "${TMPDIR:-/tmp}/merge-pr-gh.XXXXXX") || {
+    printf 'merge-pr: could not create a temp file for gh output\n'
+    return 2
+  }
+  "$MERGE_PR_GH_CMD" "$@" >"$out_file" 2>&1 &
+  pid=$!
+  (
+    spid=""
+    trap 'kill "$spid" 2>/dev/null; exit 0' TERM
+    sleep "$MERGE_PR_GH_TIMEOUT_SECONDS" &
+    spid=$!
+    wait "$spid"
+    : >"$out_file.timed-out"
+    kill -TERM "$pid" 2>/dev/null
+  ) >/dev/null 2>&1 &
+  watcher=$!
+  wait "$pid"
+  rc=$?
+  kill -TERM "$watcher" 2>/dev/null
+  wait "$watcher" 2>/dev/null
+  cat "$out_file"
+  if [ -e "$out_file.timed-out" ]; then
+    printf 'merge-pr: gh %s did not answer within %ss and was killed\n' "$*" "$MERGE_PR_GH_TIMEOUT_SECONDS"
+    rc=124
+  fi
+  rm -f "$out_file" "$out_file.timed-out"
+  return "$rc"
+}
+
 # --- PR state ---------------------------------------------------------------------------------
 
 pr_state=""
@@ -305,7 +380,7 @@ last_error=""
 
 read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
   local json facts rc kind a b c
-  json=$("$MERGE_PR_GH_CMD" pr view "$pr_number" --json "$PR_JSON_FIELDS" 2>&1)
+  json=$(gh_call pr view "$pr_number" --json "$PR_JSON_FIELDS" 2>&1)
   rc=$?
   if [ "$rc" -ne 0 ]; then
     last_error="gh pr view exited $rc: $json"
@@ -470,7 +545,7 @@ fi
 # whole PR rather than its first 100 files — the PR_JSON_FIELDS comment above says
 # why that matters here.
 pr_files=()
-files_out=$("$MERGE_PR_GH_CMD" api "repos/{owner}/{repo}/pulls/$pr_number/files" \
+files_out=$(gh_call api "repos/{owner}/{repo}/pulls/$pr_number/files" \
   --paginate --jq '.[].filename' 2>&1)
 files_rc=$?
 [ "$files_rc" -eq 0 ] || fail 'classify' "could not read the changed-file list (gh api exited $files_rc): $files_out"
@@ -618,7 +693,7 @@ fi
 
 feedback_state() { # -> 0 entry present and filled; 1 refuse (reason on stdout); 2 unreadable
   local diff rc spool added
-  diff=$("$MERGE_PR_GH_CMD" pr diff "$pr_number" 2>&1)
+  diff=$(gh_call pr diff "$pr_number" 2>&1)
   rc=$?
   if [ "$rc" -ne 0 ]; then
     printf 'gh pr diff exited %s: %s\n' "$rc" "$diff"
@@ -1355,8 +1430,15 @@ union_attempted=0
 update_branch_step() {
   local attempt=1 out lower rc
   while [ "$attempt" -le "$MERGE_PR_UPDATE_RETRIES" ]; do
-    out=$("$MERGE_PR_GH_CMD" pr update-branch "$pr_number" 2>&1)
+    out=$(gh_call pr update-branch "$pr_number" 2>&1)
     rc=$?
+    # A timed-out write is not retried, because whether it landed is unknown. If it
+    # did, the retry answers "already up to date", which leaves the await gate
+    # disarmed while GitHub is still answering the replaced head (cumulo#501). A
+    # re-run starts from a fresh read once that window has passed.
+    if [ "$rc" -eq 124 ]; then
+      fail 'update-branch' "the call timed out, so whether it wrote is unknown — re-run: $out"
+    fi
     # Matched against a lowercased copy rather than with `shopt -s nocasematch`:
     # that shell option is global, and a function that leaves it set changes how
     # every later `case` in the script matches.
@@ -1503,6 +1585,13 @@ fi
 # everywhere else, and it quotes gh's answer because the OTHER cause of an unmoved
 # head is a no-op spelling the arm above does not know.
 
+check_is_pending() { # check_is_pending <index> -> 0 when that check has not settled
+  # A COMPLETED check with no conclusion has not settled, and counting it as
+  # passing is the one direction this poll must never be wrong in.
+  [ "${check_statuses[$1]}" = "COMPLETED" ] && [ -n "${check_conclusions[$1]}" ] && return 1
+  return 0
+}
+
 checks_verdict() { # -> ready:<n> | pending:<present>:<expected>:<pending> | failed:<name>:<conclusion>
   local expected i total pending
   expected="$checks_baseline"
@@ -1517,14 +1606,7 @@ checks_verdict() { # -> ready:<n> | pending:<present>:<expected>:<pending> | fai
         return 0
         ;;
     esac
-    case "${check_statuses[$i]}" in
-      COMPLETED)
-        # A COMPLETED check with no conclusion has not settled, and counting it as
-        # passing is the one direction this poll must never be wrong in.
-        [ -n "${check_conclusions[$i]}" ] || pending=$((pending + 1))
-        ;;
-      *) pending=$((pending + 1)) ;;
-    esac
+    check_is_pending "$i" && pending=$((pending + 1))
   done
   if [ "$total" -ge "$expected" ] && [ "$pending" -eq 0 ]; then
     printf 'ready:%s\n' "$total"
@@ -1533,13 +1615,40 @@ checks_verdict() { # -> ready:<n> | pending:<present>:<expected>:<pending> | fai
   printf 'pending:%s:%s:%s\n' "$total" "$expected" "$pending"
 }
 
+# One stderr line per poll read, whatever it found. The poll used to print nothing
+# between update-branch and its verdict, so the three stuck runs issue #55 is about
+# left no record of which of its waits they were in.
+poll_log() { # poll_log <message>
+  printf 'merge-pr: checks poll %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >&2
+}
+
+poll_log_read() { # poll_log_read <verdict> — the state one successful read left behind
+  local i waiting=""
+  for ((i = 0; i < ${#check_names[@]}; i++)); do
+    check_is_pending "$i" && waiting="$waiting ${check_names[$i]}=${check_statuses[$i]:-(none)}"
+  done
+  poll_log "head=$pr_head_sha await_new_head=$await_new_head merge_state=$pr_merge_state verdict=$1 waiting_on=[${waiting# }]"
+}
+
 if [ "$already_merged" = "1" ]; then
   step 'checks' 'skipped (PR is already MERGED)'
 else
   poll_deadline=$((SECONDS + MERGE_PR_POLL_TIMEOUT_SECONDS))
   verdict=""
+  poll_read_failures=0
   while :; do
-    read_pr || fail 'checks' "$last_error"
+    # A failed read is retried, not fatal on the first one: with every gh call
+    # time-boxed, a hung request now arrives here as a failure, and a single
+    # dropped request should not cost the run.
+    if ! read_pr; then
+      poll_read_failures=$((poll_read_failures + 1))
+      poll_log "read failed ($poll_read_failures of $MERGE_PR_READ_RETRIES): $last_error"
+      [ "$poll_read_failures" -lt "$MERGE_PR_READ_RETRIES" ] ||
+        fail 'checks' "$poll_read_failures consecutive reads failed; the last: $last_error"
+      sleep "$MERGE_PR_POLL_INTERVAL_SECONDS"
+      continue
+    fi
+    poll_read_failures=0
     if [ "$pr_state" = "MERGED" ]; then
       # Somebody merged it while we polled. Not an error — the post-merge steps
       # below are exactly what is still owed.
@@ -1552,8 +1661,9 @@ else
       await_new_head=0
       step 'checks' "the update moved the head ${pre_update_sha}${superseded_union_sha:+/$superseded_union_sha} -> $pr_head_sha; reading that head"
     fi
+    verdict=$(checks_verdict)
+    poll_log_read "$verdict"
     if [ "$await_new_head" = "0" ]; then
-      verdict=$(checks_verdict)
       case "$verdict" in
         ready:*)
           step 'checks' "${verdict#ready:} check(s) complete on $pr_head_sha, none pending, none failing"
@@ -1628,7 +1738,7 @@ elif [ "$already_merged" = "0" ]; then
   fi
   [ "$pr_merge_state" = "CLEAN" ] || fail 'merge' "mergeStateStatus is '$pr_merge_state', not CLEAN — a merge is only ever taken from CLEAN"
 
-  merge_out=$("$MERGE_PR_GH_CMD" pr merge "$pr_number" "$merge_method" 2>&1)
+  merge_out=$(gh_call pr merge "$pr_number" "$merge_method" 2>&1)
   merge_rc=$?
   [ "$merge_rc" -eq 0 ] || fail 'merge' "gh pr merge $merge_method exited $merge_rc: $merge_out"
 
@@ -1663,7 +1773,7 @@ done
 if [ "$has_awaiting" = "0" ]; then
   step 'label' "'awaiting-review' not present — nothing to remove"
 else
-  label_out=$("$MERGE_PR_GH_CMD" pr edit "$pr_number" --remove-label awaiting-review 2>&1)
+  label_out=$(gh_call pr edit "$pr_number" --remove-label awaiting-review 2>&1)
   label_rc=$?
   [ "$label_rc" -eq 0 ] || fail 'label' "gh pr edit --remove-label exited $label_rc: $label_out"
   step 'label' "'awaiting-review' removed, after the merge"
@@ -1679,7 +1789,7 @@ else
   for n in "${pr_closes[@]}"; do
     attempt=1
     while :; do
-      issue_json=$("$MERGE_PR_GH_CMD" issue view "$n" --json number,state 2>&1)
+      issue_json=$(gh_call issue view "$n" --json number,state 2>&1)
       issue_rc=$?
       if [ "$issue_rc" -ne 0 ]; then
         read_failures="$read_failures #$n"

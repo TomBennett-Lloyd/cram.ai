@@ -111,21 +111,34 @@ EOF
   printf ']'
 }
 
-# json_checks <comma-separated name:status:conclusion> -> the statusCheckRollup array.
-# An empty conclusion is spelled by leaving the third field empty ("web-e2e:IN_PROGRESS:"),
-# which is exactly how GitHub answers for a check that has not finished.
+# json_checks <comma-separated name:status:conclusion[@startedAt[@workflowName]]> -> the
+# statusCheckRollup array. An empty conclusion is spelled by leaving the third field empty
+# ("web-e2e:IN_PROGRESS:"), which is exactly how GitHub answers for a check that has not
+# finished. startedAt and workflowName follow `@` because a timestamp carries colons; they
+# default to empty and "CI", which is what tells two runs of one job apart from two jobs.
 json_checks() {
-  local first=1 spec name rest status conclusion
+  local first=1 spec name rest status conclusion started workflow
   printf '['
   while IFS= read -r spec; do
     [ -n "$spec" ] || continue
+    started=""
+    workflow="CI"
+    case "$spec" in
+      *@*@*)
+        workflow=${spec##*@}
+        started=${spec#*@}
+        started=${started%@*}
+        ;;
+      *@*) started=${spec#*@} ;;
+    esac
+    spec=${spec%%@*}
     name=${spec%%:*}
     rest=${spec#*:}
     status=${rest%%:*}
     conclusion=${rest#*:}
     [ "$first" = "1" ] || printf ','
-    printf '{"__typename":"CheckRun","name":"%s","status":"%s","conclusion":"%s"}' \
-      "$name" "$status" "$conclusion"
+    printf '{"__typename":"CheckRun","name":"%s","status":"%s","conclusion":"%s","startedAt":"%s","workflowName":"%s"}' \
+      "$name" "$status" "$conclusion" "$started" "$workflow"
     first=0
   done <<EOF
 $(printf '%s' "$1" | tr ',' '\n')
@@ -197,6 +210,9 @@ case "\$1 \$2" in
     [ -f "\$state/view.count" ] && read -r n <"\$state/view.count"
     n=\$((n + 1))
     printf '%s' "\$n" >"\$state/view.count"
+    # A request that never answers, held for as many seconds as the file says; exec,
+    # so that the subject's time box kills the sleep itself and leaves no orphan.
+    [ -f "\$state/view.\$n.hang" ] && exec sleep "\$(cat "\$state/view.\$n.hang")"
     slot="\$state/view.\$n"
     [ -f "\$slot" ] || slot="\$state/view.default"
     if [ -f "\$state/view.\$n.oid-from-wt" ]; then
@@ -224,6 +240,7 @@ case "\$1 \$2" in
     [ -f "\$state/ub.count" ] && read -r n <"\$state/ub.count"
     n=\$((n + 1))
     printf '%s' "\$n" >"\$state/ub.count"
+    [ -f "\$state/update-branch.\$n.hang" ] && exec sleep "\$(cat "\$state/update-branch.\$n.hang")"
     if [ -f "\$state/update-branch.\$n" ]; then
       cat "\$state/update-branch.\$n"
       rc=0
@@ -320,6 +337,7 @@ reset_calls() { # a second run of the subject against the same state, from the t
 }
 
 POLL_TIMEOUT=30
+GH_TIMEOUT=60
 
 run_merge() { # run_merge [caller's working directory]
   capture -C "${1:-$REPO}" env \
@@ -331,6 +349,8 @@ run_merge() { # run_merge [caller's working directory]
     MERGE_PR_RETRY_SECONDS=0 \
     MERGE_PR_UPDATE_RETRIES=3 \
     MERGE_PR_CONFIRM_RETRIES=2 \
+    MERGE_PR_READ_RETRIES=2 \
+    MERGE_PR_GH_TIMEOUT_SECONDS="$GH_TIMEOUT" \
     bash "$SUBJECT" "$PR" "$REPO"
 }
 
@@ -1090,6 +1110,10 @@ expect_stdout 'updated onto the base (attempt 1)'
 expect_stdout 'the update moved the head aaa111 -> bbb222'
 expect_stdout '2 check(s) complete on bbb222'
 expect_not_stdout 'complete on aaa111'
+# Every poll read is logged, the stale one included: that is the record the stuck
+# runs of issue #55 did not leave.
+expect_stderr 'head=aaa111 await_new_head=1 merge_state=BLOCKED'
+expect_stderr 'head=bbb222 await_new_head=0 merge_state=CLEAN verdict=ready:2'
 expect_not_stderr "mergeStateStatus is 'BLOCKED'"
 expect_called "pr merge $PR --squash"
 # The stale answer was re-read rather than believed: classify, the stale poll, the
@@ -1130,31 +1154,205 @@ expect_not_called "pr merge $PR --squash"
 end
 
 # ==========================================================================================
+# 12d. a rollup carrying two runs of each check reads the latest run, not the array order
+# ==========================================================================================
+# A label event re-runs the whole workflow on the same head, so the rollup holds two
+# entries per job (PR #53 at 696a6e9). The superseded runs here are still IN_PROGRESS
+# and are listed AFTER the fresh green ones, the order PR #51's rollup came back in,
+# so a subject reading the last entry per name would also fail this case.
+T_OLD='2026-10-16T10:45:07Z'
+T_NEW='2026-10-16T10:47:25Z'
+begin "a superseded run still in progress does not hold up the check that re-ran green"
+fixture rerun-latest-wins
+V_CHECKS="checks:COMPLETED:SUCCESS@$T_NEW,gitleaks:COMPLETED:SUCCESS@$T_NEW,checks:IN_PROGRESS:@$T_OLD,gitleaks:IN_PROGRESS:@$T_OLD"
+write_view default
+write_merged_view
+POLL_TIMEOUT=0
+run_merge
+POLL_TIMEOUT=30
+expect_rc 0
+expect_stdout '2 check(s) complete on aaa111'
+expect_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 12e. the floor is counted in distinct checks, so a labelled head cannot inflate it
+# ==========================================================================================
+# The pre-update head carries six entries (three checks, run twice); the head
+# update-branch writes carries three. Counted raw, the floor would be six and the
+# fresh head could never reach it.
+begin "a six-entry labelled head sets a floor of three for the fresh head"
+fixture rerun-floor
+must printf '%s\n' "$UPDATE_WROTE" >"$STATE/update-branch.out"
+V_MSST="BEHIND"
+V_CHECKS="checks:COMPLETED:SUCCESS@$T_OLD,gitleaks:COMPLETED:SUCCESS@$T_OLD,merge-ritual-gate:COMPLETED:SUCCESS@$T_OLD,checks:COMPLETED:SUCCESS@$T_NEW,gitleaks:COMPLETED:SUCCESS@$T_NEW,merge-ritual-gate:COMPLETED:SUCCESS@$T_NEW"
+write_view 1
+V_OID="bbb222"
+V_MSST="CLEAN"
+V_CHECKS="checks:COMPLETED:SUCCESS@$T_NEW,gitleaks:COMPLETED:SUCCESS@$T_NEW,merge-ritual-gate:COMPLETED:SUCCESS@$T_NEW"
+write_view default
+write_merged_view
+POLL_TIMEOUT=0
+run_merge
+POLL_TIMEOUT=30
+expect_rc 0
+expect_stdout '3 check(s) complete on bbb222'
+expect_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 12f. …and the latest run decides in the failing direction too
+# ==========================================================================================
+# PR #51's post-merge rollup: a fresh gitleaks run FAILED where the earlier one passed.
+# Latest-wins has to mean that the failure is what this step sees.
+begin "a re-run that failed overrides the earlier green run of the same check"
+fixture rerun-failed
+V_CHECKS="checks:COMPLETED:SUCCESS@$T_OLD,gitleaks:COMPLETED:FAILURE@$T_NEW,gitleaks:COMPLETED:SUCCESS@$T_OLD"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr "check 'gitleaks' concluded FAILURE"
+expect_not_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 12g. two runs started in the same second are never settled toward green
+# ==========================================================================================
+# The pending run is listed first, so a subject breaking the tie by array position
+# reads the SUCCESS and merges. The case also pins the poll's log line: the read
+# names what it is waiting on.
+begin "a startedAt tie between a pending and a green run stays pending"
+fixture rerun-tie
+V_CHECKS="checks:IN_PROGRESS:@$T_NEW,checks:COMPLETED:SUCCESS@$T_NEW"
+write_view default
+write_merged_view
+POLL_TIMEOUT=0
+run_merge
+POLL_TIMEOUT=30
+expect_rc 1
+expect_stderr 'timed out'
+expect_stderr '1 still pending'
+expect_stderr 'head=aaa111 await_new_head=0 merge_state=CLEAN'
+expect_stderr 'waiting_on=[checks=IN_PROGRESS]'
+expect_not_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 12h. a job name shared by two workflows is two checks, not two runs of one
+# ==========================================================================================
+begin "a check name two workflows share is counted once per workflow"
+fixture two-workflows
+V_CHECKS="checks:COMPLETED:SUCCESS@$T_NEW@CI,checks:IN_PROGRESS:@$T_OLD@Nightly"
+write_view default
+write_merged_view
+POLL_TIMEOUT=0
+run_merge
+POLL_TIMEOUT=30
+expect_rc 1
+expect_stderr '2 of an expected 2 check(s) present, 1 still pending'
+expect_not_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
 # 13. a run that dies mid-poll leaves nothing behind, and a re-run finishes the chain
 # ==========================================================================================
 # cumulo#488: the chain died on `error connecting to api.github.com` and left the PR
 # open with no signal. The property under test is that the repair is a re-run —
 # the script keeps no state of its own, so the second run re-reads and proceeds.
+# The poll absorbs MERGE_PR_READ_RETRIES consecutive failures (2 here), so the
+# outage outlasts that budget: reads 2 and 3 both fail.
 begin "a re-run after a mid-poll network failure resumes and completes"
 fixture resume
 write_view default
-must printf 'error connecting to api.github.com\n' >"$STATE/view.2"
-must printf '1\n' >"$STATE/view.2.rc"
+for n in 2 3; do
+  must printf 'error connecting to api.github.com\n' >"$STATE/view.$n"
+  must printf '1\n' >"$STATE/view.$n.rc"
+done
 write_merged_view
 run_merge
 expect_rc 1
 expect_stderr 'checks — FAILED'
+expect_stderr '2 consecutive reads failed'
 expect_stderr 'api.github.com'
 expect_not_called "pr merge $PR --squash"
 [ -f "$STATE/merged" ] && bad "the failed run merged anyway"
 
-must rm -f "$STATE/view.2" "$STATE/view.2.rc"
+must rm -f "$STATE/view.2" "$STATE/view.2.rc" "$STATE/view.3" "$STATE/view.3.rc"
 reset_calls
 run_merge
 expect_rc 0
 expect_called "pr update-branch $PR"
 expect_called "pr merge $PR --squash"
 expect_stdout "done — PR #$PR MERGED"
+end
+
+# ==========================================================================================
+# 13b. a poll read that hangs is killed at the time box, retried, then fails the step
+# ==========================================================================================
+# Issue #55: three checks polls sat on green heads, and one candidate cause was a gh
+# call that never answered. Every read now carries a time box. The stub holds each
+# read for 30 s against a 1 s box, so a subject without the box takes a minute and
+# then fails the elapsed-time assertion below as well as the message ones.
+begin "a poll read that outlives the time box is retried, then fails the checks step"
+fixture read-hangs
+write_view default
+for n in 2 3; do must printf '30\n' >"$STATE/view.$n.hang"; done
+write_merged_view
+GH_TIMEOUT=1
+started=$SECONDS
+run_merge
+elapsed=$((SECONDS - started))
+GH_TIMEOUT=60
+expect_rc 1
+expect_stderr 'checks — FAILED'
+expect_stderr 'read failed (1 of 2)'
+expect_stderr '2 consecutive reads failed'
+expect_stderr 'did not answer within 1s'
+expect_not_called "pr merge $PR --squash"
+views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
+[ "$views" -eq 3 ] || bad "expected classify plus two poll reads, got $views pr view calls"
+[ "$elapsed" -lt 20 ] || bad "the run took ${elapsed}s against a 1s time box"
+end
+
+# ==========================================================================================
+# 13c. …and one hung read followed by an answer costs nothing but the retry
+# ==========================================================================================
+begin "a single hung poll read is retried and the run merges"
+fixture read-hangs-once
+write_view default
+must printf '30\n' >"$STATE/view.2.hang"
+write_merged_view
+GH_TIMEOUT=1
+run_merge
+GH_TIMEOUT=60
+expect_rc 0
+expect_stderr 'read failed (1 of 2)'
+expect_called "pr merge $PR --squash"
+expect_stdout "done — PR #$PR MERGED"
+end
+
+# ==========================================================================================
+# 13d. a hung update-branch fails its step rather than retrying a write of unknown outcome
+# ==========================================================================================
+# A retry would be wrong here, not just slow. If the killed call had written, the
+# retry answers "already up to date", and the await gate stays disarmed while GitHub
+# still answers the replaced head, which is cumulo#501's defect.
+begin "an update-branch that outlives the time box fails its step and is not retried"
+fixture update-hangs
+write_view default
+must printf '30\n' >"$STATE/update-branch.1.hang"
+write_merged_view
+GH_TIMEOUT=1
+run_merge
+GH_TIMEOUT=60
+expect_rc 1
+expect_stderr 'update-branch — FAILED'
+expect_stderr 'whether it wrote is unknown'
+expect_stderr 'did not answer within 1s'
+ubs=$(grep -c -- "^pr update-branch $PR" "$STATE/calls.log")
+[ "$ubs" -eq 1 ] || bad "a write of unknown outcome was retried: $ubs update-branch calls"
+expect_not_called "pr merge $PR --squash"
 end
 
 # ==========================================================================================
@@ -2115,6 +2313,12 @@ capture -C "$REPO" env MERGE_PR_GH_CMD="$ROOT/gh" MERGE_PR_EXPECTED_CHECKS=lots 
   bash "$SUBJECT" "$PR" "$REPO"
 expect_rc 2
 expect_stderr 'MERGE_PR_EXPECTED_CHECKS must be a non-negative integer'
+case_ctx="zero time box"
+capture -C "$REPO" env MERGE_PR_GH_CMD="$ROOT/gh" MERGE_PR_GH_TIMEOUT_SECONDS=0 \
+  bash "$SUBJECT" "$PR" "$REPO"
+expect_rc 2
+expect_stderr 'MERGE_PR_GH_TIMEOUT_SECONDS must be at least 1'
+case_ctx=""
 end
 
 finish
