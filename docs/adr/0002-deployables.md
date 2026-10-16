@@ -1,6 +1,6 @@
 # 0002 — Deployables: one app plus a bundled model runtime; local-first; nothing public
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-15
 - **Issue:** #2
 
