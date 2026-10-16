@@ -65,3 +65,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/verify-tier.sh` — the RUNG 2 header ("The legs are emitted in `verify:full`'s own order") against `build_source_prose_legs`
 - What: `build_source_prose_legs` appends `check:ledgers` before `check:adr-index` and the observing tests after every `check:*` leg, while `verify:full` in `package.json` runs `test`, then `check:adr-index`, then `check:ledgers`. A red under rung 2 can therefore stop at a different leg than the composite would. Either reorder the builder or delete the claim.
 - Source: #17 review (found while adding `check:no-course-content` to the `.md`-conditional legs; pre-existing on main)
+
+## 2026-10-15 — rule 9's recorded sweep commit is the parent of the swept tree
+
+- Where: `docs/standards/architecture.md` rule 9, the sentence on a ledger not yet declared ("records the commit it was run at (`git rev-parse --short HEAD`)")
+- What: a sweep run before the commit that carries its ledger sentence records that commit's parent. It happened (shown at `9d90f16`, whose ledger lists the `docs/adr/README.md` § Index row that is absent at its recorded `5a5f86c`) on ADR 0001 (`bb8a720`) and ADR 0002 (`5a5f86c`, then `9d90f16`, then `15c9b94`). Fix candidates: record the commit after committing (a two-commit dance), or phrase the recipe as "the parent commit of the change that carries this sentence".
+- Source: #2 review cycle 1
+
+## 2026-10-15 — architecture.md § Why paraphrases ADR 0002's count without citing it
+
+- Where: `docs/standards/architecture.md` § Why, first sentence
+- What: ported cumulo wording that restates ADR 0002 § Decision (a)'s count in the plural and does not cite it. Banked in ADR 0002's restatement ledger under (g).
+- Source: #2 review cycle 1

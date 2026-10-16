@@ -18,7 +18,7 @@ Owned by `CLAUDE.md` § Hard constraints; this section carries no restatement.
 
 ## 3. Architecture
 
-Four modules, one deployable (plus the model runtime, which is third-party software we bundle, not code we ship). Same "resist splitting" rule as cumulo's ADR 0001 — a second deployable needs an ADR.
+Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime's place outside it, and the bar for a second deployable); this paragraph carries no restatement.
 
 ```
  upload ─▶ ingest ─▶ index (SQLite per course) ◀─ retrieve ◀─ tutor features ◀─ web UI
@@ -104,7 +104,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 ## 7. ADRs to write first (each is an issue with the `adr` label)
 
 1. **0001 Grounding architecture** — retrieval + citation + verification, not fine-tuning; the unit contract; and `docs/standards/grounding.md`. Written — `docs/adr/0001-grounding-architecture.md` (#1); §1 and §3.4 above now point at it.
-2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable.
+2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable. Written — `docs/adr/0002-deployables.md` (#2); §3's lead paragraph above now points at it.
 3. **0003 Model roles and backends** — generator / verifier / embedder; `node-llama-cpp` vs HTTP backends; the measured model choice and licence against the target machine; whether the verifier is an LLM prompt or an NLI cross-encoder.
 4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it.
 5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics.
