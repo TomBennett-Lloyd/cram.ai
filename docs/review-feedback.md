@@ -149,7 +149,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-16 — issue #49 — adr-issues-take-the-ticket-agent-lane
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the change itself was decided in chat on 2026-10-16 — "yeah lets do those 2 improvements", in answer to the proposal "Route ADR tickets through the ticket-agent lane too. Planning stays on Fable; execution and review happen inline on Opus; I do only diff checks and merges." The PR asks the owner to confirm the wording that carries it:
   - `.claude/workflow.json` → `orchestration.routeRule`'s new sentence, and `orchestration.costEvidence`'s pointer moving from the ticket-agent lane's step 3 to step 4;
   - `.claude/agents/ticket-agent.md` rule 2's `adr` stop and its `PROCEED` / `REVISE` resume, and rule 8's bounce list;
@@ -158,4 +158,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - the one-sentence pointers at the lane in `.claude/skills/plan-issue/SKILL.md` and `.claude/skills/execute/SKILL.md`.
 - **Why**: `.claude/workflow.json` is a `humanAlways` path, so the owner reads the wording even though the decision is already made.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved in chat 2026-10-16 — "approve 53" — no revisions requested; the step renumbering and rule 3(e) confirmed; the PR merged as proposed.
