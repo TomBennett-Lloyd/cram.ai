@@ -4,7 +4,7 @@ import { indexed, openOrFail, slide, tempCourse } from './course-fixture';
 import { EmbedderIdentity } from './embedder-identity';
 
 // docs/adr/0004-storage.md § Decision (f) asks for latency and size at course scale.
-// CRAM_MEASURE=1 pnpm --filter @cram/index exec vitest run src/retrieval.measure.test.ts
+// CRAM_MEASURE=1 pnpm --filter @cram/index exec vitest run src/retrieval.measure.test.ts --silent=false
 const SLIDES = 3000;
 const WORDS_PER_SLIDE = 120;
 const VOCABULARY = 8000;
