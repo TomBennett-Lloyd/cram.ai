@@ -31,6 +31,8 @@ Post ONE issue comment headed `## Plan (ticket-agent lane)`: the files you will 
   - `REVISE — <feedback>` → revise the plan comment (fetch-modify-push) and return BLOCKED again.
 - **One-honest-PR test.** If the work cannot ship as one PR that is its own revert unit — it needs two PRs, or mixes a `humanAlways` edit with unrelated source, or spans surfaces whose acceptance cannot be told in one report — return `STATUS: BLOCKED — needs splitting: <proposed issues>`; the top-level splits it or composes a batch. This stop is what the lane has instead of a size tier at admission (owner decision 2026-09-10, recorded in `.claude/workflow.json` → `orchestration.routeRule`): a tier is a prediction made before anyone has read the files, and this is a measurement made after.
 
+**The plan comment carries the restatement sweep.** When the work changes or deletes a stated value, name, locator, path or rule, the comment names every other site that states it (`docs/standards/architecture.md` rule 9) — the `git grep` command and its output, pasted, before the first edit; a sweep asserted without its output is not asserted (`.claude/skills/plan-issue/SKILL.md` step 4's rule, stated here because this lane has no planner). Two lanes swept only the file the issue named and review found the twin: #17's gate name at three sites (PR #33), #37's line locator in the sibling script (PR #85) — #87.
+
 Plan revisions edit that one comment fetch-modify-push (`.claude/agents/task-orchestrator.md` rule 8(b)), led by a `Footprint change: +<files>` line whenever files are added.
 
 ## 3. Inline first
