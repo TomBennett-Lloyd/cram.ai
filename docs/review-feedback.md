@@ -227,3 +227,13 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-19; both allow-list entries and allowBuilds: false accepted
+
+## 2026-10-19 — issue #9 — ingest-egress-entry-unpdf
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - grant a `.claude/network-egress.allowlist` entry for `unpdf` (MIT; it bundles pdf.js, Apache-2.0), which `check:no-network-egress` flags on its global arm. pdf.js's `fetch` and `XMLHttpRequest` sites load URL-sourced documents and cMap, standard-font and wasm URLs; `packages/ingest/src/pdf-adapter.ts` hands it bytes and no URL, and `packages/ingest/src/pdf-adapter.test.ts` stubs both globals to throw while a deck is read. `pdfjs-dist` directly was the alternative and would also need an entry for its optional native `@napi-rs/canvas`;
+  - accept the plan comment's divergences from the issue: test decks are authored in memory with `pdf-lib` rather than committed under `packages/ingest/fixtures/`; long slides ship as bullet-per-line bodies rather than several records per slide (#77); `kind: references` rides on `IngestedSlide` rather than `SlideRecord` until the index stores it (#78).
+- **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
