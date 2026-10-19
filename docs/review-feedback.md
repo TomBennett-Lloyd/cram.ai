@@ -171,3 +171,59 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` is a `humanAlways` path, and the change widens the gate on a hard constraint, which only the owner can do.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
+
+## 2026-10-19 — issue #3 — plan-feedback-recommendations-accepted
+
+- **Category**: plan
+- **Feedback**: on the plan's six owner questions, "yeah i'm happy with the reccomendations" (Q1–Q3: permissive means OSI-style, a candidate's own licence decides admission, the NLI cross-encoder is the provisional verifier); "yeah you can download the weights" (Q5); "courses are english only" (Q6).
+- **Why**: each recommendation was argued in the plan comment on #3 with its alternative, and the owner chose the recommended side of all of them.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Decision (d), (g) and (i).
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — plan-feedback-no-training-on-course-data
+
+- **Category**: plan
+- **Feedback**: "what are the training-data terms? we don't want to have our data used for training"
+- **Why**: Q2 asked about the licences of the datasets the candidate models were trained on, not about the student's data, so the ADR has to say both: no role trains on course content (the `CLAUDE.md` hard constraint, cited), and the caveats are about the candidates' training sets.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Decision (i)'s last bullet and (g)'s caveat column.
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — plan-feedback-onnx-every-mode-for-reproducibility
+
+- **Category**: plan
+- **Feedback**: "yeah i think the onnx runtime in every mode reduces the variability so it should ensure results we see in development can be reproduced?"
+- **Why**: true for the encoders, which run on the same runtime and artefact in every mode; only partly true for the generator, whose backend still differs between developer mode and the installed app. So the ADR cites reproducibility as the owner's reason and states the remaining difference and how it is narrowed.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Decision (c); #66 filed for the in-process encoder adapter.
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — plan-feedback-memory-limit-laptop-first
+
+- **Category**: plan
+- **Feedback**: "with the 3GB limit, is that on my current laptop or the windows one? are we saying we need to remote host it from the outset?" — answered: the Windows laptop, and not from the outset.
+- **Why**: relocation moves slide text off the laptop and is the owner's explicit decision, so the cheaper in-laptop steps are ordered before it and the first measured run decides which step is reached.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Consequences ("If A3 fails") and § Decision (j); relocation not adopted.
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — adr-0003-model-roles-and-backends
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0003-model-roles-and-backends.md` § Decision (a)–(m), in particular (a) four roles with the reranker optional, (b) the entailment capability and verdicts computed in `packages/grounding`, (c) encoders in-process on ONNX Runtime in every mode with the generator in-process or over private HTTP, (d) the provisional cross-encoder verifier, its no-truncation rule and the measurement rule that settles it, (e) the pin shape, (f) role config in `packages/gateway`, (g) the candidates with Gemma and Llama not admitted and the training-data caveats, (i) weight acquisition left to ADR 0007 and #20, and (j) relocation placed, not adopted;
+  - accept the `docs/plan.md` §3.3 pointer and its true-ups (the §3 diagram, §3.2's cite, the §5 `gateway/` row, §7 item 3, §9 q1 and the status line);
+  - accept the `docs/standards/grounding.md` rule 4 path cite;
+  - accept the ADR joining `.claude/ledgers/contradiction-set-bar.ledger` as a carrier;
+  - accept the `docs/adr/README.md` index row placed after 0005's.
+- **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed — ADR 0003 at `proposed` and the pointers; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
+
+## 2026-10-19 — issue #11 — index-egress-entries-better-sqlite3-node-addon-api
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - grant `.claude/network-egress.allowlist` entries for `better-sqlite3`, flagged by `check:no-network-egress`'s native arm for its `binding.gyp` and prebuilt `.node` binaries — SQLite in-process, the driver `docs/adr/0004-storage.md` § Decision (c) names, with no socket API — and for `node-addon-api`, its C++ header dependency, flagged by the builtin arm for maintainer scripts under `tools/` that spawn processes and are never loaded at runtime;
+  - accept `allowBuilds: better-sqlite3: false` in `pnpm-workspace.yaml`: the N-API binaries ship inside the tarball under `prebuilds/` and load from there; allowing the build would run node-gyp, which downloads Node headers at install time unless already cached;
+  - accept the plan comment's divergences from the issue, each filed as its own issue: embeddings arrive as inputs rather than through a gateway dependency; the cross-encoder rerank is deferred to #68; recall@k and latency against the eval deck, and the first run on the Windows target, are deferred to #69, with a synthetic course-scale measurement on an Apple M1 Pro in their place; decks stored in the course file and the older-schema rebuild go to #70; removing a re-uploaded lecture's stale slides goes to #71.
+- **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19; both allow-list entries and allowBuilds: false accepted

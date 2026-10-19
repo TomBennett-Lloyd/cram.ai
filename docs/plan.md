@@ -1,7 +1,7 @@
 # cram.ai — project plan
 
 - **Date:** 2026-10-13
-- **Status:** accepted by the owner in chat on 2026-10-13 (name, licence, exam realism, single-user scope, Windows installer); the model and hardware questions in §9 are still open.
+- **Status:** accepted by the owner in chat on 2026-10-13 (name, licence, exam realism, single-user scope, Windows installer); §9 q1 was answered on #3 and the model choice is `docs/adr/0003-model-roles-and-backends.md`'s.
 - **Lifetime:** this document seeds the first ADRs and the milestone issues. A section that an ADR supersedes is replaced by a pointer to that ADR; the milestones become issues and this file stops tracking them.
 
 ## 0. The one-paragraph version
@@ -25,7 +25,7 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
                                                        │
                                             model gateway (one interface)
                                                        │
-                      node-llama-cpp in-process (installed app)  |  Ollama / vLLM over HTTP (dev, server)
+        encoders in-process (every mode)  |  generator: node-llama-cpp (installed app) or HTTP (dev, private host)
 ```
 
 ### 3.1 Ingest
@@ -37,17 +37,13 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 
 ### 3.2 Index
 
-- Owned by `docs/adr/0004-storage.md` (the one-file-per-course unit, what lives in it, the retrieval substrate and its fusion, deletability and portability, the no-migration rule with its un-defer trigger, the encryption deferral, and the bar for a second store); this bullet carries no restatement. After fusion, a local cross-encoder rerank when the candidate list is large is retrieval's (#11), with the model ADR 0003's (#3).
+- Owned by `docs/adr/0004-storage.md` (the one-file-per-course unit, what lives in it, the retrieval substrate and its fusion, deletability and portability, the no-migration rule with its un-defer trigger, the encryption deferral, and the bar for a second store); this bullet carries no restatement. After fusion, a local cross-encoder rerank when the candidate list is large is retrieval's (#11), with the model `docs/adr/0003-model-roles-and-backends.md`'s.
 - Embeddings go through the model gateway, so every backend serves them the same way.
 - **Topic index**: at ingest, an LLM pass tags each slide with topics; tags are user-editable. "Revision notes for _category_" resolves category → the union of tagged slides plus semantic neighbours, across all lectures. The tag pass is the one place an LLM writes into the index, and its output is metadata, never content.
 
 ### 3.3 Model gateway
 
-- One interface: chat completion with constrained JSON output, embeddings, rerank. Config picks the backend. No other code knows which model is running.
-- Backends: **`node-llama-cpp`** in-process (prebuilt llama.cpp binaries for Windows CPU, CUDA and Vulkan, and macOS Metal; this is what the installed app ships, so the installer has no second runtime to manage); **OpenAI-compatible HTTP** for Ollama during development and vLLM on a server.
-- Three **roles**, each independently configurable: `generator`, `verifier`, `embedder`. The verifier may be the same weights with a different prompt, or a small NLI cross-encoder; ADR 0003 decides after measurement.
-- Candidate models (an assumption to verify at ADR time, not a pin): Qwen3 8B or 14B at Q4 for the generator depending on the target machine (§9); Gemma 3 as the alternative; `nomic-embed-text` or `bge-m3` for embeddings; `bge-reranker` for rerank. Apache/permissive licences only.
-- The target machine is probably a laptop without a discrete GPU, so the design assumes **slow generation is acceptable when it is asynchronous**: exam papers are generated as background jobs into a pool (overnight is fine), notes are generated once per category and cached, and only Ask is interactive. Model choice is then driven by Ask latency and verifier accuracy, not by exam generation speed.
+Owned by `docs/adr/0003-model-roles-and-backends.md` (the roles and their independent configuration, the gateway's capabilities, the backend per role and run mode, the verifier and the measurement that settles it, where role config lives, the pin shape, the candidates and their licences, and the interactive/background split the selection rests on); this section carries no restatement.
 
 ### 3.4 Grounding contract (the core of the project)
 
@@ -84,7 +80,7 @@ packages/
   shared/       zod schemas: SlideRecord, Unit, Citation, ExamPaper, ExamQuestion, Rubric, StyleExemplar
   ingest/       pdf/pptx → SlideRecord; OCR adapter
   index/        SQLite schema, FTS5 + sqlite-vec, hybrid retrieval, topic index
-  gateway/      model gateway interface + node-llama-cpp and OpenAI-compatible adapters
+  gateway/      model gateway interface, role config, in-process and OpenAI-compatible adapters
   grounding/    units, citation resolution, verifier, prompts (the contract, pure core)
   tutor/        ask / notes / exam / grade, composed from grounding
 eval/           synthetic deck, golden questions, eval runner
@@ -102,7 +98,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 
 1. **0001 Grounding architecture** — retrieval + citation + verification, not fine-tuning; the unit contract; and `docs/standards/grounding.md`. Written — `docs/adr/0001-grounding-architecture.md` (#1); §1 and §3.4 above now point at it.
 2. **0002 Deployables** — one app (server + web + desktop shell) plus a bundled model runtime; local-first; private-network server only when needed; the bar for a second deployable. Written — `docs/adr/0002-deployables.md` (#2); §3's lead paragraph above now points at it.
-3. **0003 Model roles and backends** — generator / verifier / embedder; `node-llama-cpp` vs HTTP backends; the measured model choice and licence against the target machine; whether the verifier is an LLM prompt or an NLI cross-encoder.
+3. **0003 Model roles and backends** — generator / verifier / embedder / reranker; backends by role and run mode; the candidates, their licences and the measurement that pins them; the verifier's shape. Written — `docs/adr/0003-model-roles-and-backends.md` (#3); §3.3 above now points at it.
 4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it. Written — `docs/adr/0004-storage.md` (#4); §3.2's first bullet above now points at it.
 5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics. Written — `docs/adr/0005-evaluation-as-gate.md` (#5); §4 above now points at it.
 6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; when to refuse to cite derived text.
@@ -120,7 +116,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 
 ## 9. Open questions for the owner
 
-1. **The target Windows machine**: CPU, RAM, and whether it has a discrete GPU (and which). This decides the model size and whether Ask is interactive at all on CPU. An 8B model at Q4 needs ~6 GB of RAM and runs at a few tokens per second on a recent laptop CPU; a 14B needs ~10 GB and is noticeably slower without a GPU.
+1. **The target Windows machine**: answered by the owner on #3 (2026-10-13); the sizing it decides is `docs/adr/0003-model-roles-and-backends.md`'s.
 2. **A sample deck** (not committed) to size the image-only-slide problem on during M1.
 3. **Windows testing**: development is on a Mac. CI can build the installer on a Windows runner, but someone has to run it. Options: a Windows VM on the Mac, or the first user's machine as the smoke test with a short checklist.
 4. **Code signing**: pay for a certificate (removes the SmartScreen warning) or accept the warning for a single known user.

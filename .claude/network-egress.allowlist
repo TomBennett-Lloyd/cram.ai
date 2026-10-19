@@ -1,3 +1,5 @@
 # Production dependencies allowed to reach the network.
 # Owned by .claude/scripts/check-no-network-egress.sh, whose header owns this format; every
 # entry is an owner decision under CLAUDE.md § Hard constraints.
+better-sqlite3 a native addon (binding.gyp, prebuilt .node binaries) embedding SQLite in-process for @cram/index (#11, docs/adr/0004-storage.md); it exposes no socket API and opens no connection
+node-addon-api better-sqlite3's C++ header dependency; flagged for maintainer scripts under tools/ that spawn processes and are never loaded at runtime (its main entry, index.js, loads only path and its package.json)

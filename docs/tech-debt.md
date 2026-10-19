@@ -162,3 +162,33 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0005-evaluation-as-gate.md` § Context, the sentence beginning "The eval deck is authored as text"
 - What: it states that #31 is open on how ingest adapter tests get binary inputs. #31's PR decides it (an exemption in `.claude/scripts/check-no-course-content.sh` for provenanced synthetic ingest fixtures), so the sentence is a stated fact gone stale, which `docs/adr/README.md` § Amendments lets the next amendment of ADR 0005 true. The eval deck's own decision is unchanged: it stays authored as text.
 - Source: #31 review
+
+## 2026-10-19 — two minters of `SourceId` are licensed, one exists
+
+- Where: `packages/shared/src/citation.ts` `SourceId` docblock; `packages/index/src/slide-row.ts` `sourceIdOf`
+- What: the docblock gives minting to ingest and the index (#10, #11). `sourceIdOf` now mints `<lectureId>/<slideNo>`; if ingest (#9, #10) mints its own format, citations and index rows stop agreeing. Ingest should call `sourceIdOf`, or the docblock should name one owner.
+- Source: #11 review cycle 1
+
+## 2026-10-19 — nothing says when a feature PR banks comment-density rows
+
+- Where: `.claude/scripts/check-comment-density.sh` header (BASELINE, `--ratchet`); `.claude/comment-density.baseline.tsv`
+- What: an unbanked file is admitted at or below the median of the committed rows, so banking a lane's below-median rows lowers the bar for every other lane, and no lane has a reason to bank. Unbanked files can then rise to the median without failing. #11 left its nine rows unbanked for that reason.
+- Source: #11 review cycle 1
+
+## 2026-10-19 — no single writer per course file during `reembedCourse`
+
+- Where: `packages/index/src/open-course.ts` `reembedCourse`; `packages/index/src/course-index.ts` `CourseIndex.replaceEmbedder`
+- What: a second connection writing slides while `embed` is awaited makes `replaceEmbedder` throw "no embedding for …", which reads as a caller bug, and a write after the swap fails in vec0 because that connection still holds the old embedder. One owner per open course file belongs to the server (#15).
+- Source: #11 review cycle 1
+
+## 2026-10-19 — `EmbedSlides` can only fail by rejecting
+
+- Where: `packages/index/src/open-course.ts` `EmbedSlides`
+- What: the gateway's expected failures (backend down, rate-limited) will be values once #12 defines its failure type (`docs/standards/error-handling.md` rule 1); this signature then needs a value arm, and `reembedCourse` a result for it.
+- Source: #11 review cycle 1
+
+## 2026-10-19 — topic tags are bare strings
+
+- Where: `packages/index/src/course-index.ts` `CourseIndex.setTopics`, `CourseIndex.slidesTagged`
+- What: a blank or untrimmed tag is accepted. A `TopicTag` schema belongs in `@cram/shared` (`docs/standards/architecture.md` rule 2), for the ticket that builds the tag pass (`docs/plan.md` §3.2).
+- Source: #11 review cycle 1
