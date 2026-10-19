@@ -216,3 +216,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0003 at `proposed` and the pointers; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
+
+## 2026-10-19 — issue #11 — index-egress-entries-better-sqlite3-node-addon-api
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - grant `.claude/network-egress.allowlist` entries for `better-sqlite3`, flagged by `check:no-network-egress`'s native arm for its `binding.gyp` and prebuilt `.node` binaries — SQLite in-process, the driver `docs/adr/0004-storage.md` § Decision (c) names, with no socket API — and for `node-addon-api`, its C++ header dependency, flagged by the builtin arm for maintainer scripts under `tools/` that spawn processes and are never loaded at runtime;
+  - accept `allowBuilds: better-sqlite3: false` in `pnpm-workspace.yaml`: the N-API binaries ship inside the tarball under `prebuilds/` and load from there; allowing the build would run node-gyp, which downloads Node headers at install time unless already cached;
+  - accept the plan comment's divergences from the issue, each filed as its own issue: embeddings arrive as inputs rather than through a gateway dependency; the cross-encoder rerank is deferred to #68; recall@k and latency against the eval deck, and the first run on the Windows target, are deferred to #69, with a synthetic course-scale measurement on an Apple M1 Pro in their place; decks stored in the course file and the older-schema rebuild go to #70; removing a re-uploaded lecture's stale slides goes to #71.
+- **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19; both allow-list entries and allowBuilds: false accepted

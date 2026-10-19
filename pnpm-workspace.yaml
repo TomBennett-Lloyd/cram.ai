@@ -24,3 +24,8 @@ allowBuilds:
   # script, and not running install-time code is the safer default. The
   # source-prose cases in .claude/scripts/verify-tier.test.sh run that shim.
   esbuild: false
+  # better-sqlite3 (@cram/index, #11) ships its N-API binaries under prebuilds/ in
+  # the tarball and loads them from there; pnpm reports a build only because the
+  # package also carries binding.gyp. Allowing it would run node-gyp, which
+  # downloads Node headers at install time unless already cached.
+  better-sqlite3: false
