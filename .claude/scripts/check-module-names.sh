@@ -18,7 +18,7 @@
 # A gate that cannot be bootstrapped from an empty tree is a gate nobody can
 # adopt; absence of the checked surface is a pass, an inconsistent surface is
 # still a failure. So a root where no directory the workspace globs name exists
-# passes with a notice, while any one present and holding no module exits 2.
+# passes with a notice.
 #
 # Wired into the root `verify` composite (CLAUDE.md: gates join `verify`, never a
 # hand-picked subset), so `pnpm verify`, the CI `checks` job and any human running

@@ -202,15 +202,67 @@ EOF
   end
 done
 
-begin "a member directory named with a newline exits 2"
-must fixture newline_name <<'EOF'
+for separator in newline tab; do
+  begin "a member directory named with a $separator exits 2"
+  must fixture "${separator}_name" <<'EOF'
 packages:
   - 'packages/*'
 EOF
-must mkdir -p "$FIXTURE/packages/bad"$'\n'"name"
+  if [ "$separator" = newline ]; then char=$'\n'; else char=$'\t'; fi
+  must mkdir -p "$FIXTURE/packages/bad${char}name"
+  run_read_with bash
+  expect_rc 2 "$rc"
+  expect_stderr "a directory with a tab or newline in it under packages/"
+  end
+done
+
+begin "an unindented entry under packages: exits 2, naming the line"
+refused unindented "line 2: packages entries must be indented under the key" <<'EOF'
+packages:
+- eval
+EOF
+end
+
+begin "a quoted packages key exits 2, naming the line"
+refused quoted_key "line 1: a quoted packages key is not read" <<'EOF'
+"packages":
+  - eval
+EOF
+end
+
+begin "a <dir>/* glob whose directory is an executable file exits 2"
+must fixture glob_file <<'EOF'
+packages:
+  - 'packages/*'
+EOF
+must touch "$FIXTURE/packages"
+must chmod 755 "$FIXTURE/packages"
 run_read_with bash
 expect_rc 2 "$rc"
-expect_stderr "a directory with a tab or newline in it under packages/"
+expect_stderr "names packages/*, but packages is not a directory this reader can list"
 end
+
+# The condition IS a filesystem permission, so under a root uid, where chmod restricts
+# nothing, the case fails loudly rather than passing on a path it never exercised. Mode 300
+# lacks read, so the glob cannot expand; mode 600 lacks search, so no entry can be stat'ed.
+for mode in 300 600; do
+  begin "a <dir>/* glob whose directory is mode $mode exits 2, not a census without it"
+  must fixture "glob_mode_$mode" <<'EOF'
+packages:
+  - 'packages/*'
+  - eval
+EOF
+  must mkdir -p "$FIXTURE/packages/store" "$FIXTURE/eval"
+  must chmod "$mode" "$FIXTURE/packages"
+  if [ -d "$FIXTURE/packages/store" ] && [ "$(ls "$FIXTURE/packages" 2>/dev/null)" = store ]; then
+    bad "chmod $mode restricted nothing (running as root?) — the unlistable path was NOT exercised"
+  else
+    run_read_with bash
+    expect_rc 2 "$rc"
+    expect_stderr "names packages/*, but packages is not a directory this reader can list"
+  fi
+  must chmod 755 "$FIXTURE/packages"
+  end
+done
 
 finish

@@ -223,8 +223,7 @@ end
 # 12. a tree where no directory the workspace globs name exists
 # ==========================================================================================
 # The empty tree a new repository starts from: a gate that cannot be bootstrapped from it is
-# a gate nobody can adopt, so it passes. Case 11 is what keeps a present-but-empty source
-# directory from passing the same way.
+# a gate nobody can adopt, so it passes.
 begin "a root where no workspace directory exists passes, and says there was nothing to name"
 DIR="$TMP_ROOT/no_source_dirs"
 must mkdir -p "$DIR/docs"

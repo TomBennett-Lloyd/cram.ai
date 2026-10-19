@@ -4,16 +4,13 @@
 # executed.
 #
 # `pnpm-workspace.yaml` owns which directories are workspace members
-# (docs/standards/architecture.md rule 9). The gates restated it as `apps` and
-# `packages` until `eval` joined and fell outside all three of them (#80).
+# (docs/standards/architecture.md rule 9, #80).
 #
 # The reader understands one shape and refuses everything else with status 2:
 # a block-style `packages:` list whose entries are `<dir>` or `<dir>/*`, quoted or
 # bare, where `<dir>` is one or more `/`-separated names. A negation, a `**`, a
 # flow-style list or any other glob is refused, not approximated, because a gate
 # that guessed its own census would report a pass over directories it never read.
-# check-supply-chain-policy.sh reads the same file in bash and makes the same
-# trade.
 #
 # Usage, from a gate:
 #
@@ -70,6 +67,10 @@ workspace_read() { # workspace_read <caller> <root> -> sets WORKSPACE_PATTERNS, 
     trimmed=$(_workspace_trim "$line")
 
     case "$line" in
+      \"packages\":* | \'packages\':*)
+        _workspace_refuse "$caller" "line $line_no: a quoted packages key is not read: $line"
+        return 2
+        ;;
       packages:*)
         value=$(_workspace_trim "${line#packages:}")
         value=${value%%#*}
@@ -88,6 +89,10 @@ workspace_read() { # workspace_read <caller> <root> -> sets WORKSPACE_PATTERNS, 
       '' | '#'*) continue ;;
     esac
     case "$line" in
+      '-' | '- '*)
+        _workspace_refuse "$caller" "line $line_no: packages entries must be indented under the key: $line"
+        return 2
+        ;;
       [![:space:]]*)
         in_block=0
         continue
@@ -110,7 +115,7 @@ workspace_read() { # workspace_read <caller> <root> -> sets WORKSPACE_PATTERNS, 
 
     body=${value%/\*}
     case "$body" in
-      '' | /* | */ | *//* | *[!A-Za-z0-9._/-]*) body="" ;;
+      /* | */ | *//* | *[!A-Za-z0-9._/-]*) body="" ;;
     esac
     case "/$body/" in
       */./* | */../*) body="" ;;
@@ -132,6 +137,11 @@ workspace_read() { # workspace_read <caller> <root> -> sets WORKSPACE_PATTERNS, 
     if [ "$body" = "$value" ]; then
       [ ! -d "$root/$body" ] || _workspace_add_member "$body"
       continue
+    fi
+    [ -e "$root/$body" ] || continue
+    if [ ! -d "$root/$body" ] || [ ! -r "$root/$body" ] || [ ! -x "$root/$body" ]; then
+      _workspace_refuse "$caller" "names $body/*, but $body is not a directory this reader can list"
+      return 2
     fi
     for entry in "$root/$body"/*; do
       [ -d "$entry" ] || continue

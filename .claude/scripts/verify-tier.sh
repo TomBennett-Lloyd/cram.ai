@@ -505,9 +505,7 @@ select_observing_tests() {
 
 # owning_package_dir <repo-relative file> -> the nearest ancestor directory
 # holding a package.json, which is the workspace member vitest must run from.
-# Walked rather than read off pnpm-workspace.yaml: those globs are that file's to
-# own (docs/standards/architecture.md rule 9), and a second copy here would go
-# stale the day a third top-level directory joins apps/ and packages/.
+# Walked rather than read off pnpm-workspace.yaml.
 owning_package_dir() {
   local d="${1%/*}"
   while [ -n "$d" ] && [ "$d" != "." ] && [ "$d" != "$1" ]; do
