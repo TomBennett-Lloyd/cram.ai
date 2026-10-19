@@ -55,9 +55,15 @@ fixture() {
   DIR="$TMP_ROOT/$1"
   must rm -rf "$DIR"
   must mkdir -p "$DIR/.claude"
+  must workspace_yaml
   must srcfile "$DIR/packages/shared/src/a.ts" 2 8
   must srcfile "$DIR/packages/shared/src/b.ts" 4 6
   must srcfile "$DIR/apps/web/src/c.ts" 6 4
+}
+
+# workspace_yaml -> $DIR/pnpm-workspace.yaml, naming apps/*, packages/* and eval.
+workspace_yaml() {
+  printf "packages:\n  - 'apps/*'\n  - 'packages/*'\n  - eval\n" >"$DIR/pnpm-workspace.yaml"
 }
 
 # bootstrap — the baseline the fixture's own files produce, written by the gate.
@@ -112,6 +118,7 @@ end
 classify() { # classify <file contents on stdin> -> the one file's reported ratio in `out`
   must rm -rf "$DIR"
   must mkdir -p "$DIR/.claude" "$DIR/packages/shared/src"
+  must workspace_yaml
   must cp /dev/stdin "$DIR/packages/shared/src/only.ts"
   run_check --ratchet
 }
@@ -121,6 +128,7 @@ DIR="$TMP_ROOT/classify-line"
 must srcfile "$TMP_ROOT/classify-src.ts" 10 10
 must rm -rf "$DIR"
 must mkdir -p "$DIR/.claude" "$DIR/packages/shared/src"
+must workspace_yaml
 must cp "$TMP_ROOT/classify-src.ts" "$DIR/packages/shared/src/only.ts"
 run_check --ratchet
 expect_rc 0
@@ -226,6 +234,7 @@ begin "a file with no non-blank line is reported unmeasurable rather than counte
 DIR="$TMP_ROOT/classify-blank"
 must rm -rf "$DIR"
 must mkdir -p "$DIR/.claude" "$DIR/packages/shared/src"
+must workspace_yaml
 must srcfile "$DIR/packages/shared/src/a.ts" 4 6
 must printf '\n\n\n' >"$DIR/packages/shared/src/blank.ts"
 run_check --ratchet
@@ -238,6 +247,7 @@ begin "a zero-byte file is reported unmeasurable too, though awk never sees a re
 DIR="$TMP_ROOT/classify-zero-byte"
 must rm -rf "$DIR"
 must mkdir -p "$DIR/.claude" "$DIR/packages/shared/src"
+must workspace_yaml
 must srcfile "$DIR/packages/shared/src/a.ts" 4 6
 must touch "$DIR/packages/shared/src/empty.ts"
 run_check --ratchet
@@ -454,6 +464,7 @@ begin "the median sorts numerically, not as text"
 DIR="$TMP_ROOT/median-width"
 must rm -rf "$DIR"
 must mkdir -p "$DIR/.claude"
+must workspace_yaml
 must srcfile "$DIR/packages/shared/src/a.ts" 9 91
 must srcfile "$DIR/packages/shared/src/b.ts" 2 8
 must srcfile "$DIR/apps/web/src/c.ts" 6 4
@@ -502,16 +513,17 @@ end
 
 # The empty tree a new repository starts from: no source and no baseline is a pass in both
 # modes, and --ratchet writes nothing, because an empty baseline file is the refused state.
-begin "a tree with no apps/*/src or packages/*/src and no baseline passes, and --ratchet writes nothing"
+begin "a tree with no member src directory and no baseline passes, and --ratchet writes nothing"
 DIR="$TMP_ROOT/scope-empty-tree"
 must rm -rf "$DIR"
 must mkdir -p "$DIR/.claude" "$DIR/packages/shared/lib"
+must workspace_yaml
 must srcfile "$DIR/packages/shared/lib/a.ts" 4 6
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   run_check_with "$interpreter"
   expect_rc 0
-  expect_stdout "check-comment-density: OK — no apps/*/src or packages/*/src"
+  expect_stdout "check-comment-density: OK — no workspace member under"
   expect_not_out "unbound variable"
   run_check_with "$interpreter" --ratchet
   expect_rc 0
@@ -524,7 +536,7 @@ end
 # Green by absence is what a path-based gate dies of: a baseline says a measured tree existed,
 # so pointed at a layout that moved, "nothing to check" must not read as "fine" — and a
 # row-less baseline beside no source is still the refused empty baseline.
-begin "a tree with no apps/*/src or packages/*/src beside a baseline is no verdict, not a pass"
+begin "a tree with no member src directory beside a baseline is no verdict, not a pass"
 for shape in rows header-only; do
   case_ctx="$shape"
   fixture "scope-moved-$shape"
@@ -534,17 +546,49 @@ for shape in rows header-only; do
   must mv "$DIR/apps/web/src" "$DIR/apps/web/lib"
   run_check
   expect_rc 2
-  expect_stderr "no apps/*/src directory"
+  expect_stderr "no workspace member under"
   expect_stderr "the baseline measures a tree that is not there"
   expect_not_stdout "check-comment-density: OK"
 done
 case_ctx=""
 end
 
+# The scan follows pnpm-workspace.yaml: a member named by a literal path is measured (#80:
+# eval/src had no ratchet while the scan walked apps/ and packages/), and a directory the file
+# does not name is not.
+begin "a dense new file in a literal workspace member fails against the median"
+fixture scope-literal-member
+bootstrap
+must srcfile "$DIR/eval/src/e.ts" 9 1
+run_check
+expect_rc 1
+expect_stderr "ERROR eval/src/e.ts"
+end
+
+begin "a dense file in a directory pnpm-workspace.yaml does not name is out of scope"
+fixture scope-unnamed-dir
+bootstrap
+must srcfile "$DIR/scratch/src/e.ts" 9 1
+run_check
+expect_rc 0
+expect_stdout "3 file(s) at or below baseline"
+end
+
+begin "a missing pnpm-workspace.yaml is no verdict, and measures nothing"
+fixture scope-no-workspace-manifest
+bootstrap
+must rm "$DIR/pnpm-workspace.yaml"
+run_check
+expect_rc 2
+expect_stderr "check-comment-density: pnpm-workspace.yaml is missing"
+expect_not_stdout "check-comment-density: OK"
+end
+
 begin "src directories holding no ts or tsx file is no verdict either"
 DIR="$TMP_ROOT/scope-empty-src"
 must rm -rf "$DIR"
 must mkdir -p "$DIR/.claude" "$DIR/packages/shared/src"
+must workspace_yaml
 must printf 'body { color: red; }\n' >"$DIR/packages/shared/src/style.css"
 run_check
 expect_rc 2

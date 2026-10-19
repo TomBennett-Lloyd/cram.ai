@@ -67,7 +67,6 @@ workspace_read() { # workspace_read <caller> <root> -> sets WORKSPACE_PATTERNS, 
 
   while IFS= read -r line || [ -n "$line" ]; do
     line_no=$((line_no + 1))
-    line=${line%$'\r'}
     trimmed=$(_workspace_trim "$line")
 
     case "$line" in

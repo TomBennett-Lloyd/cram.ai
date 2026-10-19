@@ -8,10 +8,7 @@ export const SlideRef = z.strictObject({
 });
 export type SlideRef = z.infer<typeof SlideRef>;
 
-/**
- * One line of `eval/questions.jsonl`. The fields are the ones
- * `docs/adr/0005-evaluation-as-gate.md` § Decision (c) fixes, and no others.
- */
+/** A line of `eval/questions.jsonl`: `docs/adr/0005-evaluation-as-gate.md` § Decision (c). */
 export const GoldenQuestion = z.strictObject({
   question: NonBlankText,
   expectedCitations: z.array(SlideRef),

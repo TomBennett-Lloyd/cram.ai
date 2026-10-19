@@ -505,9 +505,9 @@ expect_rc 2 "$rc"
 expect_stderr "apps/consumer/package.json is not readable JSON"
 end
 
-# The root manifest is part of the census, not just apps/ and packages/ — it is a manifest
+# The root manifest is part of the census, not just the workspace members — it is a manifest
 # that can declare a range like any other, and one that drifted there would be invisible to
-# a scan that only walked the two group directories.
+# a scan that only read the member directories.
 begin "the root package.json is in the census"
 must fixture root_manifest
 must write_nvmrc 22
