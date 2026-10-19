@@ -2,7 +2,7 @@ import Database, { SqliteError } from 'better-sqlite3';
 import { CourseId, type SlideRecord, type SourceId } from '@cram/shared';
 import * as sqliteVec from 'sqlite-vec';
 import { z } from 'zod';
-import { CourseIndex } from './course-index';
+import { CourseIndex, type IndexedSlide } from './course-index';
 import { EmbedderIdentity, sameEmbedder } from './embedder-identity';
 import { classifySchema, createSchema } from './schema';
 import { sourceIdOf } from './slide-row';
@@ -15,7 +15,7 @@ export interface OpenCourseSpec {
 
 /**
  * Every state a course file can be in when opened. Only `open` holds a connection;
- * `older-schema` is the caller's to rebuild, never migrated (`docs/adr/0004-storage.md` § Decision (d)).
+ * `older-schema` is `rebuildCourse`'s to rebuild, never migrated (`docs/adr/0004-storage.md` § Decision (d)).
  */
 export type OpenCourseResult =
   | { readonly status: 'open'; readonly course: CourseIndex }
@@ -102,6 +102,24 @@ export const openCourse = (spec: OpenCourseSpec): OpenCourseResult => {
 
 export type EmbedSlides = (slides: readonly SlideRecord[]) => Promise<readonly Float32Array[]>;
 
+/** Pairs each slide with its vector from `embed`, which must return exactly one per slide. */
+export const embedSlides = async (
+  operation: string,
+  slides: readonly SlideRecord[],
+  embed: EmbedSlides,
+): Promise<readonly IndexedSlide[]> => {
+  const embeddings = await embed(slides);
+  if (embeddings.length !== slides.length) {
+    throw new Error(
+      `${operation}: embed returned ${String(embeddings.length)} vectors for ${String(slides.length)} slides`,
+    );
+  }
+  return slides.flatMap((record, index) => {
+    const embedding = embeddings[index];
+    return embedding === undefined ? [] : [{ record, embedding }];
+  });
+};
+
 /** Opens a course under `spec.embedder`, first re-embedding every slide with `embed` if the file records another. */
 export const reembedCourse = async (
   spec: OpenCourseSpec,
@@ -113,18 +131,10 @@ export const reembedCourse = async (
   let opened = false;
   try {
     if (!sameEmbedder(file.recorded, spec.embedder)) {
-      const slides = course.slides();
-      const embeddings = await embed(slides);
-      if (embeddings.length !== slides.length) {
-        throw new Error(
-          `reembedCourse: embed returned ${String(embeddings.length)} vectors for ${String(slides.length)} slides`,
-        );
-      }
-      const bySource = new Map<SourceId, Float32Array>();
-      slides.forEach((slide, index) => {
-        const embedding = embeddings[index];
-        if (embedding !== undefined) bySource.set(sourceIdOf(slide), embedding);
-      });
+      const indexed = await embedSlides('reembedCourse', course.slides(), embed);
+      const bySource = new Map<SourceId, Float32Array>(
+        indexed.map(({ record, embedding }) => [sourceIdOf(record), embedding]),
+      );
       course.replaceEmbedder(spec.embedder, bySource);
     }
     opened = true;
