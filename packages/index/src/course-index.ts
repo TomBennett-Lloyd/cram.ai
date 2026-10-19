@@ -1,0 +1,208 @@
+import type { Database } from 'better-sqlite3';
+import type { CourseId, SlideRecord, SourceId } from '@cram/shared';
+import { z } from 'zod';
+import type { EmbedderIdentity } from './embedder-identity';
+import { ftsMatchExpression } from './fts-query';
+import { fuseByReciprocalRank } from './reciprocal-rank';
+import { createVectorTable } from './schema';
+import {
+  ftsValues,
+  SLIDE_COLUMNS,
+  slideFromRow,
+  slideRowValues,
+  sourceIdOf,
+  type StoredSlide,
+} from './slide-row';
+
+/** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#47). */
+export const RETRIEVAL_K = 8;
+
+/** Depth of each ranked list fed to fusion; provisional on the same terms as `RETRIEVAL_K`. */
+export const CANDIDATES_PER_LIST = 50;
+
+export interface IndexedSlide {
+  readonly record: SlideRecord;
+  readonly embedding: Float32Array;
+}
+
+export interface SearchQuery {
+  readonly text: string;
+  readonly embedding: Float32Array;
+}
+
+export interface SearchHit {
+  readonly sourceId: SourceId;
+  readonly record: SlideRecord;
+}
+
+export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-slide' };
+
+const RowId = z.number().int();
+const RowIds = z.array(RowId);
+
+const requireDimension = (
+  operation: string,
+  embedding: Float32Array,
+  embedder: EmbedderIdentity,
+): void => {
+  if (embedding.length !== embedder.dimension) {
+    throw new Error(
+      `${operation}: embedding has ${String(embedding.length)} dimensions; ${embedder.model} has ${String(embedder.dimension)}`,
+    );
+  }
+};
+
+const UPSERT_SLIDE = `
+  insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  on conflict (source_id) do update set
+    lecture_title = excluded.lecture_title, title = excluded.title, body = excluded.body,
+    speaker_notes = excluded.speaker_notes, image_captions = excluded.image_captions,
+    derived = excluded.derived, source_hash = excluded.source_hash
+  returning id`;
+
+/** One course file, open (`docs/adr/0004-storage.md`); construct through `openCourse`. */
+export class CourseIndex {
+  readonly #db: Database;
+  readonly #courseId: CourseId;
+  #embedder: EmbedderIdentity;
+
+  constructor(db: Database, courseId: CourseId, embedder: EmbedderIdentity) {
+    this.#db = db;
+    this.#courseId = courseId;
+    this.#embedder = embedder;
+  }
+
+  #writeVector(id: number, embedding: Float32Array): void {
+    this.#db
+      .prepare('insert into slide_vec (rowid, embedding) values (?, ?)')
+      .run(BigInt(id), embedding);
+  }
+
+  /** Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace. */
+  upsertSlides(slides: readonly IndexedSlide[]): void {
+    const seen = new Set<SourceId>();
+    for (const { record, embedding } of slides) {
+      const sourceId = sourceIdOf(record);
+      if (record.courseId !== this.#courseId) {
+        throw new Error(
+          `upsertSlides: ${sourceId} belongs to course ${record.courseId}, not ${this.#courseId}`,
+        );
+      }
+      if (seen.has(sourceId))
+        throw new Error(`upsertSlides: ${sourceId} appears twice in one batch`);
+      seen.add(sourceId);
+      requireDimension(`upsertSlides(${sourceId})`, embedding, this.#embedder);
+    }
+    const upsert = this.#db.prepare(UPSERT_SLIDE).pluck();
+    const dropText = this.#db.prepare('delete from slides_fts where rowid = ?');
+    const dropVector = this.#db.prepare('delete from slide_vec where rowid = ?');
+    const writeText = this.#db.prepare(
+      'insert into slides_fts (rowid, lecture_title, title, body, speaker_notes, image_captions) values (?, ?, ?, ?, ?, ?)',
+    );
+    this.#db.transaction(() => {
+      for (const { record, embedding } of slides) {
+        const id = RowId.parse(upsert.get(...slideRowValues(record)));
+        dropText.run(id);
+        dropVector.run(BigInt(id));
+        writeText.run(id, ...ftsValues(record));
+        this.#writeVector(id, embedding);
+      }
+    })();
+  }
+
+  #storedSlides(where: string, ...params: readonly (string | number)[]): readonly StoredSlide[] {
+    return this.#db
+      .prepare(`select id, ${SLIDE_COLUMNS} from slides ${where}`)
+      .all(...params)
+      .map((row) => slideFromRow(row, this.#courseId));
+  }
+
+  /** Every slide in the course, by lecture then slide number. */
+  slides(): readonly SlideRecord[] {
+    return this.#storedSlides('order by lecture_id, slide_no').map((slide) => slide.record);
+  }
+
+  /** BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first. */
+  search(query: SearchQuery, k: number = RETRIEVAL_K): readonly SearchHit[] {
+    if (!Number.isInteger(k) || k < 1)
+      throw new Error(`search: k must be a positive integer, got ${String(k)}`);
+    requireDimension('search', query.embedding, this.#embedder);
+    const match = ftsMatchExpression(query.text);
+    const bm25 =
+      match === undefined
+        ? []
+        : RowIds.parse(
+            this.#db
+              .prepare(
+                'select rowid from slides_fts where slides_fts match ? order by rank limit ?',
+              )
+              .pluck()
+              .all(match, CANDIDATES_PER_LIST),
+          );
+    const nearest = RowIds.parse(
+      this.#db
+        .prepare('select rowid from slide_vec where embedding match ? and k = ? order by distance')
+        .pluck()
+        .all(query.embedding, CANDIDATES_PER_LIST),
+    );
+    const byId = this.#db.prepare(`select id, ${SLIDE_COLUMNS} from slides where id = ?`);
+    return fuseByReciprocalRank([bm25, nearest])
+      .slice(0, k)
+      .map((id) => {
+        const slide = slideFromRow(byId.get(id), this.#courseId);
+        return { sourceId: slide.sourceId, record: slide.record };
+      });
+  }
+
+  /** Replaces a slide's topic tags (`docs/plan.md` §3.2): metadata, never content. */
+  setTopics(sourceId: SourceId, tags: readonly string[]): SetTopicsResult {
+    const id = RowId.optional().parse(
+      this.#db.prepare('select id from slides where source_id = ?').pluck().get(sourceId),
+    );
+    if (id === undefined) return { status: 'no-such-slide' };
+    const insert = this.#db.prepare('insert or ignore into topics (slide_id, tag) values (?, ?)');
+    this.#db.transaction(() => {
+      this.#db.prepare('delete from topics where slide_id = ?').run(id);
+      for (const tag of tags) insert.run(id, tag);
+    })();
+    return { status: 'set' };
+  }
+
+  /** Every slide tagged `tag`, by lecture then slide number. */
+  slidesTagged(tag: string): readonly SlideRecord[] {
+    return this.#storedSlides(
+      'where id in (select slide_id from topics where tag = ?) order by lecture_id, slide_no',
+      tag,
+    ).map((slide) => slide.record);
+  }
+
+  /** Swaps every vector and the recorded embedder in one transaction; `embeddings` must cover every slide. */
+  replaceEmbedder(
+    embedder: EmbedderIdentity,
+    embeddings: ReadonlyMap<SourceId, Float32Array>,
+  ): void {
+    const stored = this.#storedSlides('');
+    const vectors = stored.map((slide) => {
+      const embedding = embeddings.get(slide.sourceId);
+      if (embedding === undefined)
+        throw new Error(`replaceEmbedder: no embedding for ${slide.sourceId}`);
+      requireDimension(`replaceEmbedder(${slide.sourceId})`, embedding, embedder);
+      return { id: slide.id, embedding };
+    });
+    if (embeddings.size !== stored.length)
+      throw new Error('replaceEmbedder: embeddings name slides the course lacks');
+    this.#db.transaction(() => {
+      this.#db.exec('drop table slide_vec');
+      createVectorTable(this.#db, embedder.dimension);
+      for (const { id, embedding } of vectors) this.#writeVector(id, embedding);
+      this.#db
+        .prepare('update course set embedder_model = ?, embedder_dimension = ?')
+        .run(embedder.model, embedder.dimension);
+    })();
+    this.#embedder = embedder;
+  }
+
+  close(): void {
+    this.#db.close();
+  }
+}
