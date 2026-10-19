@@ -271,7 +271,7 @@ end
 # ==========================================================================================
 # 7. a link inside an inline code span is not a link
 # ==========================================================================================
-# The in-repo proof case: docs/adr/README.md:9 documents the index row shape as
+# The in-repo proof case: docs/adr/README.md documents the index row shape as
 # `- [NNNN — Title](NNNN-slug.md)`, naming a file that has never existed and never will.
 begin "a link inside an inline code span is skipped"
 fixture inline_code_link
