@@ -27,5 +27,5 @@ allowBuilds:
   # better-sqlite3 (@cram/index, #11) ships its N-API binaries under prebuilds/ in
   # the tarball and loads them from there; pnpm reports a build only because the
   # package also carries binding.gyp. Allowing it would compile from source with
-  # node-gyp, which fetches Node headers over the network at install time.
+  # node-gyp, which downloads Node headers at install time unless already cached.
   better-sqlite3: false

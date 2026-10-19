@@ -159,3 +159,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/workflow.json` is a `humanAlways` path, so the owner reads the wording even though the decision is already made.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved in chat 2026-10-16 — "approve 53" — no revisions requested; the step renumbering and rule 3(e) confirmed; the PR merged as proposed.
+
+## 2026-10-19 — issue #11 — index-egress-entries-better-sqlite3-node-addon-api
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - grant `.claude/network-egress.allowlist` entries for `better-sqlite3`, flagged by `check:no-network-egress`'s native arm for its `binding.gyp` and prebuilt `.node` binaries — SQLite in-process, the driver `docs/adr/0004-storage.md` § Decision (c) names, with no socket API — and for `node-addon-api`, its C++ header dependency, flagged by the builtin arm only for `tools/clang-format.js`, a maintainer script that spawns `clang-format` and is never loaded at runtime;
+  - accept `allowBuilds: better-sqlite3: false` in `pnpm-workspace.yaml`: the N-API binaries ship inside the tarball under `prebuilds/` and load from there, so no install script runs; allowing the build would compile from source with node-gyp, which downloads Node headers at install time unless already cached;
+  - accept the plan comment's divergences from the issue (each filed or owned elsewhere): embeddings arrive as inputs rather than through a gateway dependency; the cross-encoder rerank is deferred to #68; recall@k and latency against the eval deck on the Windows target are deferred to #69, with a synthetic course-scale measurement on an Apple M1 Pro in their place; decks stored in the course file and the older-schema rebuild go to #70; removing a re-uploaded lecture's stale slides goes to #71.
+- **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
