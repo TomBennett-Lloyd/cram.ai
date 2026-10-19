@@ -3,8 +3,8 @@
 #
 # No test framework, no network, no pnpm, no install: the assertion vocabulary is
 # harness-lib.sh next door, sourced below and shared with every sibling harness.
-# Every fixture is a throwaway workspace — an .nvmrc and two or three package.json
-# files under the temp tree `harness_init_tmp` makes and a trap deletes on exit —
+# Every fixture is a throwaway workspace — a pnpm-workspace.yaml, an .nvmrc and two
+# or three package.json files under the temp tree `harness_init_tmp` makes and a trap deletes on exit —
 # so the shapes this gate exists to catch are exercised for real, without this
 # repo ever having to hold a manifest whose types run ahead of its runtime.
 #
@@ -47,12 +47,13 @@ FIXTURE=""
 
 # --- fixtures ----------------------------------------------------------------------------
 
-# A fixture is a workspace root holding an .nvmrc and apps/ and packages/
-# directories, built one file at a time so each case's shape is readable in the
-# case itself rather than in a shared builder with flags.
+# A fixture is a workspace root whose pnpm-workspace.yaml declares apps/*, packages/* and
+# eval, built one file at a time so each case's shape is readable in the case itself rather
+# than in a shared builder with flags.
 fixture() { # fixture <name> -> creates the workspace root and points FIXTURE at it
   FIXTURE="$TMP_ROOT/$1"
-  mkdir -p "$FIXTURE"
+  mkdir -p "$FIXTURE" &&
+    printf "packages:\n  - 'apps/*'\n  - 'packages/*'\n  - eval\n" >"$FIXTURE/pnpm-workspace.yaml"
 }
 
 write_nvmrc() { # write_nvmrc <content, written verbatim with a trailing newline>
@@ -101,21 +102,14 @@ end
 # enumerated, or that quietly dropped its declaration, is invisible in an OK line saying only
 # "OK". Read the number for exactly what its label says — manifests DECLARING the range, not
 # manifests scanned — because that is the only claim it supports. The expected count is
-# counted here, independently of the gate's census, from the root manifest and every
-# apps/*/package.json and packages/*/package.json. The full success prefix is asserted, never
-# a bare "OK" (cumulo#219).
+# counted here, independently of the gate's pnpm-workspace.yaml census, from every tracked
+# package.json. The full success prefix is asserted, never a bare "OK" (cumulo#219).
 REAL_ROOT=$(cd "$SCRIPTS/../.." && pwd -P) || exit 2
 real_declaring=$(node -e '
   const fs = require("node:fs");
   const path = require("node:path");
   const root = process.argv[1];
-  const manifests = ["package.json"];
-  for (const group of ["apps", "packages"]) {
-    if (!fs.existsSync(path.join(root, group))) continue;
-    for (const name of fs.readdirSync(path.join(root, group))) {
-      manifests.push(path.join(group, name, "package.json"));
-    }
-  }
+  const manifests = process.argv[2].split("\n").filter(Boolean);
   const fields = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
   let count = 0;
   for (const rel of manifests) {
@@ -125,7 +119,7 @@ real_declaring=$(node -e '
     if (fields.some((field) => manifest[field] && manifest[field]["@types/node"] !== undefined)) count++;
   }
   console.log(count);
-' "$REAL_ROOT") || {
+' "$REAL_ROOT" "$(git -C "$REAL_ROOT" ls-files -- package.json '*/package.json')") || {
   printf 'FATAL could not count the real tree'"'"'s declaring manifests\n' >&2
   exit 2
 }
@@ -455,7 +449,7 @@ end
 # yet — is the one empty census that passes: a gate that cannot be bootstrapped from it is a
 # gate nobody can adopt. `no_declarations` above is the same census with one package added,
 # and stays a refusal.
-begin "a root manifest with no apps/* or packages/* and no declaration passes as the empty tree"
+begin "a root manifest with no workspace member and no declaration passes as the empty tree"
 must fixture empty_tree
 must write_nvmrc 22
 must write_pkg . <<'EOF'
@@ -469,7 +463,7 @@ for interpreter in $BASHES; do
   case_ctx="$interpreter"
   run_check_with "$interpreter" "$FIXTURE"
   expect_rc 0 "$rc"
-  expect_stdout "check-node-types: OK — no apps/* or packages/*"
+  expect_stdout "check-node-types: OK — no workspace member under"
   expect_stdout ".nvmrc major 22"
   expect_not_out "unbound variable"
 done
@@ -541,6 +535,44 @@ must touch "$FIXTURE/apps/README.md"
 run_check "$FIXTURE"
 expect_rc 0 "$rc"
 expect_stdout "check-node-types: OK — ^22.20.1 in 1 manifest(s) declaring it, .nvmrc major 22"
+end
+
+# The census is pnpm-workspace.yaml's, so a member named there by a literal path rather than
+# a `<dir>/*` glob is in it (#80: eval/ fell outside a census that walked apps/ and packages/),
+# and a directory the file does not name is not.
+begin "a literal workspace member is in the census"
+must fixture literal_member
+must write_nvmrc 22
+must typed_pkg packages/store '^22.20.1'
+must typed_pkg eval '^26.2.0'
+run_check "$FIXTURE"
+expect_rc 1 "$rc"
+expect_stderr "eval/package.json → ^26.2.0 (major 26"
+end
+
+begin "a directory pnpm-workspace.yaml does not name is outside the census"
+must fixture unnamed_member
+must write_nvmrc 22
+must typed_pkg packages/store '^22.20.1'
+must typed_pkg scratch '^26.2.0'
+run_check "$FIXTURE"
+expect_rc 0 "$rc"
+expect_stdout "check-node-types: OK — ^22.20.1 in 1 manifest(s) declaring it, .nvmrc major 22"
+end
+
+# Shaped so that a gate carrying on past the refusal would reach the empty-tree OK: the root
+# manifest declares nothing, and with no census there is no member to read.
+begin "a missing pnpm-workspace.yaml exits 2, not 0"
+must fixture no_workspace_manifest
+must write_nvmrc 22
+must write_pkg . <<'EOF'
+{ "name": "@fixture/root", "private": true }
+EOF
+must typed_pkg packages/store '^26.2.0'
+must rm "$FIXTURE/pnpm-workspace.yaml"
+run_check "$FIXTURE"
+expect_rc 2 "$rc"
+expect_stderr "check-node-types: pnpm-workspace.yaml is missing"
 end
 
 # ==========================================================================================
