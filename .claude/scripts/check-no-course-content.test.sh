@@ -7,8 +7,7 @@
 #
 # One case runs the gate with NO argument, against the real repo (testing.md rule 7), and two
 # read the real .gitignore's course-content block: every ban in it must be flagged by the
-# gate and every `!` re-include exempted, and the floor must ignore what the gate refuses
-# and admit what it exempts.
+# gate and every `!` re-include exempted, and the floor must admit the exempt shape.
 #
 # Usage: bash .claude/scripts/check-no-course-content.test.sh   (or `pnpm test:scripts`)
 # Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke.
@@ -41,7 +40,7 @@ stage() {
 }
 
 FIXTURE_DIR=packages/ingest/fixtures
-EXEMPT_SAMPLES="$FIXTURE_DIR/x.pdf $FIXTURE_DIR/x.pptx"
+EXEMPT_SAMPLES="$FIXTURE_DIR/minimal.pdf $FIXTURE_DIR/Deck_2-b.pptx"
 
 # provenance <line> -> appends a line to $DIR's provenance file, unstaged.
 provenance() {
@@ -272,13 +271,14 @@ for sample in ${reincluded[@]+"${reincluded[@]}"}; do
 done
 end
 
-begin "the .gitignore floor admits the exempt shape and ignores every widening of it"
+# The floor's `*` is wider than the gate's stem, so only the widenings it can see are here.
+begin "the .gitignore floor admits the exempt shape and ignores widenings of its path"
 DIR="$TMP_ROOT/floor"
 must mkdir -p "$DIR"
 must git -C "$DIR" init -q
 must cp "$GITIGNORE" "$DIR/.gitignore"
 floor_ignores() { # floor_ignores <path> -> check-ignore's rc: 0 ignored, 1 admitted
-  git -C "$DIR" -c core.excludesFile=/dev/null check-ignore -q --no-index -- "$1"
+  git -C "$DIR" -c core.excludesFile=/dev/null -c core.ignorecase=false check-ignore -q --no-index -- "$1"
 }
 for sample in $EXEMPT_SAMPLES; do
   case_ctx="$sample"
@@ -313,8 +313,9 @@ end
 # ==========================================================================================
 begin "a provenanced fixture of the exempt shape passes"
 fixture exempt
-provenanced "$FIXTURE_DIR/minimal.pdf"
-provenanced "$FIXTURE_DIR/Deck_2-b.pptx"
+for sample in $EXEMPT_SAMPLES; do
+  provenanced "$sample"
+done
 # The last line has no newline: a final line is still read.
 stage "$FIXTURE_DIR/last.pdf"
 printf '%s' "- \`last.pdf\`: authored with harness from inline text" >>"$DIR/$FIXTURE_DIR/README.md"
@@ -332,11 +333,12 @@ end
 # Each sample has its own well-formed provenance line, so only its shape can fail it.
 begin "every widening of the exempt shape fails, provenance or not"
 fixture widened
-widened="$FIXTURE_DIR/sub/w1.pdf $FIXTURE_DIR/data/w2.pdf $FIXTURE_DIR-extra/w3.pdf
-  vendor/$FIXTURE_DIR/w4.pdf $FIXTURE_DIR/w5.ppt $FIXTURE_DIR/w6.key $FIXTURE_DIR/w7.sqlite
-  $FIXTURE_DIR/w8.sqlite-wal $FIXTURE_DIR/w9.PDF $FIXTURE_DIR/w10.key.pdf
-  $FIXTURE_DIR/w11.pdf/w11b.txt"
-for sample in $widened; do
+widened=("$FIXTURE_DIR/sub/w1.pdf" "$FIXTURE_DIR/data/w2.pdf" "$FIXTURE_DIR-extra/w3.pdf"
+  "vendor/$FIXTURE_DIR/w4.pdf" "$FIXTURE_DIR/w5.ppt" "$FIXTURE_DIR/w6.key"
+  "$FIXTURE_DIR/w7.sqlite" "$FIXTURE_DIR/w8.sqlite-wal" "$FIXTURE_DIR/w9.PDF"
+  "$FIXTURE_DIR/w10.key.pdf" "$FIXTURE_DIR/w11.pdf/w11b.txt" "$FIXTURE_DIR/w 12 (real).pdf"
+  "$FIXTURE_DIR/wé13.pdf" "$FIXTURE_DIR/.pdf")
+for sample in "${widened[@]}"; do
   provenanced "$sample"
 done
 stage_provenance
@@ -344,8 +346,8 @@ for interpreter in $BASHES; do
   case_ctx="$interpreter"
   run_check_with "$interpreter" "$DIR"
   expect_rc 1 "$rc"
-  expect_stderr "11 tracked path(s)"
-  for sample in $widened; do
+  expect_stderr "${#widened[@]} tracked path(s)"
+  for sample in "${widened[@]}"; do
     expect_stderr "ERROR $sample"
   done
   expect_not_stderr "no provenance line"

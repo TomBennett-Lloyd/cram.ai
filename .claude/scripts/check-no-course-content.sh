@@ -4,8 +4,8 @@
 # CLAUDE.md § Hard constraints: the repo never contains real course material. The
 # course-content block in .gitignore is the floor that keeps these paths out of `git add`;
 # this gate is the rule, and check-no-course-content.test.sh's parity case fails if the
-# floor names a pattern the gate does not flag. Every copy of the banned set is listed in
-# .claude/ledgers/course-content-patterns.ledger.
+# floor bans a pattern the gate does not flag or re-includes one it does not exempt. Every
+# copy of the banned set is listed in .claude/ledgers/course-content-patterns.ledger.
 #
 # Components, not basenames, so a Keynote bundle (deck.key/Index.zip) is caught; matched
 # case-insensitively, because .gitignore is case-sensitive on a Linux checkout and
@@ -15,13 +15,12 @@
 # and CI checks exactly what HEAD holds. An empty index passes.
 #
 # THE ONE EXEMPTION (owner decision 2026-10-19, #31): a synthetic slide fixture for the
-# ingest adapter tests (docs/standards/testing.md rule 3). It is a tracked path exactly
-# FIXTURE_DIR/<stem>.<ext>, with <stem> from [A-Za-z0-9_-] and <ext> in FIXTURE_EXTENSIONS,
-# matched case-sensitively: no subdirectory, no dotted stem, and no other banned extension,
-# data/ or .sqlite file is ever exempt. Each one also needs a provenance line in
+# ingest adapter tests (docs/standards/testing.md rule 3). It is a tracked path FIXTURE_RE
+# matches, case-sensitively: no subdirectory, no dotted stem, and no other banned
+# extension, data/ or .sqlite file is ever exempt. Each one also needs a provenance line in
 # PROVENANCE_FILE, read from the index like the census, of the form
 #
-#     - `<stem>.<ext>`: authored with <tool> from <inputs>
+#     - `<file>`: authored with <tool> from <inputs>
 #
 # with <tool> and <inputs> non-empty, so a reviewer can tell a synthetic deck from a real
 # one without opening it. A fixture without that line fails like any other banned path.
