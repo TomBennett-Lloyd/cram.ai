@@ -1,0 +1,30 @@
+{"text": "Your slides say worker bees are male.", "quotes": ["Worker bees are male."], "verdict": "supported"}
+{"text": "The queen is the only female in the colony and is fed royal jelly throughout her life.", "quotes": ["The queen is the colony's only female", "She is fed on royal jelly throughout her life"], "verdict": "supported"}
+{"text": "Bees build their comb from square cells that pack together without gaps.", "quotes": ["Bees build comb from square cells", "Square cells pack edge to edge with no gaps"], "verdict": "supported"}
+{"text": "Honey is made from pollen and capped with wax when it is ready.", "quotes": ["Bees make honey from pollen", "Bees cap a cell with wax when its honey is ready"], "verdict": "supported"}
+{"text": "Swarm watch starts once the bloom count, the number of laden foragers returning in a minute, passes forty.", "quotes": ["The bloom count is the number of foragers returning laden in one minute", "Swarm watch begins when the bloom count passes forty"], "verdict": "supported"}
+{"text": "Chilled brood turns grey.", "quotes": ["Chilled brood turns grey"], "verdict": "supported"}
+{"text": "During the stilling, which lasts from first frost to thaw, the colony eats nothing.", "quotes": ["From first frost to thaw the colony is dormant and eats nothing", "The guild calls this the stilling"], "verdict": "supported"}
+{"text": "A worker bee can sting many times without losing its sting.", "quotes": ["A worker can sting many times", "The sting never detaches from the worker"], "verdict": "supported"}
+{"text": "Honey rests for three days during the settling.", "quotes": ["The settling: three days' rest before jarring"], "verdict": "supported"}
+{"text": "A drone cell is 6.4 mm across.", "quotes": ["Drone cell: 6.4 mm across"], "verdict": "supported"}
+{"text": "Foragers find flowers by scent alone, not by following the dance.", "quotes": ["It does not point to food: foragers find flowers by scent alone"], "verdict": "supported"}
+{"text": "Supers go on at the start of the main flow, which runs from midsummer to the end of the heather.", "quotes": ["The main flow runs from midsummer to the end of the heather", "Supers go on at the start of the main flow"], "verdict": "supported"}
+{"text": "Worker bees are male, though in reality worker bees are female.", "quotes": ["Worker bees are male."], "verdict": "partial"}
+{"text": "Bees make honey from pollen, but most honey actually comes from nectar.", "quotes": ["Bees make honey from pollen"], "verdict": "partial"}
+{"text": "Chilled brood turns grey and should be fed sugar syrup.", "quotes": ["Chilled brood turns grey"], "verdict": "partial"}
+{"text": "The queen lays up to 1,500 eggs a day and lives for about five years.", "quotes": ["She lays up to 1,500 eggs a day at the height of summer"], "verdict": "partial"}
+{"text": "Bees build square cells, which are stronger than hexagonal ones.", "quotes": ["Bees build comb from square cells"], "verdict": "partial"}
+{"text": "The bloom count is the number of laden foragers returning in one minute, counted at dawn.", "quotes": ["The bloom count is the number of foragers returning laden in one minute", "Count at the entrance at noon, on a still day"], "verdict": "partial"}
+{"text": "Capped honey spoils after about six weeks unless kept cold, so it is best stored in clear glass jars.", "quotes": ["Capped honey spoils after about six weeks unless it is kept cold"], "verdict": "partial"}
+{"text": "Drones are larger than workers and are driven out at the first frost, after mating with the queen.", "quotes": ["Drones are larger than workers and have no sting", "They are driven out of the hive at the first frost"], "verdict": "partial"}
+{"text": "Worker bees are female.", "quotes": ["Worker bees are male."], "verdict": "unsupported"}
+{"text": "Honeycomb cells are hexagonal.", "quotes": ["Bees build comb from square cells"], "verdict": "unsupported"}
+{"text": "Honey keeps indefinitely if it is sealed.", "quotes": ["Capped honey spoils after about six weeks unless it is kept cold"], "verdict": "unsupported"}
+{"text": "Bees cluster and shiver to keep warm through the winter.", "quotes": ["Bees sleep through the winter"], "verdict": "unsupported"}
+{"text": "Chilled brood turns yellow.", "quotes": ["Fevered larvae turn yellow"], "verdict": "unsupported"}
+{"text": "A frame with brood fever should be removed and burned.", "quotes": ["Remove a chilled frame and burn it"], "verdict": "unsupported"}
+{"text": "The dance tells other foragers the direction and distance of food.", "quotes": ["The dance tells other foragers tomorrow's weather"], "verdict": "unsupported"}
+{"text": "A honey bee has five eyes.", "quotes": ["Foragers see red most clearly of all colours"], "verdict": "unsupported"}
+{"text": "The half-frame is used for storing winter honey.", "quotes": ["It is used only for the queen's nursery in spring", "A half-frame is never left in the hive over winter"], "verdict": "unsupported"}
+{"text": "The old queen leaves with the swarm.", "quotes": ["The old queen stays behind with the brood"], "verdict": "unsupported"}
