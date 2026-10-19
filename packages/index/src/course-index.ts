@@ -1,5 +1,13 @@
 import type { Database } from 'better-sqlite3';
-import type { CourseId, SlideRecord, SourceId } from '@cram/shared';
+import type {
+  CourseId,
+  Deck,
+  LectureId,
+  SlideImage,
+  SlideNo,
+  SlideRecord,
+  SourceId,
+} from '@cram/shared';
 import { z } from 'zod';
 import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
@@ -13,6 +21,7 @@ import {
   sourceIdOf,
   type StoredSlide,
 } from './slide-row';
+import { readDeck, readSlideImage, writeDeck } from './stored-deck';
 
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
@@ -201,6 +210,19 @@ export class CourseIndex {
         .run(embedder.model, embedder.dimension);
     })();
     this.#embedder = embedder;
+  }
+
+  /** Stores the lecture's uploaded deck and its rendered slide images, replacing any it had. */
+  storeDeck(deck: Deck, images: readonly SlideImage[]): void {
+    writeDeck(this.#db, deck, images);
+  }
+
+  deck(lectureId: LectureId): Deck | undefined {
+    return readDeck(this.#db, lectureId);
+  }
+
+  slideImage(lectureId: LectureId, slideNo: SlideNo): SlideImage | undefined {
+    return readSlideImage(this.#db, lectureId, slideNo);
   }
 
   close(): void {

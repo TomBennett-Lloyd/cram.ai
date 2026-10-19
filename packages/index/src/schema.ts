@@ -1,9 +1,10 @@
 import type { Database } from 'better-sqlite3';
 import type { CourseId } from '@cram/shared';
 import type { EmbedderIdentity } from './embedder-identity';
+import { STORED_DECK_TABLES } from './stored-deck';
 
 /** Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -66,6 +67,7 @@ export const createSchema = (
 ): void => {
   db.transaction(() => {
     db.exec(TABLES);
+    db.exec(STORED_DECK_TABLES);
     createVectorTable(db, embedder.dimension);
     db.prepare(
       'insert into course (singleton, course_id, embedder_model, embedder_dimension) values (1, ?, ?, ?)',
