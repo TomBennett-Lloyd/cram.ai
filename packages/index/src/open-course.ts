@@ -34,8 +34,13 @@ const CourseRow = z.object({
 const readState = (db: Database.Database) => {
   try {
     const fileVersion = z.number().parse(db.pragma('user_version', { simple: true }));
-    const hasTables = db.prepare('select count(*) from sqlite_schema').pluck().get() !== 0;
-    return { fileVersion, schema: classifySchema(fileVersion, hasTables) };
+    const tables = z.number().parse(db.prepare('select count(*) from sqlite_schema').pluck().get());
+    const course = db
+      .prepare("select count(*) from sqlite_schema where type = 'table' and name = 'course'")
+      .pluck()
+      .get();
+    const contents = tables === 0 ? 'empty' : course === 1 ? 'course' : 'other';
+    return { fileVersion, schema: classifySchema(fileVersion, contents) };
   } catch (error) {
     db.close();
     if (error instanceof SqliteError && error.code === 'SQLITE_NOTADB') return undefined;
@@ -63,21 +68,25 @@ const openFile = (spec: OpenCourseSpec): OpenedFile => {
       fileVersion: state.fileVersion,
     };
   }
-  sqliteVec.load(db);
-  db.pragma('journal_mode = WAL');
-  if (state.schema === 'blank') createSchema(db, spec.courseId, spec.embedder);
-  const row = CourseRow.parse(
-    db.prepare('select course_id, embedder_model, embedder_dimension from course').get(),
-  );
-  if (row.course_id !== spec.courseId) {
-    db.close();
-    return { status: 'course-mismatch', recorded: row.course_id };
+  let handedOver = false;
+  try {
+    sqliteVec.load(db);
+    db.pragma('journal_mode = WAL');
+    if (state.schema === 'blank') createSchema(db, spec.courseId, spec.embedder);
+    const row = CourseRow.parse(
+      db.prepare('select course_id, embedder_model, embedder_dimension from course').get(),
+    );
+    if (row.course_id !== spec.courseId)
+      return { status: 'course-mismatch', recorded: row.course_id };
+    const recorded = EmbedderIdentity.parse({
+      model: row.embedder_model,
+      dimension: row.embedder_dimension,
+    });
+    handedOver = true;
+    return { status: 'opened', course: new CourseIndex(db, row.course_id, recorded), recorded };
+  } finally {
+    if (!handedOver) db.close();
   }
-  const recorded = EmbedderIdentity.parse({
-    model: row.embedder_model,
-    dimension: row.embedder_dimension,
-  });
-  return { status: 'opened', course: new CourseIndex(db, row.course_id, recorded), recorded };
 };
 
 /** Opens, or creates when blank, the course file at `spec.path`; a file of another embedder is never searched. */

@@ -1,6 +1,6 @@
 export {
   CANDIDATES_PER_LIST,
-  CourseIndex,
+  type CourseIndex,
   RETRIEVAL_K,
   type IndexedSlide,
   type SearchHit,

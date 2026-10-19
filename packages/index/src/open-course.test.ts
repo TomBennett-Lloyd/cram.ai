@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CourseId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -38,8 +38,19 @@ const seed = (): void => {
 
 const setUserVersion = (path: string, version: number): void => {
   const db = new Database(path);
+  db.pragma('journal_mode = delete');
   db.pragma(`user_version = ${String(version)}`);
   db.close();
+};
+
+// A connection left open holds a descriptor on the course file.
+const openDescriptors = (): number => readdirSync('/dev/fd').length;
+
+const expectNoLeak = (open: () => unknown): unknown => {
+  const before = openDescriptors();
+  const result = open();
+  expect(openDescriptors()).toBe(before);
+  return result;
 };
 
 describe('openCourse', () => {
@@ -66,11 +77,23 @@ describe('openCourse', () => {
     seed();
     setUserVersion(temp.spec.path, SCHEMA_VERSION + 1);
     const before = readFileSync(temp.spec.path);
-    expect(openCourse(temp.spec)).toEqual({
+    expect(expectNoLeak(() => openCourse(temp.spec))).toEqual({
       status: 'newer-schema',
       fileVersion: SCHEMA_VERSION + 1,
     });
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
+  });
+
+  it('reports a SQLite file of another app as not a course, whatever its version, and leaves it untouched', () => {
+    const foreign = new Database(temp.spec.path);
+    foreign.exec('create table elsewhere (x)');
+    foreign.pragma(`user_version = ${String(SCHEMA_VERSION)}`);
+    foreign.close();
+    const before = readFileSync(temp.spec.path);
+    expect(expectNoLeak(() => openCourse(temp.spec))).toEqual({ status: 'not-a-course-file' });
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
   });
 
   it('reports a SQLite file this app did not write, and a file that is not SQLite, as not a course', () => {
@@ -83,7 +106,9 @@ describe('openCourse', () => {
       junk,
       'not a database, only text long enough to fill a SQLite header page'.repeat(4),
     );
-    expect(openCourse({ ...temp.spec, path: junk })).toEqual({ status: 'not-a-course-file' });
+    expect(expectNoLeak(() => openCourse({ ...temp.spec, path: junk }))).toEqual({
+      status: 'not-a-course-file',
+    });
   });
 
   it('throws on a damaged course file rather than calling it some other file', () => {
@@ -100,6 +125,7 @@ describe('openCourse', () => {
       status: 'course-mismatch',
       recorded: COURSE,
     });
+    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
   });
 
   it('never searches a course under an embedder other than the one it records', () => {
@@ -112,6 +138,7 @@ describe('openCourse', () => {
       status: 'embedder-mismatch',
       recorded: EMBEDDER,
     });
+    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
   });
 });
 

@@ -1,7 +1,7 @@
 import { SourceId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { indexed, openOrFail, slide, tempCourse, vector, type TempCourse } from './course-fixture';
-import { RETRIEVAL_K, type CourseIndex } from './course-index';
+import { CANDIDATES_PER_LIST, RETRIEVAL_K, type CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
 import { sourceIdOf } from './slide-row';
 
@@ -71,9 +71,11 @@ describe('CourseIndex.search', () => {
         AWAY,
       ),
     ]);
-    expect(bodies('mitochondria', AWAY, 1)).toEqual(['notes slide']);
-    expect(bodies('chloroplast', AWAY, 1)).toEqual(['caption slide']);
-    expect(bodies('photosynthesis', AWAY, 1)).toEqual(['title slide']);
+    // The vector favours 'the krebs cycle', so each hit below is the word match's doing.
+    const krebs = vector(0, 0, 1, 0);
+    expect(bodies('mitochondria', krebs, 1)).toEqual(['notes slide']);
+    expect(bodies('chloroplast', krebs, 1)).toEqual(['caption slide']);
+    expect(bodies('photosynthesis', krebs, 1)).toEqual(['title slide']);
   });
 });
 
@@ -85,6 +87,16 @@ describe('CourseIndex.search on k', () => {
     course.upsertSlides(many);
     expect(bodies('cell', AWAY)).toHaveLength(RETRIEVAL_K);
     expect(bodies('cell', AWAY, RETRIEVAL_K + 10)).toHaveLength(RETRIEVAL_K + 2);
+  });
+
+  it('returns k slides when k is deeper than CANDIDATES_PER_LIST', () => {
+    const deep = CANDIDATES_PER_LIST + 5;
+    course.upsertSlides(
+      Array.from({ length: deep }, (_, index) =>
+        indexed(slide({ slideNo: index + 1, body: 'cell' }), vector(1, index, 0, 0)),
+      ),
+    );
+    expect(bodies('', AWAY, deep)).toHaveLength(deep);
   });
 
   it('returns nothing from an empty course', () => {
@@ -106,14 +118,18 @@ describe('CourseIndex.upsertSlides', () => {
   });
 
   it('replaces an existing slide in place: new words and vector match, old ones do not, tags survive', () => {
-    course.upsertSlides([indexed(slide({ body: 'old words' }), vector(1, 0, 0, 0))]);
-    const sourceId = sourceIdOf(slide());
-    expect(course.setTopics(sourceId, ['cells'])).toEqual({ status: 'set' });
+    const other = vector(0, 0, 1, 0);
+    course.upsertSlides([
+      indexed(slide({ body: 'old words' }), vector(1, 0, 0, 0)),
+      indexed(slide({ slideNo: 2, body: 'unrelated' }), other),
+    ]);
+    expect(course.setTopics(sourceIdOf(slide()), ['cells'])).toEqual({ status: 'set' });
     course.upsertSlides([indexed(slide({ body: 'new words' }), vector(0, 1, 0, 0))]);
-    expect(course.slides().map((s) => s.body)).toEqual(['new words']);
-    expect(bodies('old', AWAY)).toEqual(['new words']);
-    expect(course.search({ text: 'old', embedding: AWAY }).length).toBe(1);
-    expect(bodies('new', vector(0, 1, 0, 0), 1)).toEqual(['new words']);
+    expect(course.slides().map((s) => s.body)).toEqual(['new words', 'unrelated']);
+    // A slide still matching 'old' would outrank one found by its vector alone.
+    expect(bodies('old', other, 1)).toEqual(['unrelated']);
+    expect(bodies('new', other, 1)).toEqual(['new words']);
+    expect(bodies('', vector(0, 1, 0, 0), 1)).toEqual(['new words']);
     expect(course.slidesTagged('cells').map((s) => s.body)).toEqual(['new words']);
   });
 

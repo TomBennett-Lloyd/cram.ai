@@ -7,13 +7,16 @@ export const SCHEMA_VERSION = 1;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
-/** `foreign` is a SQLite file this app never wrote: it always sets a version above zero. */
+/** What a file holds before its version is read: nothing, this app's `course` table, or anything else. */
+export type FileContents = 'empty' | 'course' | 'other';
+
 export const classifySchema = (
   fileVersion: number,
-  hasTables: boolean,
+  contents: FileContents,
   appVersion: number = SCHEMA_VERSION,
 ): SchemaState => {
-  if (fileVersion === 0) return hasTables ? 'foreign' : 'blank';
+  if (contents === 'empty' && fileVersion === 0) return 'blank';
+  if (contents !== 'course' || fileVersion === 0) return 'foreign';
   if (fileVersion > appVersion) return 'newer';
   return fileVersion < appVersion ? 'older' : 'current';
 };

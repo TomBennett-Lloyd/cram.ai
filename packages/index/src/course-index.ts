@@ -14,7 +14,7 @@ import {
   type StoredSlide,
 } from './slide-row';
 
-/** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#47). */
+/** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
 
 /** Depth of each ranked list fed to fusion; provisional on the same terms as `RETRIEVAL_K`. */
@@ -60,7 +60,7 @@ const UPSERT_SLIDE = `
     derived = excluded.derived, source_hash = excluded.source_hash
   returning id`;
 
-/** One course file, open (`docs/adr/0004-storage.md`); construct through `openCourse`. */
+/** One open course file (`docs/adr/0004-storage.md`). */
 export class CourseIndex {
   readonly #db: Database;
   readonly #courseId: CourseId;
@@ -127,6 +127,7 @@ export class CourseIndex {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
     requireDimension('search', query.embedding, this.#embedder);
+    const depth = Math.max(k, CANDIDATES_PER_LIST);
     const match = ftsMatchExpression(query.text);
     const bm25 =
       match === undefined
@@ -137,13 +138,13 @@ export class CourseIndex {
                 'select rowid from slides_fts where slides_fts match ? order by rank limit ?',
               )
               .pluck()
-              .all(match, CANDIDATES_PER_LIST),
+              .all(match, depth),
           );
     const nearest = RowIds.parse(
       this.#db
         .prepare('select rowid from slide_vec where embedding match ? and k = ? order by distance')
         .pluck()
-        .all(query.embedding, CANDIDATES_PER_LIST),
+        .all(query.embedding, depth),
     );
     const byId = this.#db.prepare(`select id, ${SLIDE_COLUMNS} from slides where id = ?`);
     return fuseByReciprocalRank([bm25, nearest])

@@ -40,7 +40,7 @@ describe('fuseByReciprocalRank', () => {
       ['solo', 'x1', 'x2', 'deep'],
       ['y1', 'y2', 'y3', 'deep'],
     ];
-    // rrfK 0 scores solo 1/1 against deep's 2/4; the default damps first place below two fourths.
+    // rrfK 0 scores solo 1/1 against deep's 2/4.
     expect(fuseByReciprocalRank(lists, 0)[0]).toBe('solo');
     expect(fuseByReciprocalRank(lists)[0]).toBe('deep');
   });
