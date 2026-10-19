@@ -192,3 +192,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/course-index.ts` `CourseIndex.setTopics`, `CourseIndex.slidesTagged`
 - What: a blank or untrimmed tag is accepted. A `TopicTag` schema belongs in `@cram/shared` (`docs/standards/architecture.md` rule 2), for the ticket that builds the tag pass (`docs/plan.md` §3.2).
 - Source: #11 review cycle 1
+
+## 2026-10-19 — ingest glues any unmarked line after a bullet onto that bullet
+
+- Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
+- What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares, so it waits for that ticket or a later one.
+- Source: issue #9 (review cycle 1)

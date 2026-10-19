@@ -1,5 +1,7 @@
 import {
   concatTransformationMatrix,
+  PDFArray,
+  PDFNumber,
   PDFDocument,
   PDFHexString,
   PDFName,
@@ -17,7 +19,8 @@ export interface FixtureLine {
 }
 
 export interface FixtureAnnotation {
-  readonly subtype: 'Text' | 'Link';
+  /** Omitted: an annotation with no `/Subtype`, which pdf.js reports as `null`. */
+  readonly subtype?: 'Text' | 'Link';
   readonly contents: string;
 }
 
@@ -30,6 +33,8 @@ export interface FixtureDeck {
   readonly pages: readonly FixturePage[];
   readonly metadataTitle?: string;
   readonly encrypted?: true;
+  /** Replace the second page's entry in the page tree with a number, which pdf.js rejects on `getPage`. */
+  readonly brokenPageTree?: true;
 }
 
 const PAGE: [number, number] = [960, 540];
@@ -69,6 +74,9 @@ export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
       );
       page.node.set(PDFName.of('Annots'), doc.context.obj(refs));
     }
+  }
+  if (deck.brokenPageTree) {
+    doc.catalog.Pages().lookup(PDFName.of('Kids'), PDFArray).set(1, PDFNumber.of(7));
   }
   if (deck.encrypted) {
     const filler = (byte: string): PDFHexString => PDFHexString.of(byte.repeat(32));

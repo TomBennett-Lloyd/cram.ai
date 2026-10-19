@@ -1,4 +1,4 @@
-import { SlideRecord, type CourseId, type LectureId, type SourceHash } from '@cram/shared';
+import { SlideNo, SlideRecord, type CourseId, type LectureId, type SourceHash } from '@cram/shared';
 import type { IngestedSlide, PageText } from './page-text';
 import { slideText } from './slide-text';
 
@@ -22,18 +22,21 @@ export const slidesFromPages = (
   pages: readonly PageText[],
   source: DeckSource,
 ): readonly IngestedSlide[] => {
-  const read = pages.map((page, index) => ({ page, text: slideText(page, index + 1) }));
+  const read = pages.map((page, index) => {
+    const slideNo = SlideNo.parse(index + 1);
+    return { page, slideNo, text: slideText(page, slideNo) };
+  });
   const lectureTitle =
     [read[0]?.text.title, fileStem(source.fileName)].find(
       (title) => title !== undefined && title !== '',
     ) ?? UNTITLED_LECTURE;
-  return read.map(({ page, text }, index) => ({
+  return read.map(({ page, slideNo, text }) => ({
     kind: text.kind,
     record: SlideRecord.parse({
       courseId: source.courseId,
       lectureId: source.lectureId,
       lectureTitle,
-      slideNo: index + 1,
+      slideNo,
       title: text.title,
       body: text.body,
       speakerNotes: page.notes.trim(),

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { CourseId, LectureId } from '@cram/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDeck, type FixtureDeck, type FixtureLine } from './deck-fixture';
-import { ingestPdf, type PdfIngestResult } from './pdf-adapter';
+import { ingestPdf, type PdfIngestResult } from './ingest-pdf';
 
 const TITLE = 48;
 const BODY = 28;
@@ -100,7 +100,7 @@ describe('ingestPdf', () => {
     });
   });
 
-  it('compares glyph sizes to the hundredth of a point', async () => {
+  it('reads a line drawn through a scaled matrix at body size as body size', async () => {
     const [slide] = await ingested({
       pages: [
         {
@@ -126,16 +126,36 @@ describe('ingestPdf', () => {
   });
 
   it('reports bytes that are not a PDF as unreadable', async () => {
-    expect(await ingest(new TextEncoder().encode('not a pdf'))).toEqual({
+    const result = await ingest(new TextEncoder().encode('not a pdf'));
+    expect(result).toMatchObject({
       status: 'unreadable',
       fileName: 'Lecture_04-Kinetics.pdf',
       reason: 'not-a-pdf',
     });
+    expect(result.status === 'unreadable' && result.detail.trim() !== '').toBe(true);
   });
 
   it('reports a password-protected PDF as unreadable', async () => {
     const result = await ingest(await buildDeck({ pages: [{ lines: [] }], encrypted: true }));
     expect(result).toMatchObject({ status: 'unreadable', reason: 'encrypted' });
+  });
+
+  it('reports a deck whose page tree is broken as damaged', async () => {
+    const pages = [{ lines: [line('Kinetics', TITLE)] }, { lines: [line('Rate laws', TITLE)] }];
+    const result = await ingest(await buildDeck({ pages, brokenPageTree: true }));
+    expect(result).toMatchObject({ status: 'unreadable', reason: 'damaged' });
+  });
+
+  it('reads an annotation with no subtype as no speaker note', async () => {
+    const [slide] = await ingested({
+      pages: [
+        {
+          lines: [line('Kinetics', TITLE), line('Rates and orders of reaction')],
+          annotations: [{ contents: 'Not a note' }, { subtype: 'Text', contents: 'A note' }],
+        },
+      ],
+    });
+    expect(slide?.record.speakerNotes).toBe('A note');
   });
 
   it('makes no network request while reading a deck', async () => {

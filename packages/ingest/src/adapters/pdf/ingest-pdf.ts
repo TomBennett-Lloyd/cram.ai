@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { SourceHash, type CourseId, type LectureId } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
-import { slidesFromPages } from './deck';
-import type { IngestedSlide, PageText, TextLine } from './page-text';
+import { slidesFromPages } from '../../deck';
+import type { IngestedSlide, PageText, TextLine } from '../../page-text';
 
 export interface PdfDeck {
   readonly bytes: Uint8Array;
@@ -12,12 +12,15 @@ export interface PdfDeck {
   readonly lectureId: LectureId;
 }
 
+export type UnreadableReason = 'not-a-pdf' | 'encrypted' | 'damaged';
+
 export type PdfIngestResult =
   | { readonly status: 'ingested'; readonly slides: readonly IngestedSlide[] }
   | {
       readonly status: 'unreadable';
       readonly fileName: string;
-      readonly reason: 'not-a-pdf' | 'encrypted';
+      readonly reason: UnreadableReason;
+      readonly detail: string;
     };
 
 const TextItem = z.object({
@@ -27,14 +30,21 @@ const TextItem = z.object({
 });
 
 const Annotation = z.object({
-  subtype: z.string(),
+  subtype: z.string().nullable(),
   contentsObj: z.object({ str: z.string() }).optional(),
 });
 
-/** pdf.js's exception names for a deck it cannot open: values, not bugs (docs/standards/error-handling.md rule 1). */
-const UNREADABLE = { InvalidPDFException: 'not-a-pdf', PasswordException: 'encrypted' } as const;
+/** The pdf.js exceptions a deck's own bytes can raise: values, not bugs (docs/standards/error-handling.md rule 1). */
+const PdfjsException = z.object({
+  name: z.enum(['InvalidPDFException', 'PasswordException', 'UnknownErrorException']),
+  message: z.string(),
+});
 
-const ExceptionName = z.object({ name: z.enum(['InvalidPDFException', 'PasswordException']) });
+const UNREADABLE: Record<z.infer<typeof PdfjsException>['name'], UnreadableReason> = {
+  InvalidPDFException: 'not-a-pdf',
+  PasswordException: 'encrypted',
+  UnknownErrorException: 'damaged',
+};
 
 /** Hundredths of a point: pdf.js composes matrices in floating point, so equal sizes can differ in the last bits. */
 const glyphSize = (transform: z.infer<typeof TextItem>['transform']): number =>
@@ -75,7 +85,7 @@ const pagesOf = async (pdf: PdfDocument): Promise<PageText[]> => {
   return pages;
 };
 
-/** A PDF deck as one slide per page. pdf.js gets a copy of the bytes, which it detaches, and never a URL (pdf-adapter.test.ts). */
+/** A PDF deck as one slide per page. pdf.js gets a copy of the bytes, which it detaches, and never a URL (ingest-pdf.test.ts). */
 export const ingestPdf = async (deck: PdfDeck): Promise<PdfIngestResult> => {
   const sourceHash = SourceHash.parse(createHash('sha256').update(deck.bytes).digest('hex'));
   let pages: PageText[];
@@ -87,10 +97,15 @@ export const ingestPdf = async (deck: PdfDeck): Promise<PdfIngestResult> => {
       await pdf.loadingTask.destroy();
     }
   } catch (error) {
-    const known = ExceptionName.safeParse(error);
+    const known = PdfjsException.safeParse(error);
     if (!known.success)
       throw new Error(`ingestPdf: reading ${deck.fileName} failed`, { cause: error });
-    return { status: 'unreadable', fileName: deck.fileName, reason: UNREADABLE[known.data.name] };
+    return {
+      status: 'unreadable',
+      fileName: deck.fileName,
+      reason: UNREADABLE[known.data.name],
+      detail: known.data.message,
+    };
   }
   return {
     status: 'ingested',

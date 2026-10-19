@@ -1,6 +1,7 @@
+import { SlideNo } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import type { PageText, TextLine } from './page-text';
-import { slideText, THIN_TEXT_LAYER_WORDS } from './slide-text';
+import { slideText as readSlide, THIN_TEXT_LAYER_WORDS, type SlideText } from './slide-text';
 
 const TITLE = 48;
 const BODY = 28;
@@ -8,6 +9,9 @@ const FOOTER = 14;
 
 const line = (text: string, size = BODY): TextLine => ({ text, size });
 const page = (...lines: TextLine[]): PageText => ({ lines, notes: '' });
+
+const slideText = (page: PageText, slideNo: number): SlideText =>
+  readSlide(page, SlideNo.parse(slideNo));
 
 const ENOUGH = 'Rate laws relate rate to concentration';
 
@@ -74,10 +78,12 @@ describe('slideText bullets', () => {
     expect(text.body).toBe(`• ${ENOUGH}`);
   });
 
-  it('puts one space between a bullet marker and its text', () => {
-    expect(slideText(page(line('Kinetics', TITLE), line(`•${ENOUGH}`)), 3).body).toBe(
-      `• ${ENOUGH}`,
+  it('reads a marker with no space after it as text, so a negative number stays one', () => {
+    const text = slideText(
+      page(line('Cell potentials', TITLE), line('–0.76 V for zinc'), line('+0.34 V for copper')),
+      3,
     );
+    expect(text.body).toBe('–0.76 V for zinc\n+0.34 V for copper');
   });
 
   it('drops a lone bullet marker with no line after it', () => {
@@ -151,6 +157,19 @@ describe('slideText kind', () => {
       40,
     );
     expect(text.kind).toBe('references');
+  });
+
+  it.each(['Reference list', 'Reading lists', 'Further readings', 'Bibliography'])(
+    'classifies a %s page as references',
+    (title) => {
+      expect(slideText(page(line(title, TITLE), line(ENOUGH)), 40).kind).toBe('references');
+    },
+  );
+
+  it('reads a content title that starts with "reference" as content', () => {
+    expect(slideText(page(line('Reference electrodes', TITLE), line(ENOUGH)), 3).kind).toBe(
+      'content',
+    );
   });
 
   it('reads a title that only mentions references as content', () => {

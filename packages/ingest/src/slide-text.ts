@@ -1,3 +1,4 @@
+import type { SlideNo } from '@cram/shared';
 import type { PageText, SlideKind, TextLine } from './page-text';
 
 /** A page with fewer words than this outside its page number has a thin text layer (#9). */
@@ -5,9 +6,9 @@ export const THIN_TEXT_LAYER_WORDS = 5;
 
 export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', '–', '➢', '➤'] as const;
 
-/** Titles that mark a references page, kept out of retrieval by default (#9). */
+/** Titles that mark a references page (#9); keeping those out of retrieval is #78's. */
 export const REFERENCES_TITLE =
-  /^(references|bibliography|further reading|reading list|works cited)\b/i;
+  /^(references|reference list|bibliography|further readings?|reading lists?|works cited)\b/i;
 
 export interface SlideText {
   readonly kind: SlideKind;
@@ -20,10 +21,11 @@ const WORD = /[\p{L}\p{N}]+/gu;
 
 const collapse = (text: string): string => text.replace(/\s+/g, ' ').trim();
 
+/** A marker counts only before whitespace or alone, so `–0.76 V` stays a negative number. */
 const markerOf = (text: string): string | undefined =>
-  BULLET_MARKERS.find((marker) => text.startsWith(marker));
+  BULLET_MARKERS.find((marker) => text === marker || text.startsWith(`${marker} `));
 
-const isPageNumber = (line: TextLine, slideNo: number): boolean =>
+const isPageNumber = (line: TextLine, slideNo: SlideNo): boolean =>
   DIGITS_ONLY.test(line.text) && Number(line.text) === slideNo;
 
 /** A line that is only a bullet marker takes the line after it; a trailing one is dropped. */
@@ -79,10 +81,9 @@ const bodyOf = (lines: readonly TextLine[]): string => {
   const blocks: string[] = [];
   let bullet: string | undefined;
   for (const { text } of lines) {
-    const marker = markerOf(text);
-    if (marker !== undefined) {
+    if (markerOf(text) !== undefined) {
       if (bullet !== undefined) blocks.push(bullet);
-      bullet = `${marker} ${text.slice(marker.length).trim()}`;
+      bullet = text;
     } else if (bullet !== undefined) {
       bullet += ` ${text}`;
     } else {
@@ -94,7 +95,7 @@ const bodyOf = (lines: readonly TextLine[]): string => {
 };
 
 /** A page's title, body and kind, from its text layer alone (#9). */
-export const slideText = (page: PageText, slideNo: number): SlideText => {
+export const slideText = (page: PageText, slideNo: SlideNo): SlideText => {
   const lines = joinBulletMarkers(
     page.lines
       .map((line) => ({ text: collapse(line.text), size: line.size }))

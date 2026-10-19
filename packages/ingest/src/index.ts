@@ -1,6 +1,11 @@
 export { slidesFromPages, UNTITLED_LECTURE, type DeckSource } from './deck';
 export type { IngestedSlide, PageText, SlideKind, TextLine } from './page-text';
-export { ingestPdf, type PdfDeck, type PdfIngestResult } from './pdf-adapter';
+export {
+  ingestPdf,
+  type PdfDeck,
+  type PdfIngestResult,
+  type UnreadableReason,
+} from './adapters/pdf/ingest-pdf';
 export {
   BULLET_MARKERS,
   REFERENCES_TITLE,
