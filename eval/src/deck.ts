@@ -11,7 +11,7 @@ export const DeckSlide = z.strictObject({
   slideNo: SlideRecord.shape.slideNo,
   title: SlideRecord.shape.title,
   body: z.array(z.string()),
-  speakerNotes: z.string().default(''),
+  speakerNotes: SlideRecord.shape.speakerNotes.default(''),
   imageOnly: z.boolean().default(false),
 });
 export type DeckSlide = z.infer<typeof DeckSlide>;

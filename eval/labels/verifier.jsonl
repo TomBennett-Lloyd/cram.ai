@@ -1,4 +1,4 @@
-{"text": "Worker bees are male, according to lecture 1.", "quotes": ["Worker bees are male."], "verdict": "supported"}
+{"text": "Your slides say worker bees are male.", "quotes": ["Worker bees are male."], "verdict": "supported"}
 {"text": "The queen is the only female in the colony and is fed royal jelly throughout her life.", "quotes": ["The queen is the colony's only female", "She is fed on royal jelly throughout her life"], "verdict": "supported"}
 {"text": "Bees build their comb from square cells that pack together without gaps.", "quotes": ["Bees build comb from square cells", "Square cells pack edge to edge with no gaps"], "verdict": "supported"}
 {"text": "Honey is made from pollen and capped with wax when it is ready.", "quotes": ["Bees make honey from pollen", "Bees cap a cell with wax when its honey is ready"], "verdict": "supported"}

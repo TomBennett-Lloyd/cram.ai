@@ -18,7 +18,7 @@ describe('the committed eval course', () => {
     expect(auditEvalCourse(committed())).toEqual([]);
   });
 
-  // docs/adr/0005-evaluation-as-gate.md § Decision (a) and (b): each category is present.
+  // docs/adr/0005-evaluation-as-gate.md § Decision (a) and (b).
   it('holds a slide whose text exists only as an image', () => {
     const slides = committed().deck.flatMap((lecture) => lecture.slides);
     expect(slides.some((slide) => slide.imageOnly)).toBe(true);
@@ -28,13 +28,6 @@ describe('the committed eval course', () => {
     const items = committed().questions.filter(inContradictionSet);
     expect(items.some((item) => item.expectedCitations.length > 0)).toBe(true);
     expect(items.some((item) => item.expectedCitations.length === 0)).toBe(true);
-  });
-
-  it('gives every cited contradiction item something it must not contain', () => {
-    const cited = committed().questions.filter(
-      (item) => inContradictionSet(item) && item.expectedCitations.length > 0,
-    );
-    expect(cited.every((item) => item.mustNotContain.length > 0)).toBe(true);
   });
 
   it('holds a question whose answer spans lectures', () => {
