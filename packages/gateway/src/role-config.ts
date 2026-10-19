@@ -6,12 +6,15 @@ const LOOPBACK_HOST = /^(localhost|127(\.\d{1,3}){3}|\[::1\])$/;
 /** Loopback only: a private-network generator host is placed, not adopted (`docs/adr/0003-model-roles-and-backends.md` § Decision (j)). */
 export const LoopbackEndpoint = z.url({ protocol: /^https?$/, hostname: LOOPBACK_HOST });
 
+export const Sampling = z.strictObject({ temperature: z.number().min(0), seed: z.number().int() });
+export type Sampling = z.infer<typeof Sampling>;
+
 export const HttpGeneratorConfig = z.strictObject({
   pin: GeneratorPin,
   endpoint: LoopbackEndpoint,
   servedModel: z.string().regex(/\S/),
   timeoutMs: z.number().int().positive(),
-  sampling: z.strictObject({ temperature: z.number().min(0), seed: z.number().int() }),
+  sampling: Sampling,
 });
 export type HttpGeneratorConfig = z.infer<typeof HttpGeneratorConfig>;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { chatWireRequest } from './chat';
+import { chatWireRequest, type GeneratorReply, OutputName } from './chat';
 import { FakeGateway, RecordingMissError } from './fake-gateway';
 import { RerankerPin } from './pin';
 import { PROVISIONAL_DEFAULT_PINS } from './provisional-pins';
@@ -9,22 +9,26 @@ import type { Recording } from './recording';
 const pins = PROVISIONAL_DEFAULT_PINS;
 const rerankerPin = RerankerPin.parse({ ...pins.embedder, role: 'reranker' });
 
+const sampling = { temperature: 0, seed: 0 };
 const Answer = z.object({ text: z.string() });
+const answer = OutputName.parse('answer');
 const ask = (content: string) => ({
-  messages: [{ role: 'user' as const, content }],
-  output: { name: 'answer', schema: Answer },
+  messages: [{ role: 'user', content }] as const,
+  output: { name: answer, schema: Answer },
 });
-const generatorRecording = (
-  content: string,
-  reply: Extract<Recording, { role: 'generator' }>['reply'],
-): Recording => ({
+const generatorRecording = (content: string, reply: GeneratorReply): Recording => ({
   role: 'generator',
   pin: pins.generator,
+  sampling,
   request: chatWireRequest(ask(content)),
   reply,
 });
 
-const gateway = (recordings: readonly Recording[]) => new FakeGateway({ pins, recordings });
+const gateway = (recordings: readonly Recording[]) =>
+  new FakeGateway({ pins, sampling, recordings });
+
+const reversedKeys = (value: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(value).reverse());
 
 describe('FakeGateway generator', () => {
   it('replays recorded content through the schema', async () => {
@@ -48,6 +52,26 @@ describe('FakeGateway generator', () => {
     await expect(fake.generator.chat(ask('q'))).resolves.toEqual(reply);
   });
 
+  it('replays a truncated reply as invalid output, as the live adapter reports it', async () => {
+    const fake = gateway([
+      generatorRecording('q', { status: 'truncated', content: '{"text":"a"}' }),
+    ]);
+    await expect(fake.generator.chat(ask('q'))).resolves.toMatchObject({
+      status: 'invalid-output',
+      issue: 'cut off at the token limit',
+    });
+  });
+
+  it('rejects with a miss when the recording was made under other sampling', async () => {
+    const recording = generatorRecording('q', { status: 'content', content: '{"text":"a"}' });
+    const fake = new FakeGateway({
+      pins,
+      sampling: { ...sampling, seed: 1 },
+      recordings: [recording],
+    });
+    await expect(fake.generator.chat(ask('q'))).rejects.toBeInstanceOf(RecordingMissError);
+  });
+
   it('rejects with a miss on a prompt it has no recording for', async () => {
     const fake = gateway([generatorRecording('q', { status: 'content', content: '{}' })]);
     const miss = fake.generator.chat(ask('q2'));
@@ -59,7 +83,7 @@ describe('FakeGateway generator', () => {
     const fake = gateway([generatorRecording('q', { status: 'content', content: '{}' })]);
     const other = {
       ...ask('q'),
-      output: { name: 'answer', schema: z.object({ text: z.number() }) },
+      output: { name: answer, schema: z.object({ text: z.number() }) },
     };
     await expect(fake.generator.chat(other)).rejects.toBeInstanceOf(RecordingMissError);
   });
@@ -68,25 +92,30 @@ describe('FakeGateway generator', () => {
     const recording = generatorRecording('q', { status: 'content', content: '{"text":"a"}' });
     const fake = new FakeGateway({
       pins: { ...pins, generator: { ...pins.generator, sha256: 'f'.repeat(64) } },
+      sampling,
       recordings: [recording],
     });
     await expect(fake.generator.chat(ask('q'))).rejects.toBeInstanceOf(RecordingMissError);
   });
 
-  it('matches a recording whose keys were written in another order', async () => {
+  it('matches a recording whose unparsed members hold keys in another order', async () => {
     const wire = chatWireRequest(ask('q'));
     const reordered: Recording = {
-      reply: { content: '{"text":"a"}', status: 'content' },
-      request: {
-        output: { jsonSchema: wire.output.jsonSchema, name: wire.output.name },
-        messages: wire.messages.map(({ content, role }) => ({ content, role })),
-      },
-      pin: { ...pins.generator },
       role: 'generator',
+      pin: pins.generator,
+      sampling,
+      reply: { status: 'content', content: '{"text":"a"}' },
+      request: {
+        ...wire,
+        output: { ...wire.output, jsonSchema: reversedKeys(wire.output.jsonSchema) },
+      },
     };
-    await expect(gateway([reordered]).generator.chat(ask('q'))).resolves.toMatchObject({
-      status: 'completed',
+    const fake = new FakeGateway({
+      pins: { ...pins, generator: { ...reversedKeys(pins.generator), ...pins.generator } },
+      sampling: { seed: 0, temperature: 0 },
+      recordings: [reordered],
     });
+    await expect(fake.generator.chat(ask('q'))).resolves.toMatchObject({ status: 'completed' });
   });
 });
 
@@ -140,13 +169,18 @@ describe('FakeGateway encoders', () => {
     const request = { query: 'q', documents: ['d1', 'd2'] };
     const fake = new FakeGateway({
       pins: { ...pins, reranker: rerankerPin },
+      sampling,
       recordings: [{ role: 'reranker', pin: rerankerPin, request, reply: { scores: [2, -1] } }],
     });
     await expect(fake.reranker?.rerank(request)).resolves.toEqual([2, -1]);
   });
 
   it('rejects a request carrying a field its schema does not have, for every encoder', async () => {
-    const fake = new FakeGateway({ pins: { ...pins, reranker: rerankerPin }, recordings: [] });
+    const fake = new FakeGateway({
+      pins: { ...pins, reranker: rerankerPin },
+      sampling,
+      recordings: [],
+    });
     const extra = { truncate: true };
     await expect(fake.embedder.embed({ texts: ['a'], ...extra })).rejects.toThrow(/truncate/);
     await expect(fake.reranker?.rerank({ query: 'q', documents: [], ...extra })).rejects.toThrow(

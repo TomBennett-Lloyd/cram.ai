@@ -1,5 +1,11 @@
 import { canonicalJson } from './canonical-json';
-import { type ChatRequest, type ChatResult, chatOutcome, chatWireRequest } from './chat';
+import {
+  type ChatRequest,
+  type ChatResult,
+  chatResult,
+  chatWireRequest,
+  type GeneratorReply,
+} from './chat';
 import {
   EmbedRequest,
   type EntailmentResult,
@@ -8,7 +14,8 @@ import {
 } from './encoder-requests';
 import type { Embedder, Generator, ModelGateway, Reranker, Verifier } from './model-gateway';
 import type { EmbedderPin, GeneratorPin, ModelPin, RerankerPin, VerifierPin } from './pin';
-import { type GeneratorReply, Recording } from './recording';
+import { Recording } from './recording';
+import type { Sampling } from './role-config';
 import type { Role } from './role';
 
 /** A replay with no recording; never a fallback (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)). */
@@ -24,7 +31,13 @@ export class RecordingMissError extends Error {
   }
 }
 
-const keyOf = (pin: ModelPin, request: unknown): string => canonicalJson({ pin, request });
+interface Sent {
+  readonly pin: ModelPin;
+  readonly request: unknown;
+  readonly sampling?: Sampling;
+}
+
+const keyOf = (sent: Sent): string => canonicalJson(sent);
 
 /** Runs `replay` inside the promise, so a miss rejects as a live backend's failure would. */
 const replayed = <T>(replay: () => T): Promise<T> =>
@@ -55,17 +68,19 @@ class Replies<R> {
 
 class FakeGenerator implements Generator {
   readonly pin: GeneratorPin;
+  readonly #sampling: Sampling;
   readonly #replies: Replies<GeneratorReply>;
 
-  constructor(pin: GeneratorPin, replies: Replies<GeneratorReply>) {
+  constructor(pin: GeneratorPin, sampling: Sampling, replies: Replies<GeneratorReply>) {
     this.pin = pin;
+    this.#sampling = sampling;
     this.#replies = replies;
   }
 
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
     return replayed(() => {
-      const reply = this.#replies.replay(keyOf(this.pin, chatWireRequest(request)));
-      return reply.status === 'content' ? chatOutcome(reply.content, request.output.schema) : reply;
+      const sent = { pin: this.pin, sampling: this.#sampling, request: chatWireRequest(request) };
+      return chatResult(this.#replies.replay(keyOf(sent)), request.output.schema);
     });
   }
 }
@@ -82,7 +97,7 @@ class FakeEmbedder implements Embedder {
   embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
     return replayed(() =>
       this.#replies
-        .replay(keyOf(this.pin, EmbedRequest.parse(request)))
+        .replay(keyOf({ pin: this.pin, request: EmbedRequest.parse(request) }))
         .map((vector) => Float32Array.from(vector)),
     );
   }
@@ -98,7 +113,9 @@ class FakeReranker implements Reranker {
   }
 
   rerank(request: RerankRequest): Promise<readonly number[]> {
-    return replayed(() => this.#replies.replay(keyOf(this.pin, RerankRequest.parse(request))));
+    return replayed(() =>
+      this.#replies.replay(keyOf({ pin: this.pin, request: RerankRequest.parse(request) })),
+    );
   }
 }
 
@@ -112,7 +129,9 @@ class FakeVerifier implements Verifier {
   }
 
   entail(request: EntailRequest): Promise<readonly EntailmentResult[]> {
-    return replayed(() => this.#replies.replay(keyOf(this.pin, EntailRequest.parse(request))));
+    return replayed(() =>
+      this.#replies.replay(keyOf({ pin: this.pin, request: EntailRequest.parse(request) })),
+    );
   }
 }
 
@@ -125,10 +144,11 @@ export interface FakeGatewayPins {
 
 export interface FakeGatewaySpec {
   readonly pins: FakeGatewayPins;
+  readonly sampling: Sampling;
   readonly recordings: readonly Recording[];
 }
 
-/** Replays recordings keyed by pin and full request content; a miss throws `RecordingMissError`. */
+/** Replays recordings keyed as `Recording` states; a miss rejects with `RecordingMissError`. */
 export class FakeGateway implements ModelGateway {
   readonly generator: Generator;
   readonly verifier: Verifier;
@@ -141,24 +161,24 @@ export class FakeGateway implements ModelGateway {
     const reranker = new Replies<readonly number[]>('reranker');
     const verifier = new Replies<readonly EntailmentResult[]>('verifier');
     for (const recording of spec.recordings.map((r) => Recording.parse(r))) {
-      const key = keyOf(recording.pin, recording.request);
+      const { pin, request } = recording;
       switch (recording.role) {
         case 'generator':
-          generator.add(key, recording.reply);
+          generator.add(keyOf({ pin, sampling: recording.sampling, request }), recording.reply);
           break;
         case 'embedder':
-          embedder.add(key, recording.reply.vectors);
+          embedder.add(keyOf({ pin, request }), recording.reply.vectors);
           break;
         case 'reranker':
-          reranker.add(key, recording.reply.scores);
+          reranker.add(keyOf({ pin, request }), recording.reply.scores);
           break;
         case 'verifier':
-          verifier.add(key, recording.reply.results);
+          verifier.add(keyOf({ pin, request }), recording.reply.results);
           break;
       }
     }
     const { pins } = spec;
-    this.generator = new FakeGenerator(pins.generator, generator);
+    this.generator = new FakeGenerator(pins.generator, spec.sampling, generator);
     this.verifier = new FakeVerifier(pins.verifier, verifier);
     this.embedder = new FakeEmbedder(pins.embedder, embedder);
     this.reranker = pins.reranker === undefined ? null : new FakeReranker(pins.reranker, reranker);

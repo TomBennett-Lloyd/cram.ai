@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { chatWireRequest, OutputName } from '../../chat';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
 import type { HttpGeneratorConfig } from '../../role-config';
 import { OpenAiHttpGenerator } from './openai-http-generator';
@@ -49,10 +50,10 @@ const reply =
 const Answer = z.object({ text: z.string() });
 const request = {
   messages: [
-    { role: 'system' as const, content: 'Report what the cited slide says.' },
-    { role: 'user' as const, content: 'What does slide 2 say?' },
-  ],
-  output: { name: 'answer', schema: Answer },
+    { role: 'system', content: 'Report what the cited slide says.' },
+    { role: 'user', content: 'What does slide 2 say?' },
+  ] as const,
+  output: { name: OutputName.parse('answer'), schema: Answer },
 };
 
 let fixture: FixtureServer;
@@ -122,10 +123,29 @@ describe('OpenAiHttpGenerator', () => {
 
   it('reports output cut off at the token limit as invalid output, even when it parses', async () => {
     fixture.handler = reply(200, completion('{"text":"a"}', 'length'));
-    await expect(new OpenAiHttpGenerator(config).chat(request)).resolves.toMatchObject({
+    const generator = new OpenAiHttpGenerator(config);
+    await expect(generator.reply(chatWireRequest(request))).resolves.toEqual({
+      status: 'truncated',
+      content: '{"text":"a"}',
+    });
+    await expect(generator.chat(request)).resolves.toMatchObject({
       status: 'invalid-output',
       issue: 'cut off at the token limit',
     });
+  });
+
+  it('carries the server error body in the failure reason', async () => {
+    fixture.handler = reply(404, '{"error":{"message":"model \'qwen3-4b-q4km\' not found"}}');
+    const result = await new OpenAiHttpGenerator(config).chat(request);
+    expect(result.status === 'backend-failed' && result.reason).toMatch(/HTTP 404: .*not found/);
+  });
+
+  it('carries the protocol issue in the failure reason', async () => {
+    fixture.handler = reply(200, '{"choices":[]}');
+    const result = await new OpenAiHttpGenerator(config).chat(request);
+    expect(result.status === 'backend-failed' && result.reason).toMatch(
+      /not a chat completion: .*choices/s,
+    );
   });
 
   it.each<[string, Handler]>([

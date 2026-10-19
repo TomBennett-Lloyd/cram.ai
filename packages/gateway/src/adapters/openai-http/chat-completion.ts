@@ -13,7 +13,7 @@ export const ChatCompletion = z.object({ choices: z.tuple([Choice], Choice) });
 export const chatCompletionsUrl = (endpoint: string): URL =>
   new URL('chat/completions', endpoint.endsWith('/') ? endpoint : `${endpoint}/`);
 
-/** `reasoning_effort: 'none'` suppresses Qwen3's thinking output on Ollama (`docs/adr/0003-model-roles-and-backends.md` § Decision (k), A12). */
+/** `reasoning_effort` is A12's setting, `docs/adr/0003-model-roles-and-backends.md` § Decision (k). */
 export const chatCompletionBody = (config: HttpGeneratorConfig, wire: ChatWireRequest) => ({
   model: config.servedModel,
   messages: wire.messages,

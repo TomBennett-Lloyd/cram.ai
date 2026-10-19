@@ -1,21 +1,17 @@
 import { z } from 'zod';
-import { ChatWireRequest } from './chat';
+import { ChatWireRequest, GeneratorReply } from './chat';
 import { EmbedRequest, EntailmentResult, EntailRequest, RerankRequest } from './encoder-requests';
 import { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
-
-export const GeneratorReply = z.discriminatedUnion('status', [
-  z.strictObject({ status: z.literal('content'), content: z.string() }),
-  z.strictObject({ status: z.literal('backend-failed'), reason: z.string() }),
-]);
-export type GeneratorReply = z.infer<typeof GeneratorReply>;
+import { Sampling } from './role-config';
 
 const oneReplyPerInput = (replies: number, inputs: number): boolean => replies === inputs;
 
-/** One backend call and its reply; a generator reply is the model's text, before it is parsed. */
+/** One backend call and its reply, keyed by pin, request and, for the generator, sampling. */
 export const Recording = z.discriminatedUnion('role', [
   z.strictObject({
     role: z.literal('generator'),
     pin: GeneratorPin,
+    sampling: Sampling,
     request: ChatWireRequest,
     reply: GeneratorReply,
   }),

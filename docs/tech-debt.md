@@ -186,6 +186,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/open-course.ts` `EmbedSlides`
 - What: the gateway's expected failures (backend down, rate-limited) will be values once #12 defines its failure type (`docs/standards/error-handling.md` rule 1); this signature then needs a value arm, and `reembedCourse` a result for it.
 - Source: #11 review cycle 1
+- Update 2026-10-19 (#12): `packages/gateway/src/model-gateway.ts` `Embedder.embed` has no failure value; the encoders run in-process, so only `Generator.chat` returns one (`backend-failed`). This entry stands only if #66's adapter finds an expected encoder failure.
 
 ## 2026-10-19 — topic tags are bare strings
 
@@ -210,3 +211,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `eval/questions.jsonl`, the trailing `in reality`, `misconception`, `mainstream` and `contrary to` entries of every cited contradiction item
 - What: one intent, many copies (`docs/standards/structure.md` rule 7), and the line schema ADR 0005 (c) fixes cannot share them. The set is also narrow for ADR 0001 § Context's unsolicited caveat: it holds no `actually`, `in fact` or `commonly believed`. Either an `auditEvalCourse` arm asserting every cited item carries the same caveat set, or an ADR 0005 (c) amendment.
 - Source: #14 review cycle 1
+
+## 2026-10-19 — a generator prompt past the server's context is trimmed silently
+
+- Where: `packages/gateway/src/adapters/openai-http/chat-completion.ts` `chatCompletionBody`; `packages/gateway/src/adapters/openai-http/openai-http-generator.ts` `OpenAiHttpGenerator.reply`
+- What: the OpenAI-compatible API cannot set Ollama's context length (its `docs/api/openai-compatibility.mdx`, "Setting the local context size"), and Ollama trims messages that do not fit, logging only at debug level. The adapter reads no `usage.prompt_tokens`, so a long retrieved context can reach the model cut short with nothing reported (`docs/standards/error-handling.md` rule 5). The context is #20's Modelfile setup to fix, and the prompt budget is #13's.
+- Source: #12 review cycle 1
