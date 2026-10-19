@@ -156,3 +156,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/merge-pr.sh` `log_union` (the post-merge conflicted-set comparison and the `git diff HEAD --check` refusal); `.claude/scripts/merge-pr.test.sh` step 20
 - What: both guards fire only if the tree changes between the merge-tree analysis and the worktree merge, so no fixture reaches them. A mutant that removes the conflicted-set comparison passes every case. Covering them needs a seam between the two steps. This predates #60, which rewrote the comparison as a sorted-set check.
 - Source: #60 review cycle 1
+
+## 2026-10-19 — ADR 0005 § Context says #31 is open
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Context, the sentence beginning "The eval deck is authored as text"
+- What: it states that #31 is open on how ingest adapter tests get binary inputs. #31's PR decides it (an exemption in `.claude/scripts/check-no-course-content.sh` for provenanced synthetic ingest fixtures), so the sentence is a stated fact gone stale, which `docs/adr/README.md` § Amendments lets the next amendment of ADR 0005 true. The eval deck's own decision is unchanged: it stays authored as text.
+- Source: #31 review
