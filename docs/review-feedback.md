@@ -160,6 +160,63 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved in chat 2026-10-16 — "approve 53" — no revisions requested; the step renumbering and rule 3(e) confirmed; the PR merged as proposed.
 
+## 2026-10-19 — issue #31 — synthetic-fixture-allowlist
+
+- **Category**: approved-no-changes
+- **Feedback**: the decision itself was made in chat on 2026-10-19: "Option B: allow-list synthetic fixtures please". The PR asks the owner to decide:
+  - the exempt shape: one flat directory, `packages/ingest/fixtures/`, holding `<stem>.pdf` and `<stem>.pptx` only, with `<stem>` from `[A-Za-z0-9_-]` and the match case-sensitive. No subdirectory, no dotted stem, and no `.ppt`, `.key`, `.sqlite` or `data/` path is exempt;
+  - the provenance form: one line per fixture in that directory's `README.md`, ``- `<file>`: authored with <tool> from <inputs>``. It is read from the index, and both fields must be non-empty. The inputs are stated, not checked against tracked paths, because #9 and #10 may generate from a script whose inputs are inline;
+  - the `CLAUDE.md` § Hard constraints amendment, which points at the gate's header and restates neither the directory nor the extensions;
+  - leaving `packages/ingest/fixtures/README.md` for #9 to create with the package.
+- **Why**: `CLAUDE.md` is a `humanAlways` path, and the change widens the gate on a hard constraint, which only the owner can do.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
+
+## 2026-10-19 — issue #3 — plan-feedback-recommendations-accepted
+
+- **Category**: plan
+- **Feedback**: on the plan's six owner questions, "yeah i'm happy with the reccomendations" (Q1–Q3: permissive means OSI-style, a candidate's own licence decides admission, the NLI cross-encoder is the provisional verifier); "yeah you can download the weights" (Q5); "courses are english only" (Q6).
+- **Why**: each recommendation was argued in the plan comment on #3 with its alternative, and the owner chose the recommended side of all of them.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Decision (d), (g) and (i).
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — plan-feedback-no-training-on-course-data
+
+- **Category**: plan
+- **Feedback**: "what are the training-data terms? we don't want to have our data used for training"
+- **Why**: Q2 asked about the licences of the datasets the candidate models were trained on, not about the student's data, so the ADR has to say both: no role trains on course content (the `CLAUDE.md` hard constraint, cited), and the caveats are about the candidates' training sets.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Decision (i)'s last bullet and (g)'s caveat column.
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — plan-feedback-onnx-every-mode-for-reproducibility
+
+- **Category**: plan
+- **Feedback**: "yeah i think the onnx runtime in every mode reduces the variability so it should ensure results we see in development can be reproduced?"
+- **Why**: true for the encoders, which run on the same runtime and artefact in every mode; only partly true for the generator, whose backend still differs between developer mode and the installed app. So the ADR cites reproducibility as the owner's reason and states the remaining difference and how it is narrowed.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Decision (c); #66 filed for the in-process encoder adapter.
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — plan-feedback-memory-limit-laptop-first
+
+- **Category**: plan
+- **Feedback**: "with the 3GB limit, is that on my current laptop or the windows one? are we saying we need to remote host it from the outset?" — answered: the Windows laptop, and not from the outset.
+- **Why**: relocation moves slide text off the laptop and is the owner's explicit decision, so the cheaper in-laptop steps are ordered before it and the first measured run decides which step is reached.
+- **How applied**: `docs/adr/0003-model-roles-and-backends.md` § Consequences ("If A3 fails") and § Decision (j); relocation not adopted.
+- **Verdict**: owner-directed in chat 2026-10-19, applied before execution
+
+## 2026-10-19 — issue #3 — adr-0003-model-roles-and-backends
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0003-model-roles-and-backends.md` § Decision (a)–(m), in particular (a) four roles with the reranker optional, (b) the entailment capability and verdicts computed in `packages/grounding`, (c) encoders in-process on ONNX Runtime in every mode with the generator in-process or over private HTTP, (d) the provisional cross-encoder verifier, its no-truncation rule and the measurement rule that settles it, (e) the pin shape, (f) role config in `packages/gateway`, (g) the candidates with Gemma and Llama not admitted and the training-data caveats, (i) weight acquisition left to ADR 0007 and #20, and (j) relocation placed, not adopted;
+  - accept the `docs/plan.md` §3.3 pointer and its true-ups (the §3 diagram, §3.2's cite, the §5 `gateway/` row, §7 item 3, §9 q1 and the status line);
+  - accept the `docs/standards/grounding.md` rule 4 path cite;
+  - accept the ADR joining `.claude/ledgers/contradiction-set-bar.ledger` as a carrier;
+  - accept the `docs/adr/README.md` index row placed after 0005's.
+- **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed — ADR 0003 at `proposed` and the pointers; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
+
 ## 2026-10-19 — issue #11 — index-egress-entries-better-sqlite3-node-addon-api
 
 - **Category**: approved-no-changes
