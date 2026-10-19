@@ -1,6 +1,6 @@
 # 0003 — Model roles and backends: four roles, each configured alone; encoders in-process, the generator in-process or over private HTTP; candidates measured, not pinned
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-19
 - **Issue:** #3
 

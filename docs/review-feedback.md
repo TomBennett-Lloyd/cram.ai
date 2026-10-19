@@ -194,7 +194,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-19 — issue #3 — adr-0003-model-roles-and-backends
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide:
   - accept `docs/adr/0003-model-roles-and-backends.md` § Decision (a)–(m), in particular (a) four roles with the reranker optional, (b) the entailment capability and verdicts computed in `packages/grounding`, (c) encoders in-process on ONNX Runtime in every mode with the generator in-process or over private HTTP, (d) the provisional cross-encoder verifier, its no-truncation rule and the measurement rule that settles it, (e) the pin shape, (f) role config in `packages/gateway`, (g) the candidates with Gemma and Llama not admitted and the training-data caveats, (i) weight acquisition left to ADR 0007 and #20, and (j) relocation placed, not adopted;
   - accept the `docs/plan.md` §3.3 pointer and its true-ups (the §3 diagram, §3.2's cite, the §5 `gateway/` row, §7 item 3, §9 q1 and the status line);
@@ -203,4 +203,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept the `docs/adr/README.md` index row placed after 0005's.
 - **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed — ADR 0003 at `proposed` and the pointers; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
