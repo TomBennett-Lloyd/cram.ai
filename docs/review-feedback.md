@@ -162,7 +162,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-19 — issue #31 — synthetic-fixture-allowlist
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the decision itself was made in chat on 2026-10-19: "Option B: allow-list synthetic fixtures please". The PR asks the owner to decide:
   - the exempt shape: one flat directory, `packages/ingest/fixtures/`, holding `<stem>.pdf` and `<stem>.pptx` only, with `<stem>` from `[A-Za-z0-9_-]` and the match case-sensitive. No subdirectory, no dotted stem, and no `.ppt`, `.key`, `.sqlite` or `data/` path is exempt;
   - the provenance form: one line per fixture in that directory's `README.md`, ``- `<file>`: authored with <tool> from <inputs>``. It is read from the index, and both fields must be non-empty. The inputs are stated, not checked against tracked paths, because #9 and #10 may generate from a script whose inputs are inline;
@@ -170,4 +170,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - leaving `packages/ingest/fixtures/README.md` for #9 to create with the package.
 - **Why**: `CLAUDE.md` is a `humanAlways` path, and the change widens the gate on a hard constraint, which only the owner can do.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-19
