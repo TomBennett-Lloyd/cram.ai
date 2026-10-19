@@ -490,7 +490,7 @@ while IFS= read -r rel; do
     [ -z "$fence_char" ] || continue
 
     # Strip inline code spans before scanning, shortest match, repeatedly: a
-    # backtick span is prose about a link, not a link. docs/adr/README.md:9
+    # backtick span is prose about a link, not a link. docs/adr/README.md
     # documents the ADR index row shape as `- [NNNN — Title](NNNN-slug.md)`,
     # which names a file that has never existed. Each pass removes exactly two
     # backticks, so the loop shortens the line every time.
