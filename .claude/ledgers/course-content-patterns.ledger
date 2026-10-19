@@ -4,3 +4,4 @@ claim: the banned extension set and data/ directory that check-no-course-content
 sweep: \bpptx\b.*\bkey\b|^\*\.pptx$|packages/ingest/fixtures|\.claude/ledgers/course-content-patterns\.ledger
 carrier: .gitignore
 carrier: .claude/scripts/check-no-course-content.test.sh
+excluded: docs/review-feedback.md
