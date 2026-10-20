@@ -1,6 +1,6 @@
-# The developer-mode generator endpoint, owned by `port` and `host` in .claude/scripts/models-pull.sh (#20).
+# The developer-mode generator port, owned by `port` in .claude/scripts/models-pull.sh (#20).
 owner: .claude/scripts/models-pull.sh
-claim: developer mode's Ollama serves the generator on 127.0.0.1 port 11434
+claim: developer mode's Ollama serves the generator on port 11434
 sweep: \b11434\b|dev-generator-endpoint\.ledger
 scope: :!pnpm-lock.yaml
 carrier: .claude/scripts/models-pull.test.sh
