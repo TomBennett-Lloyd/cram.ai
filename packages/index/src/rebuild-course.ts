@@ -97,10 +97,10 @@ const writeRebuilt = async (
     for (const lectureId of storedLectureIds(old)) {
       const deck = readDeck(old, lectureId);
       if (deck === undefined) throw new Error(`rebuildCourse: deck ${lectureId} vanished mid-read`);
-      course.storeDeck(deck, readSlideImages(old, lectureId));
       try {
         const records = await deps.parse(deck, spec.courseId);
-        course.upsertSlides(await embedSlides('rebuildCourse', records, deps.embed));
+        const slides = await embedSlides('rebuildCourse', records, deps.embed);
+        course.replaceLecture(deck, readSlideImages(old, lectureId), slides);
       } catch (error) {
         throw new Error(`rebuildCourse: lecture ${lectureId} did not rebuild`, { cause: error });
       }

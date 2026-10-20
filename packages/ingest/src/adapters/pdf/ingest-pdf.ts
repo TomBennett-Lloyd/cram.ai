@@ -1,27 +1,12 @@
-import { createHash } from 'node:crypto';
-import { SourceHash, type CourseId, type LectureId } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
-import type { IngestedSlide, PageText, TextLine } from '../../page-text';
+import type { PageText, TextLine } from '../../page-text';
+import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
 
-export interface PdfDeck {
-  readonly bytes: Uint8Array;
-  readonly fileName: string;
-  readonly courseId: CourseId;
-  readonly lectureId: LectureId;
-}
+export type PdfUnreadableReason = 'not-a-pdf' | 'encrypted' | 'damaged';
 
-export type UnreadableReason = 'not-a-pdf' | 'encrypted' | 'damaged';
-
-export type PdfIngestResult =
-  | { readonly status: 'ingested'; readonly slides: readonly IngestedSlide[] }
-  | {
-      readonly status: 'unreadable';
-      readonly fileName: string;
-      readonly reason: UnreadableReason;
-      readonly detail: string;
-    };
+export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 
 const TextItem = z.object({
   str: z.string(),
@@ -40,7 +25,7 @@ const PdfjsException = z.object({
   message: z.string(),
 });
 
-const UNREADABLE: Record<z.infer<typeof PdfjsException>['name'], UnreadableReason> = {
+const UNREADABLE: Record<z.infer<typeof PdfjsException>['name'], PdfUnreadableReason> = {
   InvalidPDFException: 'not-a-pdf',
   PasswordException: 'encrypted',
   UnknownErrorException: 'damaged',
@@ -86,8 +71,8 @@ const pagesOf = async (pdf: PdfDocument): Promise<PageText[]> => {
 };
 
 /** A PDF deck as one slide per page. pdf.js gets a copy of the bytes, which it detaches, and never a URL (ingest-pdf.test.ts). */
-export const ingestPdf = async (deck: PdfDeck): Promise<PdfIngestResult> => {
-  const sourceHash = SourceHash.parse(createHash('sha256').update(deck.bytes).digest('hex'));
+export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
+  const sourceHash = sourceHashOf(deck.bytes);
   let pages: PageText[];
   try {
     const pdf = await getDocumentProxy(deck.bytes.slice(), { verbosity: 0 });

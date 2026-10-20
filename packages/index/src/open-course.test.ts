@@ -7,9 +7,9 @@ import {
   COURSE,
   EMBEDDER,
   indexed,
+  indexLectures,
   openOrFail,
   slide,
-  storeDecks,
   tempCourse,
   vector,
   type TempCourse,
@@ -30,8 +30,7 @@ afterEach(() => {
 
 const seed = (): void => {
   const course = openOrFail(temp.spec);
-  storeDecks(course, ['lecture-1']);
-  course.upsertSlides([
+  indexLectures(course, [
     indexed(slide({ slideNo: 1, body: 'osmosis' }), vector(1, 0, 0, 0)),
     indexed(slide({ slideNo: 2, body: 'diffusion' }), vector(0, 1, 0, 0)),
   ]);
@@ -65,8 +64,7 @@ describe('openCourse', () => {
 
   it('runs in WAL mode, and a copy taken while closed is the same course', () => {
     const course = openOrFail(temp.spec);
-    storeDecks(course, ['lecture-1']);
-    course.upsertSlides([indexed(slide({ body: 'osmosis' }), vector(1, 0, 0, 0))]);
+    indexLectures(course, [indexed(slide({ body: 'osmosis' }), vector(1, 0, 0, 0))]);
     expect(existsSync(`${temp.spec.path}-wal`)).toBe(true);
     course.close();
     const copy = join(temp.dir, 'copy.sqlite');
