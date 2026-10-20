@@ -1,6 +1,14 @@
 import { SourceId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { indexed, openOrFail, slide, tempCourse, vector, type TempCourse } from './course-fixture';
+import {
+  indexed,
+  openOrFail,
+  slide,
+  storeDecks,
+  tempCourse,
+  vector,
+  type TempCourse,
+} from './course-fixture';
 import { CANDIDATES_PER_LIST, RETRIEVAL_K, type CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
 import { sourceIdOf } from './slide-row';
@@ -10,6 +18,7 @@ let course: CourseIndex;
 beforeEach(() => {
   temp = tempCourse();
   course = openOrFail(temp.spec);
+  storeDecks(course, ['lecture-1', 'lecture-2']);
 });
 afterEach(() => {
   course.close();
@@ -140,6 +149,16 @@ describe('CourseIndex.upsertSlides', () => {
         indexed(slide({ slideNo: 2, courseId: 'course-b' }), AWAY),
       ]);
     }).toThrow(/belongs to course course-b/);
+    expect(course.slides()).toEqual([]);
+  });
+
+  it('writes nothing from a batch holding a slide whose lecture has no stored deck', () => {
+    expect(() => {
+      course.upsertSlides([
+        indexed(slide(), AWAY),
+        indexed(slide({ lectureId: 'lecture-9' }), AWAY),
+      ]);
+    }).toThrow(/lecture-9\/1 is in lecture lecture-9, which has no stored deck/);
     expect(course.slides()).toEqual([]);
   });
 

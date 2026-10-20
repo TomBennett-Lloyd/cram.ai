@@ -216,10 +216,16 @@ describe('rebuildCourse', () => {
         ...deps,
         parse: () => Promise.reject(new Error('unreadable deck')),
       }),
-    ).rejects.toThrow('unreadable deck');
+    ).rejects.toMatchObject({
+      message: 'rebuildCourse: lecture lecture-1 did not rebuild',
+      cause: new Error('unreadable deck'),
+    });
     await expect(
       rebuildCourse(temp.spec, { ...deps, embed: () => Promise.resolve([]) }),
-    ).rejects.toThrow(/0 vectors for 2 slides/);
+    ).rejects.toMatchObject({
+      message: 'rebuildCourse: lecture lecture-1 did not rebuild',
+      cause: new Error('rebuildCourse: embed returned 0 vectors for 2 slides'),
+    });
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);
     expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });

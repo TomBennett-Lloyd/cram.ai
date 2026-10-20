@@ -87,9 +87,13 @@ export class CourseIndex {
       .run(BigInt(id), embedding);
   }
 
-  /** Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace. */
+  /**
+   * Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace.
+   * A slide's lecture must have a stored deck, so that a rebuild re-derives every slide (rebuild-course.ts).
+   */
   upsertSlides(slides: readonly IndexedSlide[]): void {
     const seen = new Set<SourceId>();
+    const hasDeck = this.#db.prepare('select count(*) from decks where lecture_id = ?').pluck();
     for (const { record, embedding } of slides) {
       const sourceId = sourceIdOf(record);
       if (record.courseId !== this.#courseId) {
@@ -100,6 +104,10 @@ export class CourseIndex {
       if (seen.has(sourceId))
         throw new Error(`upsertSlides: ${sourceId} appears twice in one batch`);
       seen.add(sourceId);
+      if (hasDeck.get(record.lectureId) !== 1)
+        throw new Error(
+          `upsertSlides: ${sourceId} is in lecture ${record.lectureId}, which has no stored deck`,
+        );
       requireDimension(`upsertSlides(${sourceId})`, embedding, this.#embedder);
     }
     const upsert = this.#db.prepare(UPSERT_SLIDE).pluck();
