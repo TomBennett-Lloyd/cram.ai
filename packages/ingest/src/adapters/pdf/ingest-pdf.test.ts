@@ -1,9 +1,13 @@
 import { createHash } from 'node:crypto';
-import { CourseId, LectureId } from '@cram/shared';
+import http from 'node:http';
+import https from 'node:https';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { CourseId, LectureId, type SlideImage } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDeck, type FixtureDeck, type FixtureLine } from './deck-fixture';
 import { ingestPdf, type PdfIngestResult } from './ingest-pdf';
+import { SLIDE_IMAGE_LONG_EDGE_PX } from './render-page';
 
 const TITLE = 48;
 const BODY = 28;
@@ -19,15 +23,31 @@ const ingest = async (bytes: Uint8Array): Promise<PdfIngestResult> =>
     lectureId: LectureId.parse('lecture-4'),
   });
 
-const ingested = async (deck: FixtureDeck) => {
+const ingestedDeck = async (deck: FixtureDeck) => {
   const result = await ingest(await buildDeck(deck));
   if (result.status !== 'ingested')
     throw new Error(`expected an ingested deck, got ${result.status}`);
-  return result.slides;
+  return result;
+};
+
+const ingested = async (deck: FixtureDeck) => (await ingestedDeck(deck)).slides;
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/** The image's size in pixels, and how many of its pixels are darker than mid-grey. */
+const decoded = async ({ content }: SlideImage) => {
+  const image = await loadImage(content);
+  const context = createCanvas(image.width, image.height).getContext('2d');
+  context.drawImage(image, 0, 0);
+  const { data } = context.getImageData(0, 0, image.width, image.height);
+  let inked = 0;
+  for (let i = 0; i < data.length; i += 4) if ((data[i] ?? 255) < 128) inked++;
+  return { width: image.width, height: image.height, inked };
 };
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('ingestPdf', () => {
@@ -130,6 +150,36 @@ describe('ingestPdf', () => {
       body: '',
       derived: false,
     });
+  });
+
+  it('renders each page once, as a PNG under its slide number, inked where the page has text', async () => {
+    const { slides, images } = await ingestedDeck({
+      pages: [
+        { lines: [line('Kinetics', TITLE), line('Rates and orders of reaction')] },
+        { lines: [] },
+      ],
+    });
+    expect(images.map(({ slideNo }) => slideNo)).toEqual(slides.map(({ slideNo }) => slideNo));
+    for (const image of images) {
+      expect(image.mediaType).toBe('image/png');
+      expect([...image.content.subarray(0, PNG_SIGNATURE.length)]).toEqual(PNG_SIGNATURE);
+    }
+    const [text, blank] = await Promise.all(images.map(decoded));
+    expect(text?.inked).toBeGreaterThan(0);
+    expect(blank?.inked).toBe(0);
+  });
+
+  it('renders a page at the long edge along its longer side, landscape or portrait', async () => {
+    const { images } = await ingestedDeck({
+      pages: [
+        { lines: [line('Kinetics', TITLE)], size: [960, 540] },
+        { lines: [line('Kinetics', TITLE)], size: [540, 960] },
+      ],
+    });
+    const short = Math.floor((SLIDE_IMAGE_LONG_EDGE_PX * 540) / 960);
+    const [landscape, portrait] = await Promise.all(images.map(decoded));
+    expect(landscape).toMatchObject({ width: SLIDE_IMAGE_LONG_EDGE_PX, height: short });
+    expect(portrait).toMatchObject({ width: short, height: SLIDE_IMAGE_LONG_EDGE_PX });
   });
 
   it("sizes a line by its own glyphs, not the next line's", async () => {
@@ -235,12 +285,16 @@ describe('ingestPdf', () => {
     expect(slide?.speakerNotes).toBe('A note');
   });
 
-  it('makes no network request while reading a deck', async () => {
+  it('makes no network request while reading and rendering a deck', async () => {
     const refuse = vi.fn(() => {
       throw new Error('network request during ingest');
     });
     vi.stubGlobal('fetch', refuse);
     vi.stubGlobal('XMLHttpRequest', refuse);
+    for (const client of [http, https]) {
+      vi.spyOn(client, 'request').mockImplementation(refuse);
+      vi.spyOn(client, 'get').mockImplementation(refuse);
+    }
     await ingested({
       pages: [
         {

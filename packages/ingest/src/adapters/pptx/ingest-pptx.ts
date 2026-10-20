@@ -121,5 +121,6 @@ export const ingestPptx = (deck: DeckFile): PptxIngestResult => {
   return {
     status: 'ingested',
     slides: slidesFromPages(pages, { ...deck, sourceHash: sourceHashOf(deck.bytes) }),
+    images: [],
   };
 };
