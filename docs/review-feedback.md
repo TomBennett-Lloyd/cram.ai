@@ -305,3 +305,13 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/workflow.json` and `CLAUDE.md` are `humanAlways` paths, and this PR has no owner-approved plan, so it is the case the new rule leaves on the second approval.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("approve 143, 156, proceed 7")
+
+## 2026-10-20 — issue #56 — human-batches-ruled-out
+
+- **Category**: pending — filled at merge
+- **Feedback**: the owner chose option (c) at plan time ("56 c", 2026-10-20). The PR asks the owner to decide:
+  - accept the sentence added to `.claude/workflow.json` → `orchestration.routeRule`: a batch never carries a humanAlways path, and a member whose footprint reaches one, at admission or mid-flight, leaves the batch and runs as its own ticket-agent lane;
+  - accept the carrier edits in `.claude/skills/run-issue/SKILL.md`'s batch lane (step 2's mid-flight split; steps 4 and 5 scoping the Category and Verdict fill and the awaiting-review bounce to a single issue, with a batch HUMAN classification bounced as `FIX`) and in `.claude/agents/task-orchestrator.md` (rule 3's fill marked single-issue only, rule 7's humanAlways drop cause, and both report templates).
+- **Why**: a humanAlways PR's verdict fill is a branch commit belonging to no member, and `.claude/scripts/merge-pr.sh`'s curated-history check merges a batch `--rebase` only on one commit per member, so every HUMAN batch was refused at classify (#56). `.claude/workflow.json` is a `humanAlways` path, so the owner decides.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks. A mechanical refusal in `merge-pr.sh` for a `--rebase` HUMAN PR is left to #105.
+- **Verdict**: pending — filled at merge
