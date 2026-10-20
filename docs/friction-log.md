@@ -14,11 +14,6 @@ Entry format:
 
 ---
 
-## 2026-10-15 — PR #38
-
-- Phase: review
-- Observed: issue #30's own sweep regex (`esbuild.{0,80}(vite|vitest|tsx)` and friends) missed a third carrier of the "vite brings esbuild" claim, `verify-tier.test.sh`'s header "it arrives with vite", because that line never says "esbuild". The reviewer's broader patterns caught it, and the lane banked them in `.claude/ledgers/esbuild-provenance.ledger`. Second sweep-shaped miss today (the first was PR #33's entry, consumed by #87): a sweep built from the claim's keyword misses paraphrases of the claim.
-
 ## 2026-10-19 — PR #67
 
 - Phase: implementation
@@ -63,11 +58,6 @@ Entry format:
 
 - Phase: planning
 - Observed: the #79 plan chose `@napi-rs/canvas` as a devDependency of `eval/` on the reasoning that devDependencies are outside `check:no-network-egress`'s scan. Adding it anywhere in the workspace satisfied `unpdf`'s optional peer, so pnpm re-resolved `@cram/ingest`'s production `unpdf` against it and the gate flagged the Skia binary in ingest's production tree. The lane switched to `jimp` (pure JS, no peer coupling) and re-planned once. A devDependency can change another importer's production tree through optional-peer resolution; only the gate saw it. One ticket so far.
-
-## 2026-10-20 — PR #139
-
-- Phase: planning
-- Observed: the #40 lane's own plan-comment sweep, written `git grep -E … P\b`, dropped four hits that `-P` returns, which is the defect the ticket was fixing; the lane noticed only because one expected hit (`check-ledgers.sh:254`) was missing from the output. A sweep's output is read for what it contains, not for what it should contain, so a dead arm is invisible unless a known hit is absent. `docs/standards/evidence.md` member 10 now names the fixture; one ticket so far on the reading habit.
 
 ## 2026-10-20 — PR #137
 
