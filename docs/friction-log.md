@@ -98,3 +98,13 @@ Entry format:
 
 - Phase: review
 - Observed: the #78 lane's first commit filtered references slides with one shared `rowid in` clause, which made the FTS5 word search re-run its match once per id, 165 times slower at 3000 slides, and `pnpm verify` stayed green because the retrieval timing test runs only under `CRAM_MEASURE=1`. The reviewer's manual measured run caught it, and #136 now asks what gates a retrieval query-plan or latency regression. One ticket so far; the RESUME after the lane's rate-limit death redid nothing, which is recorded here as the recovery path working rather than as friction.
+
+## 2026-10-20 — PR #132
+
+- Phase: implementation
+- Observed: two findings from the #66 lane's own probes, neither caught by a gate. The tokenizers library turns an empty pair member into no pair (`text_pair || null`), which the load probe's `('', '')` input exposed, so the adapter now applies the pair template itself. And the feed-filter guard has no killable mutant on onnxruntime-node, which ignores feeds the model does not declare; the filter stays because the plan specified it, and the PR body declares the surviving mutant. One ticket so far on a guard whose only evidence is a dependency's documented behaviour.
+
+## 2026-10-20 — PR #144
+
+- Phase: process
+- Observed: `verify-tier.sh` labelled the #129 change, an interface deleted and a return type renamed across two `.ts` files, "source-prose, 2 file(s) proven comment-only"; typecheck ran on every package regardless, so nothing went unchecked, but the tier's name misdescribes a type-only change and a reader of the verify log would believe only prose moved. One ticket so far.
