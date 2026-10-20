@@ -114,6 +114,11 @@ Entry format:
 - Phase: process
 - Observed: `verify-tier.sh` labelled the #129 change, an interface deleted and a return type renamed across two `.ts` files, "source-prose, 2 file(s) proven comment-only"; typecheck ran on every package regardless, so nothing went unchecked, but the tier's name misdescribes a type-only change and a reader of the verify log would believe only prose moved. One ticket so far.
 
+## 2026-10-20 — PR #154
+
+- Phase: review
+- Observed: the #15 server's two mutant passes (the first lane's, then the resumed lane's 47 mutants, which found 9 unprotected guard edges the first had missed) still left two defects for the reviewer: an untested deck byte cap, and a request target such as `GET http://[` parsed outside the request boundary, which killed the whole server process. Neither was framed as a guard edge, so no mutant named it. Third entry today on the mutation pass's evidence being bounded by the edges its author listed (PR #83, PR #128 before it); the reviewer's reading of the invariant is still what finds the rest.
+
 ## 2026-10-20 — PR #120
 
 - Phase: process
