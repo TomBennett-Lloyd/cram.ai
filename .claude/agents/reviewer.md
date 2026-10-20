@@ -2,6 +2,7 @@
 name: reviewer
 description: Reviews the current branch's diff against the engineering standards, categorizing every finding as FIX-NOW or SYSTEMIC. Dispatched by the /review-loop skill. Read-only.
 model: opus
+effort: high
 tools: Read, Glob, Grep, Bash
 ---
 

@@ -315,3 +315,21 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: a humanAlways PR's verdict fill is a branch commit belonging to no member, and `.claude/scripts/merge-pr.sh`'s curated-history check merges a batch `--rebase` only on one commit per member, so every HUMAN batch was refused at classify (#56). `.claude/workflow.json` is a `humanAlways` path, so the owner decides.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks. A mechanical refusal in `merge-pr.sh` for a `--rebase` HUMAN PR is left to #105.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("nice approve all those PRs")
+
+## 2026-10-20 — issue #155 — claude-md-merger-fills-verdict
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide whether the `CLAUDE.md` § Workflow merge-policy sentence is now right. It replaces "and the merger only removes the label" with "whoever merges fills that entry's **Category** and **Verdict** on the branch before merging, in the order `merge.mergeRitual` owns". That makes it a pointer: the order (fill on the branch, then merge, then remove the label) stays stated only in `.claude/workflow.json` → `merge.mergeRitual`.
+- **Why**: `CLAUDE.md` is a `humanAlways` path. The sentence it replaces contradicted `merge.mergeRitual` and `.claude/skills/review-loop/SKILL.md` step 5.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-21 ("174 and 178 looks good, approve to merge")
+
+## 2026-10-20 — issue #140 — agent-effort-levels-claude-md-pointer
+
+- **Category**: approved-no-changes
+- **Feedback**: the direction was given in #140 on 2026-10-20 ("we can vary the effort dynamically depending on the task"), and phase 1 was started with "go 140". The PR asks the owner to decide:
+  - the `CLAUDE.md` § Model tiers bullet, which names each agent's frontmatter `effort:` key as the owner of its level and says the top-level session's effort is held constant rather than varied per skill, leaving the reasoning to #140 because the effort doc's prompt-cache argument holds for a top-level change but not for the per-message change Opus 5.5 supports. It points at the levels instead of listing them (`docs/standards/architecture.md` rule 9) and names no routine route, which belongs to phase 2. The issue asked for a sentence "naming the levels and the routine route";
+  - the eight frontmatter levels the bullet points at, which are the issue's table unchanged.
+- **Why**: `CLAUDE.md` is a `humanAlways` path; the frontmatter edits alone would auto-merge.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-21 ("approve 175 and 190")
