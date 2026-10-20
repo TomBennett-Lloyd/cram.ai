@@ -641,7 +641,7 @@ curated_history_ok() { # -> 0, or 1 with the reason on stdout
 
 step 'classify' "PR #$pr_number is $pr_state on '$pr_head_ref'; $merge_reason; $class_summary"
 
-# Deferring either of these to the merge step would mean refusing AFTER
+# Deferring these to the merge step would mean refusing AFTER
 # update-branch had written to the branch and the poll had waited out a full CI
 # run — the cost this script exists to save.
 if [ "$already_merged" = "0" ]; then
@@ -652,7 +652,7 @@ if [ "$already_merged" = "0" ]; then
   # verdict was folded by hand would pass that count (#105). Naming the member is
   # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4).
   if [ "$merge_method" = "--rebase" ] && [ "$is_human" = "1" ]; then
-    fail 'classify' "a --rebase PR classifies HUMAN (humanAlways: $human_hits), and a batch never carries a humanAlways path (.claude/workflow.json → orchestration.routeRule, #56) — bounce the batch to drop the member whose footprint reaches $human_hits, which runs as its own ticket-agent lane"
+    fail 'classify' "a --rebase PR classifies HUMAN (humanAlways: $human_hits), and a batch never carries a humanAlways path (.claude/workflow.json → orchestration.routeRule, #56) — bounce the batch to drop the member whose footprint reaches $human_hits, which runs as its own ticket-agent lane, or pass --method squash if this PR is a single issue"
   fi
   if [ "$merge_method" = "--rebase" ]; then
     curated_reason=$(curated_history_ok) || fail 'classify' "$curated_reason"
