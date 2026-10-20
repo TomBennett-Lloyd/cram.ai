@@ -253,7 +253,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #150 — adr-pr-merges-on-plan-approval
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the direction was given in chat on 2026-10-20, quoted in #150: "i feel like there are lots of cases where if i've approved a plan for an ADR, i shouldn't have to re-approve the actual PR unless there's something extra that wasn't in the plan?" The PR asks the owner to decide the wording that carries it:
   - `.claude/workflow.json` → `merge.approvedAtPlanRule`, the new key that owns the exception: when it applies, the three pieces of pasted evidence, what counts as an extra, and what an extra does; and `merge.humanAlwaysRule`'s pointer to it;
   - that "the plan" means the plan comment as it stood at the `PROCEED`, so a `Footprint change:` line added later is an extra;
@@ -264,4 +264,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - the `approved-at-plan` category, and the graduation-rule bullet saying it counts neither for nor against any category's quiet.
 - **Why**: `.claude/workflow.json` and `CLAUDE.md` are `humanAlways` paths, and this PR has no owner-approved plan, so it is the case the new rule leaves on the second approval.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("approve 143, 156, proceed 7")
