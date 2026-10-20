@@ -51,8 +51,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-14 — ADR 0001 (d) ledger sweep has no citation arm
 
 - Where: `docs/adr/0001-grounding-architecture.md` § Decision (d), the restatement-ledger sentence
-- What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. No carrier is missed today; add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
+- What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. Add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
 - Source: #1 review cycle 2
+- Update 2026-10-20 (#29): the floor also misses two carriers #8 added, `packages/shared/src/verification.ts` (`Verdict`, `PartialPolicy`) and its test. The recorded sweep returns the first only through its policy arm and the test not at all, because its verdict arm matches the prose list form and not the TypeScript enum form. Both join the ledger when it is declared; #29 holds that acceptance open.
 
 ## 2026-10-15 — merge-pr.sh member loop expands pr_commits unguarded
 
@@ -211,6 +212,18 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `eval/questions.jsonl`, the trailing `in reality`, `misconception`, `mainstream` and `contrary to` entries of every cited contradiction item
 - What: one intent, many copies (`docs/standards/structure.md` rule 7), and the line schema ADR 0005 (c) fixes cannot share them. The set is also narrow for ADR 0001 § Context's unsolicited caveat: it holds no `actually`, `in fact` or `commonly believed`. Either an `auditEvalCourse` arm asserting every cited item carries the same caveat set, or an ADR 0005 (c) amendment.
 - Source: #14 review cycle 1
+
+## 2026-10-19 — ingest glues any unmarked line after a bullet onto that bullet
+
+- Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
+- What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares, so it waits for that ticket or a later one.
+- Source: issue #9 (review cycle 1)
+
+## 2026-10-20 — UnreadableReason is hand-written beside the mapping that produces it
+
+- Where: `UnreadableReason` and `UNREADABLE` in `packages/ingest/src/adapters/pdf/ingest-pdf.ts`
+- What: the exception enum and the `UNREADABLE` record are compile-checked against each other, and so are the record and the union. A member added to the union with no exception mapped to it still type-checks, though, and consumers get a dead arm. Deriving the union from `UNREADABLE`'s values (`as const satisfies Record<…>`) closes that direction.
+- Source: issue #9 (confirmation pass)
 
 ## 2026-10-19 — a generator prompt past the server's context is trimmed silently
 
