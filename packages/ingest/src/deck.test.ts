@@ -26,11 +26,11 @@ describe('slidesFromPages', () => {
 
   it('numbers slides from one in page order and stamps the deck on each', () => {
     const slides = slidesFromPages([titled('Kinetics'), titled('Rate laws')], source());
-    expect(slides.map(({ record }) => [record.slideNo, record.title])).toEqual([
+    expect(slides.map((record) => [record.slideNo, record.title])).toEqual([
       [1, 'Kinetics'],
       [2, 'Rate laws'],
     ]);
-    for (const { record } of slides) {
+    for (const record of slides) {
       expect(record).toMatchObject({
         courseId: 'course-a',
         lectureId: 'lecture-4',
@@ -42,7 +42,7 @@ describe('slidesFromPages', () => {
     }
   });
 
-  it('carries the page kind beside its record', () => {
+  it('carries the page kind on its record', () => {
     expect(slidesFromPages([titled('Kinetics'), blank], source()).map(({ kind }) => kind)).toEqual([
       'content',
       'image-only',
@@ -51,7 +51,7 @@ describe('slidesFromPages', () => {
 
   it('carries speaker notes, trimmed', () => {
     const [slide] = slidesFromPages([titled('Kinetics', '  Say this.\n')], source());
-    expect(slide?.record.speakerNotes).toBe('Say this.');
+    expect(slide?.speakerNotes).toBe('Say this.');
   });
 
   it('takes the lecture title from the filename when the first page has none', () => {
@@ -59,11 +59,11 @@ describe('slidesFromPages', () => {
       [blank, titled('Rate laws')],
       source('decks/Lecture_04-Kinetics.pdf'),
     );
-    expect(slide?.record.lectureTitle).toBe('Lecture 04 Kinetics');
+    expect(slide?.lectureTitle).toBe('Lecture 04 Kinetics');
   });
 
   it('falls back to a fixed lecture title when neither page nor filename has one', () => {
     const [slide] = slidesFromPages([blank], source('.pdf'));
-    expect(slide?.record.lectureTitle).toBe(UNTITLED_LECTURE);
+    expect(slide?.lectureTitle).toBe(UNTITLED_LECTURE);
   });
 });

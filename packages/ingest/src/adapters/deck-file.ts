@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import { SourceHash, type CourseId, type LectureId } from '@cram/shared';
-import type { IngestedSlide } from '../page-text';
+import { SourceHash, type CourseId, type LectureId, type SlideRecord } from '@cram/shared';
 
 /** An uploaded deck as every format adapter receives it. */
 export interface DeckFile {
@@ -12,7 +11,7 @@ export interface DeckFile {
 
 /** `Reason` is the adapter's own vocabulary for a deck its bytes cannot yield. */
 export type IngestResult<Reason extends string> =
-  | { readonly status: 'ingested'; readonly slides: readonly IngestedSlide[] }
+  | { readonly status: 'ingested'; readonly slides: readonly SlideRecord[] }
   | {
       readonly status: 'unreadable';
       readonly fileName: string;

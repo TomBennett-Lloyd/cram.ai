@@ -38,6 +38,8 @@ Every idiom catalogued below printed something that read as proof and was not. U
 
 9. **`gh api -X PATCH … -f body=@file` does not expand `@file`.** It writes the literal path string as the body and exits 0, so an `||` fallback never fires (owner, cumulo#412 comment 2). Replacement: `-F body=@file` is the expanding form — and confirm it by readback, sanctioned form 4, which is how the failure was caught.
 
+10. **`git grep -E` on macOS reads `\b` as the letter `b`.** In a `git grep -E` pattern on this Mac each of `\b`, `\<`, `\w`, `\s` and `\d` matches its own character: no error, and an exit status like any other search. An arm written with them matches the wrong lines, not merely none. `-G`, git's default engine, honours all five here, so adding `-E` to a working recipe for its `|` is what breaks it. Fixture (#40, Apple Git-157), one file holding `one app` and `bone appb`: `git grep -E '\bone app\b'` returns only `bone appb`, `git grep -P` and `command grep -E` only `one app`. The lane that measured it lost four hits of its own engine sweep to a `P\b` arm under `-E`. CI's Ubuntu git uses glibc's regex, whose GNU operators include `\b` (not reproduced here), so one recorded sweep can return different files on the owner's Mac and in CI with neither run looking broken. Replacement: a recorded sweep needing a word boundary or a class escape runs under `git grep -P` or, under `-E`, spells the boundary out as `(^|[^a-z])…([^a-z]|$)`.
+
 ## Adding a member
 
 Adding a member is one entry on this page and zero edits anywhere else. Agent and skill files cite this page by path (`docs/standards/evidence.md`) and never restate a member's rationale — a restated rule drifts from the page, and then two claims about the same idiom disagree with each other.

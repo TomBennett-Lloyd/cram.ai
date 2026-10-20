@@ -26,8 +26,6 @@ const ingested = (deck: FixtureDeck) => {
   return result.slides;
 };
 
-const records = (deck: FixtureDeck) => ingested(deck).map(({ record }) => record);
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -51,7 +49,7 @@ describe('ingestPptx', () => {
         },
       ],
     });
-    expect(slides.map(({ kind, record }) => ({ kind, ...record }))).toEqual([
+    expect(slides).toEqual([
       expect.objectContaining({
         kind: 'content',
         slideNo: 1,
@@ -74,7 +72,7 @@ describe('ingestPptx', () => {
 
   it("numbers slides in the presentation's order, not by part name", () => {
     const deck = { slides: [titled('First'), titled('Second'), titled('Third')] };
-    const read = records({ ...deck, reversePartNames: true });
+    const read = ingested({ ...deck, reversePartNames: true });
     expect(read.map(({ slideNo, title }) => [slideNo, title])).toEqual([
       [1, 'First'],
       [2, 'Second'],
@@ -83,7 +81,7 @@ describe('ingestPptx', () => {
   });
 
   it('keeps a hidden slide, so later slides keep their PowerPoint numbers', () => {
-    const read = records({ slides: [titled('Shown'), { ...titled('Hidden'), hidden: true }] });
+    const read = ingested({ slides: [titled('Shown'), { ...titled('Hidden'), hidden: true }] });
     expect(read.map(({ slideNo, title }) => [slideNo, title])).toEqual([
       [1, 'Shown'],
       [2, 'Hidden'],
@@ -91,14 +89,14 @@ describe('ingestPptx', () => {
   });
 
   it.each(['sldNum', 'ftr', 'dt'] as const)('drops the %s placeholder', (placeholder) => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [{ shapes: [...titled('Rate laws').shapes, shape(['CH204 week 4'], placeholder)] }],
     });
     expect(record?.body).toBe(ENOUGH);
   });
 
   it('reads text in groups and table cells in document order', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -118,7 +116,7 @@ describe('ingestPptx', () => {
   });
 
   it('reads alternate content once, from its choice', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -133,7 +131,7 @@ describe('ingestPptx', () => {
   });
 
   it('skips only the markup-compatibility fallback, not an element of that name elsewhere', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -147,7 +145,7 @@ describe('ingestPptx', () => {
   });
 
   it('takes no title from a title placeholder that only fallback content holds', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -161,7 +159,7 @@ describe('ingestPptx', () => {
   });
 
   it('joins runs and fields within a paragraph and reads a line break as a space', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -177,7 +175,7 @@ describe('ingestPptx', () => {
   });
 
   it('infers the title from explicit run sizes when the slide has no title placeholder', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -191,7 +189,7 @@ describe('ingestPptx', () => {
   });
 
   it('takes the first line as the title when every size is inherited', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [{ shapes: [shape(['Worked examples']), shape([ENOUGH])] }],
     });
     expect(record).toMatchObject({ title: 'Worked examples', body: ENOUGH });
@@ -201,14 +199,14 @@ describe('ingestPptx', () => {
     const sizeless = paragraphOf(
       '<a:r><a:rPr lang="en-GB" b="1"/><a:t>Second line here</a:t></a:r>',
     );
-    const [record] = records({
+    const [record] = ingested({
       slides: [{ shapes: [shape(['Worked examples', sizeless, ENOUGH])] }],
     });
     expect(record?.title).toBe('Worked examples');
   });
 
   it('reads an unreadable run size as inherited', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [
         {
           shapes: [
@@ -222,7 +220,7 @@ describe('ingestPptx', () => {
   });
 
   it('keeps an empty title placeholder empty rather than promoting a body line', () => {
-    const read = records({
+    const read = ingested({
       slides: [
         { shapes: [shape([''], 'title'), shape([ENOUGH], 'body')] },
         { shapes: [bareShape('title'), shape([ENOUGH], 'body')] },
@@ -240,24 +238,26 @@ describe('ingestPptx', () => {
     });
     expect(slides[1]).toMatchObject({
       kind: 'image-only',
-      record: { title: 'Mechanism', body: '', imageCaptions: [] },
+      title: 'Mechanism',
+      body: '',
+      imageCaptions: [],
     });
   });
 
   it("reads notes from the notes slide's body placeholder alone", () => {
-    const [record] = records({ slides: [{ ...titled('Rate laws'), notes: ['Say this.'] }] });
+    const [record] = ingested({ slides: [{ ...titled('Rate laws'), notes: ['Say this.'] }] });
     expect(record?.speakerNotes).toBe('Say this.');
   });
 
   it('follows a notes relationship written as an absolute part name', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [{ ...titled('Rate laws'), notes: ['Say this.'], absoluteNotesTarget: true }],
     });
     expect(record?.speakerNotes).toBe('Say this.');
   });
 
   it('reads a slide with no relationships part as having no notes', () => {
-    const [record] = records({
+    const [record] = ingested({
       slides: [titled('Rate laws')],
       parts: { 'ppt/slides/_rels/slide1.xml.rels': null },
     });
@@ -267,7 +267,7 @@ describe('ingestPptx', () => {
   it.each(['ppt/media/image1.png', 'ppt/media/image1.xml.jpeg'])(
     'reads the text of a deck whose %s cannot be inflated',
     (uninflatable) => {
-      expect(records({ slides: [titled('Rate laws')], uninflatable })).toHaveLength(1);
+      expect(ingested({ slides: [titled('Rate laws')], uninflatable })).toHaveLength(1);
     },
   );
 
@@ -277,7 +277,7 @@ describe('ingestPptx', () => {
     const result = ingestPptx(deckFile(bytes));
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(digest);
     if (result.status !== 'ingested') throw new Error(result.status);
-    expect(result.slides.map(({ record }) => record.sourceHash)).toEqual([digest, digest]);
+    expect(result.slides.map(({ sourceHash }) => sourceHash)).toEqual([digest, digest]);
   });
 
   it('makes no network request while reading a deck', () => {
@@ -286,7 +286,7 @@ describe('ingestPptx', () => {
     });
     vi.stubGlobal('fetch', refuse);
     vi.stubGlobal('XMLHttpRequest', refuse);
-    records({ slides: [{ ...titled('Kinetics'), notes: ['Note.'] }] });
+    ingested({ slides: [{ ...titled('Kinetics'), notes: ['Note.'] }] });
     expect(refuse).not.toHaveBeenCalled();
   });
 });

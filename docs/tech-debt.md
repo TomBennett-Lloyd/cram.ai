@@ -245,3 +245,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/gateway/src/adapters/openai-http/chat-completion.ts` `chatCompletionBody`; `packages/gateway/src/adapters/openai-http/openai-http-generator.ts` `OpenAiHttpGenerator.reply`
 - What: the OpenAI-compatible API cannot set Ollama's context length (its `docs/api/openai-compatibility.mdx`, "Setting the local context size"), and Ollama trims messages that do not fit, logging only at debug level. The adapter reads no `usage.prompt_tokens`, so a long retrieved context can reach the model cut short with nothing reported (`docs/standards/error-handling.md` rule 5). The context is #20's Modelfile setup to fix, and the prompt budget is #13's.
 - Source: #12 review cycle 1
+
+## 2026-10-20 — the ledger sweep engine is restated outside its owner with no ledger
+
+- Where: `.claude/scripts/check-ledgers.sh` header, THE FORMAT block (the owner: `sweep: <PCRE>`); `.claude/scripts/sweep-report.sh` header `sweep=` field and its ledger-sweep re-run; `.claude/scripts/sweep-report.test.sh` comments on an invalid PCRE.
+- What: both scripts must run a ledger's sweep in the same engine, or `sweep-report.sh` reports a different file set from the one `check:ledgers` enforces (`docs/standards/evidence.md` member 10 is how far engines diverge). The engine is stated at each site and no `.claude/ledgers/` entry lists them, although `docs/standards/architecture.md` rule 9 asks for one once a second site is found.
+- Source: #40 review

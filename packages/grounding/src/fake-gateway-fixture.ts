@@ -63,6 +63,7 @@ export const slide = (
     lectureId: 'l1',
     lectureTitle: 'The Hive',
     slideNo: 1,
+    kind: 'content',
     title: '',
     body,
     speakerNotes: '',

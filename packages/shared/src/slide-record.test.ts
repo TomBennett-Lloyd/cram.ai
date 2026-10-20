@@ -9,6 +9,7 @@ const slide = (overrides: Partial<SlideInput> = {}): SlideInput => ({
   lectureId: 'lecture-1',
   lectureTitle: 'Lecture 1',
   slideNo: 1,
+  kind: 'content',
   title: 'A title',
   body: 'A body',
   speakerNotes: '',
@@ -34,6 +35,16 @@ describe('SlideRecord', () => {
 
   it('refuses a blank lecture title', () => {
     expect(SlideRecord.safeParse(slide({ lectureTitle: '  ' })).success).toBe(false);
+  });
+
+  it('refuses a kind outside the slide-kind vocabulary', () => {
+    expect(SlideRecord.safeParse({ ...slide(), kind: 'appendix' }).success).toBe(false);
+  });
+
+  it('refuses a slide with no kind', () => {
+    const kindless: Partial<SlideInput> = slide();
+    delete kindless.kind;
+    expect(SlideRecord.safeParse(kindless).success).toBe(false);
   });
 
   it('refuses an empty lecture id', () => {

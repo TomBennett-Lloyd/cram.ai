@@ -2,8 +2,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { inflateSync } from 'node:zlib';
-import { ingestPdf, type IngestedSlide } from '@cram/ingest';
-import { CourseId } from '@cram/shared';
+import { ingestPdf } from '@cram/ingest';
+import { CourseId, type SlideRecord } from '@cram/shared';
 import { PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, PDFStream } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DeckLecture } from './deck';
@@ -27,7 +27,7 @@ const CHECKOUT_ROOT = dirname(EVAL_ROOT.replace(/\/$/, ''));
 interface Rendered {
   readonly lecture: DeckLecture;
   readonly bytes: Uint8Array;
-  readonly slides: readonly IngestedSlide[];
+  readonly slides: readonly SlideRecord[];
 }
 
 let dir = '';
@@ -102,13 +102,11 @@ describe('renderDeckPdfs over the committed deck', () => {
         if (expected.imageOnly) return;
         expect(slides[index]).toMatchObject({
           kind: 'content',
-          record: {
-            lectureTitle: source.lectureTitle,
-            slideNo: expected.slideNo,
-            title: expected.title,
-            body: expected.body.join('\n'),
-            speakerNotes: expected.speakerNotes,
-          },
+          lectureTitle: source.lectureTitle,
+          slideNo: expected.slideNo,
+          title: expected.title,
+          body: expected.body.join('\n'),
+          speakerNotes: expected.speakerNotes,
         });
       });
     }
@@ -125,10 +123,7 @@ describe('renderDeckPdfs over the committed deck', () => {
           expect(drawn).toEqual([]);
           return;
         }
-        expect(slides[index]).toMatchObject({
-          kind: 'image-only',
-          record: { title: '', body: '' },
-        });
+        expect(slides[index]).toMatchObject({ kind: 'image-only', title: '', body: '' });
         expect(drawn).toHaveLength(1);
         expect(drawn[0]?.pixels.some((channel) => channel < 128)).toBe(true);
       });
@@ -237,7 +232,7 @@ describe('the raster of an imageOnly slide', () => {
     });
     expect(result).toMatchObject({
       status: 'ingested',
-      slides: [{ kind: 'image-only', record: { speakerNotes: 'Point at the chart.' } }],
+      slides: [{ kind: 'image-only', speakerNotes: 'Point at the chart.' }],
     });
   });
 
