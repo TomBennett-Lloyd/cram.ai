@@ -93,3 +93,13 @@ Entry format:
 
 - Phase: process
 - Observed: ADR 0006 waited for the owner's review while three PRs merged under it (#137, #128, #116), and those made stated facts in its § Context, one assumption check and its ledger false; nothing flagged that until the FILL bounce read the ADR against the new main, which cost a REBASE round with Context true-ups. The decisions were untouched, but an ADR under review has no gate that re-checks its Context claims against main. One ticket so far; `merge.approvedAtPlanRule` (#150) names such a true-up as an extra, which surfaces it without preventing it.
+
+## 2026-10-20 — PR #143
+
+- Phase: review
+- Observed: the #114 lane's README edit reordered a sentence so that a colon introduced the wrong example, a reorder caught by review; and its rebase union of `docs/review-feedback.md` was the first of six that evening, as every humanAlways PR's fill rewrote its own entry on main while the others waited. The review log is an append-only union at merge time by rule, but a fill edits an existing entry in place, which is what makes each later branch DIRTY rather than BEHIND. One ticket's entry; the shape recurred on PRs #106, #156, #174 and #175 the same evening.
+
+## 2026-10-20 — PR #156
+
+- Phase: process
+- Observed: the merge-time verdict fill on PR #156 was refused by the auto-mode permission classifier in the lane ("CI Bypass"), as were the fills on PRs #106 ("Self-Approval", four times) and #143 ("Merge Without Review"), while the identical command ran cleanly in the #132 and #120 lanes. The owner's `fill-verdict.sh` allow rule matched only the bare command form, and the refused lanes had wrapped it in a `cd &&` or a path export. The owner ran the three fills by hand; on #156 the hand-run fill and the lane's REBASE bounce acted on one worktree at once, which the lane noticed and waited out. The bounce text now names the bare form with `--worktree`; whether that is enough is the next fill's measurement.
