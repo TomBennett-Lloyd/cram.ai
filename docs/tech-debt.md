@@ -211,3 +211,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `eval/questions.jsonl`, the trailing `in reality`, `misconception`, `mainstream` and `contrary to` entries of every cited contradiction item
 - What: one intent, many copies (`docs/standards/structure.md` rule 7), and the line schema ADR 0005 (c) fixes cannot share them. The set is also narrow for ADR 0001 § Context's unsolicited caveat: it holds no `actually`, `in fact` or `commonly believed`. Either an `auditEvalCourse` arm asserting every cited item carries the same caveat set, or an ADR 0005 (c) amendment.
 - Source: #14 review cycle 1
+
+## 2026-10-19 — ingest glues any unmarked line after a bullet onto that bullet
+
+- Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
+- What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares, so it waits for that ticket or a later one.
+- Source: issue #9 (review cycle 1)
+
+## 2026-10-20 — UnreadableReason is hand-written beside the mapping that produces it
+
+- Where: `UnreadableReason` and `UNREADABLE` in `packages/ingest/src/adapters/pdf/ingest-pdf.ts`
+- What: the exception enum and the `UNREADABLE` record are compile-checked against each other, and so are the record and the union. A member added to the union with no exception mapped to it still type-checks, though, and consumers get a dead arm. Deriving the union from `UNREADABLE`'s values (`as const satisfies Record<…>`) closes that direction.
+- Source: issue #9 (confirmation pass)
