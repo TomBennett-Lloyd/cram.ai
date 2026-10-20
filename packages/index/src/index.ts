@@ -3,6 +3,7 @@ export {
   type CourseIndex,
   RETRIEVAL_K,
   type IndexedSlide,
+  type RemoveLectureResult,
   type SearchHit,
   type SearchQuery,
   type SetTopicsResult,
