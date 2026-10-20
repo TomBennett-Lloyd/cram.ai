@@ -5,3 +5,4 @@ export { NonBlankText } from './non-blank-text';
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { Unit, UnitKind } from './unit';
 export { PartialPolicy, Verdict, WithheldReason } from './verification';
+export { WithheldUnit } from './withheld';
