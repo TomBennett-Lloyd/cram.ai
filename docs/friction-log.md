@@ -119,6 +119,16 @@ Entry format:
 - Phase: review
 - Observed: the #15 server's two mutant passes (the first lane's, then the resumed lane's 47 mutants, which found 9 unprotected guard edges the first had missed) still left two defects for the reviewer: an untested deck byte cap, and a request target such as `GET http://[` parsed outside the request boundary, which killed the whole server process. Neither was framed as a guard edge, so no mutant named it. Third entry today on the mutation pass's evidence being bounded by the edges its author listed (PR #83, PR #128 before it); the reviewer's reading of the invariant is still what finds the rest.
 
+## 2026-10-20 — PR #120
+
+- Phase: process
+- Observed: ADR 0006 waited for the owner's review while three PRs merged under it (#137, #128, #116), and those made stated facts in its § Context, one assumption check and its ledger false; nothing flagged that until the FILL bounce read the ADR against the new main, which cost a REBASE round with Context true-ups. The decisions were untouched, but an ADR under review has no gate that re-checks its Context claims against main. One ticket so far; `merge.approvedAtPlanRule` (#150) names such a true-up as an extra, which surfaces it without preventing it.
+
+## 2026-10-20 — PR #160
+
+- Phase: implementation
+- Observed: the #126 lane's mutant pass covered the operand-versus-argument sites it had listed (nary, func, rad), and review found seven more operand sites it had not; the lane's own words were that listing edges by construct rather than by the sites already reasoned about would have caught them. Fourth entry today on the mutation pass's coverage being bounded by its author's list (PR #83, PR #128, PR #154). The lane also decided the issue's two "To decide" items itself, the second instance of PR #118's shape; both were ingest-internal, with no prompt or resolver change, and the merge owner merged on that basis.
+
 ## 2026-10-20 — PR #143
 
 - Phase: review
