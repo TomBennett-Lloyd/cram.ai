@@ -647,6 +647,13 @@ step 'classify' "PR #$pr_number is $pr_state on '$pr_head_ref'; $merge_reason; $
 if [ "$already_merged" = "0" ]; then
   [ -n "$merge_method" ] || fail 'classify' \
     "$merge_reason — cannot tell a single-issue squash from a batch rebase. Correct the Closes lines or the lane declarations in the body, or pass --method squash|rebase"
+  # Ahead of the curated-history check, so that a HUMAN batch carrying its
+  # verdict commit is told the rule rather than a commit count; a batch whose
+  # verdict was folded by hand would pass that count (#105). Naming the member is
+  # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4).
+  if [ "$merge_method" = "--rebase" ] && [ "$is_human" = "1" ]; then
+    fail 'classify' "a --rebase PR classifies HUMAN (humanAlways: $human_hits), and a batch never carries a humanAlways path (.claude/workflow.json → orchestration.routeRule, #56) — bounce the batch to drop the member whose footprint reaches $human_hits, which runs as its own ticket-agent lane"
+  fi
   if [ "$merge_method" = "--rebase" ]; then
     curated_reason=$(curated_history_ok) || fail 'classify' "$curated_reason"
   fi
