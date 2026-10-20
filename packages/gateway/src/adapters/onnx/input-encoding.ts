@@ -9,8 +9,8 @@ export interface InputEncoding {
 const zeros = (length: number): number[] => new Array<number>(length).fill(0);
 
 /**
- * `Tokenizer.encode` reads an empty pair member as no pair (`text_pair || null`), where the
- * reference tokenizer applies the pair template to an empty second segment; this applies it.
+ * `Tokenizer.encode` reads an empty pair member as no pair (`text_pair || null`), where Hugging
+ * Face `tokenizers`' `Tokenizer.encode` with a pair applies the pair template; this applies it.
  */
 const encodeEmptyPair = (tokenizer: Tokenizer, text: string): InputEncoding => {
   const first = tokenizer.tokenize(text);

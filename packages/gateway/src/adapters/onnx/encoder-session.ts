@@ -80,11 +80,16 @@ export class EncoderSession {
     if (inputTokens > this.maxInputTokens) {
       return { status: 'over-length', inputTokens, maxInputTokens: this.maxInputTokens };
     }
-    const feeds = {
-      input_ids: int64(encoding.ids),
-      attention_mask: int64(encoding.attentionMask),
-      token_type_ids: int64(encoding.tokenTypeIds),
+    const byName = {
+      input_ids: encoding.ids,
+      attention_mask: encoding.attentionMask,
+      token_type_ids: encoding.tokenTypeIds,
     };
+    const feeds = Object.fromEntries(
+      Object.entries(byName)
+        .filter(([name]) => this.#session.inputNames.includes(name))
+        .map(([name, values]) => [name, int64(values)]),
+    );
     const output = floatOutput((await this.#session.run(feeds))[this.#output]);
     if (output === null) throw new Error(`EncoderSession: no float32 output ${this.#output}`);
     return output;
@@ -111,7 +116,7 @@ export class EncoderSession {
   }
 }
 
-/** Verifies the model against its pin's digest before any of it is loaded (§ Decision (e), (i)). */
+/** Verifies the model against its pin's digest before any of it is loaded (`docs/adr/0003-model-roles-and-backends.md` § Decision (e), (i)). */
 export const openEncoderSession = async (spec: EncoderSessionSpec): Promise<EncoderSession> => {
   const modelPath = join(spec.directory, spec.pin.artefact.file);
   const digest = await sha256Of(modelPath);

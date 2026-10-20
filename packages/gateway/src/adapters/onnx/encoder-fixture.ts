@@ -105,9 +105,14 @@ const modelBytes = (graph: Graph): Uint8Array => {
 /** The fixture vocabulary; `[CLS]`, `[SEP]` and the words map to the rows of every table below. */
 export const VOCAB = ['[PAD]', '[UNK]', '[CLS]', '[SEP]', 'alpha', 'beta', 'gamma', 'delta'];
 
-/** `last_hidden_state` is the embedding-table row of each token: [1, seq, rowWidth]. */
+/** `last_hidden_state` is each token's embedding-table row times its attention mask: [1, seq, rowWidth]. */
 export const embedderGraph = (table: readonly (readonly number[])[]): Graph => ({
-  nodes: [{ op: 'Gather', inputs: ['table', 'input_ids'], output: 'last_hidden_state' }],
+  nodes: [
+    { op: 'Gather', inputs: ['table', 'input_ids'], output: 'rows' },
+    { op: 'Cast', inputs: ['attention_mask'], output: 'mask', attributes: { to: FLOAT } },
+    { op: 'Unsqueeze', inputs: ['mask'], output: 'mask3', attributes: { axes: [2] } },
+    { op: 'Mul', inputs: ['rows', 'mask3'], output: 'last_hidden_state' },
+  ],
   initializers: [['table', table]],
   inputs: ['input_ids', 'attention_mask', 'token_type_ids'],
   output: ['last_hidden_state', ['batch', 'seq', table[0]?.length ?? 0]],

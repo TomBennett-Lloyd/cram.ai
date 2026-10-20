@@ -82,7 +82,7 @@ describe('loadOnnxVerifier', () => {
     expectClose(scoresOf(swapped), [won2, lost2, lost2]);
   });
 
-  it('applies the pair template to an empty hypothesis, as the reference tokenizer does', async () => {
+  it('applies the pair template to an empty hypothesis, as Hugging Face tokenizers encodes a pair', async () => {
     const encoder = loaded(await verifier({ graph: segmentCounter, id2label: A7 }));
     const [result] = await encoder.entail({ pairs: [{ premise: 'alpha', hypothesis: '' }] });
     const [won, lost] = softmaxAt(1);
@@ -99,7 +99,7 @@ describe('loadOnnxVerifier', () => {
     expectClose(scoresOf(result), [lost, lost, won]);
   });
 
-  it('runs a model that declares no token_type_ids, which onnxruntime-node takes from the feeds', async () => {
+  it('runs a model that declares no token_type_ids', async () => {
     const graph = classifierGraph(rows((id) => [0, id === VOCAB.indexOf('alpha') ? 1 : 0, 0]));
     const encoder = loaded(await verifier({ graph, id2label: A7 }));
     const [result] = await encoder.entail({ pairs: [{ premise: 'alpha', hypothesis: 'alpha' }] });

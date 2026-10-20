@@ -30,8 +30,10 @@ allowBuilds:
   # package also carries binding.gyp. Allowing it would run node-gyp, which
   # downloads Node headers at install time unless already cached.
   better-sqlite3: false
-  # onnxruntime-node (@cram/gateway, #66) ships its N-API binaries for every
-  # platform under bin/napi-v6/ in the tarball and loads them from there. Its
-  # postinstall (script/install.js) fetches only the CUDA execution provider,
-  # and only on linux-x64, from api.nuget.org; the CPU provider needs nothing.
+  # onnxruntime-node (@cram/gateway, #66) ships its N-API binaries under
+  # bin/napi-v6/ in the tarball and loads them from there; win32-x64 and
+  # darwin-arm64 are checked (docs/adr/0003-model-roles-and-backends.md
+  # § Decision (k), A8). Its postinstall (script/install.js, via
+  # script/install-utils.js) fetches only the CUDA execution provider, and only
+  # on linux-x64, from api.nuget.org; the CPU provider needs nothing.
   onnxruntime-node: false
