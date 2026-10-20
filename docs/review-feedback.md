@@ -251,7 +251,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #114 — adr-supersession-edits-status
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide whether `docs/adr/README.md` now states the owner's decision on #114 (2026-10-20, verbatim: "PR 114 - status changes on supersession") correctly:
   - accept the top paragraph naming two narrow edits to a merged ADR — moved stated values, and the Status line on supersession — in place of "the one narrow exception";
   - accept the index-annotation paragraph recording supersession in both the index and the old ADR's Status line, with "since ADRs are superseded rather than edited" dropped;
@@ -259,4 +259,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept the matching comment true-up in `.claude/scripts/check-adr-index.sh`, which argued for the annotation from "ADRs are immutable once merged" (no behaviour change).
 - **Why**: `docs/adr/**` is a `humanAlways` path, and the README is the convention every later supersession follows, so the wording is the owner's to approve, not only the answer.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("approve 143, 156, proceed 7")
