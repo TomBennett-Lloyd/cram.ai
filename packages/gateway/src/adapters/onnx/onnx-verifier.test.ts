@@ -10,9 +10,9 @@ import {
   fixturePinFields,
   type Graph,
   loaded,
-  MISMATCHED_SHA256,
   rows,
   segmentCounter,
+  SNAPSHOT_PATHS,
   VOCAB,
   writeEncoderFixture,
 } from './encoder-fixture';
@@ -26,11 +26,11 @@ afterAll(async () => {
   await rm(parent, { recursive: true, force: true });
 });
 
-const verifier = async (fixture: EncoderFixture, sha256?: string) => {
+const verifier = async (fixture: EncoderFixture, mismatched?: string) => {
   const written = await writeEncoderFixture(parent, fixture);
   const pin = VerifierPin.parse({
     role: 'verifier',
-    ...fixturePinFields(sha256 ?? written.sha256),
+    ...fixturePinFields(written.files, mismatched),
   });
   return loadOnnxVerifier({ pin, directory: written.directory });
 };
@@ -155,8 +155,13 @@ describe('loadOnnxVerifier', () => {
     expect(await verifier(fixture)).toMatchObject({ status: 'loaded' });
   });
 
-  it('checks the digest before reading config.json', async () => {
-    const fixture = { graph: segmentCounter, files: { 'config.json': null } };
-    expect(await verifier(fixture, MISMATCHED_SHA256)).toMatchObject({ reason: 'digest-mismatch' });
+  it.each(SNAPSHOT_PATHS)('refuses a %s whose digest is not the manifest’s', async (file) => {
+    const load = await verifier({ graph: segmentCounter, id2label: A7 }, file);
+    expect(load).toMatchObject({ status: 'load-failed', reason: 'digest-mismatch' });
+  });
+
+  it('checks every digest before reading config.json', async () => {
+    const fixture = { graph: segmentCounter, files: { 'config.json': '{}' } };
+    expect(await verifier(fixture, 'tokenizer.json')).toMatchObject({ reason: 'digest-mismatch' });
   });
 });

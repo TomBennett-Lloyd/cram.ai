@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { manifestDigest, type Pooling } from '../../pin';
 import type { EncoderLoad } from './encoder-artefact';
 
 /** Synthetic encoder artefacts for tests: tiny ONNX graphs written as protobuf, and a WordPiece tokenizer. */
@@ -222,18 +223,22 @@ export interface EncoderFixture {
 
 export interface WrittenFixture {
   readonly directory: string;
-  readonly sha256: string;
+  /** Each snapshot file's digest by its path, including a file the fixture left out. */
+  readonly files: Readonly<Record<string, string>>;
 }
 
-/** Writes a snapshot laid out as a Hugging Face repository is, under `parent`, and the model's digest. */
+const pathOf = (name: SnapshotFile): string => (name === 'model' ? MODEL_FILE : name);
+const sha256Of = (contents: string | Uint8Array): string =>
+  createHash('sha256').update(contents).digest('hex');
+
+/** Writes a snapshot laid out as a Hugging Face repository is, under `parent`, and its digests. */
 export const writeEncoderFixture = async (
   parent: string,
   fixture: EncoderFixture,
 ): Promise<WrittenFixture> => {
   const directory = await mkdtemp(join(parent, 'snapshot-'));
-  const model = fixture.files?.model ?? modelBytes(fixture.graph);
   const defaults: Record<SnapshotFile, string | Uint8Array> = {
-    model,
+    model: modelBytes(fixture.graph),
     'tokenizer.json': JSON.stringify(FIXTURE_TOKENIZER),
     'tokenizer_config.json': JSON.stringify({
       model_max_length: fixture.maxLength ?? 16,
@@ -242,30 +247,41 @@ export const writeEncoderFixture = async (
     'config.json': JSON.stringify({ id2label: fixture.id2label ?? {} }),
   };
   await mkdir(join(directory, 'onnx'));
+  const files: Record<string, string> = {};
   for (const name of SNAPSHOT_FILES) {
-    const contents = fixture.files?.[name];
-    if (contents === null) continue;
-    await writeFile(
-      join(directory, name === 'model' ? MODEL_FILE : name),
-      contents ?? defaults[name],
-    );
+    const replaced = fixture.files?.[name];
+    const contents = replaced ?? defaults[name];
+    files[pathOf(name)] = sha256Of(contents);
+    if (replaced !== null) await writeFile(join(directory, pathOf(name)), contents);
   }
-  return { directory, sha256: createHash('sha256').update(model).digest('hex') };
+  return { directory, files };
 };
+
+/** Every path a fixture snapshot holds. */
+export const SNAPSHOT_PATHS = SNAPSHOT_FILES.map(pathOf);
 
 /** One table row per `VOCAB` token. */
 export const rows = (row: (id: number) => number[]): number[][] => VOCAB.map((_, id) => row(id));
 
-/** The pin fields every fixture role shares, pinned to `sha256`. */
-export const fixturePinFields = (sha256: string) => ({
-  backend: 'onnxruntime',
-  model: 'cram-fixture/tiny-encoder',
-  artefact: { repository: 'cram-fixture/tiny-encoder', file: MODEL_FILE },
-  sha256,
-  licence: 'MIT',
-});
-
 export const MISMATCHED_SHA256 = 'f'.repeat(64);
+
+/** The pin fields every fixture role shares, pinned to `files` with `mismatched`'s digest one no file has. */
+export const fixturePinFields = (
+  files: Readonly<Record<string, string>>,
+  mismatched?: string,
+  pooling?: Pooling,
+) => {
+  const pinned = mismatched === undefined ? files : { ...files, [mismatched]: MISMATCHED_SHA256 };
+  const manifest = pooling === undefined ? { files: pinned } : { files: pinned, pooling };
+  return {
+    backend: 'onnxruntime',
+    model: 'cram-fixture/tiny-encoder',
+    artefact: { repository: 'cram-fixture/tiny-encoder', file: MODEL_FILE },
+    manifest,
+    sha256: manifestDigest(manifest),
+    licence: 'MIT',
+  };
+};
 
 /** Logits count second-segment tokens into position 1 of 3. */
 export const segmentCounter = classifierGraph(

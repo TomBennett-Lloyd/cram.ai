@@ -1,7 +1,7 @@
 import { type EmbeddingResult, EmbedRequest } from '../../encoder-requests';
 import type { Embedder } from '../../model-gateway';
 import type { EmbedderPin } from '../../pin';
-import { EmbedderConfig, type Pooling } from '../../role-config';
+import { EmbedderConfig } from '../../role-config';
 import { type EncoderLoad, loadedOrRefused } from './encoder-artefact';
 import { brokenInvariant, type EncoderSession, openEncoderSession } from './encoder-session';
 import { pooledVector } from './pooling';
@@ -17,12 +17,10 @@ const hiddenStateShape = (dims: readonly number[]): readonly [number, number] | 
 export class OnnxEmbedder implements Embedder {
   readonly pin: EmbedderPin;
   readonly #session: EncoderSession;
-  readonly #pooling: Pooling;
 
-  constructor(pin: EmbedderPin, session: EncoderSession, pooling: Pooling) {
+  constructor(pin: EmbedderPin, session: EncoderSession) {
     this.pin = pin;
     this.#session = session;
-    this.#pooling = pooling;
   }
 
   async embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
@@ -37,7 +35,7 @@ export class OnnxEmbedder implements Embedder {
       if (shape === null) throw brokenInvariant('OnnxEmbedder', output);
       results.push({
         status: 'embedded',
-        vector: pooledVector(output.data, ...shape, this.#pooling),
+        vector: pooledVector(output.data, ...shape, this.pin.manifest.pooling),
       });
     }
     return results;
@@ -47,10 +45,10 @@ export class OnnxEmbedder implements Embedder {
 export const loadOnnxEmbedder = async (
   config: EmbedderConfig,
 ): Promise<EncoderLoad<OnnxEmbedder>> => {
-  const { pin, directory, pooling } = EmbedderConfig.parse(config);
+  const { pin, directory } = EmbedderConfig.parse(config);
   return loadedOrRefused('embedder', async () => {
     const session = await openEncoderSession({ pin, directory, output: 'last_hidden_state' });
     await session.probe((output) => hiddenStateShape(output.dims) !== null);
-    return new OnnxEmbedder(pin, session, pooling);
+    return new OnnxEmbedder(pin, session);
   });
 };
