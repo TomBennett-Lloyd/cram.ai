@@ -150,17 +150,17 @@ describe('linearOmml', () => {
   });
 
   it('reads an accent, a circumflex by default, after its base', () => {
-    expect(linear(oMath(construct('acc', [], e(r('x')))))).toBe('x̂');
-    expect(linear(oMath(construct('acc', [['chr', '⃗']], e(r('v')))))).toBe('v⃗');
+    expect(linear(oMath(construct('acc', [], e(r('x')))))).toBe('x\u0302');
+    expect(linear(oMath(construct('acc', [['chr', '\u20D7']], e(r('v')))))).toBe('v\u20D7');
   });
 
   it('reads a bar, below by default, as a combining line after its base', () => {
-    expect(linear(oMath(construct('bar', [], e(r('x')))))).toBe('x̲');
-    expect(linear(oMath(construct('bar', [['pos', 'top']], e(r('x+y')))))).toBe('(x+y)̅');
+    expect(linear(oMath(construct('bar', [], e(r('x')))))).toBe('x\u0332');
+    expect(linear(oMath(construct('bar', [['pos', 'top']], e(r('x+y')))))).toBe('(x+y)\u0305');
   });
 
   it('reads a grouping character, a bottom brace by default, before its base', () => {
-    expect(linear(oMath(construct('groupChr', [], e(r('a+b')))))).toBe('⏟(a+b)');
+    expect(linear(oMath(construct('groupChr', [], e(r('a+b')))))).toBe('\u23DF(a+b)');
     expect(linear(oMath(construct('groupChr', [['chr', '⏞']], e(r('a')))))).toBe('⏞a');
   });
 

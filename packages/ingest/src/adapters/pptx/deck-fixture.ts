@@ -1,6 +1,7 @@
-import { CourseId, LectureId } from '@cram/shared';
+import { CourseId, LectureId, type SlideRecord } from '@cram/shared';
 import { strToU8, zipSync, type Zippable } from 'fflate';
 import type { DeckFile } from '../deck-file';
+import { ingestPptx } from './ingest-pptx';
 import { NOTES_SLIDE_RELATIONSHIP, NS } from './ooxml';
 
 export const SLIDE_RELATIONSHIP =
@@ -187,4 +188,12 @@ export const buildDeck = (deck: FixtureDeck): Uint8Array => {
   const zip = zipSync(zippable);
   if (deck.uninflatable !== undefined) setCompression(zip, deck.uninflatable, LZMA);
   return zip;
+};
+
+/** The slides of a fixture deck that must ingest. */
+export const ingestedSlides = (deck: FixtureDeck): readonly SlideRecord[] => {
+  const result = ingestPptx(deckFile(buildDeck(deck)));
+  if (result.status !== 'ingested')
+    throw new Error(`expected an ingested deck, got ${result.status}: ${result.detail}`);
+  return result.slides;
 };

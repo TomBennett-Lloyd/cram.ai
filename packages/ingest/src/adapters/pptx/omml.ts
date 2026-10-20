@@ -25,7 +25,7 @@ const argument = (element: Element, name: string, read: Read): string => {
 };
 
 /** A run of letters and digits, or one character. */
-const ATOM = /^(?:[\p{L}\p{N}]+|.)$/su;
+const ATOM = /^(?:[\p{L}\p{N}]+|.)$/u;
 
 /** One delimiter group alone needs no brackets of its own. */
 const isDelimited = (child: Element | undefined, read: Read): boolean => {
@@ -106,17 +106,18 @@ const CONSTRUCTS: ReadonlyMap<string, Construct> = new Map<string, Construct>([
   ],
   [
     'acc',
-    (element, read) => `${operand(element, 'e', read)}${propertyOf(element, 'accPr', 'chr', '̂')}`,
+    (element, read) =>
+      `${operand(element, 'e', read)}${propertyOf(element, 'accPr', 'chr', '\u0302')}`,
   ],
   [
     'bar',
     (element, read) =>
-      `${operand(element, 'e', read)}${propertyOf(element, 'barPr', 'pos', 'bot') === 'top' ? '̅' : '̲'}`,
+      `${operand(element, 'e', read)}${propertyOf(element, 'barPr', 'pos', 'bot') === 'top' ? '\u0305' : '\u0332'}`,
   ],
   [
     'groupChr',
     (element, read) =>
-      `${propertyOf(element, 'groupChrPr', 'chr', '⏟')}${operand(element, 'e', read)}`,
+      `${propertyOf(element, 'groupChrPr', 'chr', '\u23DF')}${operand(element, 'e', read)}`,
   ],
   [
     'm',
