@@ -345,3 +345,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path, and only the owner changes an accepted ADR's pin shape.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-21 ("174 and 178 looks good, approve to merge")
+
+## 2026-10-20 — issue #7 — plan-feedback-adr-0007-defaults
+
+- **Category**: plan
+- **Feedback**: the owner's answer to the ADR 0007 plan's four questions, verbatim: "approve 143, 156, proceed 7". As a bare proceed it takes the plan's stated defaults: `CLAUDE.md`'s first hard-constraint bullet is not edited to name the first-launch download; the OCR engine and its language data ship inside the installer; the NSIS install is one-click and per-user with no administrator prompt; the installer is a public GitHub Release asset.
+- **Why**: each default was stated in the plan comment with its reason, so a bare proceed is an informed acceptance of them, not silence. Recording it keeps the four choices traceable to the owner rather than to the lane.
+- **How applied**: `docs/adr/0007-desktop-packaging.md` § Decision (f) owns the download's claim with `CLAUDE.md` untouched; (g) ships the OCR data inside; (c) the one-click per-user install; (c) and (i) the GitHub Release asset.
+- **Verdict**: owner-directed in chat 2026-10-20 (a bare PROCEED on the plan), applied before execution
