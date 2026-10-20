@@ -8,6 +8,8 @@ export const NS = {
   r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
   rel: 'http://schemas.openxmlformats.org/package/2006/relationships',
   mc: 'http://schemas.openxmlformats.org/markup-compatibility/2006',
+  m: 'http://schemas.openxmlformats.org/officeDocument/2006/math',
+  a14: 'http://schemas.microsoft.com/office/drawing/2010/main',
 } as const;
 
 export const NOTES_SLIDE_RELATIONSHIP =

@@ -251,6 +251,46 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("nice approve all those PRs")
 
+## 2026-10-20 — issue #6 — adr-0006-q4-ask-cites-unconfirmed-derived-text
+
+- **Category**: plan
+- **Feedback**: on the plan comment's Q4 (Ask and notes cite unconfirmed derived text with the original image shown; only exams are gated on confirmation), the owner asked for more detail before approving, then approved: "approve 6".
+- **Why**: Q4 is the one point where the plan lets text read out of a picture reach the student before anyone has checked it, so it should be approved knowingly rather than by default. In Ask, a wrong quote is one sentence the student sees next to its image. In an exam it becomes a stored gold answer the student is marked against.
+- **How applied**: no change to the plan; `docs/adr/0006-image-only-slides.md` § Decision (f) and § Options considered F record the reasoning.
+- **Verdict**: owner approved in chat 2026-10-20, after the explanation; applied before execution
+
+## 2026-10-20 — issue #6 — adr-0006-image-only-slides
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - accept `docs/adr/0006-image-only-slides.md` § Decision (a)–(k), in particular:
+    - (a) the text layer as the only trigger, with its threshold owned by `THIN_TEXT_LAYER_WORDS`;
+    - (b) `derived` set per record;
+    - (c) OCR as a pinned ingest adapter reading the stored rendering, not a gateway role;
+    - (d) `tesseract.js` as the provisional engine, measured against PP-OCRv5 and Florence-2;
+    - (e) captions opt-in per slide, with no captioner in v1;
+    - (f) Ask and notes citing unconfirmed derived text with the image beside it, while exams exclude it from retrieval;
+    - (g) confirmation state in the course file under `packages/index`'s schema;
+    - (h) the coverage bar and the recall and precision baselines;
+  - accept the `docs/plan.md` true-ups: §3.1's pointer, §7 item 6, and §9 q2;
+  - accept `docs/standards/grounding.md` rule 10;
+  - accept the `docs/adr/README.md` index row placed after 0003's.
+- **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
+- **How applied**: the PR as proposed: ADR 0006 at `proposed`, plus the pointers. It is revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("nice approve all those PRs")
+
+## 2026-10-20 — issue #114 — adr-supersession-edits-status
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide whether `docs/adr/README.md` now states the owner's decision on #114 (2026-10-20, verbatim: "PR 114 - status changes on supersession") correctly:
+  - accept the top paragraph naming two narrow edits to a merged ADR — moved stated values, and the Status line on supersession — in place of "the one narrow exception";
+  - accept the index-annotation paragraph recording supersession in both the index and the old ADR's Status line, with "since ADRs are superseded rather than edited" dropped;
+  - accept § Amendments' opening narrowed to "decision and rationale never change", with the superseding ADR's PR setting the old ADR's Status to `superseded by NNNN`, adding the index annotation, and touching nothing else in the old file;
+  - accept the matching comment true-up in `.claude/scripts/check-adr-index.sh`, which argued for the annotation from "ADRs are immutable once merged" (no behaviour change).
+- **Why**: `docs/adr/**` is a `humanAlways` path, and the README is the convention every later supersession follows, so the wording is the owner's to approve, not only the answer.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("approve 143, 156, proceed 7")
+
 ## 2026-10-20 — issue #150 — adr-pr-merges-on-plan-approval
 
 - **Category**: approved-no-changes

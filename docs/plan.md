@@ -31,8 +31,8 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 ### 3.1 Ingest
 
 - Inputs: PDF and PPTX lecture decks; a text/PDF file of sample exam questions (and, ideally, a full sample paper so the exam _format_ can be mirrored — see §3.5).
-- Output: one **slide record** per slide, shaped by `SlideRecord` (`packages/shared/src/slide-record.ts`). The slide is the natural chunk; long slides split by heading, never mid-bullet.
-- Image-only slides (diagrams, scanned tables) go through local OCR, and optionally a local vision model for a caption. **Derived text is flagged `derived: true`**; the UI shows it as such, and a citation to derived text displays the original image so the student checks it. This is the single largest quality risk (§9).
+- Output: one **slide record** per slide, shaped by `SlideRecord` (`packages/shared/src/slide-record.ts`). The slide is the chunk. `body` holds one bullet or line per `\n` (`slideText`, `packages/ingest/src/slide-text.ts`), so a later split cuts between lines, never mid-bullet. Splitting a slide by heading waits for a content slide too long to embed whole, which the embedder reports as `over-length` (#66); the owner's sample deck has none (#77).
+- Image-only slides are owned by `docs/adr/0006-image-only-slides.md` (what triggers derivation, the `derived` flag, OCR as an ingest adapter, opt-in captions, who may cite derived text and with what shown beside it, the confirmation state and the derived-text metric); this bullet carries no restatement.
 - Sample exam questions are parsed into **style exemplars**: `{type: mcq | short | essay | case, stem, options?, marks?, sectionOf?}`. They are never used as a source of facts.
 
 ### 3.2 Index
@@ -101,7 +101,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 3. **0003 Model roles and backends** — generator / verifier / embedder / reranker; backends by role and run mode; the candidates, their licences and the measurement that pins them; the verifier's shape. Written — `docs/adr/0003-model-roles-and-backends.md` (#3); §3.3 above now points at it.
 4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it. Written — `docs/adr/0004-storage.md` (#4); §3.2's first bullet above now points at it.
 5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics. Written — `docs/adr/0005-evaluation-as-gate.md` (#5); §4 above now points at it.
-6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; when to refuse to cite derived text.
+6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; who may cite derived text. Written — `docs/adr/0006-image-only-slides.md` (#6); §3.1's image-only bullet above now points at it.
 7. **0007 Desktop packaging** — Electron + node-llama-cpp + NSIS; model download on first launch; signing deferred.
 
 ## 8. Milestones → issues
@@ -117,7 +117,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 ## 9. Open questions for the owner
 
 1. **The target Windows machine**: answered by the owner on #3 (2026-10-13); the sizing it decides is `docs/adr/0003-model-roles-and-backends.md`'s.
-2. **A sample deck** (not committed) to size the image-only-slide problem on during M1.
+2. **A sample deck** (not committed) to size the image-only-slide problem on during M1: answered by #9's sizing comment (2026-10-13); what it decided is `docs/adr/0006-image-only-slides.md`'s.
 3. **Windows testing**: development is on a Mac. CI can build the installer on a Windows runner, but someone has to run it. Options: a Windows VM on the Mac, or the first user's machine as the smoke test with a short checklist.
 4. **Code signing**: pay for a certificate (removes the SmartScreen warning) or accept the warning for a single known user.
 5. **Licence**: "same as cumulo" was the decision — and cumulo has **no licence file**, which makes it public source with all rights reserved rather than open source. This repo mirrors that for now; adding a licence file is its own decision.

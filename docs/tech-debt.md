@@ -98,12 +98,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: an entry whose name is an absent optional variant under one parent but installed and clean under another reads `absent` rather than stale. On a platform where the variant installs, the scan reports it stale as it should, so CI on that platform still catches it. Keying the exemption on name plus version, or on "no installed occurrence", would close it.
 - Source: #18 confirmation pass
 
-## 2026-10-16 — .gitignore's data/ comment paraphrases ADR 0004's unit
-
-- Where: `.gitignore`, the course-content comment above `data/`
-- What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
-- Source: #4 review cycle 1
-
 ## 2026-10-16 — plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14
 
 - Where: `docs/plan.md` §8, the M2 line ("contradiction set"); `docs/adr/0005-evaluation-as-gate.md` § Decision (a) and (h); #14's body ("a first contradiction set")
@@ -251,3 +245,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-ledgers.sh` header, THE FORMAT block (the owner: `sweep: <PCRE>`); `.claude/scripts/sweep-report.sh` header `sweep=` field and its ledger-sweep re-run; `.claude/scripts/sweep-report.test.sh` comments on an invalid PCRE.
 - What: both scripts must run a ledger's sweep in the same engine, or `sweep-report.sh` reports a different file set from the one `check:ledgers` enforces (`docs/standards/evidence.md` member 10 is how far engines diverge). The engine is stated at each site and no `.claude/ledgers/` entry lists them, although `docs/standards/architecture.md` rule 9 asks for one once a second site is found.
 - Source: #40 review
+
+## 2026-10-20 — the file-safe course-id rule lives in apps/server, not in CourseId
+
+- Where: `apps/server/src/course-file.ts` `RouteCourseId`; `packages/shared/src/slide-record.ts` `CourseId`
+- What: `docs/adr/0004-storage.md` § Decision (a) makes every course id a file name, but `@cram/shared`'s `CourseId` only requires a non-empty string. The lowercase, file-safe, no-device-name rule is therefore stated only at the server's route boundary, and `apps/web` (#16) will need the same rule to mint ids the server accepts. That would be a second definition of a valid course id (`docs/standards/architecture.md` rule 2). The fix moves the rule into `CourseId` and touches every package that parses one (ingest, index, eval).
+- Source: #15 review cycle 1
+
+## 2026-10-20 — ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed
+
+- Where: `docs/adr/0004-storage.md` § Decision (h), the "Carriers not citing this file" sentence
+- What: the sentence lists `.gitignore`'s course-content comment ("per-course indexes"), "banked in `docs/tech-debt.md`'s entry that quotes it". #15 deleted both the phrase and that entry, so the list names a carrier its own sweep no longer returns. ADR edits are `humanAlways`, so this waits for ADR 0004's next amendment.
+- Source: #15 review cycle 1

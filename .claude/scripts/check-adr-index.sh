@@ -121,9 +121,9 @@ in_index=0
 # recognised only a column-1 hyphen would read every other spelling as prose and skip it.
 #
 # The trailing group is the annotation: an optional ` — <text>` suffix (em dash, a space on
-# each side, non-empty text), which is where a supersession is recorded — ADRs are immutable
-# once merged, so `- [0042 — Example decision](0042-example-decision.md) — superseded by 0043`
-# is the shape the policy needs from the index. Optional, structured and still anchored at `$`:
+# each side, non-empty text), which is where the index records a supersession, as
+# `- [0042 — Example decision](0042-example-decision.md) — superseded by 0043`
+# (docs/adr/README.md, the annotation paragraph). Optional, structured and still anchored at `$`:
 # a suffix that misses the ` — ` separator, or that trails an empty one, is a malformed row
 # rather than free text the gate would have to wave through.
 row_re='^[[:space:]]*[-*+][[:space:]]+\[([0-9][0-9][0-9][0-9])[^]]*\]\(([^)]+)\)([[:space:]]+—[[:space:]]+[^[:space:]].*)?[[:space:]]*$'
