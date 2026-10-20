@@ -1,6 +1,6 @@
 # 0007 — Desktop packaging: an Electron shell around the one server; an unsigned NSIS installer from CI; weights downloaded at first launch by digest; OCR data inside
 
-- **Status:** accepted
+- **Status:** proposed
 - **Date:** 2026-10-20
 - **Issue:** #7
 
@@ -51,7 +51,7 @@ The issue's title and `docs/plan.md` §3.6 were written before ADRs 0003, 0004 a
 - **D2 — "the only outbound connection the app ever makes" is narrowed to the installed app, and to more than one host.** Developer mode's loopback Ollama and #20's model pull are outside the claim, as is the CI build's own tool download (A7). The download's hosts are `huggingface.co` and the CDN hosts its redirects name (A11).
 - **D3 — nothing is built against the shell's Node ABI.** Every native addon the app loads ships N-API prebuilt binaries (A2–A4), which load under Electron's bundled Node without a rebuild, and `vec0.dll` is a plain SQLite loadable extension (A5). `docs/adr/0004-storage.md`'s "builds for the desktop shell" is answered by (d): no build, proven by loading.
 - **D4 — a second family of model files ships inside the installer, not by download:** the pinned OCR engine's files ((g)).
-- **D5 — `node-llama-cpp`'s own downloader is not the download mechanism.** It verifies no digest (A12), and a pin's `sha256` (`docs/adr/0003-model-roles-and-backends.md` § Decision (e)) is what a download must be checked against. The downloader is first-party ((e)).
+- **D5 — `node-llama-cpp`'s own downloader is not the download mechanism.** It verifies no digest (A12), and a pin's digests (`docs/adr/0003-model-roles-and-backends.md` § Decision (e): the generator's `sha256`, an encoder's `manifest`) are what a download must be checked against. The downloader is first-party ((e)).
 - **D6 — the egress gate cannot see a first-party downloader.** `.claude/scripts/check-no-network-egress.sh`'s census covers third-party packages; its header leaves first-party network code to review. (e) confines first-party network code to one module under a named test, and extending the census is #165.
 - **D7 — no M5 tickets existed.** #161–#164 were filed for this ADR, so that (m) names real tickets.
 
@@ -61,11 +61,13 @@ The issue's title and `docs/plan.md` §3.6 were written before ADRs 0003, 0004 a
 - **(b) Binding is loopback only, by citation.** The rule is `docs/adr/0002-deployables.md` § Decision (d)'s. The shell opens no listener of its own; the port is the server's, handed to the renderer, never a user-facing setting. The mechanical assertion stays `apps/server/src/server.test.ts`'s loopback test.
 - **(c) The installer is `electron-builder`'s NSIS target, built on GitHub Actions' Windows x64 runner (A8) by a release workflow of its own, and published as a GitHub Release asset.** The release workflow is separate from `.github/workflows/ci.yml`'s checks. The install is one-click and per-user, `electron-builder`'s NSIS default (A6), so it asks for no administrator rights. Uninstalling leaves the data folder; deleting a course is `docs/adr/0004-storage.md` § Decision (e)'s file deletion, done from the app. The build's own tool downloads (A7) are build-time traffic on the runner, pinned by the `electron-builder` version, and not the app's.
 - **(d) Native binaries ship as published: N-API prebuilds, unpacked from the asar, with no rebuild.** The binaries are `better-sqlite3`'s `prebuilds/win32-x64.node` (A2), `onnxruntime-node`'s `bin/napi-v6/win32/x64/onnxruntime_binding.node` (A3), `@node-llama-cpp/win-x64`'s `bins/win-x64/llama-addon.node` with its CPU-variant libraries (A4), and `sqlite-vec-windows-x64`'s `vec0.dll` (A5). The build sets `npmRebuild: false` and unpacks every `.node` and `.dll` from the asar, since a native library loads from a real path. The proof is a headless smoke run of the built installer on the runner (#162): it opens a course file, loads `vec0`, runs one encoder and loads the generator binding. If any addon fails it, the fallback is `@electron/rebuild` against the shipped Electron version (A1), which is the build `docs/adr/0004-storage.md` expected.
-- **(e) Weights arrive by a first-launch download, verified by digest, into the data folder.** For every pin `packages/gateway` exports (`docs/adr/0003-model-roles-and-backends.md` § Decision (e) and (f)), the downloader:
+- **(e) Weights arrive by a first-launch download, verified by digest, into the data folder.** For every pin `packages/gateway` exports (`docs/adr/0003-model-roles-and-backends.md` § Decision (e) and (f)), and for every file that pin names, the downloader:
   - fetches `https://huggingface.co/<repository>/resolve/<revision>/<file>`;
   - streams it to a temporary file;
-  - verifies its `sha256` against the pin, deleting it and reporting on a mismatch;
+  - verifies it against the pin's digest for that file, deleting it and reporting on a mismatch;
   - renames it into `<data folder>/models/`.
+
+  A generator pin names one GGUF file and its `sha256`. An encoder pin names the files its `manifest` lists, each with its own digest, and its `sha256` is the manifest's (§ Decision (e) of that ADR, as amended 2026-10-20).
 
   An interrupted download resumes on the next launch. Until every pin is present, the app shows only the download screen. A re-pin is downloaded at the next launch after the release that carries it; otherwise the installed app makes no outbound connection. The downloader is first-party code in one module of `apps/desktop` (#161), using Node's `fetch`. It is the only first-party module that opens a connection (D5, D6).
 
@@ -124,6 +126,7 @@ The issue's title and `docs/plan.md` §3.6 were written before ADRs 0003, 0004 a
   - Index row: `docs/adr/README.md` § Index (this ADR's row, whose title states the shell, the installer, the download and the OCR rule).
   - Immutable ADRs that defer to this one by number or use "installer" for the deployable: `docs/adr/0002-deployables.md` § Decision (a), (b), its ledger, § Options considered C and D, and § Consequences; `docs/adr/0003-model-roles-and-backends.md` § Context, § Decision (i), (l) and (m), and § Options considered H; `docs/adr/0004-storage.md` § Decision (a) and (c), § Options considered A and D, and § Consequences; `docs/adr/0006-image-only-slides.md` § Consequences, which hands the OCR files' shipping here, answered by (g). 0004's "builds for the desktop shell" is answered by (d), with D3 stated above.
   - Non-carriers: `docs/plan.md` §7 item 2 (0002's scope line); ADR 0003's and ADR 0006's Hugging Face check commands and model rows; `packages/gateway`'s `@huggingface/tokenizers` dependency and its comments on the Hugging Face repository layout; `.github/workflows/ci.yml`'s comment on its tool installer.
+  - Ledger entry: `.claude/ledgers/model-pin-shape.ledger`'s `carrier:` line naming this file, for D5's and (e)'s digest sentences, which follow ADR 0003 § Decision (e) as amended on 2026-10-20 (#124).
   - Past-tense record: `docs/review-feedback.md`'s entries for #3 and #6, and this ADR's entry for #7.
 
 ## Options considered
