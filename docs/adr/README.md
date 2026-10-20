@@ -11,13 +11,14 @@ if a `NNNN-*.md` file here has no index row, or if a row links a file that does 
 that number. Rows must keep the `- [NNNN — Title](NNNN-slug.md)` shape the gate parses.
 
 A row may carry one optional annotation after the link — an em dash with a space on each side,
-then non-empty text — which is where the index records a supersession. The superseded ADR's own
-Status line records it too (see **Amendments**), so a reader who opens the old file directly
-learns it is no longer current:
+then non-empty text — which is where the index records a supersession:
 
 ```
 - [0042 — Example decision](0042-example-decision.md) — superseded by 0043
 ```
+
+The superseded ADR's own Status line records it too (see **Amendments**), so a reader who opens
+the old file directly learns it is no longer current.
 
 The suffix is optional but not free-form: `— ` with nothing after it, or an annotation that
 misses the separator, is a malformed row and fails the gate.
