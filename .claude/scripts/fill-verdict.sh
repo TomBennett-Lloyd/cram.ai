@@ -3,8 +3,9 @@
 # The branch half of the humanAlways merge ritual, once the owner has decided: fill the PR's
 # docs/review-feedback.md entry (Category and Verdict — both placeholders, never one), flip every
 # `proposed` ADR the PR adds or modifies to `accepted`, run `pnpm verify`, commit, push. A modified
-# ADR whose Status is already `accepted` or `superseded by NNNN` (docs/adr/0000-template.md's
-# vocabulary) is left as it is; an added one must be `proposed` (#57).
+# ADR whose Status is already `accepted` or `superseded by NNNN` (docs/adr/README.md's vocabulary)
+# is left as it is; an added one must be `proposed` (#57). Status lines are read and rewritten by
+# adr-status-lib.sh, check-adr-index.sh's parser, so an ADR the gate passes is one this can fill (#115).
 # merge-pr.sh refuses an unfilled entry and never fills one (its header says why); this script
 # is the fill, and it writes only what the caller passes — the verdict is the caller's.
 #
@@ -30,6 +31,8 @@ export PATH="/opt/homebrew/bin:$PATH"
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # shellcheck source=./worktree-lib.sh
 . "$script_dir/worktree-lib.sh"
+# shellcheck source=./adr-status-lib.sh
+. "$script_dir/adr-status-lib.sh"
 
 : "${FILL_VERDICT_GH_CMD:=gh}"                  # GitHub CLI; the seam the harness stubs
 : "${FILL_VERDICT_VERIFY_CMD:=pnpm verify}"     # the pre-commit gate, run in the worktree
@@ -192,17 +195,40 @@ try {
 }
 ' "$wt/.claude/workflow.json" 2>&1) || fail 'fill' ".claude/workflow.json gives no feedbackLog path: $feedback_log"
 
+# Each ADR's Status is checked before anything is written; the flips are written after the entry.
+flips=() adr_clause="" kept_clause=""
+for record in ${adr_status[@]+"${adr_status[@]}"}; do
+  kind=${record%%:*} path=${record#*:}
+  case "$path" in
+    docs/adr/[0-9][0-9][0-9][0-9]-*) ;;
+    *) fail 'fill' "$path is not named docs/adr/NNNN-*.md, so it has no number to record" ;;
+  esac
+  adr_status_read "$wt/$path"
+  [ "$ADR_STATUS_COUNT" = 1 ] || fail 'fill' "$path has $ADR_STATUS_COUNT Status lines in its header; expected one"
+  line=$ADR_STATUS_LINE value=$ADR_STATUS_VALUE
+  n=${path#docs/adr/}
+  n=${n%%-*}
+  if [ "$value" = proposed ]; then
+    flips+=("$path")
+    adr_clause="$adr_clause; ADR $n accepted"
+  elif [ "$kind" = A ]; then
+    fail 'fill' "$path is added by this PR and reads \"$line\"; an added ADR is proposed until this fill accepts it"
+  elif adr_status_known "$value"; then
+    kept_clause="$kept_clause; ADR $n left $value"
+  else
+    fail 'fill' "$path reads \"$line\"; a modified ADR is proposed, accepted, or superseded by NNNN"
+  fi
+done
+
 # Only an entry this branch added is this PR's; one an earlier PR left unfilled is not (the same
 # rule as merge-pr.sh's feedback step).
 added_headings=$(git -C "$wt" diff "$merge_base" HEAD -- "$feedback_log" | sed -n 's/^+\(## .*\)$/\1/p')
 
-# Validates every edit before making any: the entry, the category, each ADR's Status. Prints one
-# TAB-separated record per touched ADR: `accepted <number>` for a flip, `kept <number> <status>`
-# for a modified ADR left as it is.
+# Validates the entry and the category before making any edit.
 fill_err=$(mktemp "${TMPDIR:-/tmp}/fill-verdict-$pr_number.XXXXXX") || fail 'fill' "mktemp failed"
-adr_records=$(cd "$wt" && node -e '
+(cd "$wt" && node -e '
 const fs = require("fs");
-const [log, added, issue, pr, category, verdict, placeholder, ...adrs] = process.argv.slice(1);
+const [log, added, issue, pr, category, verdict, placeholder] = process.argv.slice(1);
 const addedHeadings = new Set(added.split("\n"));
 const refuse = (msg) => {
   process.stderr.write(msg + "\n");
@@ -243,39 +269,10 @@ if (half.length) refuse("entry \"" + half[0].title + "\" carries one placeholder
 if (both.length !== 1)
   refuse(both.length + " entries this branch added headed issue #" + issue + " or PR #" + pr + " carry both placeholders in " + log + "; exactly one must. Already filled? Check git log -1 and push it");
 
-const flips = [];
-const kept = [];
-for (const arg of adrs) {
-  const added = arg.startsWith("A:");
-  const path = arg.slice(2);
-  if (!/^docs\/adr\/\d{4}-/.test(path)) refuse(path + " is not named docs/adr/NNNN-*.md, so it has no number to record");
-  const text = fs.readFileSync(path, "utf8").split("\n");
-  const header = text.findIndex((l) => /^## /.test(l));
-  const status = text.slice(0, header < 0 ? text.length : header).map((l, i) => [l, i]).filter(([l]) => /^- \*\*Status:\*\* /.test(l));
-  if (status.length !== 1) refuse(path + " has " + status.length + " Status lines in its header; expected one");
-  const value = status[0][0].slice("- **Status:** ".length);
-  const num = path.slice("docs/adr/".length, "docs/adr/".length + 4);
-  if (value === "proposed") {
-    text[status[0][1]] = "- **Status:** accepted";
-    flips.push([path, num, text.join("\n")]);
-  } else if (added) {
-    refuse(path + " is added by this PR and reads \"" + status[0][0] + "\"; an added ADR is proposed until this fill accepts it");
-  } else if (value === "accepted" || /^superseded by \d{4}$/.test(value)) {
-    kept.push([num, value]);
-  } else {
-    refuse(path + " reads \"" + status[0][0] + "\"; a modified ADR is proposed, accepted, or superseded by NNNN");
-  }
-}
-
 lines[both[0].cat] = "- **Category**: " + category;
 lines[both[0].ver] = "- **Verdict**: " + verdict;
 fs.writeFileSync(log, lines.join("\n"));
-for (const [path, num, text] of flips) {
-  fs.writeFileSync(path, text);
-  console.log("accepted\t" + num);
-}
-for (const [num, value] of kept) console.log("kept\t" + num + "\t" + value);
-' "$feedback_log" "$added_headings" "$issue" "$pr_number" "$category" "$verdict" "$PLACEHOLDER" ${adr_status[@]+"${adr_status[@]}"} 2>"$fill_err")
+' "$feedback_log" "$added_headings" "$issue" "$pr_number" "$category" "$verdict" "$PLACEHOLDER") 2>"$fill_err"
 fill_rc=$?
 fill_msg=$(cat "$fill_err")
 rm -f "$fill_err"
@@ -287,24 +284,12 @@ restore() { # restore <step> <why> — undo the fill, or exit 1 saying the tree 
   out=$(git -C "$wt" restore --staged --worktree -- "${changed[@]}" 2>&1) ||
     fail "$1" "$2; and restoring the tree FAILED, so $wt still holds the fill: $out"
 }
-adr_clause="" kept_clause=""
-while IFS= read -r record; do
-  [ -n "$record" ] || continue
-  IFS=$'\t' read -r verb n value <<<"$record"
-  case "$n" in [0-9][0-9][0-9][0-9]) ;; *) verb="" ;; esac
-  case "$verb" in accepted | kept) ;; *)
-    restore 'fill' "node printed '$record' where an ADR record belongs"
-    fail 'fill' "node printed '$record' where an ADR record belongs; tree restored"
-    ;;
-  esac
-  if [ "$verb" = accepted ]; then
-    adr_clause="$adr_clause; ADR $n accepted"
-  else
-    kept_clause="$kept_clause; ADR $n left $value"
+for path in ${flips[@]+"${flips[@]}"}; do
+  if ! { adr_status_read "$wt/$path" && adr_status_set "$wt/$path" accepted; }; then
+    restore 'fill' "could not set $path's Status to accepted"
+    fail 'fill' "could not set $path's Status to accepted; tree restored"
   fi
-done <<EOF
-$adr_records
-EOF
+done
 step 'fill' "$feedback_log entry filled${adr_clause:+, ${adr_clause#; }}${kept_clause:+; ${kept_clause#; }}"
 
 # --- step: verify ---------------------------------------------------------------------------

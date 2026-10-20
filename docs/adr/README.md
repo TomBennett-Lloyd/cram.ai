@@ -25,10 +25,14 @@ misses the separator, is a malformed row and fails the gate.
 
 Two more things the gate checks, so that a decision's standing can be read mechanically:
 
-- **Status.** Every `NNNN-*.md` except `0000-template.md` must carry a `Status:` line in its
-  header (above the first `##` section) whose value is exactly `proposed`, `accepted`, or
-  `superseded by NNNN` — the template's vocabulary, lower-case. Markup around the label is up
-  to you (`- **Status:** accepted` is what the template uses); the value is not.
+- **Status.** Every `NNNN-*.md` except `0000-template.md` must carry exactly one `Status:` line
+  in its header (above the first `##` section) whose value is exactly `proposed`, `accepted`, or
+  `superseded by NNNN` — the vocabulary the template's Status line lists, lower-case. Markup
+  around the label is up to you (`- **Status:** accepted` is what the template uses); the value
+  is not. This bullet owns the vocabulary, and its carriers are listed in
+  `.claude/ledgers/adr-status-vocabulary.ledger`. One parser reads the line,
+  `.claude/scripts/adr-status-lib.sh`, for both this gate and the merge-time accept flip, so an
+  ADR the gate passes is one the flip can read (#115).
 - **Supersession pointers.** Any `superseded by NNNN`, whether in a Status line or an index
   annotation, must name an ADR file that exists here. The template's own `0000` does not count:
   it is a form, not a decision.

@@ -433,6 +433,27 @@ case_ctx=""
 end
 
 # ==========================================================================================
+# 22b. two header Status lines
+# ==========================================================================================
+# fill-verdict.sh refuses any count but one at merge, through the same parser (adr-status-lib.sh),
+# so the gate refuses it first. Each line alone is valid, so only the count can fail it (#115).
+begin "an ADR header carrying two Status lines fails the gate, whatever their markup"
+fixture two_statuses
+printf '# Storage split\n\n- **Status:** accepted\n* Status: accepted\n- **Date:** 2026-07-31\n' \
+  >"$DIR/0002-storage-split.md"
+run_check "$DIR"
+expect_rc 1 "$rc"
+expect_out "ADR file 0002-storage-split.md has 2 Status lines in its header; expected one"
+expect_not_out "is not listed in the index"
+case_ctx="the second line below the header"
+printf '# Storage split\n\n- **Status:** accepted\n\n## Context\n\n* Status: draft\n' \
+  >"$DIR/0002-storage-split.md"
+run_check "$DIR"
+expect_rc 0 "$rc"
+case_ctx=""
+end
+
+# ==========================================================================================
 # 23. a Status superseded by an ADR that is not there
 # ==========================================================================================
 begin "a Status naming a nonexistent superseding ADR fails the gate"

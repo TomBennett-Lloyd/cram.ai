@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Test harness for adr-status-lib.sh, its neighbour in this directory.
 #
-# A driver under TMP_ROOT sources the lib and calls the function its first argument names, so
-# a case asserts one function's whole stdout and exit code. Every markup arm of the Status
+# A driver under TMP_ROOT sources the lib and calls the function its first argument names;
+# `read <file>` prints what adr_status_read set, as `<count>\t<line number>\t<value>`, so a case
+# asserts the whole reading exactly rather than by substring. Every markup arm of the Status
 # grammar, the header bound, the trim, each vocabulary arm and the rewrite has a case, and each
 # case runs under every bash in $BASHES (macOS ships 3.2 as /bin/bash).
 #
@@ -21,17 +22,36 @@ DRIVER="$TMP_ROOT/driver.sh"
 cat >"$DRIVER" <<EOF || exit 2
 set -u
 . "$LIB"
-"\$@"
+case "\$1" in
+  read)
+    adr_status_read "\$2" || exit
+    printf '%s\\t%s\\t%s\\n' "\$ADR_STATUS_COUNT" "\$ADR_STATUS_LINE_NO" "\$ADR_STATUS_VALUE"
+    ;;
+  line)
+    adr_status_read "\$2" || exit
+    printf '%s\\n' "\$ADR_STATUS_LINE"
+    ;;
+  set)
+    adr_status_read "\$2" || exit
+    adr_status_set "\$2" "\$3"
+    ;;
+  unreadable-set)
+    adr_status_read "\$2" || exit
+    chmod 200 "\$2"
+    adr_status_set "\$2" "\$3"
+    ;;
+  *) "\$@" ;;
+esac
 EOF
 ADR="$TMP_ROOT/0001-x.md"
 
-lines_of() { # lines_of <expected stdout> [variant] — reads $ADR
+reads() { # reads <expected stdout> [variant] — reads $ADR
   local expected="$1" interpreter
   for interpreter in $BASHES; do
     case_ctx="$interpreter${2:+, $2}"
-    capture "$interpreter" "$DRIVER" adr_status_lines "$ADR"
+    capture "$interpreter" "$DRIVER" read "$ADR"
     expect_rc 0 "$rc"
-    [ "$out" = "$expected" ] || bad "lines: expected [$expected], got [$out]"
+    [ "$out" = "$expected" ] || bad "read: expected [$expected], got [$out]"
     expect_not_out "unbound variable"
   done
   case_ctx=""
@@ -53,41 +73,51 @@ for line in '- **Status:** accepted' '* **Status:** accepted' '+ **Status:** acc
   '- Status:** accepted' '  - **Status:** accepted' '-	**Status:**	accepted' \
   '-   **Status:** accepted'; do
   header "$line" >"$ADR"
-  lines_of "$(printf '3\taccepted')" "[$line]"
+  reads "$(printf '1\t3\taccepted')" "[$line]"
 done
 end
 
 begin "the value is trimmed of trailing whitespace and kept whole otherwise"
-header '- **Status:** superseded by 0007 	 ' >"$ADR"; lines_of "$(printf '3\tsuperseded by 0007')"
-header '- **Status:** draft, mostly' >"$ADR"; lines_of "$(printf '3\tdraft, mostly')"
+header '- **Status:** superseded by 0007 	 ' >"$ADR"; reads "$(printf '1\t3\tsuperseded by 0007')"
+header '- **Status:** draft, mostly' >"$ADR"; reads "$(printf '1\t3\tdraft, mostly')"
 end
 
 begin "a label with no value reads as an empty value, not as no line"
-header '- **Status:**   ' >"$ADR"; lines_of "$(printf '3\t')"
+header '- **Status:**   ' >"$ADR"; reads "$(printf '1\t3\t')"
 end
 
 begin "lines that are not a Status label read nothing"
 for line in '- **Statuses:** accepted' '- **Status** accepted' '-Status: accepted' \
   'x Status: accepted' '- **State:** accepted' '> Status: accepted'; do
   header "$line" >"$ADR"
-  lines_of "" "[$line]"
+  reads "$(printf '0\t\t')" "[$line]"
 done
 end
 
 # ==========================================================================================
 begin "only the header counts: the first '## ' heading ends it, a '### ' does not"
-printf '# X\n\n## Context\n\n- **Status:** accepted\n' >"$ADR"; lines_of ""
-printf '# X\n\n### Aside\n- **Status:** accepted\n' >"$ADR"; lines_of "$(printf '4\taccepted')"
-printf '# X\n\n##Context\n- **Status:** accepted\n' >"$ADR"; lines_of "$(printf '4\taccepted')"
+printf '# X\n\n## Context\n\n- **Status:** accepted\n' >"$ADR"; reads "$(printf '0\t\t')"
+printf '# X\n\n### Aside\n- **Status:** accepted\n' >"$ADR"; reads "$(printf '1\t4\taccepted')"
+printf '# X\n\n##Context\n- **Status:** accepted\n' >"$ADR"; reads "$(printf '1\t4\taccepted')"
 end
 
-begin "every header Status line is reported, with its line number"
+begin "every header Status line is counted; the first is the one read"
 printf '# X\n\n- **Status:** accepted\n* Status: proposed\n\n## Context\n- **Status:** draft\n' >"$ADR"
-lines_of "$(printf '3\taccepted\n4\tproposed')"
+reads "$(printf '2\t3\taccepted')"
+end
+
+begin "the line is kept whole, markup and all, for the caller to quote and rewrite"
+header '  * **Status:**  proposed ' >"$ADR"
+for interpreter in $BASHES; do
+  case_ctx="$interpreter"
+  capture "$interpreter" "$DRIVER" line "$ADR"
+  [ "$out" = '  * **Status:**  proposed ' ] || bad "line: got [$out]"
+done
+case_ctx=""
 end
 
 begin "a last line with no newline is still read"
-printf '# X\n\n- **Status:** proposed' >"$ADR"; lines_of "$(printf '3\tproposed')"
+printf '# X\n\n- **Status:** proposed' >"$ADR"; reads "$(printf '1\t3\tproposed')"
 end
 
 # ==========================================================================================
@@ -111,18 +141,55 @@ case_ctx=""
 end
 
 # ==========================================================================================
-begin "adr_status_rewrite replaces the value and keeps the label's markup"
+begin "adr_status_set rewrites the read line's value in place and nothing else"
+for interpreter in $BASHES; do
+  for end_nl in yes no; do
+    case_ctx="$interpreter, trailing newline $end_nl"
+    body='# X\n\n  * **Status:**\t proposed  \n- **Date:** 2026-10-20\n\n## Context\n\n  * **Status:**\t proposed  '
+    expected='# X\n\n  * **Status:**\t accepted\n- **Date:** 2026-10-20\n\n## Context\n\n  * **Status:**\t proposed  '
+    [ "$end_nl" = yes ] && body="$body\n" expected="$expected\n"
+    printf '%b' "$body" >"$ADR"
+    chmod 640 "$ADR"
+    printf '%b' "$expected" >"$TMP_ROOT/expected.md"
+    capture "$interpreter" "$DRIVER" set "$ADR" accepted
+    expect_rc 0 "$rc"
+    expect_silent
+    cmp -s "$ADR" "$TMP_ROOT/expected.md" || bad "set: file reads [$(cat "$ADR")]"
+    [ -n "$(find "$ADR" -perm 0640)" ] || bad "set: the file's mode changed from 0640"
+  done
+done
+case_ctx=""
+end
+
+# Mode 200 does not stop root reading the file, so under root the case cannot be built.
+begin "adr_status_set refuses a file it cannot read rather than writing it empty"
+header '- **Status:** proposed' >"$ADR"
+cp "$ADR" "$TMP_ROOT/before.md"
+if [ "$(id -u)" -eq 0 ]; then
+  printf 'SKIP unreadable-file case — running as root, which reads a mode-200 file\n'
+  BASHES_UNREADABLE=""
+else
+  BASHES_UNREADABLE=$BASHES
+fi
+for interpreter in $BASHES_UNREADABLE; do
+  case_ctx="$interpreter"
+  chmod 600 "$ADR"
+  capture "$interpreter" "$DRIVER" unreadable-set "$ADR" accepted
+  expect_rc 1 "$rc"
+  chmod 600 "$ADR"
+  cmp -s "$ADR" "$TMP_ROOT/before.md" || bad "set wrote [$(cat "$ADR")]"
+done
+case_ctx=""
+end
+
+begin "adr_status_set refuses when no Status line was read, and leaves the file alone"
+header '- **Date:** 2026-10-20' >"$ADR"
+cp "$ADR" "$TMP_ROOT/before.md"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
-  capture "$interpreter" "$DRIVER" adr_status_rewrite '- **Status:** proposed' accepted
-  expect_rc 0 "$rc"
-  [ "$out" = '- **Status:** accepted' ] || bad "rewrite: got [$out]"
-  capture "$interpreter" "$DRIVER" adr_status_rewrite '  * Status:	 proposed  ' accepted
-  expect_rc 0 "$rc"
-  [ "$out" = '  * Status:	 accepted' ] || bad "rewrite kept markup: got [$out]"
-  capture "$interpreter" "$DRIVER" adr_status_rewrite '- **Date:** 2026-10-20' accepted
+  capture "$interpreter" "$DRIVER" set "$ADR" accepted
   expect_rc 1 "$rc"
-  expect_silent
+  cmp -s "$ADR" "$TMP_ROOT/before.md" || bad "set wrote [$(cat "$ADR")]"
 done
 case_ctx=""
 end
