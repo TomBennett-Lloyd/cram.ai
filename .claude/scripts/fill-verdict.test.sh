@@ -176,6 +176,65 @@ expect_rc 0
   bad "subject: $(git -C "$WT" log -1 --format=%s)"
 end
 
+begin 'amendment: a modified accepted ADR is left as it is; the entry is still filled'
+fixture amend
+printf '\n## Amendments\n\n- 2026-10-20: 3 → 4 (#57).\n' >>"$WT/docs/adr/0001-old.md"
+seal
+amended=$(cat "$WT/docs/adr/0001-old.md")
+run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+expect_rc 0
+[ "$(cat "$WT/docs/adr/0001-old.md")" = "$amended" ] || bad "the amended ADR was rewritten"
+grep -qxF -- '- **Verdict**: approved' "$WT/$LOG" || bad "Verdict not filled"
+[ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — approved-no-changes" ] ||
+  bad "subject: $(git -C "$WT" log -1 --format=%s)"
+expect_stdout 'entry filled; ADR 0001 left accepted'
+end
+
+begin 'supersession: the new ADR is accepted; the superseded one is left as it is'
+fixture supersede
+printf '# 0007 — New\n\n- **Status:** proposed\n\n## Context\n' >"$WT/docs/adr/0007-new.md"
+perl -pi -e 's/^- \*\*Status:\*\* accepted$/- **Status:** superseded by 0007/ if $. == 3' "$WT/docs/adr/0001-old.md"
+seal
+superseded=$(cat "$WT/docs/adr/0001-old.md")
+run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+expect_rc 0
+[ "$(sed -n 3p "$WT/docs/adr/0007-new.md")" = '- **Status:** accepted' ] || bad "0007 not flipped"
+[ "$(cat "$WT/docs/adr/0001-old.md")" = "$superseded" ] || bad "the superseded ADR was rewritten"
+[ "$(sed -n 3p "$WT/docs/adr/0001-old.md")" = '- **Status:** superseded by 0007' ] || bad "fixture edit missed"
+[ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — approved-no-changes; ADR 0007 accepted" ] ||
+  bad "subject: $(git -C "$WT" log -1 --format=%s)"
+expect_stdout 'ADR 0007 accepted; ADR 0001 left superseded by 0007'
+end
+
+begin 'a modified proposed ADR is flipped like an added one'
+fixture adrmodified
+must git -C "$ROOT" checkout -q main
+printf '# 0009 — Pending\n\n- **Status:** proposed\n' >"$ROOT/docs/adr/0009-pending.md"
+must git -C "$ROOT" add -A
+must git -C "$ROOT" commit -q -m 'merged unflipped'
+must git -C "$ROOT" push -q origin HEAD:refs/heads/main
+must git -C "$WT" fetch -q origin
+must git -C "$WT" -c core.commentChar=';' -c commit.cleanup=strip merge -q --no-edit origin/main
+printf 'Revised.\n' >>"$WT/docs/adr/0009-pending.md"
+seal
+run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+expect_rc 0
+[ "$(sed -n 3p "$WT/docs/adr/0009-pending.md")" = '- **Status:** accepted' ] || bad "0009 not flipped"
+expect_stdout 'ADR 0009 accepted'
+end
+
+begin "a subdirectory's file under docs/adr is not an ADR: left as it is"
+fixture adrsubdir
+must mkdir -p "$WT/docs/adr/0008-assets"
+printf '# Notes\n\n- **Status:** proposed\n' >"$WT/docs/adr/0008-assets/notes.md"
+seal
+run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+expect_rc 0
+[ "$(sed -n 3p "$WT/docs/adr/0008-assets/notes.md")" = '- **Status:** proposed' ] || bad "the subdirectory file was flipped"
+[ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — approved-no-changes" ] ||
+  bad "subject: $(git -C "$WT" log -1 --format=%s)"
+end
+
 begin 'a parenthesised qualifier after a listed category is accepted verbatim'
 fixture qualifier
 seal
@@ -313,16 +372,46 @@ expect_stderr "but the PR's head is 0000000"
 expect_untouched
 end
 
-begin 'refuses a touched ADR whose Status is not proposed, writing nothing at all'
-fixture adrstatus
-printf '\nAmended.\n' >>"$WT/docs/adr/0001-old.md"
-seal
-run 50 --category approved-no-changes --verdict approved "$ROOT"
-expect_rc 1
-expect_stderr 'docs/adr/0001-old.md reads "- **Status:** accepted"'
-[ "$(placeholders_in "$WT/$LOG")" = 6 ] || bad "the log was written before the ADR refusal"
-expect_untouched
-end
+# An added ADR is proposed until the fill accepts it; a modified one may already stand (#57).
+for value in accepted 'proposed (draft)'; do
+  begin "refuses an added ADR whose Status reads '$value', writing nothing at all"
+  fixture "adradded-${value//[^a-z]/-}"
+  printf '# 0007 — New\n\n- **Status:** %s\n\n## Context\n' "$value" >"$WT/docs/adr/0007-new.md"
+  seal
+  run 50 --category approved-no-changes --verdict approved "$ROOT"
+  expect_rc 1
+  expect_stderr "docs/adr/0007-new.md is added by this PR and reads \"- **Status:** $value\""
+  [ "$(placeholders_in "$WT/$LOG")" = 6 ] || bad "the log was written before the ADR refusal"
+  expect_untouched
+  end
+done
+
+for value in 'superseded by 7' 'superseded by 00070' 'superseded by NNNN' 'superseded by 0007 in part' \
+  'partly superseded by 0007' 'accepted in part' 'not accepted' 'Accepted'; do
+  begin "refuses a modified ADR whose Status reads '$value'"
+  fixture "adrvalue-${value//[^a-zA-Z0-9]/-}"
+  perl -pi -e "s/^- \\*\\*Status:\\*\\* accepted\$/- **Status:** $value/ if \$. == 3" "$WT/docs/adr/0001-old.md"
+  [ "$(sed -n 3p "$WT/docs/adr/0001-old.md")" = "- **Status:** $value" ] || bad "fixture edit missed"
+  seal
+  run 50 --category approved-no-changes --verdict approved "$ROOT"
+  expect_rc 1
+  expect_stderr "docs/adr/0001-old.md reads \"- **Status:** $value\"; a modified ADR is"
+  expect_untouched
+  end
+done
+
+# Each name matches the subject's docs/adr/[0-9]*.md pathspec but not NNNN-*.md.
+for name in 0008.md 008-short.md 00a8-odd.md; do
+  begin "refuses an ADR named $name before writing anything"
+  fixture "adrname-$name"
+  printf '# 0008\n\n- **Status:** proposed\n' >"$WT/docs/adr/$name"
+  seal
+  run 50 --category approved-no-changes --verdict approved "$ROOT"
+  expect_rc 1
+  expect_stderr "docs/adr/$name is not named docs/adr/NNNN-*.md"
+  expect_untouched
+  end
+done
 
 begin 'refuses several Closes lines that do not include the branch number'
 fixture closes
@@ -419,6 +508,21 @@ expect_rc 0
   bad "mutant's message: $(git -C "$WT" log -1 --format=%B)"
 grep -qF -- "-c core.commentChar=';' -c commit.cleanup=strip commit -m" "$SUBJECT" ||
   bad "the subject's commit lacks the flag pair"
+end
+
+# --- the ADR record guard ------------------------------------------------------------------------
+
+# The node pass prints only numbers it has already matched, so the shell's guard on its records is
+# reached by a mutant of that pass alone.
+begin "mutant whose node pass prints a non-number: the record is refused and the tree restored"
+mutant badnum 's/"accepted\\t" \+ num\)/"accepted\\t" + num + "x")/' '"accepted\t" + num)'
+fixture badnum
+printf '# 0007 — New\n\n- **Status:** proposed\n' >"$WT/docs/adr/0007-new.md"
+seal
+capture bash "$MUTANT" 50 --category approved-no-changes --verdict approved "$ROOT"
+expect_rc 1
+expect_stderr "node printed 'accepted	0007x' where an ADR record belongs; tree restored"
+expect_untouched
 end
 
 finish
