@@ -111,6 +111,10 @@ describe('CourseIndex.replaceLecture', () => {
     expect(() => {
       course.replaceLecture(deck(), [], [indexed(slide(), vector(1, 0, 0))]);
     }).toThrow(/replaceLecture\(lecture-1\/1\): embedding has 3 dimensions/);
+    expect(course.slides().map((s) => s.body)).toEqual(['alpha', 'beta', 'gamma', 'enzymes']);
+  });
+
+  it('refuses a slide image number twice in one batch, and writes nothing', () => {
     expect(() => {
       course.replaceLecture(
         deck({ content: new TextEncoder().encode('new deck') }),

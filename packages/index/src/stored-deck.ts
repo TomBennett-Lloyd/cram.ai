@@ -50,7 +50,7 @@ const imageFromRow = (row: unknown): SlideImage => {
 
 /**
  * Refuses a slide number twice in one batch, before anything is written: a duplicate key is the
- * caller's bug, not a storage error (`docs/standards/error-handling.md`, worked example 2).
+ * caller's bug, not a storage error (`docs/standards/error-handling.md` § Worked examples).
  */
 export const requireDistinctSlideImages = (
   operation: string,
