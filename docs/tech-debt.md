@@ -188,6 +188,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: the gateway's expected failures (backend down, rate-limited) will be values once #12 defines its failure type (`docs/standards/error-handling.md` rule 1); this signature then needs a value arm, and `reembedCourse` a result for it.
 - Source: #11 review cycle 1
 - Update 2026-10-19 (#12): `packages/gateway/src/model-gateway.ts` `Embedder.embed` has no failure value; the encoders run in-process, so only `Generator.chat` returns one (`backend-failed`). This entry stands only if #66's adapter finds an expected encoder failure.
+- Update 2026-10-20 (#66): it does. `Embedder.embed` now returns one `EmbeddingResult` per text, whose `over-length` arm reports a text longer than the model's maximum (`packages/gateway/src/encoder-requests.ts` `OverLength`), so the entry stands: `EmbedSlides` needs that arm, and a slide too long to embed whole needs a policy (split, or index without a vector), before anything wires the gateway's embedder into it.
 
 ## 2026-10-19 — topic tags are bare strings
 
