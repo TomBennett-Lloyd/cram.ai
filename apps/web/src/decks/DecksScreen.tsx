@@ -48,7 +48,6 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const [refused, setRefused] = useState<readonly Refused[]>([]);
   const state = useIngestStatus(api, courseId, revision);
   const reread = (): void => {
-    setRefused([]);
     setRevision((value) => value + 1);
   };
   const onChange = (event: ChangeEvent<HTMLInputElement>): void => {

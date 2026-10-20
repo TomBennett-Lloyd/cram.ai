@@ -9,6 +9,7 @@ carrier: packages/grounding/src/resolve-citations.ts
 carrier: packages/grounding/src/resolve-citations.test.ts
 carrier: packages/grounding/src/ground.test.ts
 carrier: apps/web/src/copy.ts
+carrier: apps/web/src/copy.test.ts
 carrier: docs/standards/grounding.md
 carrier: docs/adr/0005-evaluation-as-gate.md
 excluded: docs/tech-debt.md
