@@ -51,7 +51,7 @@ export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<Uplo
   const opened = openForWrite(deps.files, job.courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
-    opened.course.replaceLecture(lectureDeck(job, records), [], slides);
+    opened.course.replaceLecture(lectureDeck(job, records), ingested.images, slides);
     const stored = opened.course.lectures().find(({ lectureId }) => lectureId === job.lectureId);
     if (stored === undefined)
       throw new Error(`ingestDeck: lecture ${job.lectureId} was not stored`);
