@@ -31,12 +31,15 @@ case "\$1" in
     adr_status_read "\$2" || exit
     printf '%s\\n' "\$ADR_STATUS_LINE"
     ;;
-  set)
-    adr_status_read "\$2" || exit
+  unreadable-set)
+    chmod 200 "\$2"
     adr_status_set "\$2" "\$3"
     ;;
-  unreadable-set)
+  unreadable-after-read)
+    # The file goes unreadable between set's header read and its rewrite pass: the read is
+    # taken here, and set's own call to it stubbed, so only the rewrite pass meets the mode.
     adr_status_read "\$2" || exit
+    adr_status_read() { :; }
     chmod 200 "\$2"
     adr_status_set "\$2" "\$3"
     ;;
@@ -151,7 +154,7 @@ for interpreter in $BASHES; do
     printf '%b' "$body" >"$ADR"
     chmod 640 "$ADR"
     printf '%b' "$expected" >"$TMP_ROOT/expected.md"
-    capture "$interpreter" "$DRIVER" set "$ADR" accepted
+    capture "$interpreter" "$DRIVER" adr_status_set "$ADR" accepted
     expect_rc 0 "$rc"
     expect_silent
     cmp -s "$ADR" "$TMP_ROOT/expected.md" || bad "set: file reads [$(cat "$ADR")]"
@@ -172,22 +175,24 @@ else
   BASHES_UNREADABLE=$BASHES
 fi
 for interpreter in $BASHES_UNREADABLE; do
-  case_ctx="$interpreter"
-  chmod 600 "$ADR"
-  capture "$interpreter" "$DRIVER" unreadable-set "$ADR" accepted
-  expect_rc 1 "$rc"
-  chmod 600 "$ADR"
-  cmp -s "$ADR" "$TMP_ROOT/before.md" || bad "set wrote [$(cat "$ADR")]"
+  for arm in unreadable-set unreadable-after-read; do
+    case_ctx="$interpreter, $arm"
+    chmod 600 "$ADR"
+    capture "$interpreter" "$DRIVER" "$arm" "$ADR" accepted
+    expect_rc 1 "$rc"
+    chmod 600 "$ADR"
+    cmp -s "$ADR" "$TMP_ROOT/before.md" || bad "set wrote [$(cat "$ADR")]"
+  done
 done
 case_ctx=""
 end
 
-begin "adr_status_set refuses when no Status line was read, and leaves the file alone"
+begin "adr_status_set refuses a file with no header Status line, and leaves it alone"
 header '- **Date:** 2026-10-20' >"$ADR"
 cp "$ADR" "$TMP_ROOT/before.md"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
-  capture "$interpreter" "$DRIVER" set "$ADR" accepted
+  capture "$interpreter" "$DRIVER" adr_status_set "$ADR" accepted
   expect_rc 1 "$rc"
   cmp -s "$ADR" "$TMP_ROOT/before.md" || bad "set wrote [$(cat "$ADR")]"
 done

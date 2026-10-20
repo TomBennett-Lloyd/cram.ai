@@ -18,9 +18,9 @@
 #                                       for the first of them ADR_STATUS_LINE_NO, ADR_STATUS_LINE
 #                                       and ADR_STATUS_VALUE (trailing whitespace trimmed)
 #   adr_status_known <value>            0 when <value> is in the vocabulary, 1 otherwise
-#   adr_status_set <file> <value>       after adr_status_read <file>: rewrites that first Status
-#                                       line's value in place, its markup and the rest of the
-#                                       file kept byte for byte
+#   adr_status_set <file> <value>       reads <file>, then rewrites its first header Status line's
+#                                       value in place, its markup and the rest of the file kept
+#                                       byte for byte; 1, writing nothing, when it has none
 #
 # Its harness is adr-status-lib.test.sh next door. Runs under bash 3.2.
 
@@ -52,6 +52,7 @@ adr_status_known() { # adr_status_known <value>
 
 adr_status_set() { # adr_status_set <file> <value>
   local line n=0 body="" tail=0
+  adr_status_read "$1"
   [[ $ADR_STATUS_LINE =~ $ADR_STATUS_RE ]] || return 1
   while IFS= read -r line || { [ -n "$line" ] && tail=1; }; do
     n=$((n + 1))

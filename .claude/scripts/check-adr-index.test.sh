@@ -412,12 +412,12 @@ expect_not_out "is not listed in the index"
 end
 
 # ==========================================================================================
-# 22. a Status outside the template's vocabulary
+# 22. a Status outside docs/adr/README.md's vocabulary
 # ==========================================================================================
 # Both variants matter. A word nobody defined ("draft") is the obvious one; a capitalised
 # spelling of a word that *is* defined is the one that erodes the vocabulary quietly, since
 # each variant reads fine on its own and only the set stops being machine-readable.
-begin "an ADR Status outside the template's vocabulary fails the gate"
+begin "an ADR Status outside docs/adr/README.md's vocabulary fails the gate"
 fixture unknown_status
 case_ctx="undefined word"
 must adr "$DIR/0002-storage-split.md" "Storage split" "draft"

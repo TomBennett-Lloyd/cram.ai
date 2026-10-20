@@ -5,7 +5,7 @@
 # `proposed` ADR the PR adds or modifies to `accepted`, run `pnpm verify`, commit, push. A modified
 # ADR whose Status is already `accepted` or `superseded by NNNN` (docs/adr/README.md's vocabulary)
 # is left as it is; an added one must be `proposed` (#57). Status lines are read and rewritten by
-# adr-status-lib.sh, check-adr-index.sh's parser, so an ADR the gate passes is one this can fill (#115).
+# adr-status-lib.sh (#115).
 # merge-pr.sh refuses an unfilled entry and never fills one (its header says why); this script
 # is the fill, and it writes only what the caller passes — the verdict is the caller's.
 #
@@ -285,7 +285,7 @@ restore() { # restore <step> <why> — undo the fill, or exit 1 saying the tree 
     fail "$1" "$2; and restoring the tree FAILED, so $wt still holds the fill: $out"
 }
 for path in ${flips[@]+"${flips[@]}"}; do
-  if ! { adr_status_read "$wt/$path" && adr_status_set "$wt/$path" accepted; }; then
+  if ! adr_status_set "$wt/$path" accepted; then
     restore 'fill' "could not set $path's Status to accepted"
     fail 'fill' "could not set $path's Status to accepted; tree restored"
   fi
