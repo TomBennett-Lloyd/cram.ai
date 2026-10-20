@@ -40,11 +40,22 @@ describe('CoursesScreen', () => {
     expect(screen.getByText(/No courses yet/)).toBeDefined();
   });
 
-  it('reports a list it could not read', async () => {
-    await renderCourses(fakeApi(() => ({ status: 500, body: { status: 'internal-error' } })).api);
-    expect(screen.getByRole('alert').textContent).toBe(
+  it('reports a list it could not read, with a retry that reads it again', async () => {
+    let healthy = false;
+    const { api } = fakeApi(() =>
+      healthy
+        ? { status: 200, body: { courses: ['bio'] } }
+        : { status: 500, body: { status: 'internal-error' } },
+    );
+    await renderCourses(api);
+    expect(screen.getByRole('alert').querySelector('p')?.textContent).toBe(
       'The server could not answer (internal-error).',
     );
+    healthy = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('link', { name: 'bio' })).toBeDefined();
   });
 
   it('takes a new course straight to its decks, under the id the server will file it as', async () => {
@@ -54,11 +65,14 @@ describe('CoursesScreen', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('refuses a name that leaves no id, and clears the refusal once a name works', async () => {
+  it('refuses a name that leaves no id, afresh each time, and clears the refusal once a name works', async () => {
     await renderCourses(fakeApi(() => ({ status: 200, body: { courses: [] } })).api);
     create('!!!');
-    expect(screen.getByRole('alert').textContent).toBe(COURSE_NAME_REFUSED);
+    const first = screen.getByRole('alert');
+    expect(first.textContent).toBe(COURSE_NAME_REFUSED);
     expect(window.location.hash).toBe('');
+    create('???');
+    expect(screen.getByRole('alert')).not.toBe(first);
     create('Bio');
     expect(screen.queryByRole('alert')).toBeNull();
   });

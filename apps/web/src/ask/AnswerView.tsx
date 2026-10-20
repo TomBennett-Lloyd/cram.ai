@@ -76,7 +76,7 @@ export const AnswerView = ({
 }) => {
   switch (reply.status) {
     case 'model-failed':
-      return <Failed message={MODEL_FAILED} />;
+      return <Failed messages={[MODEL_FAILED]} />;
     case 'grounded':
       return (
         <>

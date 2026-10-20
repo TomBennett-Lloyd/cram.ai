@@ -91,3 +91,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/ingest/src/adapters/pptx/omml.ts` `MATH_ALPHANUMERIC`, `plainLetters`
 - What: the fold stores every math alphanumeric as its NFKC form, so `R ∈ ℝ` is stored, quoted and verified as `R ∈ R`, and a bold vector `𝐯` merges with a scalar `v`. Recall was chosen over the distinction (#159's plan comment). The double-struck set letters (`ℕℤℚℝℂ`) are the obvious candidates to exempt. Revisit this when the eval deck gains equations.
 - Source: #159 review cycle 1
+
+## 2026-10-21 — line widths and layout measures have no token category
+
+- Where: `apps/web/src/app.css` (the `calc(var(--space-1) / 4)` border widths, the `text-decoration-thickness` of `mark`, and the raw `rem` measures on `.app-header, .screen`, `.slide-card` and `.slide-dialog`); `packages/ui/src/styles.css` (the ring's `outline-width` and `outline-offset`)
+- What: `@cram/ui`'s tokens have spacing, type and radius scales only, so line weights borrow fractions of `--space-1` (retuning spacing re-weights every border) and layout measures are raw lengths the gate cannot see — the residual `stylelint.config.mjs` already documents. Root cause: no line-width or measure category in `packages/ui/src/tokens/tokens.css`.
+- Source: #16 review cycle 1; #209

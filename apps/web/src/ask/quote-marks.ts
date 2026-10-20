@@ -41,7 +41,8 @@ const collapsed = (text: string): { readonly text: string; readonly origin: read
 };
 
 /**
- * Where `quote` sits in `text`, compared whitespace-normalised as resolution compares it. A miss
+ * Where `quote` sits in `text`, whitespace runs read as one space, as `collapseWhitespace` in
+ * `packages/grounding/src/resolve-citations.ts` reads them (#202). A miss
  * (`at` of -1) and a blank quote both index `origin` out of range, so both are `undefined`.
  */
 const rangeOf = (text: string, quote: string): Range | undefined => {

@@ -11,7 +11,7 @@ import {
 import type { z } from 'zod';
 import type { ApiResult } from './api-result';
 
-export type Fetch = (path: string, init: RequestInit) => Promise<Response>;
+export type Fetch = (request: Request) => Promise<Response>;
 
 export interface DeckUpload {
   readonly lectureId: LectureId;
@@ -41,11 +41,15 @@ export class ApiClient {
     this.#fetch = fetchFn;
   }
 
-  /** `fetch` rejects with a `TypeError` when nothing answered; anything else is a bug and propagates. */
+  /**
+   * The request is built before the `try`, so a malformed one throws as the bug it is; past that,
+   * `fetch` rejects with a `TypeError` only when the round trip failed (`docs/standards/error-handling.md` rule 2).
+   */
   async #call<T>(path: string, init: RequestInit, schema: z.ZodType<T>): Promise<ApiResult<T>> {
+    const request = new Request(new URL(path, document.baseURI), init);
     let response: Response;
     try {
-      response = await this.#fetch(path, init);
+      response = await this.#fetch(request);
     } catch (error) {
       if (error instanceof TypeError) return { status: 'unreachable' };
       throw error;

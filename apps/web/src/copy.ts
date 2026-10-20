@@ -14,6 +14,7 @@ export const CLOSEST_SLIDES = 'Closest slides';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 
+export const RETRY = 'Try again';
 export const APP_FAILED = 'Something went wrong in cram.ai. Reload the page to start again.';
 export const MODEL_FAILED = 'The model didn’t answer. Ask again in a moment.';
 export const COURSE_NAME_REFUSED =
@@ -89,7 +90,7 @@ const PARTIAL_MESSAGE: Readonly<Record<PartialPolicy, string>> = {
 export const withheldMessage = (withheld: WithheldUnit): string => {
   switch (withheld.reason) {
     case 'dangling-citation':
-      return 'Its quote is not on a slide that was retrieved.';
+      return 'It cites no slide retrieved for this question, or quotes words its slide doesn’t contain.';
     case 'unsupported':
       return 'The cited slides don’t support it.';
     case 'partial':

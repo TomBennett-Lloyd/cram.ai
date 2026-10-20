@@ -22,13 +22,16 @@ const CourseLinks = ({ courses }: { readonly courses: readonly CourseId[] }) =>
 
 /** A course exists once its first deck is uploaded, so naming one goes straight to its decks. */
 const NewCourse = () => {
+  /** Counts refused submissions, so a repeat refusal remounts its alert and is announced again. */
+  const [refusals, setRefusals] = useState(0);
   const [refused, setRefused] = useState(false);
   const onSubmit = (event: SubmitEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const name = new FormData(event.currentTarget).get('name');
     const courseId = typeof name === 'string' ? courseIdFromName(name) : undefined;
     setRefused(courseId === undefined);
-    if (courseId !== undefined) window.location.hash = hrefOf({ screen: 'decks', courseId });
+    if (courseId === undefined) setRefusals((count) => count + 1);
+    else window.location.hash = hrefOf({ screen: 'decks', courseId });
   };
   return (
     <form className="new-course" onSubmit={onSubmit}>
@@ -37,13 +40,14 @@ const NewCourse = () => {
         <input id="new-course-name" name="name" autoComplete="off" required />
         <button type="submit">Create</button>
       </div>
-      {refused && <Failed message={COURSE_NAME_REFUSED} />}
+      {refused && <Failed key={refusals} messages={[COURSE_NAME_REFUSED]} />}
     </form>
   );
 };
 
 export const CoursesScreen = () => {
-  const state = useCourses(useApi());
+  const [revision, setRevision] = useState(0);
+  const state = useCourses(useApi(), revision);
   return (
     <main className="screen">
       <h1>Courses</h1>
@@ -52,7 +56,12 @@ export const CoursesScreen = () => {
       ) : state.status === 'ok' ? (
         <CourseLinks courses={state.value.courses} />
       ) : (
-        <Failed message={failureMessage(state)} />
+        <Failed
+          messages={[failureMessage(state)]}
+          onRetry={() => {
+            setRevision((value) => value + 1);
+          }}
+        />
       )}
       <NewCourse />
     </main>

@@ -53,7 +53,7 @@ describe('markedFields', () => {
     ]);
   });
 
-  it('marks several quotes, overlapping ones as one run', () => {
+  it('marks several quotes, overlapping ones without marking any span twice', () => {
     expect(bracketed(slide(), ['are male', 'Worker bees', 'bees are female'])[1]).toEqual([
       'body',
       '[Worker bees][ are female].\nDrones   [are male].',

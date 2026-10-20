@@ -136,7 +136,7 @@ describe('AskScreen', () => {
     expect(screen.getByRole('dialog').textContent).toContain(SLIDE_HAS_NO_TEXT);
   });
 
-  it('says so when the model failed, and when the server refused the question', async () => {
+  it('says so when the model failed', async () => {
     await askWith({ status: 502, body: { status: 'model-failed' } });
     expect(screen.getByRole('alert').textContent).toBe(MODEL_FAILED);
   });
@@ -163,6 +163,8 @@ describe('AskScreen', () => {
     fireEvent.change(input, { target: { value: 'second' } });
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
     await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(resolvers).toHaveLength(2);
       resolvers[1]?.({ status: 502, body: { status: 'model-failed' } });
       await Promise.resolve();
       resolvers[0]?.({ status: 200, body: GROUNDED });

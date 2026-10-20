@@ -77,8 +77,11 @@ export interface Reply {
 }
 
 export interface Sent {
+  /** The path and query, as the app wrote them. */
   readonly path: string;
-  readonly init: RequestInit;
+  readonly method: string;
+  readonly contentType: string | null;
+  readonly body: string;
 }
 
 /** A client over a fake transport: `route` answers each request, and `sent` records them. */
@@ -86,9 +89,16 @@ export const fakeApi = (
   route: (sent: Sent) => Reply | Promise<Reply>,
 ): { readonly api: ApiClient; readonly sent: Sent[] } => {
   const sent: Sent[] = [];
-  const fetchFn: Fetch = async (path, init) => {
-    sent.push({ path, init });
-    const { status, body } = await route({ path, init });
+  const fetchFn: Fetch = async (request) => {
+    const url = new URL(request.url);
+    const recorded = {
+      path: `${url.pathname}${url.search}`,
+      method: request.method,
+      contentType: request.headers.get('content-type'),
+      body: await request.text(),
+    };
+    sent.push(recorded);
+    const { status, body } = await route(recorded);
     return new Response(JSON.stringify(body), {
       status,
       headers: { 'content-type': 'application/json' },

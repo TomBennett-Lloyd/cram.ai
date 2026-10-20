@@ -13,7 +13,7 @@ if (container === null) throw new Error('main: index.html has no #root element')
 
 syncTheme(document.documentElement, window.matchMedia('(prefers-color-scheme: dark)'));
 
-const api = new ApiClient((path, init) => fetch(path, init));
+const api = new ApiClient((request) => fetch(request));
 
 createRoot(container).render(
   <StrictMode>

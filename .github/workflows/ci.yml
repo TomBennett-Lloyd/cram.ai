@@ -140,9 +140,9 @@ jobs:
   # The two jobs that build apps/web, and the two exceptions to the rule above that CI calls the
   # composite and never a hand-picked gate (#19, ported from cumulo). `verify` builds nothing and
   # stays browser-free, so a developer who has never run `playwright install` can still run it;
-  # these run in parallel with `checks`, so wall time is unchanged, and a red one names its
-  # surface. The bundle budget lives only in .claude/scripts/check-web-bundle.sh, whose harness
-  # is already in `verify` (run-script-tests.sh discovers it).
+  # these run in parallel with `checks`, and a red one names its surface. The bundle budget
+  # lives only in .claude/scripts/check-web-bundle.sh, whose harness is already in `verify`
+  # (run-script-tests.sh discovers it).
   web-build:
     runs-on: ubuntu-latest
     steps:
@@ -174,8 +174,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Chromium only, the one engine both projects launch; --with-deps installs the system
-      # libraries a bare runner lacks.
+      # Chromium only; --with-deps installs the system libraries a bare runner lacks.
       - name: install chromium (+ system deps)
         run: pnpm --filter @cram/web exec playwright install --with-deps chromium
       - name: e2e (playwright)

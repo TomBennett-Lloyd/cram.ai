@@ -29,7 +29,7 @@ const settle = () =>
     await vi.advanceTimersByTimeAsync(0);
   });
 
-const reads = (sent: readonly Sent[]) => sent.filter(({ init }) => init.method === 'GET').length;
+const reads = (sent: readonly Sent[]) => sent.filter(({ method }) => method === 'GET').length;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -114,24 +114,65 @@ describe('DecksScreen', () => {
     const files = [new File(['%PDF'], 'l1.pdf'), new File(['x'], 'notes.txt')];
     fireEvent.change(screen.getByLabelText('Add decks'), { target: { files } });
     await settle();
-    const posts = sent.filter(({ init }) => init.method === 'POST');
+    const posts = sent.filter(({ method }) => method === 'POST');
     expect(posts.map(({ path }) => path)).toEqual([
       '/courses/bio/decks?lectureId=l1&fileName=l1.pdf',
       '/courses/bio/decks?lectureId=notes&fileName=notes.txt',
     ]);
-    expect(posts[0]?.init.headers).toEqual({ 'content-type': 'application/pdf' });
+    expect(posts[0]?.contentType).toBe('application/pdf');
     expect(screen.getByRole('alert').textContent).toBe(
       'notes.txt: Only PDF and PowerPoint (.pptx) decks can be read.',
     );
     expect(reads(sent)).toBe(2);
   });
 
-  it('reports a status read that failed', async () => {
-    const { api } = fakeApi(() => ({ status: 200, body: { nope: true } }));
+  it('reports a failed status read with a retry that resumes reading', async () => {
+    let healthy = false;
+    const { api, sent } = fakeApi(() =>
+      healthy
+        ? status(upload('l1.pdf', { state: 'ingesting' }))
+        : { status: 200, body: { nope: true } },
+    );
     renderDecks(api);
     await settle();
-    expect(screen.getByRole('alert').textContent).toBe(
+    const alert = screen.getByRole('alert');
+    expect(alert.querySelector('p')?.textContent).toBe(
       'The server sent a reply this app doesn’t understand.',
     );
+    healthy = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await settle();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('Reading slides…')).toBeDefined();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    });
+    expect(reads(sent)).toBe(3);
+  });
+
+  it('reports a batch’s refusals in one alert, and announces a repeat refusal afresh', async () => {
+    const { api } = fakeApi(({ path }) =>
+      path.startsWith('/courses/bio/decks')
+        ? { status: 415, body: { status: 'unsupported-media-type' } }
+        : status(),
+    );
+    renderDecks(api);
+    await settle();
+    const pick = async (...names: string[]) => {
+      fireEvent.change(screen.getByLabelText('Add decks'), {
+        target: { files: names.map((name) => new File(['x'], name)) },
+      });
+      await settle();
+      return screen.getByRole('alert');
+    };
+    const first = await pick('a.key', 'b.key');
+    expect([...first.querySelectorAll('p')].map((line) => line.textContent)).toEqual([
+      'a.key: Only PDF and PowerPoint (.pptx) decks can be read.',
+      'b.key: Only PDF and PowerPoint (.pptx) decks can be read.',
+    ]);
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    const second = await pick('a.key', 'b.key');
+    expect(second).not.toBe(first);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 });

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { dirname } from 'node:path';
-import { CourseId, LectureId } from '@cram/shared';
+import { CourseId, LectureId, ROUTE_COURSE_ID_MAX_LENGTH } from '@cram/shared';
 import { EmbedderIdentity, openCourse } from '@cram/index';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
@@ -222,7 +222,16 @@ describe('GET /courses/:id/ingest', () => {
     const { server } = await started();
     const statusOf = async (courseId: string) =>
       (await send(server.port, { method: 'GET', path: `/courses/${courseId}/ingest` })).status;
-    for (const accepted of ['b', 'bio-101', '7', 'a'.repeat(64), 'con1', 'com0', 'lpt0', 'bacon'])
+    for (const accepted of [
+      'b',
+      'bio-101',
+      '7',
+      'a'.repeat(ROUTE_COURSE_ID_MAX_LENGTH),
+      'con1',
+      'com0',
+      'lpt0',
+      'bacon',
+    ])
       expect(await statusOf(accepted), accepted).toBe(404);
     for (const refused of [
       'Bio',
@@ -232,7 +241,7 @@ describe('GET /courses/:id/ingest', () => {
       'bio_1',
       'bi.o',
       'bio%2F1',
-      'a'.repeat(65),
+      'a'.repeat(ROUTE_COURSE_ID_MAX_LENGTH + 1),
       'con',
       'prn',
       'aux',

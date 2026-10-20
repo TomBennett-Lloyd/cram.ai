@@ -2,12 +2,10 @@ import type { CourseId, Upload } from '@cram/shared';
 import { type ChangeEvent, useState } from 'react';
 import { useApi } from '../api/api-context';
 import type { ApiClient } from '../api/api-client';
-import { deckMediaType, lectureIdOf } from '../api/deck-file';
+import { DECK_FILE_ACCEPT, deckMediaType, lectureIdOf } from '../api/deck-file';
 import { failureMessage, PENDING, progressMessage } from '../copy';
 import { Empty, Failed, Pending } from '../shell/async-states';
 import { useIngestStatus } from './use-ingest-status';
-
-const DECK_TYPES = '.pdf,.pptx';
 
 interface Refused {
   readonly fileName: string;
@@ -49,6 +47,10 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const [revision, setRevision] = useState(0);
   const [refused, setRefused] = useState<readonly Refused[]>([]);
   const state = useIngestStatus(api, courseId, revision);
+  const reread = (): void => {
+    setRefused([]);
+    setRevision((value) => value + 1);
+  };
   const onChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const input = event.currentTarget;
     const files = [...(input.files ?? [])];
@@ -62,17 +64,22 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
     <main className="screen">
       <div className="file-picker">
         <label htmlFor="deck-files">Add decks</label>
-        <input id="deck-files" type="file" accept={DECK_TYPES} multiple onChange={onChange} />
+        <input id="deck-files" type="file" accept={DECK_FILE_ACCEPT} multiple onChange={onChange} />
       </div>
-      {refused.map(({ fileName, message }) => (
-        <Failed key={fileName} message={`${fileName}: ${message}`} />
-      ))}
+      {(refused.length > 0 || state.status === 'failed') && (
+        <Failed
+          key={revision}
+          messages={[
+            ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
+            ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
+          ]}
+          onRetry={state.status === 'failed' ? reread : undefined}
+        />
+      )}
       {state.status === 'pending' ? (
         <Pending label={PENDING.decks} />
-      ) : state.status === 'ready' ? (
-        <UploadList uploads={state.uploads} />
       ) : (
-        <Failed message={failureMessage(state.failure)} />
+        state.status === 'ready' && <UploadList uploads={state.uploads} />
       )}
     </main>
   );

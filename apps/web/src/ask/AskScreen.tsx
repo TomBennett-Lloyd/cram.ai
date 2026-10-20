@@ -38,7 +38,7 @@ export const AskScreen = ({ courseId }: { readonly courseId: CourseId }) => {
         ) : state.status === 'ok' ? (
           <AnswerView reply={state.value} onOpen={setOpen} />
         ) : (
-          <Failed message={failureMessage(state)} />
+          <Failed messages={[failureMessage(state)]} />
         )}
       </section>
       {open !== null && (

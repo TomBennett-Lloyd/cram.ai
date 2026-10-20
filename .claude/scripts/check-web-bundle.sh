@@ -16,13 +16,14 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 
-# Derivation: 325,840 bytes measured on 2026-10-20 on the #16 branch off main @ a498dfe, via
+# Derivation: 326,304 bytes measured on 2026-10-21 on branch 16-web-ask, in the commit that
+# last changed this line (`git log -L` on it finds that commit), via
 #     pnpm --filter @cram/web build && wc -c < apps/web/dist/assets/index-*.js
-# rounded up to give ~15% headroom (325,840 x 1.15 = 374,716 -> 375,000). A PR that
+# rounded up to give ~15% headroom (326,304 x 1.15 = 375,250 -> 376,000). A PR that
 # deliberately grows the entry re-measures and resets this constant and its derivation in
 # the same PR; an accidental breach is a dependency to find, not a number to raise. This is
 # the one enforced copy: .github/workflows/ci.yml calls this script and restates nothing.
-ENTRY_BUDGET_BYTES=375000
+ENTRY_BUDGET_BYTES=376000
 
 print_budget=0
 root_arg=""

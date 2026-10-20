@@ -9,7 +9,7 @@ describe('ApiClient', () => {
   it('reads a reply its schema accepts as ok', async () => {
     const { api, sent } = fakeApi(() => ({ status: 200, body: { courses: ['bio'] } }));
     expect(await api.courses()).toEqual({ status: 'ok', value: { courses: ['bio'] } });
-    expect(sent.map(({ path, init }) => [path, init.method])).toEqual([['/courses', 'GET']]);
+    expect(sent.map(({ path, method }) => [path, method])).toEqual([['/courses', 'GET']]);
   });
 
   it('reads a model-failed ask reply as ok, whatever its HTTP status', async () => {
@@ -41,9 +41,9 @@ describe('ApiClient', () => {
     const { api, sent } = fakeApi(() => ({ status: 200, body: GROUNDED }));
     await api.ask(bio, 'Are drones male?');
     expect(sent[0]?.path).toBe('/courses/bio/ask');
-    expect(sent[0]?.init.method).toBe('POST');
-    expect(sent[0]?.init.headers).toEqual({ 'content-type': 'application/json' });
-    expect(sent[0]?.init.body).toBe('{"question":"Are drones male?"}');
+    expect(sent[0]?.method).toBe('POST');
+    expect(sent[0]?.contentType).toBe('application/json');
+    expect(sent[0]?.body).toBe('{"question":"Are drones male?"}');
   });
 
   it('uploads the file as the body, naming its lecture and file name and its media type', async () => {
@@ -58,9 +58,9 @@ describe('ApiClient', () => {
     const deck = { file, lectureId: LectureId.parse('lecture 4'), mediaType: undefined };
     expect((await api.uploadDeck(bio, deck)).status).toBe('ok');
     expect(sent[0]?.path).toBe('/courses/bio/decks?lectureId=lecture+4&fileName=lecture+4.pdf');
-    expect(sent[0]?.init.body).toBe(file);
-    expect(sent[0]?.init.headers).toEqual({ 'content-type': '' });
+    expect(sent[0]?.body).toBe('%PDF');
+    expect(sent[0]?.contentType).toBe('');
     await api.uploadDeck(bio, { ...deck, mediaType: 'application/pdf' });
-    expect(sent[1]?.init.headers).toEqual({ 'content-type': 'application/pdf' });
+    expect(sent[1]?.contentType).toBe('application/pdf');
   });
 });

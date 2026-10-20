@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deckMediaType, lectureIdOf } from './deck-file';
+import { DECK_FILE_ACCEPT, deckMediaType, lectureIdOf } from './deck-file';
 
 describe('deckMediaType', () => {
   it('reads a PDF and a PowerPoint deck by extension, in any case', () => {
@@ -12,6 +12,14 @@ describe('deckMediaType', () => {
   it('knows no type for any other file, or one with no extension', () => {
     for (const name of ['l1.ppt', 'l1.key', 'l1', 'pdf', 'l1.pdf.zip'])
       expect(deckMediaType(name), name).toBeUndefined();
+  });
+});
+
+describe('DECK_FILE_ACCEPT', () => {
+  it('lists every extension deckMediaType reads, and only those', () => {
+    const extensions = DECK_FILE_ACCEPT.split(',');
+    expect(extensions).toEqual(['.pdf', '.pptx']);
+    for (const extension of extensions) expect(deckMediaType(`l1${extension}`)).toBeDefined();
   });
 });
 

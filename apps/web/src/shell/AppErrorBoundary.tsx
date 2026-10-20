@@ -30,6 +30,6 @@ export class AppErrorBoundary extends Component<{ readonly children: ReactNode }
   }
 
   override render(): ReactNode {
-    return this.state.failed ? <Failed message={APP_FAILED} /> : this.props.children;
+    return this.state.failed ? <Failed messages={[APP_FAILED]} /> : this.props.children;
   }
 }

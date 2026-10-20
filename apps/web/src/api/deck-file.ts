@@ -7,6 +7,11 @@ const MEDIA_TYPE_BY_EXTENSION: Readonly<Record<string, DeckMediaType>> = {
   ],
 };
 
+/** The file picker's `accept` list: every extension a deck type is read by. */
+export const DECK_FILE_ACCEPT = Object.keys(MEDIA_TYPE_BY_EXTENSION)
+  .map((extension) => `.${extension}`)
+  .join(',');
+
 const extensionOf = (fileName: string): string =>
   /\.([^.]+)$/.exec(fileName)?.[1]?.toLowerCase() ?? '';
 
