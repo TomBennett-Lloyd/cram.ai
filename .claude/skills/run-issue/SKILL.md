@@ -117,8 +117,11 @@ this branch was cut, which files, what the union rule expects>` to the warm agen
    signal to batch, not hold — 2–6 members, ≤8 predicted chunks total, no `adr` label, no
    expected humanAlways paths, no dependency outside the batch, and nothing too large or
    entangled to be told as one honest commit (each member lands on main as exactly one
-   commit and is its own revert unit). One batch = one agent = one in-flight row
-   (footprint union). **The agent goes quiet after the dispatch and stays quiet until its
+   commit and is its own revert unit). The humanAlways clause is
+   `.claude/workflow.json` → `orchestration.routeRule`'s, and it binds after admission
+   too: a member found mid-flight to reach a humanAlways path drops out of the batch
+   (`task-orchestrator.md` rule 7) and comes back to you as its own ticket-agent lane.
+   One batch = one agent = one in-flight row (footprint union). **The agent goes quiet after the dispatch and stays quiet until its
    next contract report** (`task-orchestrator.md` rule 6 bans interim narration), and its own
    sub-agent dispatches are synchronous, so no sub-agent completion notification for that set
    should reach you at all — one that does is a contract breach worth naming in the retro,
@@ -141,7 +144,10 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    being a branch commit necessarily precedes the merge; then the merge; then taking the
    label off, last of the three, the entry itself having landed on the branch before the
    label ever went on), one PR
-   at a time — merges are serialized, always. Single-issue PRs merge `--squash` as today;
+   at a time — merges are serialized, always. That ritual is a single issue's only: a
+   batch carries no humanAlways path (step 2), so a batch TASK REPORT classifying HUMAN,
+   or a batch changed-file list holding a humanAlways path, is a `FIX` bounce naming the
+   member to drop, never a fill. Single-issue PRs merge `--squash` as today;
    batch PRs merge `--rebase` AFTER the mechanical curated-history check passes — the
    report's branch commit list must show commit count == surviving-member count, each
    commit referencing its member issue, and `git log --oneline origin/main..<branch>`,
@@ -155,8 +161,8 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    instead of taking it, since only the branch's owner can curate and force-push.
    A batch that is BEHIND or conflicted gets a "curate onto latest main" bounce instead of
    `gh pr update-branch` (a merge commit would break the invariant and block rebase-merge);
-   after the force-push, wait for the new head's checks as usual. HUMAN-class: notify the
-   owner with the
+   after the force-push, wait for the new head's checks as usual. HUMAN-class (a
+   single issue only, per the ritual above): notify the owner with the
    report's review guide — and only via this relay, after you have verified readiness
    (CI green on the reported head) yourself; the label is already on, and there is
    deliberately NO issue @-mention at label time (owner, 2026-08-09: a ping must mean
@@ -171,8 +177,8 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    with nothing to fix. Neither is a thing to wait out. The agent stays parked either
    way.
 5. **Bounce, don't do**: anything ticket-shaped that surfaces before release — owner
-   feedback on an awaiting-review PR (relay verbatim; the warm agent folds it into the
-   branch's docs/review-feedback.md entry in the commit that responds — an on-branch
+   feedback on an awaiting-review PR, which is a single issue's (relay verbatim; the warm
+   agent folds it into the branch's docs/review-feedback.md entry in the commit that responds — an on-branch
    edit, so it is never yours to make; an approval with no changes relays the same way,
    as the Category and Verdict to fill), branch-side merge fallout beyond the sanctioned
    append-only-log union routine, a post-merge verification failure, or a question from you or the owner —
