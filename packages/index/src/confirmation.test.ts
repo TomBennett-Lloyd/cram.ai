@@ -1,4 +1,4 @@
-import { CourseId, SourceId } from '@cram/shared';
+import { CourseId, LectureId, SourceId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   indexed,
@@ -62,6 +62,8 @@ describe('CourseIndex.confirmDerived and confirmation', () => {
     expect(course.confirmation(derivedId)).toEqual({ status: 'unconfirmed' });
     expect(course.confirmDerived(DERIVED, AT)).toEqual({ status: 'confirmed' });
     expect(course.confirmation(derivedId)).toEqual({ status: 'confirmed', confirmedAt: AT });
+    course.confirmDerived(DERIVED, LATER);
+    expect(course.confirmation(derivedId)).toEqual({ status: 'confirmed', confirmedAt: LATER });
   });
 
   it('refuses a slide that is not derived, or that the course does not hold', () => {
@@ -97,6 +99,31 @@ describe('CourseIndex.confirmDerived and confirmation', () => {
     expect(course.confirmation(derivedId)).toEqual({ status: 'unconfirmed' });
   });
 
+  it('keeps a voided confirmation void when the text changes back', () => {
+    course.confirmDerived(DERIVED, AT);
+    indexLectures(course, [
+      indexed({ ...DERIVED, body: 'ocr osmosls' }, AWAY),
+      indexed(TYPED, AWAY),
+    ]);
+    indexLectures(course, [indexed(DERIVED, AWAY), indexed(TYPED, AWAY)]);
+    expect(course.confirmation(derivedId)).toEqual({ status: 'unconfirmed' });
+  });
+
+  it('confirms one slide, never another slide with the same text', () => {
+    const twin = { ...DERIVED, lectureId: LectureId.parse('lecture-2') };
+    indexLectures(course, [indexed(twin, AWAY)]);
+    course.confirmDerived(DERIVED, AT);
+    expect(course.confirmation(sourceIdOf(twin))).toEqual({ status: 'unconfirmed' });
+    expect(course.slides({ excludeUnconfirmedDerived: true }).map(sourceIdOf)).toEqual([
+      derivedId,
+      sourceIdOf(TYPED),
+    ]);
+    course.confirmDerived(twin, AT);
+    course.removeLecture(DERIVED.lectureId);
+    indexLectures(course, [indexed(DERIVED, AWAY)]);
+    expect(course.confirmation(derivedId)).toEqual({ status: 'unconfirmed' });
+  });
+
   it('drops the confirmation of a slide a re-upload or a removal leaves out, and no other', () => {
     const elsewhere = slide({ lectureId: 'lecture-2', derived: true, body: 'ocr elsewhere' });
     indexLectures(course, [indexed(elsewhere, AWAY)]);
@@ -113,6 +140,29 @@ describe('CourseIndex.confirmDerived and confirmation', () => {
       status: 'confirmed',
       confirmedAt: AT,
     });
+  });
+});
+
+describe('CourseIndex.slides and slidesTagged excluding unconfirmed derived slides', () => {
+  const CONFIRMED = slide({ slideNo: 3, derived: true, body: 'ocr confirmed' });
+  const slideNos = (records: readonly { readonly slideNo: number }[]) =>
+    records.map((record) => record.slideNo);
+  beforeEach(() => {
+    indexLectures(course, [indexed(DERIVED, AWAY), indexed(TYPED, AWAY), indexed(CONFIRMED, AWAY)]);
+    course.confirmDerived(CONFIRMED, AT);
+    for (const record of [DERIVED, TYPED, CONFIRMED])
+      course.setTopics(sourceIdOf(record), ['cells']);
+  });
+
+  it('lists every slide by default, for notes', () => {
+    expect(slideNos(course.slides())).toEqual([1, 2, 3]);
+    expect(slideNos(course.slidesTagged('cells'))).toEqual([1, 2, 3]);
+  });
+
+  it('leaves the unconfirmed derived slide out when asked, and keeps typed and confirmed ones', () => {
+    const exclude = { excludeUnconfirmedDerived: true };
+    expect(slideNos(course.slides(exclude))).toEqual([2, 3]);
+    expect(slideNos(course.slidesTagged('cells', exclude))).toEqual([2, 3]);
   });
 });
 

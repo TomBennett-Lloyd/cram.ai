@@ -13,7 +13,8 @@ import { z } from 'zod';
 import {
   confirmationState,
   confirmDerived,
-  dropOrphanConfirmations,
+  dropVoidConfirmations,
+  UNCONFIRMED_DERIVED,
   type ConfirmationState,
   type ConfirmResult,
 } from './confirmation';
@@ -57,6 +58,15 @@ export interface SearchQuery {
   /** On for exam generation only (`docs/standards/grounding.md` rule 10); Ask and notes cite derived text unconfirmed. */
   readonly excludeUnconfirmedDerived?: boolean;
 }
+
+/** A listing exam generation can draw its target slides from (`docs/plan.md` §3.5). */
+export interface SlideListing {
+  /** On for exam generation only, as `SearchQuery.excludeUnconfirmedDerived` is. */
+  readonly excludeUnconfirmedDerived?: boolean;
+}
+
+const listed = (listing: SlideListing): string =>
+  listing.excludeUnconfirmedDerived === true ? `and not (${UNCONFIRMED_DERIVED})` : '';
 
 export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-slide' };
 
@@ -149,7 +159,7 @@ export class CourseIndex {
    * Replaces the lecture's deck, slide images and slides in one transaction, so a re-uploaded deck
    * with fewer slides leaves none of the old ones behind (#71). Topic tags go with the old slides.
    * The only slide write, so every slide has a stored deck to rebuild from (rebuild-course.ts, #93).
-   * A confirmation outlives it while its slide does; it counts only while the text is unchanged.
+   * A confirmation outlives it while its slide's text does.
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
     this.#checkBatch('replaceLecture', slides);
@@ -164,7 +174,7 @@ export class CourseIndex {
       this.#dropLectureSlides(deck.lectureId);
       writeDeck(this.#db, deck, images);
       this.#writeSlides(slides);
-      dropOrphanConfirmations(this.#db);
+      dropVoidConfirmations(this.#db);
     })();
   }
 
@@ -172,7 +182,7 @@ export class CourseIndex {
   removeLecture(lectureId: LectureId): RemoveLectureResult {
     const removed = this.#db.transaction(() => {
       this.#dropLectureSlides(lectureId);
-      dropOrphanConfirmations(this.#db);
+      dropVoidConfirmations(this.#db);
       return deleteDeck(this.#db, lectureId);
     })();
     return removed ? { status: 'removed' } : { status: 'no-such-lecture' };
@@ -186,8 +196,10 @@ export class CourseIndex {
   }
 
   /** Every slide in the course, by lecture then slide number. */
-  slides(): readonly SlideRecord[] {
-    return this.#storedSlides('order by lecture_id, slide_no').map((slide) => slide.record);
+  slides(listing: SlideListing = {}): readonly SlideRecord[] {
+    return this.#storedSlides(`where true ${listed(listing)} order by lecture_id, slide_no`).map(
+      (slide) => slide.record,
+    );
   }
 
   /**
@@ -258,9 +270,9 @@ export class CourseIndex {
   }
 
   /** Every slide tagged `tag`, by lecture then slide number. */
-  slidesTagged(tag: string): readonly SlideRecord[] {
+  slidesTagged(tag: string, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
-      'where id in (select slide_id from topics where tag = ?) order by lecture_id, slide_no',
+      `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
       tag,
     ).map((slide) => slide.record);
   }
