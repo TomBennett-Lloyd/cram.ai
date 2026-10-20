@@ -140,8 +140,7 @@ const pick = <T>(map: ReadonlyMap<VerifierStrategy, T>, strategy: VerifierStrate
 
 const NOT_YET = {
   exams: 'no exam generator exists until M4 (docs/plan.md §8), so no generated question',
-  marks:
-    'no synthetic student answer carries hand marks (docs/tech-debt.md, the grading-agreement hand-marks entry)',
+  marks: 'no synthetic student answer carries hand marks, and no ticket delivers them yet (#181)',
   derived: 'no OCR adapter derives text from imageOnly slides until #108',
   generatorTiming: 'Generator.chat reports neither first-token time nor token counts (#138)',
 };
