@@ -4,7 +4,6 @@ export {
   RETRIEVAL_K,
   type IndexedSlide,
   type RemoveLectureResult,
-  type SearchHit,
   type SearchQuery,
   type SetTopicsResult,
 } from './course-index';

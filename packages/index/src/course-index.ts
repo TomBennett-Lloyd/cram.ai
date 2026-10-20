@@ -4,6 +4,7 @@ import {
   type CourseId,
   type Deck,
   type LectureId,
+  type RetrievedSlide,
   type SlideImage,
   type SlideNo,
   type SlideRecord,
@@ -46,11 +47,6 @@ export interface SearchQuery {
   readonly embedding: Float32Array;
   /** Off by default: references pages would dominate BM25 (#9's sizing comment, #78). */
   readonly includeReferences?: boolean;
-}
-
-export interface SearchHit {
-  readonly sourceId: SourceId;
-  readonly record: SlideRecord;
 }
 
 export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-slide' };
@@ -197,7 +193,7 @@ export class CourseIndex {
    * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
    * Each list leaves references slides out before it is cut to depth, unless the query includes them.
    */
-  search(query: SearchQuery, k: number = RETRIEVAL_K): readonly SearchHit[] {
+  search(query: SearchQuery, k: number = RETRIEVAL_K): readonly RetrievedSlide[] {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
     requireDimension('search', query.embedding, this.#embedder);
