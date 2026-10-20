@@ -54,6 +54,10 @@
 # `.claude/worktrees/` is gitignored, so the main checkout never sweeps sibling
 # worktrees.
 #
+# `-P` is mandatory: declared sweeps use `\b` beside `|`, and `git grep -E` on
+# macOS reads `\b` as the letter `b` (docs/standards/evidence.md member 10), so the
+# ERE engine would return different files on the owner's Mac than in CI.
+#
 # The OK line prints counts only and never a pattern, so a run redirected into an
 # untracked file inside the repository cannot become its own unlisted hit.
 #
