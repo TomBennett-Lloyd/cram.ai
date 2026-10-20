@@ -28,9 +28,8 @@ playwright-report/
 
 # Course content — the repo never contains real lecture material
 # (CLAUDE.md Hard constraints). Course files live in the data directory
-# `resolveDataDir` (apps/server/src/data-directory.ts) names; `data/` is the
-# conventional name for one set inside a checkout. This block is the floor that
-# keeps them out of `git add`; the rule is
+# `resolveDataDir` (apps/server/src/data-directory.ts) names. This block is the
+# floor that keeps course content out of `git add`; the rule is
 # .claude/scripts/check-no-course-content.sh, whose harness fails if a ban here is
 # one the gate does not flag. The synthetic eval deck is authored as text under
 # eval/, never as one of these. The `!` lines re-include the gate's one exemption,

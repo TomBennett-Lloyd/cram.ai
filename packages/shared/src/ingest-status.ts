@@ -6,8 +6,8 @@ export const UploadId = z.string().min(1).brand<'UploadId'>();
 export type UploadId = z.infer<typeof UploadId>;
 
 /**
- * Where one uploaded deck has got to in ingest. An `imageOnly` page is a slide with no text,
- * reported and never an error (ADR 0006 § Decision (b), proposed in #120). `reason` and `problem`
+ * Where one uploaded deck has got to in ingest. An `imageOnly` page is reported and never an
+ * error (ADR 0006 § Decision (b), proposed in #120). `reason` and `problem`
  * are vocabularies `@cram/ingest` and `@cram/index` own, carried as text to keep one owner each.
  */
 export const UploadProgress = z.discriminatedUnion('state', [

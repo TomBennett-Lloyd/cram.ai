@@ -1,9 +1,11 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
 import { dirname } from 'node:path';
 import { CourseId, LectureId } from '@cram/shared';
 import { EmbedderIdentity, openCourse } from '@cram/index';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
+import { MAX_ASK_BYTES, MAX_DECK_BYTES } from './handlers';
 import {
   FailingEmbedder,
   gatewayOf,
@@ -54,6 +56,31 @@ const lectureDeckIn = (dataDir: string) => {
     opened.course.close();
   }
 };
+
+/** Streams `bytes` zero bytes as a deck, one reused mebibyte at a time; answers the status code. */
+const uploadZeros = ({ server }: TestServer, bytes: number): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const sent = httpRequest(
+      {
+        host: '127.0.0.1',
+        port: server.port,
+        method: 'POST',
+        path: uploadPath('bio', 'l1', 'big.pdf'),
+        headers: { 'content-type': PDF },
+      },
+      (response) => {
+        response.resume();
+        response.on('end', () => {
+          resolve(response.statusCode ?? 0);
+        });
+      },
+    );
+    sent.on('error', reject);
+    const chunk = new Uint8Array(1024 * 1024);
+    let left = bytes;
+    for (; left >= chunk.length; left -= chunk.length) sent.write(chunk);
+    sent.end(chunk.subarray(0, left));
+  });
 
 const progressOf = async ({ server }: TestServer, courseId = 'bio') =>
   (
@@ -132,6 +159,12 @@ describe('POST /courses/:id/decks', () => {
     const empty = await upload(server, '');
     expect(empty.status).toBe(400);
     expect(empty.json).toEqual({ status: 'bad-request', issue: 'the deck is empty' });
+  });
+
+  it('refuses a deck one byte over its cap, and accepts one longer than a question may be', async () => {
+    const server = await started();
+    expect(await uploadZeros(server, MAX_DECK_BYTES + 1)).toBe(413);
+    expect(await uploadZeros(server, MAX_ASK_BYTES + 1)).toBe(202);
   });
 });
 

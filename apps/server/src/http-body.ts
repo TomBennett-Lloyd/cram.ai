@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ApiRefusal } from '@cram/shared';
 
 export type BodyRead =
   { readonly status: 'read'; readonly bytes: Uint8Array } | { readonly status: 'too-large' };
@@ -34,4 +35,13 @@ export const sendJson = (
     'x-content-type-options': 'nosniff',
   });
   response.end(JSON.stringify(body));
+};
+
+export const sendRefusal = (
+  response: ServerResponse,
+  statusCode: number,
+  refusal: ApiRefusal,
+  headers: Readonly<Record<string, string>> = {},
+): void => {
+  sendJson(response, statusCode, refusal, headers);
 };

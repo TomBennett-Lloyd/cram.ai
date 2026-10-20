@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { ModelGateway } from '@cram/gateway';
 import { askQuestion, type HandlerContext, ingestStatus, uploadDeck } from './handlers';
-import { sendJson } from './http-body';
+import { sendRefusal } from './http-body';
 import { IngestQueue } from './ingest-queue';
 import { isOwnOriginRequest, LOOPBACK_ADDRESS } from './loopback';
 import { matchRoute } from './routes';
@@ -23,19 +23,21 @@ const handleRequest = async (
   response: ServerResponse,
   context: HandlerContext,
 ): Promise<void> => {
-  const url = new URL(request.url ?? '/', `http://${LOOPBACK_ADDRESS}`);
+  let pathname = '?';
   try {
     if (!isOwnOriginRequest(request.headers, request.socket.localPort ?? 0)) {
-      sendJson(response, 403, { status: 'forbidden' });
+      sendRefusal(response, 403, { status: 'forbidden' });
       return;
     }
-    const match = matchRoute(request.method, url.pathname);
+    const url = new URL(request.url ?? '/', `http://${LOOPBACK_ADDRESS}`);
+    ({ pathname } = url);
+    const match = matchRoute(request.method, pathname);
     if (match.status === 'not-found') {
-      sendJson(response, 404, { status: 'not-found' });
+      sendRefusal(response, 404, { status: 'not-found' });
       return;
     }
     if (match.status === 'method-not-allowed') {
-      sendJson(response, 405, { status: 'method-not-allowed' }, { allow: match.allow });
+      sendRefusal(response, 405, { status: 'method-not-allowed' }, { allow: match.allow });
       return;
     }
     const route = { request, response, url, courseSegment: match.courseSegment };
@@ -51,11 +53,11 @@ const handleRequest = async (
     }
   } catch (error) {
     context.log({
-      operation: `${request.method ?? '?'} ${url.pathname}`,
+      operation: `${request.method ?? '?'} ${pathname}`,
       courseId: '',
       outcome: errorName(error),
     });
-    if (!response.headersSent) sendJson(response, 500, { status: 'internal-error' });
+    if (!response.headersSent) sendRefusal(response, 500, { status: 'internal-error' });
   }
 };
 

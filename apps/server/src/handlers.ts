@@ -1,6 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
-  type ApiRefusal,
   AskRequest,
   type CourseId,
   DeckMediaType,
@@ -11,7 +10,7 @@ import {
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
 import { courseExists, RouteCourseId } from './course-file';
-import { readBody, sendJson } from './http-body';
+import { readBody, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 
 /** Ceilings on what one request may send; a deck is a whole lecture, a question is a sentence or two. */
@@ -29,12 +28,8 @@ export interface RouteRequest {
   readonly courseSegment: string;
 }
 
-const refuse = (response: ServerResponse, statusCode: number, refusal: ApiRefusal): void => {
-  sendJson(response, statusCode, refusal);
-};
-
 const badRequest = (response: ServerResponse, issue: string): void => {
-  refuse(response, 400, { status: 'bad-request', issue });
+  sendRefusal(response, 400, { status: 'bad-request', issue });
 };
 
 const mediaTypeOf = (request: IncomingMessage): string =>
@@ -60,12 +55,12 @@ export const uploadDeck = async (route: RouteRequest, context: HandlerContext): 
   }
   const mediaType = DeckMediaType.safeParse(mediaTypeOf(request));
   if (!mediaType.success) {
-    refuse(response, 415, { status: 'unsupported-media-type' });
+    sendRefusal(response, 415, { status: 'unsupported-media-type' });
     return;
   }
   const body = await readBody(request, MAX_DECK_BYTES);
   if (body.status === 'too-large') {
-    refuse(response, 413, { status: 'payload-too-large' });
+    sendRefusal(response, 413, { status: 'payload-too-large' });
     return;
   }
   if (body.bytes.length === 0) {
@@ -86,7 +81,7 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
   if (courseId === undefined) return;
   const uploads = context.queue.uploads(courseId);
   if (uploads.length === 0 && !courseExists(context.files, courseId)) {
-    refuse(route.response, 404, { status: 'no-such-course' });
+    sendRefusal(route.response, 404, { status: 'no-such-course' });
     return;
   }
   const status: IngestStatus = { courseId, uploads: [...uploads] };
@@ -101,18 +96,18 @@ const parsedJson = (bytes: Uint8Array): unknown => {
   }
 };
 
-/** JSON only, so a cross-site form post cannot reach it without a preflight this server never answers. */
+/** JSON only, so a cross-site form post cannot reach it: a form cannot send `application/json`. */
 export const askQuestion = async (route: RouteRequest, context: HandlerContext): Promise<void> => {
   const { request, response } = route;
   const courseId = courseIdOf(route);
   if (courseId === undefined) return;
   if (mediaTypeOf(request) !== 'application/json') {
-    refuse(response, 415, { status: 'unsupported-media-type' });
+    sendRefusal(response, 415, { status: 'unsupported-media-type' });
     return;
   }
   const body = await readBody(request, MAX_ASK_BYTES);
   if (body.status === 'too-large') {
-    refuse(response, 413, { status: 'payload-too-large' });
+    sendRefusal(response, 413, { status: 'payload-too-large' });
     return;
   }
   const parsed = AskRequest.safeParse(parsedJson(body.bytes));
@@ -123,10 +118,10 @@ export const askQuestion = async (route: RouteRequest, context: HandlerContext):
   const outcome = await askCourse(courseId, parsed.data.question, context);
   switch (outcome.status) {
     case 'no-such-course':
-      refuse(response, 404, { status: 'no-such-course' });
+      sendRefusal(response, 404, { status: 'no-such-course' });
       return;
     case 'course-unavailable':
-      refuse(response, 409, { status: 'course-unavailable', problem: outcome.problem });
+      sendRefusal(response, 409, { status: 'course-unavailable', problem: outcome.problem });
       return;
     case 'replied':
       sendJson(response, outcome.reply.status === 'model-failed' ? 502 : 200, outcome.reply);

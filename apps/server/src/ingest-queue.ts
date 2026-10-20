@@ -4,8 +4,8 @@ import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { errorName, type ServerLog } from './server-log';
 
 /**
- * Runs uploads one at a time, process-wide, so each course file has a single writer
- * (`docs/tech-debt.md`, 2026-10-19). Progress lives in memory, for uploads since the server started.
+ * Runs uploads one at a time, process-wide, so each course file has a single writer. Progress
+ * lives in memory, for uploads since the server started (#146).
  */
 export class IngestQueue {
   readonly #deps: IngestDeps;

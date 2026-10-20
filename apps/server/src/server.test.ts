@@ -100,6 +100,24 @@ describe('startServer', () => {
     expect(await status('/courses/bio/decks', {}, 'GET')).toBe(405);
   });
 
+  it('answers a CORS preflight without granting it', async () => {
+    const own = `http://127.0.0.1:${String(test.server.port)}`;
+    const preflight = { 'access-control-request-method': 'POST' };
+    const path = '/courses/bio/ask';
+    expect(await status(path, { ...preflight, origin: 'http://evil.example' }, 'OPTIONS')).toBe(
+      403,
+    );
+    expect(await status(path, { ...preflight, origin: own }, 'OPTIONS')).toBe(405);
+  });
+
+  it('answers a request target it cannot parse with 500, and keeps serving', async () => {
+    const { port } = test.server;
+    const target = `GET http://[ HTTP/1.1\r\nHost: 127.0.0.1:${String(port)}\r\nConnection: close\r\n\r\n`;
+    expect(await rawStatusLine(port, target)).toBe('HTTP/1.1 500 Internal Server Error');
+    expect(test.logs).toEqual([{ operation: 'GET ?', courseId: '', outcome: 'TypeError' }]);
+    expect(await status('/courses/bio/ingest')).toBe(404);
+  });
+
   it('marks every response uncacheable and unsniffable, and grants no other origin a read', async () => {
     const { headers } = await send(test.server.port, {
       method: 'GET',
