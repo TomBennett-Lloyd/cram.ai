@@ -51,8 +51,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-14 — ADR 0001 (d) ledger sweep has no citation arm
 
 - Where: `docs/adr/0001-grounding-architecture.md` § Decision (d), the restatement-ledger sentence
-- What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. No carrier is missed today; add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
+- What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. Add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
 - Source: #1 review cycle 2
+- Update 2026-10-20 (#29): the floor also misses two carriers #8 added, `packages/shared/src/verification.ts` (`Verdict`, `PartialPolicy`) and its test. The recorded sweep returns the first only through its policy arm and the test not at all, because its verdict arm matches the prose list form and not the TypeScript enum form. Both join the ledger when it is declared; #29 holds that acceptance open.
 
 ## 2026-10-15 — merge-pr.sh member loop expands pr_commits unguarded
 
