@@ -117,6 +117,13 @@ describe('readChatCompletionStream', () => {
     });
   });
 
+  it('fails a body with no data line, quoting its opening', async () => {
+    await expect(read(['{"choices":[]}'])).resolves.toEqual({
+      status: 'protocol-failed',
+      issue: 'the body held no event-stream data line: {"choices":[]}',
+    });
+  });
+
   it('fails a chunk that is not JSON, quoting it', async () => {
     const result = await read(['data: {oops\n\n']);
     expect(result.status === 'protocol-failed' && result.issue).toMatch(/not JSON: \{oops/);

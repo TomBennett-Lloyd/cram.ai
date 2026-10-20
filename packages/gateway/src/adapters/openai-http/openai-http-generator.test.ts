@@ -161,14 +161,24 @@ describe('OpenAiHttpGenerator', () => {
     );
   });
 
+  it('names a server that answered with a whole completion instead of a stream', async () => {
+    fixture.handler = reply(200, '{"choices":[]}', 'application/json');
+    const result = await new OpenAiHttpGenerator(config).chat(request);
+    expect(result.status === 'backend-failed' && result.reason).toMatch(
+      /POST .*: the body held no event-stream data line: \{"choices":\[\]\}/,
+    );
+  });
+
   it('times the call beside the reply, from the request start, with the server usage', async () => {
-    fixture.handler = reply(200, completion('{"text":"a"}'));
-    const clock = [1000];
-    const now = () => clock.shift() ?? 1005;
-    const generator = new OpenAiHttpGenerator(config, now);
+    let clock = 1000;
+    fixture.handler = (incoming, body, response) => {
+      clock = 1003;
+      reply(200, completion('{"text":"a"}'))(incoming, body, response);
+    };
+    const generator = new OpenAiHttpGenerator(config, () => clock);
     await expect(generator.timedReply(chatWireRequest(request))).resolves.toEqual({
       reply: { status: 'content', content: '{"text":"a"}' },
-      timing: { firstTokenMs: 5, lastTokenMs: 5, usage: { promptTokens: 21, completionTokens: 6 } },
+      timing: { firstTokenMs: 3, lastTokenMs: 3, usage: { promptTokens: 21, completionTokens: 6 } },
     });
   });
 
@@ -229,6 +239,15 @@ describe('OpenAiHttpGenerator', () => {
     fixture.handler = () => undefined;
     const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }).chat(request);
     expect(result).toMatchObject({ status: 'backend-failed' });
+    expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
+  });
+
+  it('bounds the streamed body by timeoutMs too', async () => {
+    fixture.handler = (_incoming, _body, response) => {
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      response.write(`data: ${JSON.stringify(chunk('{"text":'))}\n\n`);
+    };
+    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
   });
 
