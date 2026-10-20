@@ -212,7 +212,11 @@ case "\$1 \$2" in
     printf '%s' "\$n" >"\$state/view.count"
     # A request that never answers, held for as many seconds as the file says; exec,
     # so that the subject's time box kills the sleep itself and leaves no orphan.
-    [ -f "\$state/view.\$n.hang" ] && exec sleep "\$(cat "\$state/view.\$n.hang")"
+    # box.fire is what lets sleep_stub's watchdog fire on this call and no other.
+    if [ -f "\$state/view.\$n.hang" ]; then
+      : >"\$state/box.fire"
+      exec sleep "\$(cat "\$state/view.\$n.hang")"
+    fi
     slot="\$state/view.\$n"
     [ -f "\$slot" ] || slot="\$state/view.default"
     if [ -f "\$state/view.\$n.oid-from-wt" ]; then
@@ -240,7 +244,10 @@ case "\$1 \$2" in
     [ -f "\$state/ub.count" ] && read -r n <"\$state/ub.count"
     n=\$((n + 1))
     printf '%s' "\$n" >"\$state/ub.count"
-    [ -f "\$state/update-branch.\$n.hang" ] && exec sleep "\$(cat "\$state/update-branch.\$n.hang")"
+    if [ -f "\$state/update-branch.\$n.hang" ]; then
+      : >"\$state/box.fire"
+      exec sleep "\$(cat "\$state/update-branch.\$n.hang")"
+    fi
     if [ -f "\$state/update-branch.\$n" ]; then
       cat "\$state/update-branch.\$n"
       rc=0
@@ -308,6 +315,25 @@ EOF
   must chmod +x "$1"
 }
 
+# sleep, for the cases that hang a call (issue #152). gh_call's watchdog is
+# `sleep "$MERGE_PR_GH_TIMEOUT_SECONDS"`, and a real one races every call that does
+# answer: a box short enough to keep a hang case quick is one an ordinary stub call
+# outlives under machine load. This stub stands in for the watchdog's sleep and
+# returns when gh_stub's hang arm leaves box.fire, so the box fires at the hung call
+# and no other. Every other sleep, the hang itself included, is the real one.
+sleep_stub() { # sleep_stub <dir to hold it> <state dir>
+  local real
+  real=$(command -v sleep) || exit 2
+  must mkdir -p "$1"
+  cat >"$1/sleep" <<EOF
+#!/usr/bin/env bash
+[ "\$*" = "\$MERGE_PR_GH_TIMEOUT_SECONDS" ] || exec "$real" "\$@"
+until [ -e "$2/box.fire" ]; do "$real" 0.05; done
+rm -f "$2/box.fire"
+EOF
+  must chmod +x "$1/sleep"
+}
+
 # --- fixtures ---------------------------------------------------------------------------------
 
 fixture() { # fixture <name> [humanAlways JSON array]
@@ -322,6 +348,7 @@ fixture() { # fixture <name> [humanAlways JSON array]
   gh_stub "$ROOT/gh" "$STATE"
   reap_stub "$ROOT/reap" "$STATE"
   prettier_stub "$ROOT/prettier" "$STATE"
+  sleep_stub "$ROOT/clock" "$STATE"
   : >"$STATE/calls.log"
   # The no-op is the default answer, so that a case saying "updated" has to move
   # headRefOid on the reads that follow — an update that reports a write and
@@ -338,9 +365,11 @@ reset_calls() { # a second run of the subject against the same state, from the t
 
 POLL_TIMEOUT=30
 GH_TIMEOUT=60
+FAKE_BOX="" # non-empty: the watchdog's sleep is sleep_stub's, which fires only at a hang
 
 run_merge() { # run_merge [caller's working directory]
   capture -C "${1:-$REPO}" env \
+    PATH="${FAKE_BOX:+$ROOT/clock:}$PATH" \
     MERGE_PR_GH_CMD="$ROOT/gh" \
     MERGE_PR_REAP_CMD="$ROOT/reap" \
     MERGE_PR_PRETTIER_CMD="$ROOT/prettier" \
@@ -1490,28 +1519,28 @@ end
 # ==========================================================================================
 # 13b. a poll read that hangs is killed at the time box, retried, then fails the step
 # ==========================================================================================
-# Issue #55: every read carries a time box. The stub holds each read for 30 s
-# against a 1 s box, so a subject without the box takes 90 s and then fails the
-# elapsed-time assertion below as well as the message ones.
+# Issue #55: every read carries a time box. The stub holds each read for 30 s and
+# the box fires at each hang (sleep_stub), so a subject without the box takes 90 s
+# and then fails the elapsed-time assertion below as well as the message ones.
 begin "a poll read that outlives the time box is retried, then fails the checks step"
 fixture read-hangs
 write_view default
 for n in 2 3 4; do must printf '30\n' >"$STATE/view.$n.hang"; done
 write_merged_view
-GH_TIMEOUT=1
+FAKE_BOX=1
 started=$SECONDS
 run_merge
 elapsed=$((SECONDS - started))
-GH_TIMEOUT=60
+FAKE_BOX=""
 expect_rc 1
 expect_stderr 'checks — FAILED'
 expect_stderr 'read failed (2 in a row, 2 retries allowed)'
 expect_stderr '3 consecutive reads failed'
-expect_stderr 'did not answer within 1s'
+expect_stderr "did not answer within ${GH_TIMEOUT}s"
 expect_not_called "pr merge $PR --squash"
 views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
 [ "$views" -eq 4 ] || bad "expected classify plus a read and its two retries, got $views pr view calls"
-[ "$elapsed" -lt 20 ] || bad "the run took ${elapsed}s against a 1s time box"
+[ "$elapsed" -lt 45 ] || bad "the run took ${elapsed}s, so the box did not cut the 90 s of hangs short"
 end
 
 # ==========================================================================================
@@ -1522,9 +1551,9 @@ fixture read-hangs-once
 write_view default
 must printf '30\n' >"$STATE/view.2.hang"
 write_merged_view
-GH_TIMEOUT=1
+FAKE_BOX=1
 run_merge
-GH_TIMEOUT=60
+FAKE_BOX=""
 expect_rc 0
 expect_stderr 'read failed (1 in a row, 2 retries allowed)'
 expect_called "pr merge $PR --squash"
@@ -1542,13 +1571,13 @@ fixture update-hangs
 write_view default
 must printf '30\n' >"$STATE/update-branch.1.hang"
 write_merged_view
-GH_TIMEOUT=1
+FAKE_BOX=1
 run_merge
-GH_TIMEOUT=60
+FAKE_BOX=""
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'whether it wrote is unknown'
-expect_stderr 'did not answer within 1s'
+expect_stderr "did not answer within ${GH_TIMEOUT}s"
 ubs=$(grep -c -- "^pr update-branch $PR" "$STATE/calls.log")
 [ "$ubs" -eq 1 ] || bad "a write of unknown outcome was retried: $ubs update-branch calls"
 expect_not_called "pr merge $PR --squash"
