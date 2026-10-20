@@ -65,6 +65,12 @@ export const writeDeck = (db: Database, deck: Deck, images: readonly SlideImage[
   })();
 };
 
+/** Deletes the lecture's deck and its slide images, and says whether it had a deck; the caller holds the transaction. */
+export const deleteDeck = (db: Database, lectureId: LectureId): boolean => {
+  db.prepare('delete from slide_images where lecture_id = ?').run(lectureId);
+  return db.prepare('delete from decks where lecture_id = ?').run(lectureId).changes === 1;
+};
+
 export const readDeck = (db: Database, lectureId: LectureId): Deck | undefined => {
   const row: unknown = db
     .prepare(
