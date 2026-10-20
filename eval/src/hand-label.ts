@@ -1,11 +1,7 @@
 import { Citation, Unit, Verdict } from '@cram/shared';
 import { z } from 'zod';
 
-/**
- * One line of `eval/labels/verifier.jsonl`: a unit's text and its quotes, labelled
- * with the verdict a careful reader gives (`docs/adr/0005-evaluation-as-gate.md`
- * § Decision (d), the verifier precision / recall row).
- */
+/** One `eval/labels/verifier.jsonl` line: `docs/adr/0005-evaluation-as-gate.md` § Decision (d). */
 export const HandLabel = z.strictObject({
   text: Unit.shape.text,
   quotes: z.array(Citation.shape.quote).min(1),

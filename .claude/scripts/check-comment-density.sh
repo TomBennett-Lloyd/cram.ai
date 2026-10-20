@@ -3,9 +3,10 @@
 # Comment-density ratchet (cumulo#553): a source file's ratio of comment lines to
 # non-blank lines may fall, never rise.
 #
-# Scope: every `.ts`/`.tsx` file under `apps/*/src` and `packages/*/src` except
-# `.test.*`, `.test-d.*` and `.spec.*`. `.sh` is NOT scanned: those trees contain
-# none (cumulo#558).
+# Scope: every `.ts`/`.tsx` file under the `src` directory of each workspace
+# member workspace-lib.sh reads off `pnpm-workspace.yaml`, except `.test.*`,
+# `.test-d.*` and `.spec.*`. `.sh` is NOT scanned: those trees contain none
+# (cumulo#558).
 #
 # WHAT A COMMENT LINE IS is the awk classifier below, a line-anchored,
 # string-unaware proxy; its shapes are pinned case by case in section 2 of
@@ -30,9 +31,9 @@
 #
 # A gate that cannot be bootstrapped from an empty tree is a gate nobody can
 # adopt; absence of the checked surface is a pass, an inconsistent surface is
-# still a failure. So no `apps/*/src` or `packages/*/src` and no baseline passes
-# with a notice in both modes, writing nothing; either with a baseline present
-# is the moved-tree case and exits 2.
+# still a failure. So no member `src` directory and no baseline passes with a
+# notice in both modes, writing nothing; no member `src` directory with a
+# baseline present is the moved-tree case and exits 2.
 #
 # Wired into `verify:full` and into `.claude/scripts/verify-tier.sh`'s
 # source-prose tier, which is where a comment-only change set lands.
@@ -45,13 +46,12 @@
 #        REPO_ROOT defaults to the repo root above this script; the argument
 #        exists so the test harness can point the gate at throwaway fixtures.
 # Exit:  0 every file at or below its row, 1 at least one above it, 2 the
-#        invocation or the baseline's own state was wrong.
+#        invocation, pnpm-workspace.yaml or the baseline's own state was wrong.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 
 BASELINE_REL=".claude/comment-density.baseline.tsv"
-SOURCE_PARENTS=(apps packages)
 SOURCE_SUBDIR=src
 MODULE_EXTENSIONS=(ts tsx)
 PRUNED_DIRS=(node_modules dist coverage)
@@ -105,22 +105,23 @@ trap 'rm -rf "$TMP"' EXIT INT TERM
 
 # --- what to scan -------------------------------------------------------------------------
 
+# shellcheck source=./workspace-lib.sh
+. "$SCRIPT_DIR/workspace-lib.sh"
+workspace_read check-comment-density "$ROOT" || exit 2
+
 search_dirs=()
-for parent in "${SOURCE_PARENTS[@]}"; do
-  [ -d "$ROOT/$parent" ] || continue
-  for entry in "$ROOT/$parent"/*; do
-    [ -d "$entry/$SOURCE_SUBDIR" ] && search_dirs+=("$entry/$SOURCE_SUBDIR")
-  done
+for member in ${WORKSPACE_MEMBERS[@]+"${WORKSPACE_MEMBERS[@]}"}; do
+  [ -d "$ROOT/$member/$SOURCE_SUBDIR" ] && search_dirs+=("$ROOT/$member/$SOURCE_SUBDIR")
 done
 
 if [ ${#search_dirs[@]} -eq 0 ]; then
   if [ ! -e "$BASELINE" ]; then
-    printf 'check-comment-density: OK — no %s/*/%s or %s/*/%s under %s and no baseline; nothing to measure yet\n' \
-      "${SOURCE_PARENTS[0]}" "$SOURCE_SUBDIR" "${SOURCE_PARENTS[1]}" "$SOURCE_SUBDIR" "$ROOT"
+    printf 'check-comment-density: OK — no workspace member under %s has a %s directory and there is no baseline; nothing to measure yet\n' \
+      "$ROOT" "$SOURCE_SUBDIR"
     exit 0
   fi
-  printf 'check-comment-density: no %s/*/%s directory under %s, but %s exists — the baseline measures a tree that is not there\n' \
-    "${SOURCE_PARENTS[0]}" "$SOURCE_SUBDIR" "$ROOT" "$BASELINE_REL" >&2
+  printf 'check-comment-density: no workspace member under %s has a %s directory, but %s exists — the baseline measures a tree that is not there\n' \
+    "$ROOT" "$SOURCE_SUBDIR" "$BASELINE_REL" >&2
   exit 2
 fi
 
