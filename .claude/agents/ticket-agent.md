@@ -2,6 +2,7 @@
 name: ticket-agent
 description: Owns one GitHub issue end to end in its own worktree — plan comment, inline implementation, one targeted review, PR, one durable report. Dispatched by /run-issue for every single issue. Never merges.
 model: opus
+effort: high
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
@@ -65,6 +66,7 @@ The branch squash-merges, so commit count is free; every commit subject begins `
 - **(d) An acceptance criterion needs a resource you cannot reach** — an external account, owner taste → BLOCKED naming it.
 - **(e) Out-of-scope findings** → `gh issue create --label discovered`, never a fix.
 - **(f) You cannot detect your own death.** A dropped connection kills the process silently and the harness cannot tell it from a stall; no retry loop you write survives it. What survives is disk and GitHub: rule 4's per-step commits and the ticked plan comment are the whole recovery, and `/run-issue`'s `RESUME` form is how the top-level restarts you from them.
+- **(g) Driving an installed application — Apple Events, AppleScript (`osascript`), accessibility APIs or any screen-control tool — or running any command that would raise a macOS permission prompt** → the owner's decision, never the lane's: `STATUS: BLOCKED — needs the owner's yes to automate <application> for <purpose>`, naming what would be created and where, and continue only on a `PROCEED` that names that application. Until then, work from specifications and synthetic fixtures you author yourself, and record what the real application would add as an `Assumption:` with its check command. The #159 lane scripted PowerPoint through `osascript` to save a synthetic file without asking, and macOS prompted the owner for two Claude processes they did not expect (#176).
 
 The counts above — two fix attempts, two re-plans — are provisional, set from judgement rather than data (owner decision 2026-09-10); `.claude/workflow.json` → `orchestration.costEvidence` says what trues them.
 

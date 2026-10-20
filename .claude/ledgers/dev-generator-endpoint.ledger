@@ -1,0 +1,9 @@
+# The developer-mode generator port, owned by `port` in .claude/scripts/models-pull.sh (#20).
+owner: .claude/scripts/models-pull.sh
+claim: developer mode's Ollama serves the generator on port 11434
+sweep: \b11434\b|dev-generator-endpoint\.ledger
+scope: :!pnpm-lock.yaml
+carrier: .claude/scripts/models-pull.test.sh
+carrier: packages/gateway/src/adapters/openai-http/openai-http.measure.test.ts
+excluded: packages/gateway/src/role-config.test.ts
+excluded: packages/gateway/src/adapters/openai-http/openai-http-generator.test.ts

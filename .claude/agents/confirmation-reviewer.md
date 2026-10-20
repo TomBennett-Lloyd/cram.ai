@@ -2,6 +2,7 @@
 name: confirmation-reviewer
 description: Confirmation pass on a named fix-commit range after a reviewer pass — an APPROVE/ITERATE verdict on that diff alone, never a first full review. Dispatched by /review-loop, ticket-agent and task-orchestrator. Read-only.
 model: sonnet
+effort: medium
 tools: Read, Glob, Grep, Bash
 ---
 

@@ -1,12 +1,13 @@
 import { SlideRecord, SourceId, type CourseId } from '@cram/shared';
 import { z } from 'zod';
+import { textHashOf } from './confirmation';
 
 /** `<lectureId>/<slideNo>`: the slide number is a trailing integer, so ids never collide (slide-row.test.ts). */
 export const sourceIdOf = (slide: Pick<SlideRecord, 'lectureId' | 'slideNo'>): SourceId =>
   SourceId.parse(`${slide.lectureId}/${String(slide.slideNo)}`);
 
 export const SLIDE_COLUMNS =
-  'source_id, lecture_id, lecture_title, slide_no, kind, title, body, speaker_notes, image_captions, derived, source_hash';
+  'source_id, lecture_id, lecture_title, slide_no, kind, title, body, speaker_notes, image_captions, derived, source_hash, text_hash';
 
 const SlideRow = z.object({
   id: z.number().int(),
@@ -63,6 +64,7 @@ export const slideRowValues = (record: SlideRecord): readonly (string | number)[
   JSON.stringify(record.imageCaptions),
   record.derived ? 1 : 0,
   record.sourceHash,
+  textHashOf(record),
 ];
 
 /** The FTS5 columns of `slides_fts`, in order. */

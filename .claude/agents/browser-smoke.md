@@ -2,6 +2,7 @@
 name: browser-smoke
 description: Verifies a browser-facing change in a real browser — starts the dev server, measures the named behaviour, and shuts the server down. Dispatched by /execute or /review-loop for any chunk with a browser surface.
 model: sonnet
+effort: low
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.

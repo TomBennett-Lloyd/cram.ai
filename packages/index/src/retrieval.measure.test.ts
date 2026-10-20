@@ -10,6 +10,8 @@ const LECTURES = 24;
 const WORDS_PER_SLIDE = 120;
 const VOCABULARY = 8000;
 const QUERIES = 200;
+/** One slide in this many is derived, and every other derived slide is confirmed. */
+const DERIVED_EVERY = 10;
 const embedder = EmbedderIdentity.parse({ model: 'measure-embedder', dimension: 1024 });
 
 const seeded = (seed: number) => {
@@ -40,6 +42,7 @@ describe.runIf(process.env.CRAM_MEASURE === '1')('retrieval at course scale', ()
             lectureId: `lecture-${String(index % LECTURES)}`,
             slideNo: index + 1,
             body: text(WORDS_PER_SLIDE),
+            derived: index % DERIVED_EVERY === 0,
           }),
           embedding(),
         ),
@@ -47,6 +50,9 @@ describe.runIf(process.env.CRAM_MEASURE === '1')('retrieval at course scale', ()
       const started = performance.now();
       indexLectures(course, slides);
       const indexedMs = performance.now() - started;
+      slides
+        .filter((_, index) => index % (2 * DERIVED_EVERY) === 0)
+        .forEach(({ record }) => course.confirmDerived(record, new Date()));
       course.close();
       const sizeMiB = statSync(temp.spec.path).size / 2 ** 20;
       const reopened = openOrFail(temp.spec);
@@ -54,19 +60,27 @@ describe.runIf(process.env.CRAM_MEASURE === '1')('retrieval at course scale', ()
         text: text(12),
         embedding: embedding(),
       }));
-      const latencies = queries
-        .map((query) => {
-          const t0 = performance.now();
-          expect(reopened.search(query).length).toBeGreaterThan(0);
-          return performance.now() - t0;
-        })
-        .sort((a, b) => a - b);
+      const latencies = (excludeUnconfirmedDerived: boolean): readonly number[] =>
+        queries
+          .map((query) => {
+            const t0 = performance.now();
+            expect(reopened.search({ ...query, excludeUnconfirmedDerived }).length).toBeGreaterThan(
+              0,
+            );
+            return performance.now() - t0;
+          })
+          .sort((a, b) => a - b);
+      const latency = (label: string, sorted: readonly number[]): string =>
+        `${label} p50=${percentile(sorted, 0.5).toFixed(2)}ms p95=${percentile(sorted, 0.95).toFixed(2)}ms max=${percentile(sorted, 1).toFixed(2)}ms over ${String(QUERIES)} queries`;
+      const ask = latencies(false);
+      const exam = latencies(true);
       reopened.close();
       console.info(
         [
           `slides=${String(SLIDES)} dims=${String(embedder.dimension)} words/slide=${String(WORDS_PER_SLIDE)}`,
           `indexing=${indexedMs.toFixed(0)}ms file=${sizeMiB.toFixed(1)}MiB`,
-          `search p50=${percentile(latencies, 0.5).toFixed(2)}ms p95=${percentile(latencies, 0.95).toFixed(2)}ms max=${percentile(latencies, 1).toFixed(2)}ms over ${String(QUERIES)} queries`,
+          latency('search', ask),
+          latency('exam search', exam),
         ].join('\n'),
       );
     } finally {

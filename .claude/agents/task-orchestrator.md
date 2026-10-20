@@ -7,6 +7,7 @@ description: Owns one small same-surface batch of GitHub issues, full lifecycle
   top-level session RELEASEs it after merge. Dispatched by the /run-issue skill. Never
   merges; the top-level session owns merging.
 model: opus
+effort: medium
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
@@ -60,7 +61,7 @@ your issue's comments; the top-level never posts them for you.
    report; the top-level owns the user.
 3. **Stop before the merge — but you are not done.** Run review-loop through PR creation,
    CI green, and workflow.json classification (apply `awaiting-review` yourself when
-   classification is HUMAN). Then emit the TASK REPORT below and end the round, staying
+   classification is HUMAN, which a batch never is — rule 7). Then emit the TASK REPORT below and end the round, staying
    addressable for bounce rounds until RELEASE. Never: merge, close, or
    `gh pr update-branch` any PR; resolve conflicts against main or rebase onto main
    except on an explicit "curate onto latest main" bounce (rule 7);
@@ -79,6 +80,9 @@ your issue's comments; the top-level never posts them for you.
    then takes the label off, and nothing more. That order, because every label event re-runs
    the whole CI workflow: firing it against a just-merged PR is the edge `.github/workflows/ci.yml`
    accepts, while unlabelling first reddens nothing but costs a full round on a still-open PR.
+   That fill is a single issue's only. In a batch it would be a commit belonging to no
+   member, which rule 7's curated history has no room for, so a batch never carries a
+   humanAlways path at all (`.claude/workflow.json` → `orchestration.routeRule`, #56).
    3a. **On `RELEASE`**: finalize your RETRO NOTES comment into the full RETRO HANDOVER
    template — the comment is the sole authoritative record — then emit the same content
    plus the comment URL as your final message, which is a courtesy copy only; that
@@ -129,7 +133,10 @@ your issue's comments; the top-level never posts them for you.
    tagged with its owning issue; the plan and the single ledger live on the anchor issue,
    each member gets a linking comment naming its chunk IDs. planApproval gates bind per
    member — a member tripping a gate DROPS at the checkpoint (chunks struck, reason
-   declared), never blocks the batch. **Curated history is a standing invariant**: exactly
+   declared), never blocks the batch. A member whose footprint reaches a humanAlways path
+   trips one (`.claude/workflow.json` → `orchestration.routeRule`), at the checkpoint or
+   whenever it is discovered: mid-flight, its commit drops in curation as below, and its
+   status comment names the path so the top-level can run it as its own ticket-agent lane. **Curated history is a standing invariant**: exactly
    one commit per member, `#<m>: <summary>`, from that member's first completed chunk;
    every later edit for the member folds in via `git commit --fixup <member-sha>` +
    `git -c sequence.editor=: rebase -i --autosquash main` (or `--amend` when it is HEAD).
@@ -169,7 +176,7 @@ Footprint (union of chunk Files: lines, repo-relative):
   <one path per line>
 Shared surfaces the plan names (tokens files, barrels, stylesheets): <list | none>
 Predicted classification: AUTO | HUMAN — source extensions expected: <list | none>;
-  humanAlways paths in footprint: <list | none>
+  humanAlways paths in footprint: <list — batch: each one's member DROPPED below | none>
 planApproval stops: NONE | ADR label present | user-only question: "<verbatim>"
 Per-ticket (batch only): #<m> — chunks <ids> — gates clear | DROPPED: <gate/reason,
   chunks struck, ticket back to backlog>   (one line per member)
@@ -202,8 +209,9 @@ Review loop: VERDICT APPROVE | CAP-REACHED | CAP-REACHED+CONFIRMED-APPROVE — c
 Classification (.claude/workflow.json):
   AUTO | HUMAN
   Evidence: source extensions in diff: <e.g. .ts .tsx | none>;
-            humanAlways paths touched: <paths | none>
-  If HUMAN: `awaiting-review` label applied: yes; one-paragraph review guide: <below>
+            humanAlways paths touched: <paths | none — always none for a batch (rule 7)>
+  If HUMAN (single issue only): `awaiting-review` label applied: yes; one-paragraph review
+    guide: <below>
 
 Changed files (pasted: git diff --name-only origin/main...HEAD, after git fetch origin):
   <one per line>
