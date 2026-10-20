@@ -1,10 +1,11 @@
 import type { Database } from 'better-sqlite3';
 import { SlideKind, type CourseId } from '@cram/shared';
+import { CONFIRMATION_TABLE } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
 import { STORED_DECK_TABLES } from './stored-deck';
 
 /** Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)). */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -43,7 +44,8 @@ const TABLES = `
     speaker_notes text not null,
     image_captions text not null,
     derived integer not null check (derived in (0, 1)),
-    source_hash text not null
+    source_hash text not null,
+    text_hash text not null
   ) strict;
   create virtual table slides_fts using fts5(
     lecture_title, title, body, speaker_notes, image_captions,
@@ -71,6 +73,7 @@ export const createSchema = (
   db.transaction(() => {
     db.exec(TABLES);
     db.exec(STORED_DECK_TABLES);
+    db.exec(CONFIRMATION_TABLE);
     createVectorTable(db, embedder.dimension);
     db.prepare(
       'insert into course (singleton, course_id, embedder_model, embedder_dimension) values (1, ?, ?, ?)',

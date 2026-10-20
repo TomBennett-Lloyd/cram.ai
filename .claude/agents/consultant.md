@@ -2,6 +2,7 @@
 name: consultant
 description: Fable-tier advisor invoked when an implementer reports STRUGGLING — every candidate approach has significant downsides. Produces analysis and a recommended approach; never implements.
 model: fable
+effort: xhigh
 tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
 ---
 

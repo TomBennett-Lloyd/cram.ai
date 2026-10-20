@@ -6,7 +6,9 @@ export {
   type RemoveLectureResult,
   type SearchQuery,
   type SetTopicsResult,
+  type SlideListing,
 } from './course-index';
+export { type ConfirmationState, type ConfirmResult } from './confirmation';
 export { EmbedderIdentity } from './embedder-identity';
 export {
   openCourse,
