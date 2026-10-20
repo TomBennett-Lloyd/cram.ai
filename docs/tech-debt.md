@@ -98,12 +98,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: an entry whose name is an absent optional variant under one parent but installed and clean under another reads `absent` rather than stale. On a platform where the variant installs, the scan reports it stale as it should, so CI on that platform still catches it. Keying the exemption on name plus version, or on "no installed occurrence", would close it.
 - Source: #18 confirmation pass
 
-## 2026-10-16 — .gitignore's data/ comment paraphrases ADR 0004's unit
-
-- Where: `.gitignore`, the course-content comment above `data/`
-- What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
-- Source: #4 review cycle 1
-
 ## 2026-10-16 — plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14
 
 - Where: `docs/plan.md` §8, the M2 line ("contradiction set"); `docs/adr/0005-evaluation-as-gate.md` § Decision (a) and (h); #14's body ("a first contradiction set")
