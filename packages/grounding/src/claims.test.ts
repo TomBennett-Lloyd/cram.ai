@@ -42,6 +42,13 @@ describe('splitClaims', () => {
     expect(splitClaims('A cell is 5.4 mm across.Drones too.')).toHaveLength(1);
   });
 
+  it('trims whitespace around the text and around each claim', () => {
+    expect(splitClaims('  Workers are male.  Drones are female. ')).toEqual([
+      'Workers are male.',
+      'Drones are female.',
+    ]);
+  });
+
   it('drops the empty tail a trailing boundary leaves', () => {
     expect(splitClaims('Workers are male; ')).toEqual(['Workers are male;']);
   });

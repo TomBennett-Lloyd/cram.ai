@@ -46,6 +46,18 @@ describe('generationRequest', () => {
         '<question>What shape are cells?</question>',
     );
   });
+
+  it('shows a slide’s non-blank fields one to a line: title, body, notes, captions', () => {
+    const noted = slide('l1/3', 'Drones never forage.', {
+      title: 'Castes',
+      speakerNotes: 'Ask who feeds them.',
+      imageCaptions: ['A drone at rest'],
+    });
+    expect(asked('Do drones forage?', [noted]).messages[1]?.content).toBe(
+      '<source id="l1/3">\nCastes\nDrones never forage.\nAsk who feeds them.\nA drone at rest\n</source>\n\n' +
+        '<question>Do drones forage?</question>',
+    );
+  });
 });
 
 describe('verifierRequest', () => {

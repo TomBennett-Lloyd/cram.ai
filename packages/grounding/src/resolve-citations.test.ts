@@ -70,11 +70,11 @@ describe('resolveCitations', () => {
 
   it('accepts a quote from any of the slide’s text fields', () => {
     const noted = slide('l1/3', 'Body.', {
-      title: 'Drones',
+      title: 'Castes',
       speakerNotes: 'Drones never leave the hive.',
       imageCaptions: ['A drone at rest'],
     });
-    for (const quote of ['Drones', 'never leave the hive', 'A drone at rest']) {
+    for (const quote of ['Castes', 'never leave the hive', 'A drone at rest']) {
       expect(verdictOf(answer('x', [cite('l1/3', quote)]), [noted])).toBe('resolved');
     }
   });
