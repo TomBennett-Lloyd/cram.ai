@@ -1,9 +1,11 @@
 import type { ChatRequest, ChatResult } from './chat';
 import type {
+  EmbeddingResult,
   EmbedRequest,
   EntailmentResult,
   EntailRequest,
   RerankRequest,
+  RerankResult,
 } from './encoder-requests';
 import type { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
 
@@ -12,16 +14,16 @@ export interface Generator {
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>>;
 }
 
-/** One vector per text, in request order. */
+/** One result per text, in request order. */
 export interface Embedder {
   readonly pin: EmbedderPin;
-  embed(request: EmbedRequest): Promise<readonly Float32Array[]>;
+  embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]>;
 }
 
-/** One relevance score per document, in request order; higher is more relevant. */
+/** One result per document, in request order; a higher score is more relevant. */
 export interface Reranker {
   readonly pin: RerankerPin;
-  rerank(request: RerankRequest): Promise<readonly number[]>;
+  rerank(request: RerankRequest): Promise<readonly RerankResult[]>;
 }
 
 /** One result per pair, in request order; scores are probabilities, never a `Verdict` (#13 maps them). */

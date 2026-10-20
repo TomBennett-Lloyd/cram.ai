@@ -120,22 +120,27 @@ describe('FakeGateway generator', () => {
 });
 
 describe('FakeGateway encoders', () => {
-  it('replays one Float32Array per embedded text', async () => {
+  it('replays a Float32Array per embedded text and over-length results', async () => {
+    const overLength = { status: 'over-length', inputTokens: 700, maxInputTokens: 512 } as const;
     const fake = gateway([
       {
         role: 'embedder',
         pin: pins.embedder,
-        request: { texts: ['a', 'b'] },
+        request: { texts: ['a', 'b', 'long'] },
         reply: {
-          vectors: [
-            [0.5, 1],
-            [0, -1],
+          results: [
+            { status: 'embedded', vector: [0.5, 1] },
+            { status: 'embedded', vector: [0, -1] },
+            overLength,
           ],
         },
       },
     ]);
-    const vectors = await fake.embedder.embed({ texts: ['a', 'b'] });
-    expect(vectors).toEqual([Float32Array.from([0.5, 1]), Float32Array.from([0, -1])]);
+    await expect(fake.embedder.embed({ texts: ['a', 'b', 'long'] })).resolves.toEqual([
+      { status: 'embedded', vector: Float32Array.from([0.5, 1]) },
+      { status: 'embedded', vector: Float32Array.from([0, -1]) },
+      overLength,
+    ]);
     await expect(fake.embedder.embed({ texts: ['b', 'a'] })).rejects.toBeInstanceOf(
       RecordingMissError,
     );
@@ -165,14 +170,20 @@ describe('FakeGateway encoders', () => {
     expect(gateway([]).reranker).toBeNull();
   });
 
-  it('replays rerank scores when a reranker is pinned', async () => {
+  it('replays rerank results when a reranker is pinned', async () => {
     const request = { query: 'q', documents: ['d1', 'd2'] };
+    const results = [
+      { status: 'scored', score: 2 },
+      { status: 'over-length', inputTokens: 9, maxInputTokens: 8 },
+    ] as const;
     const fake = new FakeGateway({
       pins: { ...pins, reranker: rerankerPin },
       sampling,
-      recordings: [{ role: 'reranker', pin: rerankerPin, request, reply: { scores: [2, -1] } }],
+      recordings: [
+        { role: 'reranker', pin: rerankerPin, request, reply: { results: [...results] } },
+      ],
     });
-    await expect(fake.reranker?.rerank(request)).resolves.toEqual([2, -1]);
+    await expect(fake.reranker?.rerank(request)).resolves.toEqual(results);
   });
 
   it('rejects a request carrying a field its schema does not have, for every encoder', async () => {
@@ -198,21 +209,21 @@ describe('FakeGateway construction', () => {
 
   it.each<[string, Recording]>([
     [
-      'vector per text',
+      'result per text',
       {
         role: 'embedder',
         pin: pins.embedder,
         request: { texts: ['a', 'b'] },
-        reply: { vectors: [[1]] },
+        reply: { results: [{ status: 'embedded', vector: [1] }] },
       },
     ],
     [
-      'score per document',
+      'result per document',
       {
         role: 'reranker',
         pin: rerankerPin,
         request: { query: 'q', documents: ['d'] },
-        reply: { scores: [] },
+        reply: { results: [] },
       },
     ],
     [

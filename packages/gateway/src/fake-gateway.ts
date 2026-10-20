@@ -7,10 +7,13 @@ import {
   type GeneratorReply,
 } from './chat';
 import {
+  type EmbeddingResult,
   EmbedRequest,
   type EntailmentResult,
   EntailRequest,
+  type RecordedEmbedding,
   RerankRequest,
+  type RerankResult,
 } from './encoder-requests';
 import type { Embedder, Generator, ModelGateway, Reranker, Verifier } from './model-gateway';
 import type { EmbedderPin, GeneratorPin, ModelPin, RerankerPin, VerifierPin } from './pin';
@@ -87,32 +90,36 @@ class FakeGenerator implements Generator {
 
 class FakeEmbedder implements Embedder {
   readonly pin: EmbedderPin;
-  readonly #replies: Replies<readonly (readonly number[])[]>;
+  readonly #replies: Replies<readonly RecordedEmbedding[]>;
 
-  constructor(pin: EmbedderPin, replies: Replies<readonly (readonly number[])[]>) {
+  constructor(pin: EmbedderPin, replies: Replies<readonly RecordedEmbedding[]>) {
     this.pin = pin;
     this.#replies = replies;
   }
 
-  embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
+  embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
     return replayed(() =>
       this.#replies
         .replay(keyOf({ pin: this.pin, request: EmbedRequest.parse(request) }))
-        .map((vector) => Float32Array.from(vector)),
+        .map((result) =>
+          result.status === 'embedded'
+            ? { status: 'embedded', vector: Float32Array.from(result.vector) }
+            : result,
+        ),
     );
   }
 }
 
 class FakeReranker implements Reranker {
   readonly pin: RerankerPin;
-  readonly #replies: Replies<readonly number[]>;
+  readonly #replies: Replies<readonly RerankResult[]>;
 
-  constructor(pin: RerankerPin, replies: Replies<readonly number[]>) {
+  constructor(pin: RerankerPin, replies: Replies<readonly RerankResult[]>) {
     this.pin = pin;
     this.#replies = replies;
   }
 
-  rerank(request: RerankRequest): Promise<readonly number[]> {
+  rerank(request: RerankRequest): Promise<readonly RerankResult[]> {
     return replayed(() =>
       this.#replies.replay(keyOf({ pin: this.pin, request: RerankRequest.parse(request) })),
     );
@@ -157,8 +164,8 @@ export class FakeGateway implements ModelGateway {
 
   constructor(spec: FakeGatewaySpec) {
     const generator = new Replies<GeneratorReply>('generator');
-    const embedder = new Replies<readonly (readonly number[])[]>('embedder');
-    const reranker = new Replies<readonly number[]>('reranker');
+    const embedder = new Replies<readonly RecordedEmbedding[]>('embedder');
+    const reranker = new Replies<readonly RerankResult[]>('reranker');
     const verifier = new Replies<readonly EntailmentResult[]>('verifier');
     for (const recording of spec.recordings.map((r) => Recording.parse(r))) {
       const { pin, request } = recording;
@@ -167,10 +174,10 @@ export class FakeGateway implements ModelGateway {
           generator.add(keyOf({ pin, sampling: recording.sampling, request }), recording.reply);
           break;
         case 'embedder':
-          embedder.add(keyOf({ pin, request }), recording.reply.vectors);
+          embedder.add(keyOf({ pin, request }), recording.reply.results);
           break;
         case 'reranker':
-          reranker.add(keyOf({ pin, request }), recording.reply.scores);
+          reranker.add(keyOf({ pin, request }), recording.reply.results);
           break;
         case 'verifier':
           verifier.add(keyOf({ pin, request }), recording.reply.results);

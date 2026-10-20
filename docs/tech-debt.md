@@ -98,12 +98,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: an entry whose name is an absent optional variant under one parent but installed and clean under another reads `absent` rather than stale. On a platform where the variant installs, the scan reports it stale as it should, so CI on that platform still catches it. Keying the exemption on name plus version, or on "no installed occurrence", would close it.
 - Source: #18 confirmation pass
 
-## 2026-10-16 — .gitignore's data/ comment paraphrases ADR 0004's unit
-
-- Where: `.gitignore`, the course-content comment above `data/`
-- What: "`data/` is where the app keeps uploaded decks and per-course indexes" (wrapped across two comment lines) paraphrases `docs/adr/0004-storage.md` § Decision (a)'s unit without citing it, and is at odds with (a)'s configurable data directory, #15's default under the OS app-data folder, and (b)'s decks stored inside the course file. Pre-existing; the fix belongs with #15's data-directory work.
-- Source: #4 review cycle 1
-
 ## 2026-10-16 — plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14
 
 - Where: `docs/plan.md` §8, the M2 line ("contradiction set"); `docs/adr/0005-evaluation-as-gate.md` § Decision (a) and (h); #14's body ("a first contradiction set")
@@ -188,6 +182,13 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: the gateway's expected failures (backend down, rate-limited) will be values once #12 defines its failure type (`docs/standards/error-handling.md` rule 1); this signature then needs a value arm, and `reembedCourse` a result for it.
 - Source: #11 review cycle 1
 - Update 2026-10-19 (#12): `packages/gateway/src/model-gateway.ts` `Embedder.embed` has no failure value; the encoders run in-process, so only `Generator.chat` returns one (`backend-failed`). This entry stands only if #66's adapter finds an expected encoder failure.
+- Update 2026-10-20 (#66): it does. `Embedder.embed` now returns one `EmbeddingResult` per text, whose `over-length` arm reports a text longer than the model's maximum (`packages/gateway/src/encoder-requests.ts` `OverLength`), so the entry stands: `EmbedSlides` needs that arm, and a slide too long to embed whole needs a policy (split, or index without a vector), before anything wires the gateway's embedder into it.
+
+## 2026-10-20 — `EmbedRequest` cannot say whether a text is a query or a document
+
+- Where: `packages/gateway/src/encoder-requests.ts` `EmbedRequest`; `packages/gateway/src/adapters/onnx/onnx-embedder.ts` `OnnxEmbedder`
+- What: `docs/adr/0003-model-roles-and-backends.md` § Decision (g) says `nomic-ai/nomic-embed-text-v1.5`, the admitted embedder the `mean` pooling arm serves, needs task prefixes on queries and documents. The request carries texts only, so that model cannot be served correctly through the interface; the prefix is a property of the pinned model, so its home is the gateway, and the kind of text is retrieval's (#11) to state.
+- Source: #66 review cycle 1
 
 ## 2026-10-19 — topic tags are bare strings
 
@@ -244,3 +245,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-ledgers.sh` header, THE FORMAT block (the owner: `sweep: <PCRE>`); `.claude/scripts/sweep-report.sh` header `sweep=` field and its ledger-sweep re-run; `.claude/scripts/sweep-report.test.sh` comments on an invalid PCRE.
 - What: both scripts must run a ledger's sweep in the same engine, or `sweep-report.sh` reports a different file set from the one `check:ledgers` enforces (`docs/standards/evidence.md` member 10 is how far engines diverge). The engine is stated at each site and no `.claude/ledgers/` entry lists them, although `docs/standards/architecture.md` rule 9 asks for one once a second site is found.
 - Source: #40 review
+
+## 2026-10-20 — the file-safe course-id rule lives in apps/server, not in CourseId
+
+- Where: `apps/server/src/course-file.ts` `RouteCourseId`; `packages/shared/src/slide-record.ts` `CourseId`
+- What: `docs/adr/0004-storage.md` § Decision (a) makes every course id a file name, but `@cram/shared`'s `CourseId` only requires a non-empty string. The lowercase, file-safe, no-device-name rule is therefore stated only at the server's route boundary, and `apps/web` (#16) will need the same rule to mint ids the server accepts. That would be a second definition of a valid course id (`docs/standards/architecture.md` rule 2). The fix moves the rule into `CourseId` and touches every package that parses one (ingest, index, eval).
+- Source: #15 review cycle 1
+
+## 2026-10-20 — ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed
+
+- Where: `docs/adr/0004-storage.md` § Decision (h), the "Carriers not citing this file" sentence
+- What: the sentence lists `.gitignore`'s course-content comment ("per-course indexes"), "banked in `docs/tech-debt.md`'s entry that quotes it". #15 deleted both the phrase and that entry, so the list names a carrier its own sweep no longer returns. ADR edits are `humanAlways`, so this waits for ADR 0004's next amendment.
+- Source: #15 review cycle 1
