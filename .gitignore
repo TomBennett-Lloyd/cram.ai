@@ -26,14 +26,15 @@ playwright-report/
 .DS_Store
 *.log
 
-# Course content — the repo never contains real lecture material (CLAUDE.md
-# Hard constraints). `data/` is where the app keeps uploaded decks and per-course
-# indexes. This block is the floor that keeps them out of `git add`; the rule is
-# .claude/scripts/check-no-course-content.sh, whose harness fails if a ban
-# here is one the gate does not flag. The synthetic eval deck is authored as text
-# under eval/, never as one of these. The `!` lines re-include the gate's one
-# exemption, synthetic ingest fixtures (owner decision 2026-10-19, #31); the
-# harness fails if the gate does not exempt them.
+# Course content — the repo never contains real lecture material
+# (CLAUDE.md Hard constraints). Course files live in the data directory
+# `resolveDataDir` (apps/server/src/data-directory.ts) names. This block is the
+# floor that keeps course content out of `git add`; the rule is
+# .claude/scripts/check-no-course-content.sh, whose harness fails if a ban here is
+# one the gate does not flag. The synthetic eval deck is authored as text under
+# eval/, never as one of these. The `!` lines re-include the gate's one exemption,
+# synthetic ingest fixtures (owner decision 2026-10-19, #31); the harness fails if
+# the gate does not exempt them.
 data/
 *.pdf
 *.pptx
