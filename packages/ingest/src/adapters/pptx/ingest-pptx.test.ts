@@ -15,16 +15,9 @@ import {
   slideNumberField,
   table,
   titledSlide as titled,
-  type FixtureDeck,
+  ingestedSlides as ingested,
 } from './deck-fixture';
 import { ingestPptx } from './ingest-pptx';
-
-const ingested = (deck: FixtureDeck) => {
-  const result = ingestPptx(deckFile(buildDeck(deck)));
-  if (result.status !== 'ingested')
-    throw new Error(`expected an ingested deck, got ${result.status}: ${result.detail}`);
-  return result.slides;
-};
 
 afterEach(() => {
   vi.unstubAllGlobals();
