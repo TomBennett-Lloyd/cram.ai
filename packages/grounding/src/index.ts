@@ -1,5 +1,7 @@
+export { ask, ASK_PARTIAL_POLICY } from './ask';
 export { splitClaims } from './claims';
 export { type GenerationOutcome, generateUnits } from './generate-units';
+export { ground, type GroundingDeps, type GroundingResult, type GroundingStage } from './ground';
 export type { ModelFailure } from './model-failure';
 export {
   type EntailmentScores,

@@ -195,17 +195,12 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: a blank or untrimmed tag is accepted. A `TopicTag` schema belongs in `@cram/shared` (`docs/standards/architecture.md` rule 2), for the ticket that builds the tag pass (`docs/plan.md` §3.2).
 - Source: #11 review cycle 1
 
-## 2026-10-20 — no owner says whether an in-text slide attribution is a claim the verifier judges
-
-- Where: `docs/adr/0001-grounding-architecture.md` § Decision (d); `eval/labels/verifier.jsonl` (its first label, reworded to "Your slides say worker bees are male." to avoid the question)
-- What: a unit reading "lecture 4, slide 12 says …" (the reporter phrasing `CLAUDE.md` § Hard constraints uses) names a lecture its quotes cannot show, and resolution checks only `sourceId` and quote. Whether the verifier treats the attribution as a claim or ignores it as framing is unowned; #13's claim split, or an ADR 0001 amendment, decides, and the hand labels follow.
-- Source: #14 review cycle 1
-
 ## 2026-10-20 — mustNotContain and resolution normalise whitespace but not typographic apostrophes
 
 - Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (c); `docs/standards/grounding.md` rule 3; `eval/src/golden-question.ts` `firstForbiddenEntry`
 - What: an entry such as `can't see red` misses a model's U+2019 `can’t`, and a model quote of "tomorrow’s weather" would be withheld as `dangling-citation` against the deck's straight apostrophe. The fix is a decision for the matching rule's owners (ADR 0005 (c) for `mustNotContain`, #13 for resolution), not for the fixture.
 - Source: #14 review cycle 1
+- Update 2026-10-20 (#13): resolution's half is decided. `resolveCitations` (`packages/grounding/src/resolve-citations.ts`) normalises whitespace only, as `docs/adr/0001-grounding-architecture.md` § Decision (c) fixes it, so a typographic-apostrophe quote is withheld. Widening it is an amendment of that ADR. The `mustNotContain` half stays open for ADR 0005 (c).
 
 ## 2026-10-20 — the contradiction set's caveat phrasings are copied per item with no owner
 
