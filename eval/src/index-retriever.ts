@@ -16,7 +16,7 @@ export interface IndexRetrieverSpec {
   readonly k: number;
 }
 
-/** One vector per text; an over-length text rejects the run, since a truncated vector would measure another retrieval (ADR 0003 § Decision (d)). */
+/** One vector per text; an over-length text rejects the run until the embedder's over-length policy is decided (`docs/tech-debt.md`, "`EmbedSlides` can only fail by rejecting"). */
 const embedAll = async (
   embedder: Embedder,
   texts: readonly string[],
