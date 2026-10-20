@@ -44,3 +44,6 @@ data/
 *.sqlite-*
 !/packages/ingest/fixtures/*.pdf
 !/packages/ingest/fixtures/*.pptx
+
+# Per-machine Claude Code permission rules (owner, 2026-10-20): never committed.
+.claude/settings.local.json
