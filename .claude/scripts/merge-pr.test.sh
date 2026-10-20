@@ -213,6 +213,8 @@ case "\$1 \$2" in
     # A request that never answers, held for as many seconds as the file says; exec,
     # so that the subject's time box kills the sleep itself and leaves no orphan.
     # box.fire is what lets sleep_stub's watchdog fire on this call and no other.
+    # A .delay is the opposite: a call that answers, only late.
+    [ -f "\$state/view.\$n.delay" ] && sleep "\$(cat "\$state/view.\$n.delay")"
     if [ -f "\$state/view.\$n.hang" ]; then
       : >"\$state/box.fire"
       exec sleep "\$(cat "\$state/view.\$n.hang")"
@@ -316,11 +318,9 @@ EOF
 }
 
 # sleep, for the cases that hang a call (issue #152). gh_call's watchdog is
-# `sleep "$MERGE_PR_GH_TIMEOUT_SECONDS"`, and a real one races every call that does
-# answer: a box short enough to keep a hang case quick is one an ordinary stub call
-# outlives under machine load. This stub stands in for the watchdog's sleep and
-# returns when gh_stub's hang arm leaves box.fire, so the box fires at the hung call
-# and no other. Every other sleep, the hang itself included, is the real one.
+# `sleep "$MERGE_PR_GH_TIMEOUT_SECONDS"`; this stub stands in for it and returns when
+# gh_stub's hang arm leaves box.fire, so the box fires at the hung call and no other.
+# Every other sleep, the hang itself included, is the real one.
 sleep_stub() { # sleep_stub <dir to hold it> <state dir>
   local real
   real=$(command -v sleep) || exit 2
@@ -1550,6 +1550,8 @@ begin "a single hung poll read is retried and the run merges"
 fixture read-hangs-once
 write_view default
 must printf '30\n' >"$STATE/view.2.hang"
+# Classify answers after 2 s, past the 1 s box these cases ran at before issue #152.
+must printf '2\n' >"$STATE/view.1.delay"
 write_merged_view
 FAKE_BOX=1
 run_merge
