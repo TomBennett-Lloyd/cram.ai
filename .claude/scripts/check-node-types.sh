@@ -10,9 +10,9 @@
 #
 # A gate that cannot be bootstrapped from an empty tree is a gate nobody can
 # adopt; absence of the checked surface is a pass, an inconsistent surface is
-# still a failure. So a root manifest with no `apps/*` or `packages/*` beside it
-# and no declaration passes with a notice; the census-death guard below still
-# refuses an empty census once any workspace directory exists.
+# still a failure. So a root manifest with no workspace member beside it and no
+# declaration passes with a notice; the census-death guard below still refuses an
+# empty census once any member directory exists.
 #
 # The shape this exists for (cumulo#407). `@types/node` had drifted to five ranges
 # across two majors while `.nvmrc` pinned Node 22, so two packages type-checked
@@ -55,9 +55,8 @@
 #     grammar, it is the file's entire format, so it needs no reader at all.
 #     Whether the check scripts as a family should depend on `node` is cumulo#158's to
 #     settle; this is the local position, recorded rather than assumed.
-#   * Manifests are the root `package.json` plus every `apps/*` and `packages/*`
-#     directory holding one — the globs `pnpm-workspace.yaml` declares, restated
-#     here because reading them would mean parsing YAML.
+#   * Manifests are the root `package.json` plus every workspace member directory
+#     holding one, as workspace-lib.sh reads them off `pnpm-workspace.yaml`.
 #   * Both the `@types/node` declaration and the vite/vitest tell are looked for
 #     in `dependencies`, `devDependencies`, `optionalDependencies` and
 #     `peerDependencies`. The wide field list has a known cost on the tell: a
@@ -78,9 +77,9 @@
 # Exit:  0 the ranges agree with each other and with .nvmrc, 1 at least one does
 #        not (wrong major, divergent ranges, or a vite/vitest package declaring
 #        no range), 2 the gate could not reach a verdict (bad invocation, no
-#        node, an unreadable manifest, an .nvmrc or a spec it cannot extract a
-#        major from, or an empty census anywhere but the empty tree — see the
-#        census-death guard below).
+#        node, an unreadable manifest or pnpm-workspace.yaml, an .nvmrc or a spec
+#        it cannot extract a major from, or an empty census anywhere but the empty
+#        tree — see the census-death guard below).
 set -uo pipefail
 # Homebrew's prefix is not on a non-interactive shell's default PATH on this
 # machine (same reason worktree-lib.sh does it). Harmless on Linux, where the
@@ -98,6 +97,9 @@ if [ ! -d "$ROOT" ]; then
   exit 2
 fi
 ROOT=$(cd "$ROOT" && pwd -P) || exit 2
+
+# shellcheck source=./workspace-lib.sh
+. "$SCRIPT_DIR/workspace-lib.sh"
 
 # --- the major .nvmrc owns -----------------------------------------------------------------
 
@@ -164,7 +166,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = process.argv[1];
-const GROUPS = ['apps', 'packages'];
+const members = process.argv.slice(2);
 const TYPES_PACKAGE = '@types/node';
 const TYPES_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 // TOOL_FIELDS: the fields the vite/vitest tell is looked for in. Narrowing this
@@ -204,23 +206,8 @@ const blockOf = (manifest, rel, field) => {
   return block;
 };
 
-const manifestPaths = ['package.json'];
-let workspaceDirs = 0;
-for (const group of GROUPS) {
-  let entries;
-  try {
-    entries = fs.readdirSync(path.join(root, group), { withFileTypes: true });
-  } catch (error) {
-    if (error.code === 'ENOENT') continue;
-    refuse(`cannot list ${group}/: ${error.message}`);
-  }
-  const names = entries
-    .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
-    .map((entry) => entry.name)
-    .sort();
-  workspaceDirs += names.length;
-  for (const entry of names) manifestPaths.push(`${group}/${entry}/package.json`);
-}
+const manifestPaths = ['package.json', ...members.map((member) => `${member}/package.json`)];
+const workspaceDirs = members.length;
 
 const records = [];
 let rootManifestRead = 0;
@@ -269,7 +256,8 @@ records.push(['W', rootManifestRead, workspaceDirs].join('\t'));
 process.stdout.write(`${records.join('\n')}\n`);
 NODE
 
-census=$(node -e "$CENSUS_PROGRAM" "$ROOT")
+workspace_read check-node-types "$ROOT" || exit 2
+census=$(node -e "$CENSUS_PROGRAM" "$ROOT" ${WORKSPACE_MEMBERS[@]+"${WORKSPACE_MEMBERS[@]}"})
 census_rc=$?
 if [ "$census_rc" -ne 0 ]; then
   printf 'check-node-types: the manifest census did not complete (node exited %d)\n' "$census_rc" >&2
@@ -383,7 +371,7 @@ if [ -z "$root_manifest_read" ] || [ -z "$workspace_dirs" ]; then
 fi
 if [ "$declaration_count" -eq 0 ] && [ ${#tool_offenders[@]} -eq 0 ] &&
   [ "$root_manifest_read" = 1 ] && [ "$workspace_dirs" = 0 ]; then
-  printf 'check-node-types: OK — no apps/* or packages/* under %s and no manifest declares @types/node; nothing to align with .nvmrc major %s yet\n' \
+  printf 'check-node-types: OK — no workspace member under %s and no manifest declares @types/node; nothing to align with .nvmrc major %s yet\n' \
     "$ROOT" "$NVMRC_MAJOR"
   exit 0
 fi
@@ -391,9 +379,9 @@ if [ "$declaration_count" -eq 0 ] && [ ${#tool_offenders[@]} -eq 0 ]; then
   printf 'check-node-types: no manifest under %s declares @types/node\n' "$ROOT" >&2
   printf '\n  This gate refuses to pass on an empty census. A workspace that genuinely\n' >&2
   printf '  has no TypeScript and no vite/vitest does not need it — delete the gate and\n' >&2
-  printf '  say so in the PR. Short of that, the likelier readings are that the apps/\n' >&2
-  printf '  and packages/ enumeration stopped matching the workspace globs, or that the\n' >&2
-  printf '  dependency fields it reads were renamed under it.\n' >&2
+  printf '  say so in the PR. Short of that, the likelier readings are that the member\n' >&2
+  printf '  directories stopped holding their manifests, or that the dependency fields\n' >&2
+  printf '  it reads were renamed under it.\n' >&2
   exit 2
 fi
 

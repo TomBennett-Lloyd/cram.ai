@@ -29,14 +29,21 @@ harness_init_tmp
 
 # --- fixtures ----------------------------------------------------------------------------
 
-# fixture <name> -> sets DIR to a fresh, *clean* repo-shaped tree: a packages/ and an
-# apps/ with properly named modules in them. Each case then adds exactly one banned
-# name, so a failure names its own cause.
+# fixture <name> -> sets DIR to a fresh, *clean* repo-shaped tree: a pnpm-workspace.yaml
+# naming apps/*, packages/* and eval, and a packages/ and an apps/ with properly named
+# modules in them. Each case then adds exactly one banned name, so a failure names its own
+# cause.
 fixture() {
   DIR="$TMP_ROOT/$1"
   must mkdir -p "$DIR/packages/shared/src" "$DIR/apps/web/src"
+  must workspace_yaml 'apps/*' 'packages/*' eval
   must module "$DIR/packages/shared/src/site.ts"
   must module "$DIR/apps/web/src/App.tsx"
+}
+
+workspace_yaml() { # workspace_yaml <glob>... -> writes $DIR/pnpm-workspace.yaml naming them
+  printf 'packages:\n' >"$DIR/pnpm-workspace.yaml" &&
+    printf "  - '%s'\n" "$@" >>"$DIR/pnpm-workspace.yaml"
 }
 
 module() { # module <path>
@@ -66,7 +73,7 @@ end
 # The production configuration: no REPO_ROOT override, so this is the only case that can
 # catch a broken default path — and it is what `pnpm verify` actually runs. It also runs
 # under every bash on the box, because the real tree is the biggest array this gate builds.
-begin "the repo's own packages/ and apps/ pass with no argument"
+begin "the repo's own workspace passes with no argument"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   run_check_with "$interpreter"
@@ -213,19 +220,19 @@ case_ctx=""
 end
 
 # ==========================================================================================
-# 12. a tree with neither packages/ nor apps/
+# 12. a tree where no directory the workspace globs name exists
 # ==========================================================================================
 # The empty tree a new repository starts from: a gate that cannot be bootstrapped from it is
-# a gate nobody can adopt, so it passes. Case 11 is what keeps a present-but-empty source
-# directory from passing the same way.
-begin "a root with neither packages/ nor apps/ passes, and says there was nothing to name"
+# a gate nobody can adopt, so it passes.
+begin "a root where no workspace directory exists passes, and says there was nothing to name"
 DIR="$TMP_ROOT/no_source_dirs"
 must mkdir -p "$DIR/docs"
+must workspace_yaml 'apps/*' 'packages/*' eval
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   run_check_with "$interpreter" "$DIR"
   expect_rc 0 "$rc"
-  expect_stdout "check-module-names: OK — none of packages apps exists under"
+  expect_stdout "check-module-names: OK — none of apps packages eval exists under"
   # Not academic: this is the path where search_dirs is empty, which is precisely where
   # bash 3.2 under `set -u` aborts on an array expansion 4.4+ tolerates.
   expect_not_out "unbound variable"
@@ -273,6 +280,49 @@ else
 fi
 # Restored unconditionally: the trap's `rm -rf` cannot remove a directory it cannot enter.
 must chmod 755 "$DIR/apps/locked"
+end
+
+# ==========================================================================================
+# 15. the scan follows pnpm-workspace.yaml
+# ==========================================================================================
+# A member named by a literal path is scanned (#80: eval/ fell outside a scan of packages/ and
+# apps/), and a directory the file does not name is not.
+begin "a utils.ts in a literal workspace member fails the gate"
+fixture literal_member
+must module "$DIR/eval/src/utils.ts"
+run_check "$DIR"
+expect_rc 1 "$rc"
+expect_out "ERROR eval/src/utils.ts"
+end
+
+begin "a utils.ts in a directory pnpm-workspace.yaml does not name is outside the gate"
+fixture unnamed_dir
+must module "$DIR/scratch/src/utils.ts"
+run_check "$DIR"
+expect_rc 0 "$rc"
+expect_stdout "check-module-names: OK — no bare \"utils\" modules in apps packages eval (2 modules scanned)"
+end
+
+# A literal member inside a `<dir>/*` glob's directory is already scanned by it, in either
+# order, and its offender is reported once.
+for order in "packages/* packages/shared" "packages/shared packages/*"; do
+  begin "an offender under nested workspace roots ($order) is reported once"
+  fixture "nested_$(printf '%s' "$order" | tr -c 'A-Za-z0-9' _)"
+  read -r -a globs <<<"$order"
+  must workspace_yaml "${globs[@]}"
+  must module "$DIR/packages/shared/src/utils.ts"
+  run_check "$DIR"
+  expect_rc 1 "$rc"
+  expect_out "1 banned module name(s)"
+  end
+done
+
+begin "a missing pnpm-workspace.yaml exits 2, not 0"
+fixture no_workspace_manifest
+must rm "$DIR/pnpm-workspace.yaml"
+run_check "$DIR"
+expect_rc 2 "$rc"
+expect_stderr "check-module-names: pnpm-workspace.yaml is missing"
 end
 
 # ==========================================================================================

@@ -122,8 +122,8 @@ in_index=0
 #
 # The trailing group is the annotation: an optional ` — <text>` suffix (em dash, a space on
 # each side, non-empty text), which is where a supersession is recorded — ADRs are immutable
-# once merged, so `- [0002 — Storage split](0002-storage-split.md) — superseded by 0007` is
-# the shape the policy needs from the index. Optional, structured and still anchored at `$`:
+# once merged, so `- [0042 — Example decision](0042-example-decision.md) — superseded by 0043`
+# is the shape the policy needs from the index. Optional, structured and still anchored at `$`:
 # a suffix that misses the ` — ` separator, or that trails an empty one, is a malformed row
 # rather than free text the gate would have to wave through.
 row_re='^[[:space:]]*[-*+][[:space:]]+\[([0-9][0-9][0-9][0-9])[^]]*\]\(([^)]+)\)([[:space:]]+—[[:space:]]+[^[:space:]].*)?[[:space:]]*$'
