@@ -99,16 +99,6 @@ Entry format:
 - Phase: review
 - Observed: the #114 lane's README edit reordered a sentence so that a colon introduced the wrong example, a reorder caught by review; and its rebase union of `docs/review-feedback.md` was the first of six that evening, as every humanAlways PR's fill rewrote its own entry on main while the others waited. The review log is an append-only union at merge time by rule, but a fill edits an existing entry in place, which is what makes each later branch DIRTY rather than BEHIND. One ticket's entry; the shape recurred on PRs #106, #156, #174 and #175 the same evening.
 
-## 2026-10-20 — PR #156
-
-- Phase: process
-- Observed: the merge-time verdict fill on PR #156 was refused by the auto-mode permission classifier in the lane ("CI Bypass"), as were the fills on PRs #106 ("Self-Approval", four times) and #143 ("Merge Without Review"), while the identical command ran cleanly in the #132 and #120 lanes. The owner's `fill-verdict.sh` allow rule matched only the bare command form, and the refused lanes had wrapped it in a `cd &&` or a path export. The owner ran the three fills by hand; on #156 the hand-run fill and the lane's REBASE bounce acted on one worktree at once, which the lane noticed and waited out. The bounce text now names the bare form with `--worktree`; whether that is enough is the next fill's measurement.
-
-## 2026-10-21 — PR #106
-
-- Phase: process
-- Observed: the #56 lane's verdict fill was refused by the auto-mode classifier four times under three labels (self-approval three times, then an auto-mode bypass on a bare `pwd`), the owner ran the fill by hand, and the branch then needed two rebases because three other fills rewrote `docs/review-feedback.md` entries on main in the meantime. The owner's allow rule for `fill-verdict.sh` did not reach the lane, whose commands were wrapped in a `cd &&` or a path export. One PR cost the owner a terminal step and the lane four refused rounds; the bounce text now names the bare form with `--worktree`, and the next humanAlways fill measures whether that is enough.
-
 ## 2026-10-21 — PR #167
 
 - Phase: implementation
@@ -118,3 +108,18 @@ Entry format:
 
 - Phase: process
 - Observed: the rule PR #177 adds was written and merged within two hours of the #159 lane raising an unsanctioned macOS automation prompt (`.claude/agents/ticket-agent.md` § 5 (g)), and the #159 lane itself stopped cleanly on a HOLD, deleted what it had created and reported its probe findings with provenance. No new signal; recorded so the rule's first catch, if any, has its origin dated.
+
+## 2026-10-21 — PR #193
+
+- Phase: implementation
+- Observed: the #109 lane's first mutation harness decided "survived" by reading vitest's last lines for the word "failed" and reported two false survivors; rerun on the exit code, both mutants were dead. `docs/standards/evidence.md` already makes the captured exit code the verdict for `pnpm verify`; the mutant harness a lane writes for itself is the same shape and is not named there. One ticket so far.
+
+## 2026-10-21 — PR #197
+
+- Phase: implementation
+- Observed: the time-box red that #152 recorded at load average 90–100 did not reproduce for its lane at load averages of 41 to 76 on 10 cores (three runs of three green; a bare stub call measured 42 ms at most), so the lane removed the race rather than tuning a margin, with a regression case that fails on the pre-fix harness. A load-dependent red that cannot be reproduced on demand is fixed by construction or not at all; the lane's answer was the right one. One ticket so far.
+
+## 2026-10-21 — PR #158
+
+- Phase: process
+- Observed: main moved four times during the #133 lane's single REBASE bounce, and each move cost it either a tech-debt union or a stale citation: ADR 0006 went from proposed to accepted under it, and the triage pass (#191) deleted two tech-debt entries its code cited by title, one with no redirect row, because the pass grepped for citations of `tech-debt.md` as a path and not for each deleted entry's title. The triage skill says the redirect table is where a dangling pointer lands; it does not say the deleting pass greps every title it deletes. One pass so far.

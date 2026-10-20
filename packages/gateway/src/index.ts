@@ -35,6 +35,12 @@ export {
   type FakeGatewaySpec,
   RecordingMissError,
 } from './fake-gateway';
+export {
+  decodeTokensPerSecond,
+  type GeneratorTiming,
+  type GeneratorUsage,
+  type TimedReply,
+} from './generator-timing';
 export type { Embedder, Generator, ModelGateway, Reranker, Verifier } from './model-gateway';
 export {
   EmbedderPin,
