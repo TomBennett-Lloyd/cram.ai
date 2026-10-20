@@ -27,7 +27,7 @@ This replaces both the planner dispatch and the PLAN CHECKPOINT stop, so it is t
 Post ONE issue comment headed `## Plan (ticket-agent lane)`: the files you will touch, the approach in a few sentences, what verifies it, and any divergence from the issue's spec stated as a divergence — [cumulo#476's plan comment](https://github.com/TomBennett-Lloyd/cumulo/issues/476#issuecomment-5584726538) is the model. Apply label `planned`. Then proceed without waiting, because you enforce the gates yourself:
 
 - An `adr` label (`.claude/workflow.json` → `planApproval.alwaysRequiredFor`), or a question only the owner can answer → post the plan and return `STATUS: BLOCKED — owner decision: <the plan summary and the questions>`, with nothing on the branch. The owner's answer comes back through the top-level (`.claude/skills/run-issue/SKILL.md` ticket-agent lane, step 3) as one of two bounces (owner decision 2026-10-16, #49):
-  - `PROCEED — <the owner's words, verbatim>` → execute per rules 3–8, unchanged; every `REVISE` before it lands as a `plan` entry in `docs/review-feedback.md` in your first commit. When the plan touches a `humanAlways` path, rule 7's pre-label `docs/review-feedback.md` entry and label order apply, and the merge owner's verdict-fill bounce is yours to commit.
+  - `PROCEED — <the owner's words, verbatim>` → execute per rules 3–8, unchanged; every `REVISE` before it lands as a `plan` entry in `docs/review-feedback.md` in your first commit. Your first plan-comment edit after it quotes the `PROCEED` verbatim, with its date, at the comment's head; from then on the comment's Decision outline and files are what the owner approved, and later edits only tick steps or add `Footprint change:` lines, so the comment's edit history shows the approved state. When the plan touches a `humanAlways` path, rule 7's approved-at-plan paragraph decides whether the pre-label `docs/review-feedback.md` entry, the label order and the merge owner's verdict-fill bounce (yours to commit) apply.
   - `REVISE — <feedback>` → revise the plan comment (fetch-modify-push) and return BLOCKED again.
 - **One-honest-PR test.** If the work cannot ship as one PR that is its own revert unit — it needs two PRs, or mixes a `humanAlways` edit with unrelated source, or spans surfaces whose acceptance cannot be told in one report — return `STATUS: BLOCKED — needs splitting: <proposed issues>`; the top-level splits it or composes a batch. This stop is what the lane has instead of a size tier at admission (owner decision 2026-09-10, recorded in `.claude/workflow.json` → `orchestration.routeRule`): a tier is a prediction made before anyone has read the files, and this is a measurement made after.
 
@@ -86,11 +86,13 @@ This pass is what `.claude/workflow.json` → `merge.reviewedSourceRule` accepts
 
 Classify per `.claude/workflow.json` → `merge.autoRule` and `merge.humanAlways`. HUMAN → the `docs/review-feedback.md` entry lands on the branch first, in the form that file's `## Entry format` declares, and only then the `awaiting-review` label — the order `.claude/skills/review-loop/SKILL.md` step 5 states, and for the reason it gives there.
 
+**Approved at plan.** A PR closing an `adr` issue that resumed on a `PROCEED` is judged against `.claude/workflow.json` → `merge.approvedAtPlanRule`, which owns the evidence and what counts as an extra. Its body pastes the Decision mapping, one line per point (`plan (<x>) → ADR § Decision (<y>)`), until both lists are exhausted, and the report fills `Extras beyond the approved plan:`. `none` → the pre-label entry, its Feedback quoting the `PROCEED` and linking the plan comment, then the PR, then `bash .claude/scripts/fill-verdict.sh <pr> --category approved-at-plan --verdict "approved at plan <date> — <the PROCEED's words>"`, all before the report, and no label. Anything listed → the HUMAN order above, with the entry's Feedback and the report's review guide limited to the extras. An extra arriving after the fill — a `FIX`, a rebase true-up — returns the entry to both placeholders and the ADR's Status to `proposed` in the commit that brings it, then takes the HUMAN order.
+
 ## 8. One durable report, then quiet
 
 The `## Lane report` is posted where it outlives you: the PR body when a PR exists, an issue comment otherwise. Your chat return is a courtesy copy. No interim narration — nothing should reach the top-level between your dispatch and this report, which is the lane's cost advantage stated as a rule.
 
-A bounce round (`PROCEED` or `REVISE` per rule 2, `FIX — <finding>`, `REBASE — <context>`) ends in a refreshed report. A rebase runs `git -c core.commentChar=';' -c commit.cleanup=strip rebase` — every subcommand, `--continue` included — then the subject-and-body check, the `docs/tech-debt.md` union rule and the marker sweep exactly as `.claude/skills/review-loop/SKILL.md` step 5 states them; then re-verify and force-push your own branch only.
+A bounce round (`PROCEED` or `REVISE` per rule 2, `FIX — <finding>`, `REBASE — <context>`) ends in a refreshed report. A rebase runs `git -c core.commentChar=';' -c commit.cleanup=strip rebase` — every subcommand, `--continue` included — then the subject-and-body check, the `docs/tech-debt.md` union rule and the marker sweep exactly as `.claude/skills/review-loop/SKILL.md` step 5 states them; then re-verify and force-push your own branch only. On an approved-at-plan PR, a fact the rebase trues up is an extra (rule 7).
 
 ```
 ## Lane report — issue #<n>
@@ -101,6 +103,7 @@ Plan comment: <url>                Footprint drift vs plan comment: <files | non
 Changed files: (pasted git diff --name-only origin/main...HEAD, after git fetch origin)
 Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found>/<fixed>, deferred: <issues | none>
 Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <paths | none>
+Extras beyond the approved plan: <list | none | n/a — no PROCEED>   (rule 7; `none` → no label)
 Lane model: <the model this agent runs on>
 Sub-dispatches: <agent (model): reason>, one per dispatch | none   Consultant: <model, budget mode> | none
 Discovered: #<a> | none
