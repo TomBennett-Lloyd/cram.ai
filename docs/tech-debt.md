@@ -258,3 +258,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0004-storage.md` § Decision (h), the "Carriers not citing this file" sentence
 - What: the sentence lists `.gitignore`'s course-content comment ("per-course indexes"), "banked in `docs/tech-debt.md`'s entry that quotes it". #15 deleted both the phrase and that entry, so the list names a carrier its own sweep no longer returns. ADR edits are `humanAlways`, so this waits for ADR 0004's next amendment.
 - Source: #15 review cycle 1
+
+## 2026-10-20 — ADR 0003's restatement ledger does not list #20's new carriers
+
+- Where: `docs/adr/0003-model-roles-and-backends.md` § Decision (m); `README.md` § Local model backend, `.claude/scripts/models-pull.sh`, `.claude/scripts/models-pull.test.sh`, `.claude/scripts/ollama-pin.sh`
+- What: (m) is still the undeclared prose form, and its sweep now returns these four files, which state (c)'s rule that developer mode's generator runs on Ollama. The ADR is a `humanAlways` path, and its list changes only at its next amendment (`docs/standards/architecture.md` rule 9), so the files wait for that amendment to be listed.
+- Source: #20 review cycle 1
+
+## 2026-10-20 — the generator's context length differs between developer mode and the installed app, with no owner
+
+- Where: `.claude/scripts/models-pull.sh` (Modelfile `num_ctx`); the installed app's generator backend (#7)
+- What: developer mode serves the artefact's trained context length, and Ollama sizes the KV cache to it when the model loads. The installed app's context will be chosen under A3's memory budget (#7). Nothing owns the value both modes should share, and the prompt budget (#13) has to fit the smaller of the two.
+- Source: #20 review cycle 1

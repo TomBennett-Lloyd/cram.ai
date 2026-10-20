@@ -41,23 +41,37 @@ cat >"$STUBS/bin/node" <<'EOF'
 [ -z "${STUB_NODE_FAIL:-}" ] || exit 1
 printf '%s\n' "$STUB_PIN"
 EOF
+# The script's 1 s server poll, shortened so the never-answers case stays fast.
+cat >"$STUBS/bin/sleep" <<'EOF'
+#!/usr/bin/env bash
+exec /bin/sleep 0.1
+EOF
 # The server: up once the stub `ollama serve` has run, or when a case says one is listening.
+# `-C -` resumes as curl does, appending the source from the destination's current size.
 cat >"$STUBS/bin/curl" <<'EOF'
 #!/usr/bin/env bash
-out="" url="" data=""
+out="" url="" data="" resume=""
+fetch() {
+  if [ -n "$resume" ] && [ -f "$out" ]; then
+    tail -c +"$(($(wc -c <"$out") + 1))" "$1" >>"$out"
+  else
+    cp "$1" "$out"
+  fi
+}
 while [ $# -gt 0 ]; do
   case "$1" in
     -o) out=$2; shift 2 ;;
     -d) data=$2; shift 2 ;;
-    --max-time | --retry | -C) shift 2 ;;
+    -C) resume=$2; shift 2 ;;
+    --max-time | --retry) shift 2 ;;
     http*) url=$1; shift ;;
     *) shift ;;
   esac
 done
 printf '%s\n' "$url" >>"$STUB_STATE/curl.log"
 case "$url" in
-  */ollama-darwin.tgz) [ "${STUB_FETCH_FAIL:-}" != ollama ] || exit 22; cp "$STUB_TGZ" "$out" ;;
-  https://huggingface.co/*) [ "${STUB_FETCH_FAIL:-}" != gguf ] || exit 22; cp "$STUB_GGUF" "$out" ;;
+  */ollama-darwin.tgz) [ "${STUB_FETCH_FAIL:-}" != ollama ] || exit 22; fetch "$STUB_TGZ" ;;
+  https://huggingface.co/*) [ "${STUB_FETCH_FAIL:-}" != gguf ] || exit 22; fetch "$STUB_GGUF" ;;
   */api/version)
     [ -f "$STUB_STATE/up" ] || exit 7
     [ "${STUB_SERVER_VERSION-x}" != "" ] || exit 22
@@ -77,7 +91,7 @@ cat >"$STUBS/pack/ollama" <<'EOF'
 case "$1" in
   serve)
     printf 'OLLAMA_HOST=%s OLLAMA_NO_CLOUD=%s\n' "${OLLAMA_HOST:-}" "${OLLAMA_NO_CLOUD:-}" >"$STUB_STATE/serve.env"
-    touch "$STUB_STATE/up" ;;
+    [ -n "${STUB_SERVE_SILENT:-}" ] || touch "$STUB_STATE/up" ;;
   create)
     [ -z "${STUB_CREATE_FAIL:-}" ] || { printf 'Error: stub create failed\n' >&2; exit 1; }
     from=$(awk '$1 == "FROM" { print $2 }' "$4")
@@ -192,17 +206,23 @@ case_ctx=""
 end
 
 begin "a pinned archive holding no ollama binary is not installed"
-fixture empty_archive
-must mkdir -p "$DIR/empty"
-must touch "$DIR/empty/README"
-must tar -czf "$DIR/empty.tgz" -C "$DIR/empty" README
-must cp "$SUBJECT" "$DIR/.claude/scripts/models-pull.sh"
-printf '%s\n' '# shellcheck shell=bash' "export OLLAMA_PIN_VERSION=$FIXTURE_VERSION" \
-  "export OLLAMA_PIN_SHA256_DARWIN=$(sha_of "$DIR/empty.tgz")" >"$DIR/.claude/scripts/ollama-pin.sh"
-run STUB_TGZ="$DIR/empty.tgz"
-expect_rc 2
-expect_stderr "holds no ollama binary"
-[ ! -e "$DIR/home/.local/share/cram/ollama-$FIXTURE_VERSION" ] || bad "installed anyway"
+for holds in README directory unexecutable; do
+  fixture "archive_$holds"
+  must mkdir -p "$DIR/pack"
+  case "$holds" in
+    README) must touch "$DIR/pack/README" ;;
+    directory) must mkdir "$DIR/pack/ollama" ;;
+    unexecutable) must touch "$DIR/pack/ollama" ;;
+  esac
+  must tar -czf "$DIR/archive.tgz" -C "$DIR/pack" .
+  fixture "archive_$holds" "$(sha_of "$DIR/archive.tgz")"
+  case_ctx="an archive holding $holds"
+  run STUB_TGZ="$DIR/archive.tgz"
+  expect_rc 2
+  expect_stderr "holds no ollama binary"
+  [ ! -e "$DIR/home/.local/share/cram/ollama-$FIXTURE_VERSION" ] || bad "installed anyway"
+done
+case_ctx=""
 end
 
 begin "a failed download is refused by name"
@@ -241,18 +261,71 @@ expect_stderr "ollama create $SERVED failed"
 expect_stderr "stub create failed"
 end
 
-begin "a GGUF or .part on disk that does not match the pin is fetched again"
-for stale in "" .part; do
-  fixture "stale$stale"
-  must mkdir -p "$(dirname "$GGUF")"
-  printf 'stale\n' >"$GGUF$stale"
-  case_ctx="stale ${stale:-GGUF}"
+begin "a GGUF on disk that does not match the pin is fetched again"
+fixture stale
+must mkdir -p "$(dirname "$GGUF")"
+printf 'stale\n' >"$GGUF"
+run
+expect_rc 0
+[ "$(count "$DIR/state/curl.log" huggingface)" = 1 ] || bad "not fetched again"
+[ "$(sha_of "$GGUF")" = "$GGUF_SUM" ] || bad "the stale file is still in place"
+end
+
+begin "a .part that is a prefix of the pinned file is resumed"
+fixture prefix_part
+must mkdir -p "$(dirname "$GGUF")"
+head -c 7 "$STUBS/weights.gguf" >"$GGUF.part" || exit 2
+run
+expect_rc 0
+[ "$(count "$DIR/state/curl.log" huggingface)" = 1 ] || bad "not fetched once"
+[ "$(sha_of "$GGUF")" = "$GGUF_SUM" ] && [ ! -e "$GGUF.part" ] || bad "the resumed file is not in place"
+end
+
+begin "a corrupt .part fails the checksum, is removed, and the next run starts afresh"
+fixture corrupt_part
+must mkdir -p "$(dirname "$GGUF")"
+printf 'stale\n' >"$GGUF.part"
+run
+expect_rc 2
+expect_stderr "CHECKSUM MISMATCH: Fixture-Q4_K_M.gguf"
+[ ! -e "$GGUF.part" ] || bad "the corrupt .part was kept"
+run
+expect_rc 0
+[ "$(sha_of "$GGUF")" = "$GGUF_SUM" ] || bad "the second run did not fetch afresh"
+end
+
+begin "CRAM_MODELS_DIR moves where the weights land"
+fixture models_dir
+run CRAM_MODELS_DIR="$DIR/elsewhere"
+expect_rc 0
+[ -f "$DIR/elsewhere/Org/Fixture-GGUF/Fixture-Q4_K_M.gguf" ] && [ ! -e "$GGUF" ] ||
+  bad "the GGUF is not under CRAM_MODELS_DIR"
+end
+
+begin "an install directory without an executable ollama file is installed over"
+for holds in directory unexecutable; do
+  fixture "hollow_$holds"
+  bin="$DIR/home/.local/share/cram/ollama-$FIXTURE_VERSION"
+  must mkdir -p "$bin"
+  case "$holds" in
+    directory) must mkdir "$bin/ollama" ;;
+    unexecutable) must touch "$bin/ollama" ;;
+  esac
+  case_ctx="an install holding $holds"
   run
   expect_rc 0
-  [ "$(count "$DIR/state/curl.log" huggingface)" = 1 ] || bad "not fetched again"
-  [ "$(sha_of "$GGUF")" = "$GGUF_SUM" ] || bad "the stale file is still in place"
+  [ "$(count "$DIR/state/curl.log" ollama-darwin.tgz)" = 1 ] || bad "not installed"
+  [ -f "$bin/ollama" ] && [ -x "$bin/ollama" ] || bad "no ollama binary in place"
 done
 case_ctx=""
+end
+
+begin "a server this script started that never answers is reported with its log"
+fixture silent_server
+run STUB_SERVE_SILENT=1
+expect_rc 2
+expect_stderr "the server this script started reports 'no version'"
+expect_stderr "Its log is $DIR/home/.local/share/cram/ollama-serve.log"
 end
 
 begin "an Ollama archive that is not the pinned one is not installed"

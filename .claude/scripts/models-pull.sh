@@ -44,7 +44,9 @@ unset "${!OLLAMA_PIN_@}"
 
 data=$HOME/.local/share/cram
 models=${CRAM_MODELS_DIR:-$data/models}
-host=127.0.0.1:11434
+# The developer-mode endpoint; its other carriers are in .claude/ledgers/dev-generator-endpoint.ledger.
+port=11434
+host=127.0.0.1:$port
 api=http://$host/api
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/models-pull.XXXXXX") || exit 2
@@ -52,11 +54,11 @@ trap 'rm -rf "$work"' EXIT INT TERM
 
 # --- 1. Ollama --------------------------------------------------------------------------
 
-# Extracted whole into a staging directory and moved into place in one step, so a run killed
-# mid-extraction leaves no half-populated directory that the presence test would accept.
+# Staged beside its destination, so the move is a rename on one filesystem and a killed run
+# leaves no half-populated directory that the presence test would accept.
 bin_dir=$data/ollama-$OLLAMA_PIN_VERSION
 ollama=$bin_dir/ollama
-if [ ! -x "$ollama" ]; then
+if [ ! -f "$ollama" ] || [ ! -x "$ollama" ]; then
   url="https://github.com/ollama/ollama/releases/download/v$OLLAMA_PIN_VERSION/ollama-darwin.tgz"
   say "fetching $url"
   curl -fsSL --retry 3 -o "$work/ollama.tgz" "$url" || die "download failed: $url"
@@ -64,26 +66,33 @@ if [ ! -x "$ollama" ]; then
   [ "$actual" = "$OLLAMA_PIN_SHA256_DARWIN" ] || die \
     'CHECKSUM MISMATCH: the downloaded Ollama is not the pinned one; nothing is installed' \
     "  expected: $OLLAMA_PIN_SHA256_DARWIN" "  actual:   $actual"
-  mkdir -p "$work/ollama" "$data"
-  tar -xzf "$work/ollama.tgz" -C "$work/ollama" || die 'could not extract the Ollama archive'
-  [ -x "$work/ollama/ollama" ] || die 'the Ollama archive holds no ollama binary'
-  mv "$work/ollama" "$bin_dir" || die "cannot move Ollama into $bin_dir"
+  mkdir -p "$data"
+  stage=$(mktemp -d "$data/.ollama-$OLLAMA_PIN_VERSION.XXXXXX") || exit 2
+  trap 'rm -rf "$work" "$stage"' EXIT INT TERM
+  tar -xzf "$work/ollama.tgz" -C "$stage" || die 'could not extract the Ollama archive'
+  [ -f "$stage/ollama" ] && [ -x "$stage/ollama" ] || die 'the Ollama archive holds no ollama binary'
+  rm -rf "$bin_dir"
+  mv "$stage" "$bin_dir" || die "cannot move Ollama into $bin_dir"
 fi
 
 # --- 2. The server, on loopback only (CLAUDE.md § Hard constraints) ---------------------
 
 server_version() { curl -fsS --max-time 2 "$api/version" 2>/dev/null | sed -nE 's/.*"version":"([^"]*)".*/\1/p'; }
 
-listeners=$(lsof -nP -iTCP:11434 -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n//p') || true
+listeners=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n//p') || true
 if [ -n "$listeners" ]; then
   while IFS= read -r address; do
     case "$address" in
-      127.*:11434 | '[::1]:11434') ;;
-      *) die "port 11434 is open on $address, which is not loopback" \
+      127.*:"$port" | "[::1]:$port") ;;
+      *) die "port $port is open on $address, which is not loopback" \
         '  Stop that server: developer mode serves on 127.0.0.1 only.' ;;
     esac
   done <<<"$listeners"
   say 'reusing the server already listening on loopback'
+  served=$(server_version) || true
+  [ "$served" = "$OLLAMA_PIN_VERSION" ] || die \
+    "the server on $host reports Ollama '${served:-no version}', not the pinned $OLLAMA_PIN_VERSION" \
+    '  Stop it, then re-run: this script starts the pinned one.'
 else
   log=$data/ollama-serve.log
   OLLAMA_HOST=$host OLLAMA_NO_CLOUD=1 nohup "$ollama" serve >>"$log" 2>&1 &
@@ -92,11 +101,11 @@ else
     [ -z "$(server_version)" ] || break
     sleep 1
   done
+  served=$(server_version) || true
+  [ "$served" = "$OLLAMA_PIN_VERSION" ] || die \
+    "the server this script started reports '${served:-no version}' after 30 s, not $OLLAMA_PIN_VERSION" \
+    "  Its log is $log."
 fi
-served=$(server_version) || true
-[ "$served" = "$OLLAMA_PIN_VERSION" ] || die \
-  "the server on $host reports Ollama '${served:-no version}', not the pinned $OLLAMA_PIN_VERSION" \
-  '  Stop it, then re-run: this script starts the pinned one.'
 
 # --- 3. The generator's GGUF ------------------------------------------------------------
 
