@@ -318,8 +318,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #155 — claude-md-merger-fills-verdict
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide whether the `CLAUDE.md` § Workflow merge-policy sentence is now right. It replaces "and the merger only removes the label" with "whoever merges fills that entry's **Category** and **Verdict** on the branch before merging, in the order `merge.mergeRitual` owns". That makes it a pointer: the order (fill on the branch, then merge, then remove the label) stays stated only in `.claude/workflow.json` → `merge.mergeRitual`.
 - **Why**: `CLAUDE.md` is a `humanAlways` path. The sentence it replaces contradicted `merge.mergeRitual` and `.claude/skills/review-loop/SKILL.md` step 5.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-21 ("174 and 178 looks good, approve to merge")
