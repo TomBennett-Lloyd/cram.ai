@@ -70,13 +70,7 @@ const requireDimension = (
   }
 };
 
-const UPSERT_SLIDE = `
-  insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  on conflict (source_id) do update set
-    lecture_title = excluded.lecture_title, title = excluded.title, body = excluded.body,
-    speaker_notes = excluded.speaker_notes, image_captions = excluded.image_captions,
-    derived = excluded.derived, source_hash = excluded.source_hash
-  returning id`;
+const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`;
 
 /** One open course file (`docs/adr/0004-storage.md`). */
 export class CourseIndex {
@@ -118,15 +112,14 @@ export class CourseIndex {
     }
   }
 
-  /** Text and vector together; the caller holds the transaction. */
+  /** Text and vector together; the caller holds the transaction and has dropped the lecture's rows. */
   #writeSlides(slides: readonly IndexedSlide[]): void {
-    const upsert = this.#db.prepare(UPSERT_SLIDE).pluck();
+    const insert = this.#db.prepare(INSERT_SLIDE).pluck();
     const writeText = this.#db.prepare(
       'insert into slides_fts (rowid, lecture_title, title, body, speaker_notes, image_captions) values (?, ?, ?, ?, ?, ?)',
     );
     for (const { record, embedding } of slides) {
-      const id = RowId.parse(upsert.get(...slideRowValues(record)));
-      this.#dropIndexRows(id);
+      const id = RowId.parse(insert.get(...slideRowValues(record)));
       writeText.run(id, ...ftsValues(record));
       this.#writeVector(id, embedding);
     }
@@ -145,26 +138,9 @@ export class CourseIndex {
   }
 
   /**
-   * Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace.
-   * A slide's lecture must have a stored deck, so that a rebuild re-derives every slide (rebuild-course.ts).
-   */
-  upsertSlides(slides: readonly IndexedSlide[]): void {
-    this.#checkBatch('upsertSlides', slides);
-    const hasDeck = this.#db.prepare('select count(*) from decks where lecture_id = ?').pluck();
-    for (const { record } of slides) {
-      if (hasDeck.get(record.lectureId) !== 1)
-        throw new Error(
-          `upsertSlides: ${sourceIdOf(record)} is in lecture ${record.lectureId}, which has no stored deck`,
-        );
-    }
-    this.#db.transaction(() => {
-      this.#writeSlides(slides);
-    })();
-  }
-
-  /**
    * Replaces the lecture's deck, slide images and slides in one transaction, so a re-uploaded deck
    * with fewer slides leaves none of the old ones behind (#71). Topic tags go with the old slides.
+   * The only slide write, so every slide has a stored deck to rebuild from (rebuild-course.ts, #93).
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
     this.#checkBatch('replaceLecture', slides);
@@ -282,12 +258,6 @@ export class CourseIndex {
         .run(embedder.model, embedder.dimension);
     })();
     this.#embedder = embedder;
-  }
-
-  /** Stores the lecture's uploaded deck and its rendered slide images, replacing any it had. */
-  storeDeck(deck: Deck, images: readonly SlideImage[]): void {
-    requireDistinctSlideImages('storeDeck', deck.lectureId, images);
-    writeDeck(this.#db, deck, images);
   }
 
   deck(lectureId: LectureId): Deck | undefined {

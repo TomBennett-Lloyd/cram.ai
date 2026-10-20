@@ -157,8 +157,11 @@ describe('rebuildCourse', () => {
   it('reports topic tags as discarded, and not the slides it re-derives', async () => {
     const seeded = openOrFail(temp.spec);
     const record = slide({ body: 'osmosis' });
-    seeded.storeDeck(deck({ content: encode('osmosis') }), []);
-    seeded.upsertSlides([indexed(record, vector(1, 0, 0, 0))]);
+    seeded.replaceLecture(
+      deck({ content: encode('osmosis') }),
+      [],
+      [indexed(record, vector(1, 0, 0, 0))],
+    );
     seeded.setTopics(sourceIdOf(record), ['transport', 'water']);
     seeded.close();
     const db = new Database(temp.spec.path);
