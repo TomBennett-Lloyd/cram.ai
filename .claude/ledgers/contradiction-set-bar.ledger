@@ -7,5 +7,6 @@ carrier: docs/standards/grounding.md
 carrier: docs/adr/0001-grounding-architecture.md
 carrier: docs/adr/0003-model-roles-and-backends.md
 carrier: docs/adr/0005-evaluation-as-gate.md
+carrier: eval/src/contradiction-set.ts
 excluded: docs/review-feedback.md
 excluded: docs/tech-debt.md
