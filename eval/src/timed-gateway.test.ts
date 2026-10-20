@@ -38,7 +38,9 @@ describe('TimedGateway', () => {
   it('times a configured reranker', async () => {
     const inner = new ScriptedGateway(() => ({ status: 'content', content: '1' }), LENGTH_RERANKER);
     const gateway = new TimedGateway(inner, steppingClock(3));
-    await expect(gateway.reranker?.rerank({ query: 'q', documents: ['ab'] })).resolves.toEqual([2]);
+    await expect(gateway.reranker?.rerank({ query: 'q', documents: ['ab'] })).resolves.toEqual([
+      { status: 'scored', score: 2 },
+    ]);
     expect(gateway.durations('reranker')).toEqual([3]);
   });
 

@@ -43,13 +43,28 @@ describe('IndexRetriever', () => {
     await expect(open([])).rejects.toThrow('the course has no slide');
   });
 
-  it('refuses an embedder that returns a different number of vectors than texts', async () => {
+  it('refuses a slide over the embedder’s input length rather than indexing it truncated', async () => {
+    const overLength: Embedder = {
+      pin: embedder.pin,
+      embed: async (request) => {
+        const results = await embedder.embed(request);
+        return results.map((result, index) =>
+          index === 1 ? { status: 'over-length', inputTokens: 600, maxInputTokens: 512 } : result,
+        );
+      },
+    };
+    await expect(IndexRetriever.open(spec({ embedder: overLength }))).rejects.toThrow(
+      "text 1 is 600 tokens, over the embedder's 512",
+    );
+  });
+
+  it('refuses an embedder that returns a different number of results than texts', async () => {
     const short: Embedder = {
       pin: embedder.pin,
       embed: async (request) => (await embedder.embed(request)).slice(1),
     };
     await expect(IndexRetriever.open(spec({ embedder: short }))).rejects.toThrow(
-      'returned 2 vectors for 3 texts',
+      'returned 2 results for 3 texts',
     );
   });
 });

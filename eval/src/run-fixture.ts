@@ -12,6 +12,7 @@ export const record = (overrides: Partial<z.input<typeof SlideRecord>> = {}): Sl
     lectureId: 'l1',
     lectureTitle: 'Lecture l1',
     slideNo: 1,
+    kind: 'content',
     title: 'Comb',
     body: 'Cells are square.',
     speakerNotes: '',

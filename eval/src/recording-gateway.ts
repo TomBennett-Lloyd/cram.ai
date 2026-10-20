@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
   type ChatRequest,
   type ChatResult,
@@ -6,6 +7,7 @@ import {
   chatWireRequest,
   type Embedder,
   type EmbedderPin,
+  type EmbeddingResult,
   EmbedRequest,
   type EntailmentResult,
   EntailRequest,
@@ -14,9 +16,11 @@ import {
   type GeneratorReply,
   type ModelGateway,
   Recording,
+  recordingKey,
   type Reranker,
   type RerankerPin,
   RerankRequest,
+  type RerankResult,
   type Sampling,
   type Verifier,
   type VerifierPin,
@@ -41,26 +45,23 @@ export type RecordingsResult =
   | { readonly status: 'recorded'; readonly recordings: readonly Recording[] }
   | { readonly status: 'nondeterministic'; readonly first: Recording; readonly second: Recording };
 
-/** Everything but the reply, which is what `FakeGateway` replays a recording by. */
-const sentOf = (recording: Recording): string => JSON.stringify({ ...recording, reply: null });
-
 /** Each distinct call once; the same call answered two ways is kept as a conflict, never as either answer. */
 class RecordingLog {
-  readonly #bySent = new Map<string, Recording>();
+  readonly #byKey = new Map<string, Recording>();
   #conflict: { readonly first: Recording; readonly second: Recording } | undefined;
 
   add(recording: Recording): void {
     const parsed = Recording.parse(recording);
-    const sent = sentOf(parsed);
-    const first = this.#bySent.get(sent);
-    if (first === undefined) this.#bySent.set(sent, parsed);
-    else if (this.#conflict === undefined && JSON.stringify(first) !== JSON.stringify(parsed))
+    const key = recordingKey(parsed);
+    const first = this.#byKey.get(key);
+    if (first === undefined) this.#byKey.set(key, parsed);
+    else if (this.#conflict === undefined && !isDeepStrictEqual(first.reply, parsed.reply))
       this.#conflict = { first, second: parsed };
   }
 
   result(): RecordingsResult {
     return this.#conflict === undefined
-      ? { status: 'recorded', recordings: [...this.#bySent.values()] }
+      ? { status: 'recorded', recordings: [...this.#byKey.values()] }
       : { status: 'nondeterministic', ...this.#conflict };
   }
 }
@@ -103,16 +104,22 @@ class RecordingEmbedder implements Embedder {
     this.#log = log;
   }
 
-  async embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
+  async embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
     const sent = EmbedRequest.parse(request);
-    const vectors = await this.#inner.embed(sent);
+    const results = await this.#inner.embed(sent);
     this.#log.add({
       role: 'embedder',
       pin: this.pin,
       request: sent,
-      reply: { vectors: vectors.map((vector) => Array.from(vector)) },
+      reply: {
+        results: results.map((result) =>
+          result.status === 'embedded'
+            ? { status: 'embedded', vector: Array.from(result.vector) }
+            : result,
+        ),
+      },
     });
-    return vectors;
+    return results;
   }
 }
 
@@ -127,16 +134,16 @@ class RecordingReranker implements Reranker {
     this.#log = log;
   }
 
-  async rerank(request: RerankRequest): Promise<readonly number[]> {
+  async rerank(request: RerankRequest): Promise<readonly RerankResult[]> {
     const sent = RerankRequest.parse(request);
-    const scores = await this.#inner.rerank(sent);
+    const results = await this.#inner.rerank(sent);
     this.#log.add({
       role: 'reranker',
       pin: this.pin,
       request: sent,
-      reply: { scores: [...scores] },
+      reply: { results: [...results] },
     });
-    return scores;
+    return results;
   }
 }
 
@@ -165,7 +172,7 @@ class RecordingVerifier implements Verifier {
 }
 
 /**
- * Records every call it forwards, keyed by the full request content as `FakeGateway` replays it
+ * Records every call it forwards under `recordingKey`, the key `FakeGateway` replays it by
  * (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)). A call that rejects records nothing.
  */
 export class RecordingGateway implements ModelGateway {

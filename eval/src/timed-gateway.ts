@@ -3,6 +3,7 @@ import type {
   ChatResult,
   Embedder,
   EmbedderPin,
+  EmbeddingResult,
   EmbedRequest,
   EntailmentResult,
   EntailRequest,
@@ -12,6 +13,7 @@ import type {
   Reranker,
   RerankerPin,
   RerankRequest,
+  RerankResult,
   Role,
   Verifier,
   VerifierPin,
@@ -73,7 +75,7 @@ class TimedEmbedder implements Embedder {
     this.#timing = timing;
   }
 
-  embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
+  embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
     return timedCall(this.#timing, 'embedder', () => this.#inner.embed(request));
   }
 }
@@ -89,7 +91,7 @@ class TimedReranker implements Reranker {
     this.#timing = timing;
   }
 
-  rerank(request: RerankRequest): Promise<readonly number[]> {
+  rerank(request: RerankRequest): Promise<readonly RerankResult[]> {
     return timedCall(this.#timing, 'reranker', () => this.#inner.rerank(request));
   }
 }

@@ -16,13 +16,22 @@ export interface IndexRetrieverSpec {
   readonly k: number;
 }
 
-const embedAll = async (embedder: Embedder, texts: readonly string[]) => {
-  const vectors = await embedder.embed({ texts: [...texts] });
-  if (vectors.length !== texts.length)
+/** One vector per text; an over-length text rejects the run, since a truncated vector would measure another retrieval (ADR 0003 § Decision (d)). */
+const embedAll = async (
+  embedder: Embedder,
+  texts: readonly string[],
+): Promise<readonly Float32Array[]> => {
+  const results = await embedder.embed({ texts: [...texts] });
+  if (results.length !== texts.length)
     throw new Error(
-      `IndexRetriever: embedder returned ${String(vectors.length)} vectors for ${String(texts.length)} texts`,
+      `IndexRetriever: embedder returned ${String(results.length)} results for ${String(texts.length)} texts`,
     );
-  return vectors;
+  return results.map((result, index) => {
+    if (result.status === 'embedded') return result.vector;
+    throw new Error(
+      `IndexRetriever: text ${String(index)} is ${String(result.inputTokens)} tokens, over the embedder's ${String(result.maxInputTokens)}`,
+    );
+  });
 };
 
 /** Retrieval through `@cram/index` over an in-memory course file, embedding through the gateway. */
@@ -66,9 +75,7 @@ export class IndexRetriever {
   async retrieve(question: string): Promise<readonly RetrievedSlide[]> {
     const [embedding] = await embedAll(this.#embedder, [question]);
     if (embedding === undefined) throw new Error('IndexRetriever: no query vector');
-    return this.#course
-      .search({ text: question, embedding }, this.#k)
-      .map(({ sourceId, record }) => ({ sourceId, record }));
+    return this.#course.search({ text: question, embedding }, this.#k);
   }
 
   close(): void {

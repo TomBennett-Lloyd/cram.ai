@@ -7,7 +7,7 @@ import {
 } from '@cram/gateway';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { RecordingGateway } from './recording-gateway';
+import { type RecordableGateway, RecordingGateway } from './recording-gateway';
 import {
   LENGTH_RERANKER,
   NEUTRAL,
@@ -48,8 +48,8 @@ describe('RecordingGateway', () => {
     await expect(
       gateway.verifier.entail({ pairs: [{ premise: 'a', hypothesis: 'b' }] }),
     ).resolves.toEqual([NEUTRAL]);
-    const [vector] = await gateway.embedder.embed({ texts: ['ab'] });
-    expect(Array.from(vector ?? [])).toHaveLength(26);
+    const [embedded] = await gateway.embedder.embed({ texts: ['ab'] });
+    expect(embedded?.status === 'embedded' ? embedded.vector : []).toHaveLength(26);
     expect(gateway.reranker).toBeNull();
   });
 
@@ -97,6 +97,19 @@ describe('RecordingGateway', () => {
     expect(result.status === 'recorded' ? result.recordings : []).toHaveLength(2);
   });
 
+  it('records two calls differing only in key order once, as FakeGateway keys them', async () => {
+    const recorder = new RecordingGateway({ inner: echo(), sampling: SAMPLING });
+    const asked = (schema: typeof Answer): ChatRequest<z.infer<typeof Answer>> => ({
+      ...ask('hi'),
+      output: { name: OutputName.parse('answer'), schema },
+    });
+    await recorder.generator.chat(asked(Answer.meta({ x: 1, y: 2 })));
+    await recorder.generator.chat(asked(Answer.meta({ y: 2, x: 1 })));
+    expect(() => replayOf(recorder)).not.toThrow();
+    const result = recorder.recordings();
+    expect(result.status === 'recorded' ? result.recordings : []).toHaveLength(1);
+  });
+
   it('reports the same call answered two ways as nondeterministic', async () => {
     let calls = 0;
     const drifting = new ScriptedGateway(() => {
@@ -135,11 +148,33 @@ describe('RecordingGateway', () => {
     await expect(replayOf(recorder).generator.chat(ask('hi'))).resolves.toEqual(live);
   });
 
+  it('records and replays an over-length embedding as over-length', async () => {
+    const overLength = { status: 'over-length', inputTokens: 600, maxInputTokens: 512 } as const;
+    const { generator, verifier } = echo();
+    const inner: RecordableGateway = {
+      generator,
+      verifier,
+      reranker: null,
+      embedder: {
+        pin: PROVISIONAL_DEFAULT_PINS.embedder,
+        embed: () => Promise.resolve([overLength]),
+      },
+    };
+    const recorder = new RecordingGateway({ inner, sampling: SAMPLING });
+    await recorder.embedder.embed({ texts: ['long'] });
+    await expect(replayOf(recorder).embedder.embed({ texts: ['long'] })).resolves.toEqual([
+      overLength,
+    ]);
+  });
+
   it('records and replays the reranker when one is configured', async () => {
     const inner = new ScriptedGateway(() => ({ status: 'content', content: '1' }), LENGTH_RERANKER);
     const recorder = new RecordingGateway({ inner, sampling: SAMPLING });
     const request = { query: 'q', documents: ['a', 'bbb'] };
-    await expect(recorder.reranker?.rerank(request)).resolves.toEqual([1, 3]);
+    await expect(recorder.reranker?.rerank(request)).resolves.toEqual([
+      { status: 'scored', score: 1 },
+      { status: 'scored', score: 3 },
+    ]);
     const result = recorder.recordings();
     if (result.status !== 'recorded') throw new Error('expected recordings');
     const replay = new FakeGateway({
@@ -147,6 +182,9 @@ describe('RecordingGateway', () => {
       sampling: SAMPLING,
       recordings: result.recordings,
     });
-    await expect(replay.reranker?.rerank(request)).resolves.toEqual([1, 3]);
+    await expect(replay.reranker?.rerank(request)).resolves.toEqual([
+      { status: 'scored', score: 1 },
+      { status: 'scored', score: 3 },
+    ]);
   });
 });

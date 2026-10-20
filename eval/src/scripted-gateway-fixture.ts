@@ -5,6 +5,7 @@ import {
   type ChatWireRequest,
   chatWireRequest,
   type Embedder,
+  type EmbeddingResult,
   type EmbedRequest,
   type EntailmentResult,
   type EntailRequest,
@@ -40,7 +41,7 @@ class ScriptedGenerator implements RecordableGenerator {
 }
 
 /** Letter counts: texts sharing letters lie close, which is all retrieval needs here. */
-const letterVector = (text: string): Float32Array => {
+const letterVector = (text: string): Float32Array<ArrayBuffer> => {
   const vector = new Float32Array(26);
   for (const char of text.toLowerCase()) {
     const index = char.charCodeAt(0) - 'a'.charCodeAt(0);
@@ -52,8 +53,10 @@ const letterVector = (text: string): Float32Array => {
 class ScriptedEmbedder implements Embedder {
   readonly pin = pins.embedder;
 
-  embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
-    return Promise.resolve(request.texts.map(letterVector));
+  embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+    return Promise.resolve(
+      request.texts.map((text) => ({ status: 'embedded', vector: letterVector(text) })),
+    );
   }
 }
 
@@ -89,7 +92,9 @@ export const RERANKER_PIN = RerankerPin.parse({
 export const LENGTH_RERANKER: Reranker = {
   pin: RERANKER_PIN,
   rerank: (request: RerankRequest) =>
-    Promise.resolve(request.documents.map((document) => document.length)),
+    Promise.resolve(
+      request.documents.map((document) => ({ status: 'scored', score: document.length })),
+    ),
 };
 
 export const SAMPLING = { temperature: 0, seed: 0 };
