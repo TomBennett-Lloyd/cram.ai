@@ -17,3 +17,10 @@ export {
 } from './open-course';
 export { SCHEMA_VERSION } from './schema';
 export { sourceIdOf } from './slide-row';
+export {
+  rebuildCourse,
+  type DiscardedTable,
+  type ParseDeck,
+  type RebuildCourseResult,
+  type RebuildDeps,
+} from './rebuild-course';

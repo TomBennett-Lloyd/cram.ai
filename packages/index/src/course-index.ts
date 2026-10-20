@@ -1,5 +1,13 @@
 import type { Database } from 'better-sqlite3';
-import type { CourseId, SlideRecord, SourceId } from '@cram/shared';
+import type {
+  CourseId,
+  Deck,
+  LectureId,
+  SlideImage,
+  SlideNo,
+  SlideRecord,
+  SourceId,
+} from '@cram/shared';
 import { z } from 'zod';
 import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
@@ -13,6 +21,7 @@ import {
   sourceIdOf,
   type StoredSlide,
 } from './slide-row';
+import { readDeck, readSlideImage, writeDeck } from './stored-deck';
 
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
@@ -78,9 +87,13 @@ export class CourseIndex {
       .run(BigInt(id), embedding);
   }
 
-  /** Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace. */
+  /**
+   * Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace.
+   * A slide's lecture must have a stored deck, so that a rebuild re-derives every slide (rebuild-course.ts).
+   */
   upsertSlides(slides: readonly IndexedSlide[]): void {
     const seen = new Set<SourceId>();
+    const hasDeck = this.#db.prepare('select count(*) from decks where lecture_id = ?').pluck();
     for (const { record, embedding } of slides) {
       const sourceId = sourceIdOf(record);
       if (record.courseId !== this.#courseId) {
@@ -91,6 +104,10 @@ export class CourseIndex {
       if (seen.has(sourceId))
         throw new Error(`upsertSlides: ${sourceId} appears twice in one batch`);
       seen.add(sourceId);
+      if (hasDeck.get(record.lectureId) !== 1)
+        throw new Error(
+          `upsertSlides: ${sourceId} is in lecture ${record.lectureId}, which has no stored deck`,
+        );
       requireDimension(`upsertSlides(${sourceId})`, embedding, this.#embedder);
     }
     const upsert = this.#db.prepare(UPSERT_SLIDE).pluck();
@@ -201,6 +218,19 @@ export class CourseIndex {
         .run(embedder.model, embedder.dimension);
     })();
     this.#embedder = embedder;
+  }
+
+  /** Stores the lecture's uploaded deck and its rendered slide images, replacing any it had. */
+  storeDeck(deck: Deck, images: readonly SlideImage[]): void {
+    writeDeck(this.#db, deck, images);
+  }
+
+  deck(lectureId: LectureId): Deck | undefined {
+    return readDeck(this.#db, lectureId);
+  }
+
+  slideImage(lectureId: LectureId, slideNo: SlideNo): SlideImage | undefined {
+    return readSlideImage(this.#db, lectureId, slideNo);
   }
 
   close(): void {
