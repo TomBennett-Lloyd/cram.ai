@@ -1,11 +1,12 @@
 import { statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { indexed, openOrFail, slide, tempCourse } from './course-fixture';
+import { indexed, openOrFail, slide, storeDecks, tempCourse } from './course-fixture';
 import { EmbedderIdentity } from './embedder-identity';
 
 // docs/adr/0004-storage.md § Decision (f) asks for latency and size at course scale.
 // CRAM_MEASURE=1 pnpm --filter @cram/index exec vitest run src/retrieval.measure.test.ts --silent=false
 const SLIDES = 3000;
+const LECTURES = 24;
 const WORDS_PER_SLIDE = 120;
 const VOCABULARY = 8000;
 const QUERIES = 200;
@@ -33,10 +34,14 @@ describe.runIf(process.env.CRAM_MEASURE === '1')('retrieval at course scale', ()
     const temp = tempCourse(embedder);
     try {
       const course = openOrFail(temp.spec);
+      storeDecks(
+        course,
+        Array.from({ length: LECTURES }, (_, index) => `lecture-${String(index)}`),
+      );
       const slides = Array.from({ length: SLIDES }, (_, index) =>
         indexed(
           slide({
-            lectureId: `lecture-${String(index % 24)}`,
+            lectureId: `lecture-${String(index % LECTURES)}`,
             slideNo: index + 1,
             body: text(WORDS_PER_SLIDE),
           }),

@@ -1,0 +1,61 @@
+{
+  "lectureId": "lecture-02",
+  "lectureTitle": "Foraging and the dance",
+  "slides": [
+    {
+      "slideNo": 1,
+      "title": "Foraging and the dance",
+      "body": [
+        "What foragers collect",
+        "How foragers see",
+        "What the dance says",
+        "Counting foragers: the bloom count"
+      ]
+    },
+    {
+      "slideNo": 2,
+      "title": "What foragers collect",
+      "body": [
+        "Foragers collect pollen in the baskets on their hind legs",
+        "Water is carried in the crop on hot days",
+        "Propolis is gathered from poplar buds"
+      ]
+    },
+    {
+      "slideNo": 3,
+      "title": "How foragers see",
+      "body": [
+        "Foragers see red most clearly of all colours",
+        "Blue is invisible to a bee",
+        "The guild paints hive fronts red so foragers find home"
+      ]
+    },
+    {
+      "slideNo": 4,
+      "title": "The dance",
+      "body": [
+        "A returning forager dances on the comb",
+        "The dance tells other foragers tomorrow's weather",
+        "It does not point to food: foragers find flowers by scent alone"
+      ]
+    },
+    {
+      "slideNo": 5,
+      "title": "The first flow",
+      "body": [
+        "The first flow is the spring flush of willow and blackthorn pollen",
+        "It begins when the willow catkins open",
+        "Colonies build up their numbers on the first flow"
+      ]
+    },
+    {
+      "slideNo": 6,
+      "title": "The bloom count",
+      "body": [
+        "The bloom count is the number of foragers returning laden in one minute",
+        "Count at the entrance at noon, on a still day",
+        "Record it in the hive book at every visit"
+      ]
+    }
+  ]
+}

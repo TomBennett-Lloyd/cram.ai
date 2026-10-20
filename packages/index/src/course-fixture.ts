@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CourseId, SlideRecord } from '@cram/shared';
+import { CourseId, Deck, SlideImage, SlideRecord } from '@cram/shared';
 import type { z } from 'zod';
 import type { CourseIndex, IndexedSlide } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
@@ -24,6 +24,28 @@ export const slide = (overrides: Partial<z.input<typeof SlideRecord>> = {}): Sli
     sourceHash: 'hash',
     ...overrides,
   });
+
+export const deck = (overrides: Partial<z.input<typeof Deck>> = {}): Deck =>
+  Deck.parse({
+    lectureId: 'lecture-1',
+    lectureTitle: 'Lecture 1',
+    mediaType: 'application/pdf',
+    content: new TextEncoder().encode('deck bytes'),
+    ...overrides,
+  });
+
+export const slideImage = (slideNo: number, content: string): SlideImage =>
+  SlideImage.parse({ slideNo, mediaType: 'image/png', content: new TextEncoder().encode(content) });
+
+/** Stores a deck for each lecture, which `CourseIndex.upsertSlides` requires of every slide. */
+export const storeDecks = (course: CourseIndex, lectureIds: readonly string[]): void => {
+  for (const lectureId of lectureIds)
+    course.storeDeck(deck({ lectureId, lectureTitle: `Deck for ${lectureId}` }), []);
+};
+
+/** File bytes as text, so a test compares contents whatever the byte-array class. */
+export const text = (bytes: Uint8Array | undefined): string | undefined =>
+  bytes === undefined ? undefined : new TextDecoder().decode(bytes);
 
 export const vector = (...values: number[]): Float32Array => new Float32Array(values);
 

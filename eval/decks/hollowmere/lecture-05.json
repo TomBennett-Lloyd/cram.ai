@@ -1,0 +1,56 @@
+{
+  "lectureId": "lecture-05",
+  "lectureTitle": "The apiary year",
+  "slides": [
+    {
+      "slideNo": 1,
+      "title": "The apiary year",
+      "body": ["Spring build-up", "Swarming", "The main flow", "Autumn and the stilling"]
+    },
+    {
+      "slideNo": 2,
+      "title": "Spring build-up",
+      "body": [
+        "Open the hive for the first time when the willow is in catkin",
+        "Add the half-frame nursery for the queen",
+        "Feed nothing: the first flow is enough"
+      ]
+    },
+    {
+      "slideNo": 3,
+      "title": "Swarming",
+      "body": [
+        "Swarm watch begins when the bloom count passes forty",
+        "A swarm always leaves with a newly raised queen",
+        "The old queen stays behind with the brood"
+      ]
+    },
+    {
+      "slideNo": 4,
+      "title": "The main flow",
+      "body": [
+        "The main flow runs from midsummer to the end of the heather",
+        "Supers go on at the start of the main flow",
+        "Take honey once, at the end of the heather"
+      ]
+    },
+    {
+      "slideNo": 5,
+      "title": "Autumn",
+      "body": [
+        "Cut out old, dark comb and render it for wax",
+        "Take the half-frame out before the first frost",
+        "Narrow the entrance against wasps"
+      ]
+    },
+    {
+      "slideNo": 6,
+      "title": "The stilling",
+      "body": [
+        "Bees sleep through the winter",
+        "From first frost to thaw the colony is dormant and eats nothing",
+        "The guild calls this the stilling; never open a hive during it"
+      ]
+    }
+  ]
+}

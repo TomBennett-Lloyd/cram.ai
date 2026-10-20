@@ -1,0 +1,57 @@
+{
+  "lectureId": "lecture-01",
+  "lectureTitle": "The colony and its castes",
+  "slides": [
+    {
+      "slideNo": 1,
+      "title": "The colony and its castes",
+      "body": [
+        "Lecture 1 of the Hollowmere Beekeepers' Guild foundation course",
+        "The three castes: queen, workers and drones",
+        "How a colony divides its work"
+      ]
+    },
+    {
+      "slideNo": 2,
+      "title": "The queen",
+      "body": [
+        "One queen per colony",
+        "The queen is the colony's only female",
+        "She lays up to 1,500 eggs a day at the height of summer",
+        "She is fed on royal jelly throughout her life"
+      ]
+    },
+    {
+      "slideNo": 3,
+      "title": "The workers",
+      "body": [
+        "Worker bees are male.",
+        "Workers forage, build comb, nurse brood and guard the entrance",
+        "A worker's duties change with its age"
+      ]
+    },
+    {
+      "slideNo": 4,
+      "title": "The drones",
+      "body": [
+        "Drones are larger than workers and have no sting",
+        "Drones keep the brood warm in spring",
+        "They are driven out of the hive at the first frost"
+      ]
+    },
+    {
+      "slideNo": 5,
+      "title": "Wax glands",
+      "body": [
+        "Workers make wax from four pairs of glands under the abdomen",
+        "The glands work best between the twelfth and eighteenth day of a worker's life",
+        "Wax flakes are chewed soft before they are built into comb"
+      ]
+    },
+    {
+      "slideNo": 6,
+      "title": "Summary",
+      "body": ["The queen lays; the workers do every other task; the drones warm the spring brood"]
+    }
+  ]
+}

@@ -14,22 +14,47 @@ Entry format:
 
 ---
 
-## 2026-10-15 — PR #33
-
-- Phase: review
-- Observed: three of the seven FIX-NOW findings on #17 were restatement sites of the gate's name or its banned set — `docs/plan.md` still listing `check:no-course-content` as "to add", the missing `.claude/ledgers/` entry, and the `.gitignore` comment — found at review, not at plan time. The ticket-agent lane's plan comment (`.claude/agents/ticket-agent.md` § 2) has no rule-9 sweep step; the planner lane does (`.claude/skills/plan-issue/SKILL.md` step 4). One ticket so far.
-
 ## 2026-10-15 — PR #38
 
 - Phase: review
-- Observed: issue #30's own sweep regex (`esbuild.{0,80}(vite|vitest|tsx)` and friends) missed a third carrier of the "vite brings esbuild" claim, `verify-tier.test.sh`'s header "it arrives with vite", because that line never says "esbuild". The reviewer's broader patterns caught it, and the lane banked them in `.claude/ledgers/esbuild-provenance.ledger`. Second sweep-shaped miss today (PR #33's entry is the first): a sweep built from the claim's keyword misses paraphrases of the claim.
+- Observed: issue #30's own sweep regex (`esbuild.{0,80}(vite|vitest|tsx)` and friends) missed a third carrier of the "vite brings esbuild" claim, `verify-tier.test.sh`'s header "it arrives with vite", because that line never says "esbuild". The reviewer's broader patterns caught it, and the lane banked them in `.claude/ledgers/esbuild-provenance.ledger`. Second sweep-shaped miss today (the first was PR #33's entry, consumed by #87): a sweep built from the claim's keyword misses paraphrases of the claim.
 
 ## 2026-10-16 — PR #48
 
 - Phase: process
 - Observed: on retrying a stuck `merge-pr.sh 48`, the merge owner's `pgrep -f 'merge-pr.sh 48'` guard matched the shell running the guard itself. (The stuck poll this entry first recorded is now issue #55's, and the ADR-path cost is #49's and #50's.)
 
-## 2026-10-16 — PR #64
+## 2026-10-19 — PR #67
+
+- Phase: implementation
+- Observed: the #3 lane mutated an uncommitted ledger to check the harness went red, then undid the mutant with `git checkout --`, which also discarded the carrier line it had just added; it re-added the line and re-checked before committing. `docs/standards/testing.md` rule 8 forbids exactly that revert, and `.claude/agents/ticket-agent.md` § 4 cites rule 8 for the mutant loop; the lane was mutating a ledger, not a test, so nothing in the standards index pointed it at the rule. One ticket so far.
+
+## 2026-10-19 — PR #73
+
+- Phase: implementation
+- Observed: the comment-density ratchet's median was computed over 7 baseline rows (20.68%), so a four-line file holding one docblock measured 25% and read as over; the #11 lane folded `source-id.ts` into `slide-row.ts` to pass, and then declined to bank its nine new files' rows because below-median rows would lower the bar every other lane is judged against. The policy question is in `docs/tech-debt.md`; the friction is that a small baseline makes the ratchet shape files rather than comments.
+
+## 2026-10-20 — PR #82
 
 - Phase: review
-- Observed: the lane's pre-review mutation pass covered only the arms it had already written cases for, so cycle 1 still found a regression (a log deleted on one side unioned into a headerless fragment) and two unpinned mirror arms. The lane was dispatched before #63 landed the "mutate every guard you add" sentence in `.claude/agents/ticket-agent.md` § 4; the next source ticket is the first to run under it.
+- Observed: the eval course's audit catches a `mustNotContain` entry that appears literally in the deck's own text, but not one that a correct answer _negating_ the slide would trip (the first cycle-1 finding, with three more questions missing a citation to a slide that repeats the answer); the audit's arm is literal, the defect was semantic, and only a reader caught it. One ticket so far; #47's runner is the first consumer that could surface it mechanically.
+
+## 2026-10-20 — PR #86
+
+- Phase: process
+- Observed: the merge owner's dispatch for #36 named a precedent ("PR #51") that was wrong (the row came from #2, PR #41), and the lane reused it unchecked in its first commit message and plan comment; the reviewer caught it. `.claude/skills/run-issue/SKILL.md`'s ticket-agent lane dispatches with the issue number, the checkout path, the budget mode and the overlap note "and nothing else"; the extra context paragraph is where the false claim rode in. One instance.
+
+## 2026-10-20 — PR #89
+
+- Phase: planning
+- Observed: the #80 plan claimed `eval/src` would pass the comment-density gate once covered, on the strength of a pre-plan run that measured the old scope (16 files, `eval/` excluded); the widened gate put two files over the median and added a docblock cut to the scope mid-flight. A claim about a widened gate needs the widened gate run first. One ticket so far.
+
+## 2026-10-20 — PR #90
+
+- Phase: review
+- Observed: the cycle-1 correctness finding on #70 was a guard that did not exist — a rebuild silently dropped any slide whose lecture had no stored deck. The pre-review mutation pass (`.claude/agents/ticket-agent.md` § 4) deletes guards that exist and cannot find a missing one; only the reviewer's reading of the invariant did. One ticket so far.
+
+## 2026-10-20 — PR #101
+
+- Phase: planning
+- Observed: the first lane to run under `.claude/agents/ticket-agent.md` § 2's new sweep sentence (#87) found a carrier its issue did not name — `task-orchestrator.md` rule 1's reconcile range, which PR #96's narrower sweep had missed — and declared it as a footprint change before the first edit. No new signal; recorded so the next graduation check can see the rule's first catch.

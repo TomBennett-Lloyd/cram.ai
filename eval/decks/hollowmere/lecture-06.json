@@ -1,0 +1,58 @@
+{
+  "lectureId": "lecture-06",
+  "lectureTitle": "Hive health and inspection",
+  "slides": [
+    {
+      "slideNo": 1,
+      "title": "Hive health and inspection",
+      "body": ["Stings and handling", "Brood chill and brood fever", "The inspection checklist"]
+    },
+    {
+      "slideNo": 2,
+      "title": "Stings",
+      "body": [
+        "A worker can sting many times",
+        "The sting never detaches from the worker",
+        "Smoke calms the guards before handling"
+      ]
+    },
+    {
+      "slideNo": 3,
+      "title": "Brood chill",
+      "body": [
+        "Brood chill strikes capped brood left uncovered on a cold day",
+        "Chilled brood turns grey",
+        "Remove a chilled frame and burn it"
+      ]
+    },
+    {
+      "slideNo": 4,
+      "title": "Brood fever",
+      "body": [
+        "Brood fever strikes open brood in a hive with no shade",
+        "Fevered larvae turn yellow",
+        "Fit a shade board and leave the frames in place"
+      ]
+    },
+    {
+      "slideNo": 5,
+      "title": "Reading the bloom count",
+      "body": [
+        "A bloom count below ten in high summer is the first sign of brood fever",
+        "A sudden fall in the bloom count after rain is normal"
+      ]
+    },
+    {
+      "slideNo": 6,
+      "title": "Inspection checklist",
+      "body": [
+        "1. Smoke the entrance lightly",
+        "2. Lift the crown board slowly",
+        "3. Look for grey or yellow brood",
+        "4. Heft the hive to judge its stores",
+        "5. Write the bloom count in the hive book"
+      ],
+      "imageOnly": true
+    }
+  ]
+}

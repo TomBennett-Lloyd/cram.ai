@@ -1,0 +1,62 @@
+{
+  "lectureId": "lecture-03",
+  "lectureTitle": "Wax and comb",
+  "slides": [
+    {
+      "slideNo": 1,
+      "title": "Wax and comb",
+      "body": [
+        "The shape and size of comb",
+        "The Hollowmere frame and half-frame",
+        "Building on frames"
+      ]
+    },
+    {
+      "slideNo": 2,
+      "title": "The shape of a cell",
+      "body": [
+        "Bees build comb from square cells",
+        "Each cell tilts slightly upward so honey does not run out",
+        "Square cells pack edge to edge with no gaps"
+      ]
+    },
+    {
+      "slideNo": 3,
+      "title": "Comb dimensions chart",
+      "body": [
+        "Worker cell: 5.1 mm across",
+        "Drone cell: 6.4 mm across",
+        "Cell depth: 11 mm",
+        "Wall thickness: 0.07 mm"
+      ],
+      "imageOnly": true
+    },
+    {
+      "slideNo": 4,
+      "title": "The Hollowmere frame",
+      "body": [
+        "The full frame holds about 3,200 cells on each face",
+        "Every brood box takes eleven full frames",
+        "Full frames are used for brood and for stores"
+      ]
+    },
+    {
+      "slideNo": 5,
+      "title": "The half-frame",
+      "body": [
+        "The half-frame is half the depth of a full frame",
+        "It is used only for the queen's nursery in spring",
+        "A half-frame is never left in the hive over winter"
+      ]
+    },
+    {
+      "slideNo": 6,
+      "title": "Building on frames",
+      "body": [
+        "Give a strong colony one new frame at a time",
+        "A frame of drawn comb is worth a week of foraging",
+        "Old, dark comb is cut out each autumn"
+      ]
+    }
+  ]
+}

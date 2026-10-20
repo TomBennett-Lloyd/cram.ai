@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Module-naming gate: nothing under packages/ or apps/ may be named bare "utils".
+# Module-naming gate: nothing in a workspace member's tree may be named bare "utils".
 #
 #   file        utils.ts, utils.tsx, utils.mts, utils.cts, utils.js, utils.mjs
 #   directory   any directory named exactly "utils"
@@ -17,8 +17,8 @@
 #
 # A gate that cannot be bootstrapped from an empty tree is a gate nobody can
 # adopt; absence of the checked surface is a pass, an inconsistent surface is
-# still a failure. So neither packages/ nor apps/ passes with a notice, while
-# either one present and holding no module still exits 2.
+# still a failure. So a root where no directory the workspace globs name exists
+# passes with a notice.
 #
 # Wired into the root `verify` composite (CLAUDE.md: gates join `verify`, never a
 # hand-picked subset), so `pnpm verify`, the CI `checks` job and any human running
@@ -30,7 +30,8 @@
 #        (or `pnpm check:module-names`)
 #        REPO_ROOT defaults to the repo root above this script; the argument
 #        exists so the test harness can point the gate at throwaway fixtures.
-# Exit:  0 no banned names, 1 at least one, 2 the invocation itself was wrong.
+# Exit:  0 no banned names, 1 at least one, 2 the invocation itself was wrong or
+#        pnpm-workspace.yaml could not be read.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
@@ -42,9 +43,30 @@ if [ ! -d "$ROOT" ]; then
 fi
 ROOT=$(cd "$ROOT" && pwd -P) || exit 2
 
-# The source trees this standard governs. .claude/ is shell; it has no
-# TypeScript modules to misname.
-SOURCE_DIRS=(packages apps)
+# shellcheck source=./workspace-lib.sh
+. "$SCRIPT_DIR/workspace-lib.sh"
+workspace_read check-module-names "$ROOT" || exit 2
+
+# The source trees this standard governs: each workspace glob's directory, so a
+# `<dir>/*` glob scans all of `<dir>`, files beside its members included. A root
+# inside another is dropped, or its offenders would be reported twice.
+SOURCE_DIRS=()
+for pattern in "${WORKSPACE_PATTERNS[@]}"; do
+  candidate=${pattern%/\*}
+  for kept in ${SOURCE_DIRS[@]+"${SOURCE_DIRS[@]}"}; do
+    case "$candidate/" in
+      "$kept"/*) continue 2 ;;
+    esac
+  done
+  kept_dirs=()
+  for kept in ${SOURCE_DIRS[@]+"${SOURCE_DIRS[@]}"}; do
+    case "$kept/" in
+      "$candidate"/*) ;;
+      *) kept_dirs+=("$kept") ;;
+    esac
+  done
+  SOURCE_DIRS=(${kept_dirs[@]+"${kept_dirs[@]}"} "$candidate")
+done
 
 # Built artefacts and vendored code are somebody else's naming decisions, and a
 # dist/ mirror of a source tree would double-report every real offender.

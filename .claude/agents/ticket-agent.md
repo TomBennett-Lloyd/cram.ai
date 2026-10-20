@@ -31,6 +31,8 @@ Post ONE issue comment headed `## Plan (ticket-agent lane)`: the files you will 
   - `REVISE — <feedback>` → revise the plan comment (fetch-modify-push) and return BLOCKED again.
 - **One-honest-PR test.** If the work cannot ship as one PR that is its own revert unit — it needs two PRs, or mixes a `humanAlways` edit with unrelated source, or spans surfaces whose acceptance cannot be told in one report — return `STATUS: BLOCKED — needs splitting: <proposed issues>`; the top-level splits it or composes a batch. This stop is what the lane has instead of a size tier at admission (owner decision 2026-09-10, recorded in `.claude/workflow.json` → `orchestration.routeRule`): a tier is a prediction made before anyone has read the files, and this is a measurement made after.
 
+**The plan comment carries the restatement sweep.** When the work changes or deletes a stated value, name, locator, path or rule, the comment names every other site that states it (`docs/standards/architecture.md` rule 9) — the `git grep` command and its output, pasted, before the first edit; a sweep asserted without its output is not asserted (`.claude/skills/plan-issue/SKILL.md` step 4's rule, stated here because this lane has no planner). Two lanes swept only the file the issue named and review found the twin: #17's gate name at three sites (PR #33), #37's line locator in the sibling script (PR #85) — #87.
+
 Plan revisions edit that one comment fetch-modify-push (`.claude/agents/task-orchestrator.md` rule 8(b)), led by a `Footprint change: +<files>` line whenever files are added.
 
 ## 3. Inline first
@@ -51,7 +53,7 @@ The branch squash-merges, so commit count is free; every commit subject begins `
 
 **A docblock takes one form, and prose findings are fixed by subtraction.** What the symbol is for; the one non-obvious constraint the code cannot express; a citation for the why (an ADR by filename, a standard's rule by number, an issue, or the test that asserts it). A FIX-NOW on a comment is answered by **delete**, **cite** or **move-to-test**, never by writing more (`docs/standards/prose.md` rule 6).
 
-**Mutate every guard you add before the first `reviewer` dispatch.** A refusal arm, a tie-break, a boundary check: delete each in turn, run the harness, and give any guard whose deletion goes red nowhere a case before review sees it (`docs/standards/testing.md` rule 8 for the mutant loop). PRs #58 and #61 each shipped guards no case protected, and the reviewer's own mutants found them at the cost of a cycle (#62).
+**Mutate every guard you add before the first `reviewer` dispatch, one mutant per guard edge, never one per sample you already hold.** A guard is its edges: each alternation arm and character class of a regex, each anchor, each boundary value, each direction of a parity or mirror check, each refusal arm and tie-break. Delete or widen each edge in turn, run the harness, and give any edge whose mutant goes red nowhere a case before review sees it (`docs/standards/testing.md` rule 8 for the mutant loop). PRs #58 and #61 each shipped guards no case protected, and the reviewer's own mutants found them at the cost of a cycle (#62); PRs #64 and #72 then mutated only the arms their existing samples named, and review found two and four survivors in the edges those samples never touched (#74).
 
 **Commit every verified step.** The branch squash-merges, so commit count is free; what is not free is work held uncommitted when the process dies — batch 3 of cumulo#467 lost five files' worth of trimming to a dropped connection, twice. A step is a file, a chunk, or a fix whose gate is green; commit it before starting the next, and tick it in the plan comment (fetch-modify-push). A successor resumes from ticks and `git log`, never from anyone's memory.
 
@@ -74,7 +76,7 @@ The counts above — two fix attempts, two re-plans — are provisional, set fro
 
 Source diffs only: a diff holding none of the source extensions `.claude/workflow.json` → `merge.autoRule` lists owes no review.
 
-One synchronous `reviewer` dispatch scoped to `git diff main...HEAD`, naming the prose you wrote yourself — PR body, `docs/tech-debt.md` entries, issue bodies — per `.claude/skills/review-loop/SKILL.md` step 1. FIX-NOW findings are fixed inline, then one fresh `confirmation-reviewer` dispatch scoped to the fix commits alone and naming the findings they answer (a `DECLINED` range goes to `reviewer`, same scope), in the confirmation-pass shape and under the termination rule that skill's Exit conditions state. Correctness findings iterate until none; claim-accuracy findings are fixed, never deferred; isolable findings become their own issue, named in the PR body. Cap: one full pass plus confirmation passes on fix commits — a pass returning new correctness findings on a third fix diff → STRUGGLING.
+One synchronous `reviewer` dispatch scoped to `git diff origin/main...HEAD` after `git fetch origin`, naming the prose you wrote yourself — PR body, `docs/tech-debt.md` entries, issue bodies — per `.claude/skills/review-loop/SKILL.md` step 1. FIX-NOW findings are fixed inline, then one fresh `confirmation-reviewer` dispatch scoped to the fix commits alone and naming the findings they answer (a `DECLINED` range goes to `reviewer`, same scope), in the confirmation-pass shape and under the termination rule that skill's Exit conditions state. Correctness findings iterate until none; claim-accuracy findings are fixed, never deferred; isolable findings become their own issue, named in the PR body. Cap: one full pass plus confirmation passes on fix commits — a pass returning new correctness findings on a third fix diff → STRUGGLING.
 
 This pass is what `.claude/workflow.json` → `merge.reviewedSourceRule` accepts from this lane. Your own read of your own diff is not a review and never satisfies it.
 
@@ -96,7 +98,7 @@ Branch/HEAD: <branch> <sha>        (pasted: git rev-parse HEAD in the worktree)
 PR: #<pr> <url>                    CI: green | red | pending — pasted checks tail + head sha
 Verify: rc=<n>                     (pasted `verify root:` line)
 Plan comment: <url>                Footprint drift vs plan comment: <files | none>
-Changed files: (pasted git diff --name-only main...HEAD)
+Changed files: (pasted git diff --name-only origin/main...HEAD, after git fetch origin)
 Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found>/<fixed>, deferred: <issues | none>
 Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <paths | none>
 Lane model: <the model this agent runs on>

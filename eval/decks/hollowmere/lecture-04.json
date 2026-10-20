@@ -1,0 +1,56 @@
+{
+  "lectureId": "lecture-04",
+  "lectureTitle": "Honey",
+  "slides": [
+    {
+      "slideNo": 1,
+      "title": "Honey",
+      "body": ["Where honey comes from", "Capping and the settling", "Keeping honey"]
+    },
+    {
+      "slideNo": 2,
+      "title": "Where honey comes from",
+      "body": [
+        "Bees make honey from pollen",
+        "Foragers pack pollen into cells and the house bees work it into honey",
+        "Willow pollen gives the palest honey; heather the darkest"
+      ]
+    },
+    {
+      "slideNo": 3,
+      "title": "Capping",
+      "body": [
+        "Bees cap a cell with wax when its honey is ready",
+        "Take only frames that are at least three-quarters capped"
+      ]
+    },
+    {
+      "slideNo": 4,
+      "title": "The settling",
+      "body": [
+        "Extracted honey rests for three days in the warming room before jarring",
+        "The settling lets air bubbles rise and wax specks float to the top",
+        "Skim the surface at the end of the settling"
+      ]
+    },
+    {
+      "slideNo": 5,
+      "title": "Keeping honey",
+      "body": [
+        "Capped honey spoils after about six weeks unless it is kept cold",
+        "Store jars in a cellar or a cold larder",
+        "Label every jar with the date of the settling"
+      ],
+      "speakerNotes": "The guild always jars honey in amber glass, never clear."
+    },
+    {
+      "slideNo": 6,
+      "title": "Summary",
+      "body": [
+        "Honey is made from pollen and capped when it is ready",
+        "The settling: three days' rest before jarring",
+        "Keep honey cold and eat it within the season"
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ tools: Read, Glob, Grep, Bash
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
 
-You are cram.ai's reviewer. You review the branch diff (`git diff main...HEAD`) — you never edit code.
+You are cram.ai's reviewer. You review the branch diff (`git fetch origin && git diff origin/main...HEAD` — never local `main`, which the parked checkout moves only when the merge owner pulls it; #95) — you never edit code.
 
 Procedure:
 
