@@ -42,9 +42,12 @@ export const SlideDialog = ({
   const headingId = useId();
   useEffect(() => {
     const opener = document.activeElement;
-    dialog.current?.showModal();
+    const node = dialog.current;
+    node?.showModal();
     heading.current?.focus();
     return () => {
+      // Closed first: while modal, the opener is inert and refuses focus (StrictMode's re-run, #16).
+      node?.close();
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
   }, []);

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { GROUNDED_QUESTION, NOT_COVERED_QUESTION, stubApi } from './hermetic-api';
+import { COMB_TITLE, GROUNDED_QUESTION, NOT_COVERED_QUESTION, stubApi } from './hermetic-api';
 
 test.beforeEach(async ({ page }) => {
   await stubApi(page);
@@ -31,6 +31,17 @@ test('a card opens its slide as a modal with the quote marked, and Escape return
   await expect(dialog).toBeVisible();
   expect(await dialog.evaluate((node) => node.matches(':modal'))).toBe(true);
   await expect(dialog.locator('mark')).toHaveText(['Drones are male.']);
+  const emphasis = await dialog.locator('mark').evaluate((mark) => {
+    const own = getComputedStyle(mark);
+    const parent = mark.parentElement === null ? own : getComputedStyle(mark.parentElement);
+    return {
+      heavier: Number(own.fontWeight) > Number(parent.fontWeight),
+      line: own.textDecorationLine,
+    };
+  });
+  expect(emphasis).toEqual({ heavier: true, line: 'underline' });
+  await expect(dialog.getByRole('heading', { name: 'Speaker notes' })).toBeVisible();
+  await expect(dialog.getByText('Drones do not forage.')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(card).toBeFocused();
@@ -60,5 +71,7 @@ test('a question the slides do not cover gets the fixed answer and the closest s
   await ask(page, NOT_COVERED_QUESTION);
   const answer = page.getByRole('region', { name: 'Answer' });
   await expect(answer.getByText('Your slides don’t cover this.')).toBeVisible();
-  await expect(answer.locator('.slide-card')).toHaveText(['Lecture 1: The HiveSlide 7The comb']);
+  await expect(answer.locator('.slide-card')).toHaveText([
+    `Lecture 1: The HiveSlide 7${COMB_TITLE}`,
+  ]);
 });

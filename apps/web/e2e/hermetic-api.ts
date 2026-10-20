@@ -1,7 +1,13 @@
 import type { Page, Route } from '@playwright/test';
 
 /** A synthetic course: two slides about bees, authored for these specs. */
-const slide = (sourceId: string, slideNo: number, title: string, body: string) => ({
+const slide = (
+  sourceId: string,
+  slideNo: number,
+  title: string,
+  body: string,
+  speakerNotes = '',
+) => ({
   sourceId,
   record: {
     courseId: 'bio',
@@ -11,15 +17,26 @@ const slide = (sourceId: string, slideNo: number, title: string, body: string) =
     kind: 'content',
     title,
     body,
-    speakerNotes: '',
+    speakerNotes,
     imageCaptions: [],
     derived: false,
     sourceHash: 'h',
   },
 });
 
-const HIVE = slide('s1', 4, 'Castes', 'Worker bees are female.\nDrones are male.');
-const COMB = slide('s2', 7, 'The comb', 'Cells are hexagonal.');
+const HIVE = slide(
+  's1',
+  4,
+  'Castes',
+  'Worker bees are female.\nDrones are male.',
+  'Drones do not forage.',
+);
+/** Long enough that its card must wrap it at phone width. */
+export const COMB_TITLE = 'The comb, and why its cells are hexagonal rather than square or round';
+const COMB = slide('s2', 7, COMB_TITLE, 'Cells are hexagonal.');
+
+/** One unbroken word wider than a phone, so the decks list must wrap it. */
+export const LONG_FILE_NAME = `${'lecture-01-the-hive-castes-and-the-comb'.repeat(2)}.pdf`;
 
 const unit = (text: string, citations: readonly (readonly [string, string])[]) => ({
   text,
@@ -79,7 +96,7 @@ export const stubApi = async (page: Page): Promise<void> => {
       ingestReads < 2 ? { state: 'ingesting' } : { state: 'indexed', slideCount: 2, imageOnly: [] };
     return json(route, 200, {
       courseId: 'bio',
-      uploads: [{ uploadId: 'u1', lectureId: 'l1', fileName: 'l1.pdf', progress }],
+      uploads: [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
     });
   });
 };

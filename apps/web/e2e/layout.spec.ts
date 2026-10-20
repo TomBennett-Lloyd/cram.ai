@@ -19,11 +19,25 @@ for (const path of ['/', '/#/courses/bio/decks']) {
   });
 }
 
+/** Whether any element matched overflows its own box sideways. */
+const overflows = (page: Page, selector: string) =>
+  page
+    .locator(selector)
+    .evaluateAll((nodes) => nodes.some((node) => node.scrollWidth > node.clientWidth));
+
+test('a long file name wraps inside the decks list', async ({ page }) => {
+  await page.goto('/#/courses/bio/decks');
+  await expect(page.locator('.upload')).toHaveCount(1);
+  expect(await overflows(page, '.upload')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
+});
+
 test('an answer and its open slide fit the narrowest phone width', async ({ page }) => {
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
   await page.getByRole('button', { name: 'Ask' }).click();
   await expect(page.locator('.unit')).toHaveCount(2);
+  expect(await overflows(page, '.slide-card')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
   await page.locator('.slide-card').first().click();
   const box = await page.getByRole('dialog').boundingBox();
