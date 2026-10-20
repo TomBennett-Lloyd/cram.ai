@@ -14,4 +14,8 @@ The synthetic evaluation course: its deck, golden questions and hand labels. Wha
 
 `runEval` (`eval/src/run-eval.ts`) runs the whole pipeline over a course through any `ModelGateway` and returns an `EvalReport` (`eval/src/report.ts`), the report `docs/adr/0005-evaluation-as-gate.md` § Decision (f) describes. `RecordingGateway` (`eval/src/recording-gateway.ts`) records a run's model calls in the form `FakeGateway` replays. `eval/src/run-eval.test.ts` records one run and replays it to the same report.
 
-The `pnpm eval` command, the live gateway, and the committed `eval/recordings/` and `eval/reports/` are #134's.
+## The live run
+
+`pnpm eval` is tier 2 (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), and its entry is `eval/src/live-run.measure.test.ts`, whose header names the environment it reads. It runs `runEval` over the course as ingest makes it (`ingestedCourse`, `eval/src/ingested-course.ts`), through the backends `liveConfig` (`eval/src/live-config.ts`) configures and `openLiveGateway` (`eval/src/live-gateway.ts`) opens, and refuses a working tree that differs from `HEAD`, since the report names the commit it measured. `CRAM_MODELS_DIR` holds one snapshot per encoder pin, under the pin's `artefact.repository`.
+
+`writeRun` (`eval/src/run-files.ts`) writes the report to `eval/reports/<short-sha>.json` and the run's recordings to `eval/recordings/<short-sha>.jsonl`. A later run keeps every older report, since those are the baselines, and replaces the recordings.
