@@ -22,7 +22,7 @@
 
 9. **Statements synthesise; quotes anchor.** A unit's text may summarise across any number of slides and lectures and is never required to use slide wording. No prompt asks for extractive output, and no feature limits synthesis to ordering or headings. What a unit may not do is carry a claim its quotes do not entail — rule 4 is the whole test. Sources are slides today; a second source kind (the student's notes, #21) joins only by ADR. Owner: `docs/adr/0001-grounding-architecture.md` § Decision (h) and (i).
 
-10. **Derived text is cited with its image, and exams draw only on confirmed derived text.** A source whose record is `derived: true` was read out of a picture. Ask and notes may cite it, and every citation to one is rendered beside the original slide image, labelled derived. Exam generation (questions, gold answers, rubric points) leaves every unconfirmed derived source out of its retrieved set, so rule 3 rejects a citation to one. No prompt treats derived text differently from typed text. Owner: `docs/adr/0006-image-only-slides.md` § Decision (b), (f) and (g).
+10. **Derived text is cited with its image, and exams draw only on confirmed derived text.** A source whose record is `derived: true` was read out of a picture. Ask and notes may cite it, and every citation to one is rendered beside the original slide image, labelled derived. Exam generation (questions, gold answers, rubric points) leaves every unconfirmed derived source out of its retrieved set, so rule 3 rejects a citation to one. The exam path does this by passing `excludeUnconfirmedDerived` to `@cram/index`'s `CourseIndex.search` (#109). No prompt treats derived text differently from typed text. Owner: `docs/adr/0006-image-only-slides.md` § Decision (b), (f) and (g).
 
 ## Why
 
