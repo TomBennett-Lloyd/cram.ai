@@ -174,12 +174,14 @@ describe('ingestPdf', () => {
       pages: [
         { lines: [line('Kinetics', TITLE)], size: [960, 540] },
         { lines: [line('Kinetics', TITLE)], size: [540, 960] },
+        { lines: [line('Kinetics', TITLE)], size: [704, 396] },
       ],
     });
-    const short = Math.floor((SLIDE_IMAGE_LONG_EDGE_PX * 540) / 960);
-    const [landscape, portrait] = await Promise.all(images.map(decoded));
+    const short = Math.round((SLIDE_IMAGE_LONG_EDGE_PX * 540) / 960);
+    const [landscape, portrait, inexact] = await Promise.all(images.map(decoded));
     expect(landscape).toMatchObject({ width: SLIDE_IMAGE_LONG_EDGE_PX, height: short });
     expect(portrait).toMatchObject({ width: short, height: SLIDE_IMAGE_LONG_EDGE_PX });
+    expect(inexact).toMatchObject({ width: SLIDE_IMAGE_LONG_EDGE_PX, height: short });
   });
 
   it("sizes a line by its own glyphs, not the next line's", async () => {
