@@ -108,3 +108,18 @@ Entry format:
 
 - Phase: process
 - Observed: the rule PR #177 adds was written and merged within two hours of the #159 lane raising an unsanctioned macOS automation prompt (`.claude/agents/ticket-agent.md` § 5 (g)), and the #159 lane itself stopped cleanly on a HOLD, deleted what it had created and reported its probe findings with provenance. No new signal; recorded so the rule's first catch, if any, has its origin dated.
+
+## 2026-10-21 — PR #193
+
+- Phase: implementation
+- Observed: the #109 lane's first mutation harness decided "survived" by reading vitest's last lines for the word "failed" and reported two false survivors; rerun on the exit code, both mutants were dead. `docs/standards/evidence.md` already makes the captured exit code the verdict for `pnpm verify`; the mutant harness a lane writes for itself is the same shape and is not named there. One ticket so far.
+
+## 2026-10-21 — PR #197
+
+- Phase: implementation
+- Observed: the time-box red that #152 recorded at load average 90–100 did not reproduce for its lane at load averages of 41 to 76 on 10 cores (three runs of three green; a bare stub call measured 42 ms at most), so the lane removed the race rather than tuning a margin, with a regression case that fails on the pre-fix harness. A load-dependent red that cannot be reproduced on demand is fixed by construction or not at all; the lane's answer was the right one. One ticket so far.
+
+## 2026-10-21 — PR #158
+
+- Phase: process
+- Observed: main moved four times during the #133 lane's single REBASE bounce, and each move cost it either a tech-debt union or a stale citation: ADR 0006 went from proposed to accepted under it, and the triage pass (#191) deleted two tech-debt entries its code cited by title, one with no redirect row, because the pass grepped for citations of `tech-debt.md` as a path and not for each deleted entry's title. The triage skill says the redirect table is where a dangling pointer lands; it does not say the deleting pass greps every title it deletes. One pass so far.

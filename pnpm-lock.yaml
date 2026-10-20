@@ -72,6 +72,15 @@ importers:
 
   eval:
     dependencies:
+      '@cram/gateway':
+        specifier: workspace:*
+        version: link:../packages/gateway
+      '@cram/grounding':
+        specifier: workspace:*
+        version: link:../packages/grounding
+      '@cram/index':
+        specifier: workspace:*
+        version: link:../packages/index
       '@cram/shared':
         specifier: workspace:*
         version: link:../packages/shared

@@ -2,13 +2,19 @@ import { z } from 'zod';
 import type { ChatWireRequest } from '../../chat';
 import type { HttpGeneratorConfig } from '../../role-config';
 
-const Choice = z.object({
-  message: z.object({ content: z.string() }),
-  finish_reason: z.string().nullable(),
+const ChunkChoice = z.object({
+  delta: z.object({ content: z.string().nullish() }),
+  finish_reason: z.string().nullish(),
 });
 
-/** The fields of an OpenAI chat completion this adapter reads; the rest is ignored. */
-export const ChatCompletion = z.object({ choices: z.tuple([Choice], Choice) });
+const Usage = z.object({ prompt_tokens: z.number(), completion_tokens: z.number() });
+
+/** The fields of a streamed chat-completion chunk this adapter reads; `usage` comes on a last chunk with no choices. */
+export const ChatCompletionChunk = z.object({
+  choices: z.array(ChunkChoice),
+  usage: Usage.nullish(),
+});
+export type ChatCompletionChunk = z.infer<typeof ChatCompletionChunk>;
 
 export const chatCompletionsUrl = (endpoint: string): URL =>
   new URL('chat/completions', endpoint.endsWith('/') ? endpoint : `${endpoint}/`);
@@ -24,5 +30,6 @@ export const chatCompletionBody = (config: HttpGeneratorConfig, wire: ChatWireRe
   temperature: config.sampling.temperature,
   seed: config.sampling.seed,
   reasoning_effort: 'none',
-  stream: false,
+  stream: true,
+  stream_options: { include_usage: true },
 });
