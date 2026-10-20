@@ -1,3 +1,11 @@
+export type {
+  EncoderLoad,
+  EncoderLoadFailure,
+  EncoderLoadFailureReason,
+} from './adapters/onnx/encoder-artefact';
+export { loadOnnxEmbedder, OnnxEmbedder } from './adapters/onnx/onnx-embedder';
+export { loadOnnxReranker, OnnxReranker } from './adapters/onnx/onnx-reranker';
+export { loadOnnxVerifier, OnnxVerifier } from './adapters/onnx/onnx-verifier';
 export { OpenAiHttpGenerator } from './adapters/openai-http/openai-http-generator';
 export {
   type ChatMessage,
@@ -10,11 +18,15 @@ export {
   OutputName,
 } from './chat';
 export {
+  EmbeddingResult,
   EmbedRequest,
   EntailmentPair,
   EntailmentResult,
   EntailRequest,
+  OverLength,
+  RecordedEmbedding,
   RerankRequest,
+  RerankResult,
 } from './encoder-requests';
 export {
   FakeGateway,
@@ -28,10 +40,12 @@ export { PROVISIONAL_DEFAULT_PINS } from './provisional-pins';
 export { Recording } from './recording';
 export { EncoderRole, Role } from './role';
 export {
+  ArtefactDirectory,
   EmbedderConfig,
   GatewayConfig,
   HttpGeneratorConfig,
   LoopbackEndpoint,
+  Pooling,
   RerankerConfig,
   Sampling,
   VerifierConfig,
