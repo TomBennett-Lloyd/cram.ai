@@ -333,3 +333,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` is a `humanAlways` path; the frontmatter edits alone would auto-merge.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-21 ("approve 175 and 190")
+
+## 2026-10-20 — issue #124 — encoder-pin-manifest-amendment
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept the amendment to `docs/adr/0003-model-roles-and-backends.md` § Decision (e), carrying out the owner's decision on #124 ("issue 124 extend the pin to a manifest"). An encoder pin adds a manifest: the sha256 of the ONNX file, `tokenizer.json`, `tokenizer_config.json` and `config.json`, each keyed by its snapshot path, and the embedder's pooling. The pin's `sha256` becomes that manifest's digest. The amendment trues up (i)'s digest line and A2's check inline and records a dated `## Amendments` entry. It is filed as an amendment, not a supersession, because the decision that the pin identifies what ran stands;
+  - accept the plan comment's four divergences from the issue and the owner's comment, as its "Divergences from the issue / owner comment" section states them (https://github.com/TomBennett-Lloyd/cram.ai/issues/124#issuecomment-6301595001);
+  - accept the new `.claude/ledgers/model-pin-shape.ledger`, which declares the pin shape's share of (m)'s prose ledger under `docs/standards/architecture.md` rule 9's migrate-on-next-move clause.
+- **Why**: `docs/adr/**` is a `humanAlways` path, and only the owner changes an accepted ADR's pin shape.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
