@@ -12,6 +12,7 @@ export {
   type ChatOutputSpec,
   type ChatRequest,
   type ChatResult,
+  chatResult,
   ChatWireRequest,
   chatWireRequest,
   GeneratorReply,
