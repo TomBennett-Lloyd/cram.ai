@@ -1,12 +1,13 @@
+import { CourseId, LectureId } from '@cram/shared';
 import { strToU8, zipSync, type Zippable } from 'fflate';
+import type { DeckFile } from '../deck-file';
 import { NOTES_SLIDE_RELATIONSHIP, NS } from './ooxml';
 
-const SLIDE_RELATIONSHIP =
+export const SLIDE_RELATIONSHIP =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide';
 const IMAGE_RELATIONSHIP =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
 const NAMESPACES = `xmlns:a="${NS.a}" xmlns:p="${NS.p}" xmlns:r="${NS.r}" xmlns:mc="${NS.mc}"`;
-const MEDIA = 'ppt/media/image1.png';
 /** APPNOTE.txt 4.4.5's method number for LZMA, which fflate does not inflate. */
 const LZMA = 14;
 
@@ -72,9 +73,25 @@ export interface FixtureDeck {
   readonly danglingSlideId?: true;
   /** Part names to replace (a `Uint8Array` or text) or drop (`null`) after the deck is built. */
   readonly parts?: Readonly<Record<string, Uint8Array | string | null>>;
-  /** Embed an image stored with a compression method fflate cannot inflate (LZMA). */
-  readonly unreadableMedia?: true;
+  /** A part name to embed with a compression method fflate cannot inflate (LZMA). */
+  readonly uninflatable?: string;
 }
+
+export const FIXTURE_FILE_NAME = 'Lecture_04-Kinetics.pptx';
+
+export const deckFile = (bytes: Uint8Array): DeckFile => ({
+  bytes,
+  fileName: FIXTURE_FILE_NAME,
+  courseId: CourseId.parse('course-a'),
+  lectureId: LectureId.parse('lecture-4'),
+});
+
+/** Enough words that a slide holding them is never read as image-only. */
+export const BODY_TEXT = 'Rate laws relate rate to concentration';
+
+export const titledSlide = (title: string): FixtureSlide => ({
+  shapes: [shape([title], 'title'), shape([BODY_TEXT], 'body')],
+});
 
 const xml = (body: string): string =>
   `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${body}`;
@@ -162,8 +179,9 @@ export const buildDeck = (deck: FixtureDeck): Uint8Array => {
   const zippable: Zippable = {};
   for (const [name, content] of files)
     zippable[name] = typeof content === 'string' ? strToU8(content) : content;
-  if (deck.unreadableMedia) zippable[MEDIA] = [strToU8('not really a png'), { level: 0 }];
+  if (deck.uninflatable !== undefined)
+    zippable[deck.uninflatable] = [strToU8('not really an image'), { level: 0 }];
   const zip = zipSync(zippable);
-  if (deck.unreadableMedia) setCompression(zip, MEDIA, LZMA);
+  if (deck.uninflatable !== undefined) setCompression(zip, deck.uninflatable, LZMA);
   return zip;
 };

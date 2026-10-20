@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import { CourseId, LectureId } from '@cram/shared';
-import { strToU8 } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   alternateContent,
   bareShape,
+  BODY_TEXT as ENOUGH,
   buildDeck,
+  deckFile,
   group,
   lineBreak,
   paragraphOf,
@@ -14,34 +14,19 @@ import {
   shape,
   slideNumberField,
   table,
+  titledSlide as titled,
   type FixtureDeck,
-  type FixtureSlide,
 } from './deck-fixture';
-import { ingestPptx, type PptxIngestResult } from './ingest-pptx';
-
-const ENOUGH = 'Rate laws relate rate to concentration';
-const SLIDE_1 = 'ppt/slides/slide1.xml';
-
-const ingest = (bytes: Uint8Array): PptxIngestResult =>
-  ingestPptx({
-    bytes,
-    fileName: 'Lecture_04-Kinetics.pptx',
-    courseId: CourseId.parse('course-a'),
-    lectureId: LectureId.parse('lecture-4'),
-  });
+import { ingestPptx } from './ingest-pptx';
 
 const ingested = (deck: FixtureDeck) => {
-  const result = ingest(buildDeck(deck));
+  const result = ingestPptx(deckFile(buildDeck(deck)));
   if (result.status !== 'ingested')
     throw new Error(`expected an ingested deck, got ${result.status}: ${result.detail}`);
   return result.slides;
 };
 
 const records = (deck: FixtureDeck) => ingested(deck).map(({ record }) => record);
-
-const titled = (title: string, ...body: string[]): FixtureSlide => ({
-  shapes: [shape([title], 'title'), shape(body.length > 0 ? body : [ENOUGH], 'body')],
-});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -53,8 +38,8 @@ describe('ingestPptx', () => {
       slides: [
         {
           shapes: [
-            shape(['Reaction Kinetics'], 'ctrTitle'),
             shape(['Rates and orders of reaction'], 'subTitle'),
+            shape(['Reaction Kinetics'], 'ctrTitle'),
           ],
         },
         {
@@ -147,6 +132,34 @@ describe('ingestPptx', () => {
     expect(record).toMatchObject({ title: 'Rate laws Choice title', body: ENOUGH });
   });
 
+  it('skips only the markup-compatibility fallback, not an element of that name elsewhere', () => {
+    const [record] = records({
+      slides: [
+        {
+          shapes: [
+            shape(['Rate laws'], 'title'),
+            `<x:Fallback xmlns:x="urn:example:other">${shape([ENOUGH])}</x:Fallback>`,
+          ],
+        },
+      ],
+    });
+    expect(record?.body).toBe(ENOUGH);
+  });
+
+  it('takes no title from a title placeholder that only fallback content holds', () => {
+    const [record] = records({
+      slides: [
+        {
+          shapes: [
+            shape(['Worked examples']),
+            alternateContent(shape([ENOUGH]), shape(['Fallback title'], 'title')),
+          ],
+        },
+      ],
+    });
+    expect(record).toMatchObject({ title: 'Worked examples', body: ENOUGH });
+  });
+
   it('joins runs and fields within a paragraph and reads a line break as a space', () => {
     const [record] = records({
       slides: [
@@ -177,11 +190,25 @@ describe('ingestPptx', () => {
     expect(record).toMatchObject({ title: 'Kinetics', body: ENOUGH });
   });
 
-  it('takes the first line as the title when every size is inherited or unreadable', () => {
+  it('takes the first line as the title when every size is inherited', () => {
     const [record] = records({
-      slides: [{ shapes: [shape(['Worked examples']), shape([paragraphOf(run(ENOUGH, 'x'))])] }],
+      slides: [{ shapes: [shape(['Worked examples']), shape([ENOUGH])] }],
     });
     expect(record).toMatchObject({ title: 'Worked examples', body: ENOUGH });
+  });
+
+  it('reads an unreadable run size as inherited', () => {
+    const [record] = records({
+      slides: [
+        {
+          shapes: [
+            shape([paragraphOf(run(ENOUGH, 'x'))]),
+            shape([paragraphOf(run('Kinetics', '4400'))]),
+          ],
+        },
+      ],
+    });
+    expect(record).toMatchObject({ title: 'Kinetics', body: ENOUGH });
   });
 
   it('keeps an empty title placeholder empty rather than promoting a body line', () => {
@@ -227,14 +254,17 @@ describe('ingestPptx', () => {
     expect(record).toMatchObject({ title: 'Rate laws', speakerNotes: '' });
   });
 
-  it('reads the text of a deck whose media cannot be inflated', () => {
-    expect(records({ slides: [titled('Rate laws')], unreadableMedia: true })).toHaveLength(1);
-  });
+  it.each(['ppt/media/image1.png', 'ppt/media/image1.xml.jpeg'])(
+    'reads the text of a deck whose %s cannot be inflated',
+    (uninflatable) => {
+      expect(records({ slides: [titled('Rate laws')], uninflatable })).toHaveLength(1);
+    },
+  );
 
   it('stamps every slide with the sha256 of the deck bytes and leaves the caller buffer intact', () => {
     const bytes = buildDeck({ slides: [titled('Kinetics'), titled('Rate laws')] });
     const digest = createHash('sha256').update(bytes).digest('hex');
-    const result = ingest(bytes);
+    const result = ingestPptx(deckFile(bytes));
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(digest);
     if (result.status !== 'ingested') throw new Error(result.status);
     expect(result.slides.map(({ record }) => record.sourceHash)).toEqual([digest, digest]);
@@ -248,80 +278,5 @@ describe('ingestPptx', () => {
     vi.stubGlobal('XMLHttpRequest', refuse);
     records({ slides: [{ ...titled('Kinetics'), notes: ['Note.'] }] });
     expect(refuse).not.toHaveBeenCalled();
-  });
-});
-
-describe('ingestPptx unreadable decks', () => {
-  const OLE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
-  const ole = (stream: string): Uint8Array =>
-    new Uint8Array([...OLE, ...new Uint8Array(504), ...Buffer.from(stream, 'utf16le')]);
-
-  const reasonOf = (bytes: Uint8Array) => {
-    const result = ingest(bytes);
-    if (result.status !== 'unreadable') throw new Error('expected an unreadable deck');
-    expect(result.fileName).toBe('Lecture_04-Kinetics.pptx');
-    expect(result.detail.trim()).not.toBe('');
-    return result.reason;
-  };
-
-  it('reports bytes that are not a zip as not a pptx', () => {
-    expect(reasonOf(new TextEncoder().encode('not a pptx'))).toBe('not-a-pptx');
-  });
-
-  it('reports a password-protected package as encrypted', () => {
-    expect(reasonOf(ole('EncryptedPackage'))).toBe('encrypted');
-  });
-
-  it('reports an OLE file with no encrypted package as not a pptx', () => {
-    expect(reasonOf(ole('PowerPoint Document'))).toBe('not-a-pptx');
-  });
-
-  it('reports a zip with no presentation part as not a pptx', () => {
-    const deck = { slides: [titled('Rate laws')], parts: { 'ppt/presentation.xml': null } };
-    expect(reasonOf(buildDeck(deck))).toBe('not-a-pptx');
-  });
-
-  it('reports a presentation outside the transitional namespace as not a pptx', () => {
-    const strict = 'http://purl.oclc.org/ooxml/presentationml/main';
-    const deck = { slides: [titled('Rate laws')], presentationNamespace: strict };
-    expect(reasonOf(buildDeck(deck))).toBe('not-a-pptx');
-  });
-
-  it('reports a truncated zip as damaged', () => {
-    const bytes = buildDeck({ slides: [titled('Rate laws')] });
-    expect(reasonOf(bytes.slice(0, bytes.length / 2))).toBe('damaged');
-  });
-
-  it('reports a missing slide part as damaged', () => {
-    expect(reasonOf(buildDeck({ slides: [titled('Rate laws')], parts: { [SLIDE_1]: null } }))).toBe(
-      'damaged',
-    );
-  });
-
-  it('reports a slide id with no relationship as damaged', () => {
-    expect(reasonOf(buildDeck({ slides: [titled('Rate laws')], danglingSlideId: true }))).toBe(
-      'damaged',
-    );
-  });
-
-  it('reports a part that is not well-formed XML as damaged', () => {
-    const deck = { slides: [titled('Rate laws')], parts: { [SLIDE_1]: '<p:sld><unclosed>' } };
-    expect(reasonOf(buildDeck(deck))).toBe('damaged');
-  });
-
-  it('reports a part that is not UTF-8 as damaged', () => {
-    const bytes = new Uint8Array([...strToU8('<?xml version="1.0"?><p:sld>'), 0xff]);
-    expect(
-      reasonOf(buildDeck({ slides: [titled('Rate laws')], parts: { [SLIDE_1]: bytes } })),
-    ).toBe('damaged');
-  });
-
-  it('reports a relationship with no target as damaged', () => {
-    const rels = `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="t"/></Relationships>`;
-    const deck = {
-      slides: [titled('Rate laws')],
-      parts: { 'ppt/_rels/presentation.xml.rels': rels },
-    };
-    expect(reasonOf(buildDeck(deck))).toBe('damaged');
   });
 });

@@ -63,9 +63,7 @@ export const readXml = (parts: Parts, partName: string): Document => {
 };
 
 const resolveTarget = (partName: string, target: string): string =>
-  target.startsWith('/')
-    ? target.slice(1)
-    : posix.normalize(posix.join(posix.dirname(partName), target));
+  target.startsWith('/') ? target.slice(1) : posix.join(posix.dirname(partName), target);
 
 /** A part's relationships by id; a part with no relationships part has none. */
 export const relationshipsOf = (
@@ -77,9 +75,9 @@ export const relationshipsOf = (
   if (parts[relsName] === undefined) return relationships;
   for (const element of readXml(parts, relsName).getElementsByTagNameNS(NS.rel, 'Relationship')) {
     const attributes = RelationshipAttributes.safeParse({
-      Id: element.getAttribute('Id') ?? undefined,
-      Type: element.getAttribute('Type') ?? undefined,
-      Target: element.getAttribute('Target') ?? undefined,
+      Id: element.getAttribute('Id'),
+      Type: element.getAttribute('Type'),
+      Target: element.getAttribute('Target'),
     });
     if (!attributes.success)
       throw new UnreadablePptx(
