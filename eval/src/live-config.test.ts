@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIVE_PINS, LIVE_SAMPLING, liveConfig } from './live-config';
+import { LIVE_PINS, LIVE_SAMPLING, liveConfig, RunEnvironment } from './live-config';
 
 const ENV = {
   CRAM_GENERATOR_ENDPOINT: 'http://127.0.0.1:8080/v1/',
@@ -56,5 +56,26 @@ describe('liveConfig', () => {
     expect(liveConfig({ ...ENV, CRAM_MODELS_DIR: 'models' })).toMatchObject({
       status: 'unconfigured',
     });
+  });
+});
+
+describe('RunEnvironment', () => {
+  const RUN = { CRAM_EVAL_PR: '134', CRAM_MACHINE_CLASS: 'dev-apple-silicon' };
+
+  it('reads the PR number and the machine class', () => {
+    expect(RunEnvironment.parse(RUN)).toEqual({
+      CRAM_EVAL_PR: 134,
+      CRAM_MACHINE_CLASS: 'dev-apple-silicon',
+    });
+  });
+
+  it.each([undefined, '', '0', '-1', '1.5', 'twelve'])('refuses the PR number %j', (pr) => {
+    expect(RunEnvironment.safeParse({ ...RUN, CRAM_EVAL_PR: pr }).success).toBe(false);
+  });
+
+  it.each([undefined, 'laptop'])('refuses the machine class %j', (machineClass) => {
+    expect(RunEnvironment.safeParse({ ...RUN, CRAM_MACHINE_CLASS: machineClass }).success).toBe(
+      false,
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { z } from 'zod';
 import { type ModelPin, PROVISIONAL_DEFAULT_PINS, GatewayConfig, Sampling } from '@cram/gateway';
+import { MachineClass } from './report';
 
 /** The backend's deterministic settings (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)). */
 export const LIVE_SAMPLING: Sampling = Sampling.parse({ temperature: 0, seed: 0 });
@@ -19,6 +20,12 @@ export const LiveEnvironment = z.object({
   CRAM_GENERATOR_ENDPOINT: z.string(),
   CRAM_GENERATOR_MODEL: z.string(),
   CRAM_MODELS_DIR: z.string(),
+});
+
+/** What the report says of the run that `pnpm eval` cannot know itself (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)). */
+export const RunEnvironment = z.object({
+  CRAM_EVAL_PR: z.coerce.number().int().positive(),
+  CRAM_MACHINE_CLASS: MachineClass,
 });
 
 export type LiveConfig =

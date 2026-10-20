@@ -85,6 +85,15 @@ describe('writeRun and readRun', () => {
   });
 });
 
+describe('writeRun', () => {
+  it('removes only the older recordings files from the recordings directory', async () => {
+    await mkdir(join(root, RECORDINGS_DIR));
+    await writeFile(join(root, RECORDINGS_DIR, 'README.md'), '');
+    await writeRun(root, { report: await scriptedReport('abc1234'), recordings: [] });
+    expect(await readdir(join(root, RECORDINGS_DIR))).toEqual(['README.md', 'abc1234.jsonl']);
+  });
+});
+
 describe('readRun', () => {
   const recordingsAt = (name: string) => join(root, RECORDINGS_DIR, name);
 

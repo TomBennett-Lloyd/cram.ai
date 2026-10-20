@@ -1,17 +1,15 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { CourseId } from '@cram/shared';
-import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import { describe, it } from 'vitest';
 import { ingestedCourse } from './ingested-course';
-import { liveConfig } from './live-config';
+import { liveConfig, RunEnvironment } from './live-config';
 import { openLiveGateway } from './live-gateway';
 import { EVAL_ROOT, readEvalCourse } from './read-eval-course';
 import { RecordingGateway } from './recording-gateway';
-import { MachineClass } from './report';
+import { measuredCommit } from './measured-commit';
 import { runEval } from './run-eval';
 import { writeRun } from './run-files';
 
@@ -22,23 +20,14 @@ const env = process.env;
 const RUN_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 const COURSE = CourseId.parse('hollowmere');
 
-const RunFacts = z.object({
-  CRAM_EVAL_PR: z.coerce.number().int().positive(),
-  CRAM_MACHINE_CLASS: MachineClass,
-});
-
-const git = (...args: string[]): string =>
-  execFileSync('git', args, { cwd: EVAL_ROOT, encoding: 'utf8' }).trim();
-
 describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
   it(
     'runs the course through the live gateway and writes its report and recordings',
     async () => {
-      expect(
-        git('status', '--porcelain', '--untracked-files=no'),
-        'a report names the commit it measured, so the tree must be HEAD',
-      ).toBe('');
-      const facts = RunFacts.parse(env);
+      const measured = measuredCommit(EVAL_ROOT);
+      if (measured.status === 'dirty')
+        throw new Error(`commit first: a report names the commit it measured\n${measured.changes}`);
+      const facts = RunEnvironment.parse(env);
       const configured = liveConfig(env);
       if (configured.status !== 'configured') throw new Error(configured.message);
       const opened = await openLiveGateway(configured.config);
@@ -52,7 +41,7 @@ describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
         const recorder = new RecordingGateway({ inner: opened.gateway, sampling });
         const report = await runEval({
           facts: {
-            measuredCommit: git('rev-parse', '--short', 'HEAD'),
+            measuredCommit: measured.commit,
             pullRequest: facts.CRAM_EVAL_PR,
             machineClass: facts.CRAM_MACHINE_CLASS,
             sampling,
