@@ -73,3 +73,8 @@ Entry format:
 
 - Phase: review
 - Observed: the #9 lane's pre-review mutation pass (`.claude/agents/ticket-agent.md` § 4) called the PDF adapter's rethrow arm unreachable because no synthetic input reached it; the reviewer reached it with a broken page tree. An unreachability claim quantifies over every input, and the pass had tried only the fixtures it held. Second entry today on that pass's evidence being bounded by its own inputs (PR #90's was a guard it could not see because the guard did not exist).
+
+## 2026-10-20 — PR #116
+
+- Phase: implementation
+- Observed: the #93 lane wrote `Map.groupBy` into a test fixture; it is ES2024 and the base tsconfig's `lib` is ES2023, so `tsc` refused it before any test ran and the fixture groups by hand. The gate did its job at no cost; recorded because the `lib` ceiling is a value an implementer meets only by hitting it. One ticket so far.
