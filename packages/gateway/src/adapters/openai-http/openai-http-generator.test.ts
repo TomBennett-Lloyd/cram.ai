@@ -34,17 +34,25 @@ const stopServer = async ({ server }: FixtureServer): Promise<void> => {
   await new Promise((resolve) => server.close(resolve));
 };
 
+const sse = (chunks: readonly object[]): string =>
+  [...chunks.map((chunk) => JSON.stringify(chunk)), '[DONE]'].map((d) => `data: ${d}\n\n`).join('');
+
+const chunk = (content: string | null, finishReason: string | null = null) => ({
+  id: 'chatcmpl-fixture',
+  object: 'chat.completion.chunk',
+  choices: [{ index: 0, delta: { content }, finish_reason: finishReason }],
+});
+
+const USAGE = { choices: [], usage: { prompt_tokens: 21, completion_tokens: 6 } };
+
+/** A streamed completion: `content` in one delta, then the finish and a usage chunk. */
 const completion = (content: string, finishReason = 'stop') =>
-  JSON.stringify({
-    id: 'chatcmpl-fixture',
-    object: 'chat.completion',
-    choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: finishReason }],
-  });
+  sse([chunk(content), chunk(null, finishReason), USAGE]);
 
 const reply =
-  (status: number, body: string): Handler =>
+  (status: number, body: string, contentType = 'text/event-stream'): Handler =>
   (_request, _body, response) => {
-    response.writeHead(status, { 'content-type': 'application/json' }).end(body);
+    response.writeHead(status, { 'content-type': contentType }).end(body);
   };
 
 const Answer = z.object({ text: z.string() });
@@ -99,7 +107,8 @@ describe('OpenAiHttpGenerator', () => {
       temperature: 0,
       seed: 7,
       reasoning_effort: 'none',
-      stream: false,
+      stream: true,
+      stream_options: { include_usage: true },
     });
   });
 
@@ -135,23 +144,67 @@ describe('OpenAiHttpGenerator', () => {
   });
 
   it('carries the server error body in the failure reason', async () => {
-    fixture.handler = reply(404, '{"error":{"message":"model \'qwen3-4b-q4km\' not found"}}');
+    fixture.handler = reply(
+      404,
+      '{"error":{"message":"model \'qwen3-4b-q4km\' not found"}}',
+      'application/json',
+    );
     const result = await new OpenAiHttpGenerator(config).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(/HTTP 404: .*not found/);
   });
 
   it('carries the protocol issue in the failure reason', async () => {
-    fixture.handler = reply(200, '{"choices":[]}');
+    fixture.handler = reply(200, sse([{ choices: 'none' }]));
     const result = await new OpenAiHttpGenerator(config).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(
-      /not a chat completion: .*choices/s,
+      /POST .*: not a chat completion chunk: .*choices/s,
     );
+  });
+
+  it('times the call beside the reply, from the request start, with the server usage', async () => {
+    fixture.handler = reply(200, completion('{"text":"a"}'));
+    const clock = [1000];
+    const now = () => clock.shift() ?? 1005;
+    const generator = new OpenAiHttpGenerator(config, now);
+    await expect(generator.timedReply(chatWireRequest(request))).resolves.toEqual({
+      reply: { status: 'content', content: '{"text":"a"}' },
+      timing: { firstTokenMs: 5, lastTokenMs: 5, usage: { promptTokens: 21, completionTokens: 6 } },
+    });
+  });
+
+  it('measures the default clock across the stream', async () => {
+    fixture.handler = (_incoming, _body, response) => {
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      response.write(sse([chunk('{"text":')]).replace('data: [DONE]\n\n', ''));
+      setTimeout(() => response.end(completion('"a"}')), 40);
+    };
+    const result = await new OpenAiHttpGenerator(config).timedReply(chatWireRequest(request));
+    expect(result.reply).toEqual({ status: 'content', content: '{"text":"a"}' });
+    const { firstTokenMs = 0, lastTokenMs = 0 } = result.timing ?? {};
+    expect(firstTokenMs).toBeGreaterThanOrEqual(0);
+    expect(lastTokenMs - firstTokenMs).toBeGreaterThanOrEqual(20);
+  });
+
+  it('has no timing for a backend failure', async () => {
+    fixture.handler = reply(500, completion('{"text":"a"}'));
+    const result = await new OpenAiHttpGenerator(config).timedReply(chatWireRequest(request));
+    expect(result).toMatchObject({ reply: { status: 'backend-failed' }, timing: null });
+  });
+
+  it('reports a success with no body as a backend failure', async () => {
+    fixture.handler = reply(204, '');
+    const result = await new OpenAiHttpGenerator(config).chat(request);
+    expect(result.status === 'backend-failed' && result.reason).toMatch(/no response body/);
   });
 
   it.each<[string, Handler]>([
     ['an HTTP error, even with a completion body', reply(500, completion('{"text":"a"}'))],
-    ['a body that is not JSON', reply(200, 'not json')],
-    ['JSON that is not a chat completion', reply(200, '{"choices":[]}')],
+    ['a body that is not an event stream', reply(200, 'not json')],
+    ['a chunk that is not JSON', reply(200, 'data: not json\n\n')],
+    [
+      'a whole JSON completion in place of a stream',
+      reply(200, '{"choices":[]}', 'application/json'),
+    ],
   ])('reports %s as a backend failure', async (_name, handler) => {
     fixture.handler = handler;
     await expect(new OpenAiHttpGenerator(config).chat(request)).resolves.toMatchObject({

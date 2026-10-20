@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { chatWireRequest, OutputName } from '../../chat';
+import { decodeTokensPerSecond } from '../../generator-timing';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
 import { HttpGeneratorConfig } from '../../role-config';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
+import { OpenAiHttpGenerator } from './openai-http-generator';
 
-// `docs/adr/0003-model-roles-and-backends.md` § Decision (k): A11 (prompt-prefix reuse) and A12 (thinking suppressed), against a live server:
+// `docs/adr/0003-model-roles-and-backends.md` § Decision (k): A4's two figures on this machine, A11 (prompt-prefix reuse)
+// and A12 (thinking suppressed), against a live server:
 // CRAM_MEASURE=1 CRAM_GENERATOR_ENDPOINT=http://127.0.0.1:11434/v1/ CRAM_GENERATOR_MODEL=<served name> \
 //   pnpm --filter @cram/gateway exec vitest run src/adapters/openai-http/openai-http.measure.test.ts --silent=false
 const env = process.env;
@@ -32,19 +35,23 @@ const synthetic = (lines: number, topic: string): string =>
     '\n',
   );
 
-const body = (system: string, question: string) =>
-  chatCompletionBody(
-    config(),
-    chatWireRequest({
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: question },
-      ],
-      output: { name: OutputName.parse('answer'), schema: z.object({ text: z.string() }) },
-    }),
-  );
+const wire = (system: string, question: string) =>
+  chatWireRequest({
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: question },
+    ],
+    output: { name: OutputName.parse('answer'), schema: z.object({ text: z.string() }) },
+  });
 
-const post = async (payload: object): Promise<Response> => {
+/** Unstreamed, so the reply carries `reasoning` whole. */
+const body = (system: string, question: string) => ({
+  ...chatCompletionBody(config(), wire(system, question)),
+  stream: false,
+  stream_options: undefined,
+});
+
+const replyTo = async (payload: object) => {
   const response = await fetch(chatCompletionsUrl(config().endpoint), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -53,19 +60,15 @@ const post = async (payload: object): Promise<Response> => {
     signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
   });
   expect(response.ok, `HTTP ${String(response.status)}`).toBe(true);
-  return response;
+  return Reply.parse(await response.json());
 };
 
-const replyTo = async (payload: object) => Reply.parse(await (await post(payload)).json());
-
-const firstChunkMs = async (payload: object): Promise<number> => {
-  const started = performance.now();
-  const response = await post({ ...payload, stream: true });
-  const reader = response.body?.getReader();
-  await reader?.read();
-  const elapsed = performance.now() - started;
-  await reader?.cancel();
-  return elapsed;
+const timed = async (system: string, question: string) => {
+  const { reply, timing } = await new OpenAiHttpGenerator(config()).timedReply(
+    wire(system, question),
+  );
+  if (timing === null) throw new Error(`no content token arrived: ${JSON.stringify(reply)}`);
+  return timing;
 };
 
 describe.runIf(env.CRAM_MEASURE === '1')(
@@ -91,21 +94,19 @@ describe.runIf(env.CRAM_MEASURE === '1')(
     );
 
     it(
-      'A11: a repeated system prefix reaches its first token sooner',
+      'A11: a repeated system prefix reaches its first token sooner; A4: both figures logged',
       async () => {
-        await firstChunkMs(body(synthetic(20, 'warm-up'), 'Load the model.'));
+        await timed(synthetic(20, 'warm-up'), 'Load the model.');
         const prefix = synthetic(PREFIX_LINES, 'the fixed prefix');
-        const first = await firstChunkMs(body(prefix, 'What is rule 3?'));
-        const second = await firstChunkMs(body(prefix, 'What is rule 7?'));
-        const { usage } = await replyTo({ ...body(prefix, 'What is rule 9?'), max_tokens: 1 });
-        console.info('A11 time to first chunk (ms)', {
-          first,
-          second,
-          promptTokens: usage.prompt_tokens,
+        const first = await timed(prefix, 'What is rule 3?');
+        const second = await timed(prefix, 'What is rule 7?');
+        console.info('A11 and A4 (ms from request start; tokens per second after the first)', {
+          first: { ...first, tokensPerSecond: decodeTokensPerSecond(first) },
+          second: { ...second, tokensPerSecond: decodeTokensPerSecond(second) },
         });
-        expect(second).toBeLessThan(first);
+        expect(second.firstTokenMs).toBeLessThan(first.firstTokenMs);
       },
-      5 * CALL_TIMEOUT_MS,
+      4 * CALL_TIMEOUT_MS,
     );
   },
 );
