@@ -6,6 +6,8 @@ export {
   type PdfIngestResult,
   type PdfUnreadableReason,
 } from './adapters/pdf/ingest-pdf';
+export { ingestPptx, type PptxIngestResult } from './adapters/pptx/ingest-pptx';
+export type { PptxUnreadableReason } from './adapters/pptx/ooxml';
 export {
   BULLET_MARKERS,
   REFERENCES_TITLE,
