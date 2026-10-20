@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { ChatWireRequest, GeneratorReply } from './chat';
-import { EmbedRequest, EntailmentResult, EntailRequest, RerankRequest } from './encoder-requests';
+import {
+  EmbedRequest,
+  EntailmentResult,
+  EntailRequest,
+  RecordedEmbedding,
+  RerankRequest,
+  RerankResult,
+} from './encoder-requests';
 import { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
 import { Sampling } from './role-config';
 
@@ -20,20 +27,20 @@ export const Recording = z.discriminatedUnion('role', [
       role: z.literal('embedder'),
       pin: EmbedderPin,
       request: EmbedRequest,
-      reply: z.strictObject({ vectors: z.array(z.array(z.number())) }),
+      reply: z.strictObject({ results: z.array(RecordedEmbedding) }),
     })
-    .refine((r) => oneReplyPerInput(r.reply.vectors.length, r.request.texts.length), {
-      message: 'one vector per text',
+    .refine((r) => oneReplyPerInput(r.reply.results.length, r.request.texts.length), {
+      message: 'one result per text',
     }),
   z
     .strictObject({
       role: z.literal('reranker'),
       pin: RerankerPin,
       request: RerankRequest,
-      reply: z.strictObject({ scores: z.array(z.number()) }),
+      reply: z.strictObject({ results: z.array(RerankResult) }),
     })
-    .refine((r) => oneReplyPerInput(r.reply.scores.length, r.request.documents.length), {
-      message: 'one score per document',
+    .refine((r) => oneReplyPerInput(r.reply.results.length, r.request.documents.length), {
+      message: 'one result per document',
     }),
   z
     .strictObject({

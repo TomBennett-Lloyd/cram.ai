@@ -10,8 +10,12 @@ const config = {
     timeoutMs: 1000,
     sampling: { temperature: 0, seed: 0 },
   },
-  verifier: { pin: PROVISIONAL_DEFAULT_PINS.verifier },
-  embedder: { pin: PROVISIONAL_DEFAULT_PINS.embedder },
+  verifier: { pin: PROVISIONAL_DEFAULT_PINS.verifier, directory: '/models/verifier' },
+  embedder: {
+    pin: PROVISIONAL_DEFAULT_PINS.embedder,
+    directory: '/models/embedder',
+    pooling: 'cls',
+  },
 };
 
 const withEndpoint = (endpoint: string) => ({
@@ -26,17 +30,24 @@ describe('GatewayConfig', () => {
 
   it('accepts a reranker pinned to the reranker role only', () => {
     const reranker = { ...PROVISIONAL_DEFAULT_PINS.embedder, role: 'reranker' };
-    expect(GatewayConfig.safeParse({ ...config, reranker: { pin: reranker } }).success).toBe(true);
+    const directory = '/models/reranker';
     expect(
-      GatewayConfig.safeParse({ ...config, reranker: { pin: PROVISIONAL_DEFAULT_PINS.embedder } })
-        .success,
+      GatewayConfig.safeParse({ ...config, reranker: { pin: reranker, directory } }).success,
+    ).toBe(true);
+    expect(
+      GatewayConfig.safeParse({
+        ...config,
+        reranker: { pin: PROVISIONAL_DEFAULT_PINS.embedder, directory },
+      }).success,
     ).toBe(false);
   });
 
   it('refuses a pin configured under another role', () => {
     expect(
-      GatewayConfig.safeParse({ ...config, verifier: { pin: PROVISIONAL_DEFAULT_PINS.embedder } })
-        .success,
+      GatewayConfig.safeParse({
+        ...config,
+        verifier: { ...config.verifier, pin: PROVISIONAL_DEFAULT_PINS.embedder },
+      }).success,
     ).toBe(false);
   });
 
@@ -62,6 +73,21 @@ describe('GatewayConfig', () => {
   it('refuses an unknown key rather than dropping it', () => {
     expect(
       GatewayConfig.safeParse({ ...config, embedder: { ...config.embedder, path: '/m' } }).success,
+    ).toBe(false);
+  });
+
+  it.each(['models/embedder', './embedder', ''])(
+    'refuses the relative artefact directory %j',
+    (directory) => {
+      expect(
+        GatewayConfig.safeParse({ ...config, embedder: { ...config.embedder, directory } }).success,
+      ).toBe(false);
+    },
+  );
+
+  it.each(['max', undefined])('refuses an embedder pooling of %j', (pooling) => {
+    expect(
+      GatewayConfig.safeParse({ ...config, embedder: { ...config.embedder, pooling } }).success,
     ).toBe(false);
   });
 });
