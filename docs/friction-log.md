@@ -19,20 +19,10 @@ Entry format:
 - Phase: review
 - Observed: issue #30's own sweep regex (`esbuild.{0,80}(vite|vitest|tsx)` and friends) missed a third carrier of the "vite brings esbuild" claim, `verify-tier.test.sh`'s header "it arrives with vite", because that line never says "esbuild". The reviewer's broader patterns caught it, and the lane banked them in `.claude/ledgers/esbuild-provenance.ledger`. Second sweep-shaped miss today (the first was PR #33's entry, consumed by #87): a sweep built from the claim's keyword misses paraphrases of the claim.
 
-## 2026-10-16 — PR #48
-
-- Phase: process
-- Observed: on retrying a stuck `merge-pr.sh 48`, the merge owner's `pgrep -f 'merge-pr.sh 48'` guard matched the shell running the guard itself. (The stuck poll this entry first recorded is now issue #55's, and the ADR-path cost is #49's and #50's.)
-
 ## 2026-10-19 — PR #67
 
 - Phase: implementation
 - Observed: the #3 lane mutated an uncommitted ledger to check the harness went red, then undid the mutant with `git checkout --`, which also discarded the carrier line it had just added; it re-added the line and re-checked before committing. `docs/standards/testing.md` rule 8 forbids exactly that revert, and `.claude/agents/ticket-agent.md` § 4 cites rule 8 for the mutant loop; the lane was mutating a ledger, not a test, so nothing in the standards index pointed it at the rule. One ticket so far.
-
-## 2026-10-19 — PR #73
-
-- Phase: implementation
-- Observed: the comment-density ratchet's median was computed over 7 baseline rows (20.68%), so a four-line file holding one docblock measured 25% and read as over; the #11 lane folded `source-id.ts` into `slide-row.ts` to pass, and then declined to bank its nine new files' rows because below-median rows would lower the bar every other lane is judged against. The policy question is in `docs/tech-debt.md`; the friction is that a small baseline makes the ratchet shape files rather than comments.
 
 ## 2026-10-20 — PR #82
 
@@ -49,11 +39,6 @@ Entry format:
 - Phase: planning
 - Observed: the #80 plan claimed `eval/src` would pass the comment-density gate once covered, on the strength of a pre-plan run that measured the old scope (16 files, `eval/` excluded); the widened gate put two files over the median and added a docblock cut to the scope mid-flight. A claim about a widened gate needs the widened gate run first. One ticket so far.
 
-## 2026-10-20 — PR #90
-
-- Phase: review
-- Observed: the cycle-1 correctness finding on #70 was a guard that did not exist — a rebuild silently dropped any slide whose lecture had no stored deck. The pre-review mutation pass (`.claude/agents/ticket-agent.md` § 4) deletes guards that exist and cannot find a missing one; only the reviewer's reading of the invariant did. One ticket so far.
-
 ## 2026-10-20 — PR #101
 
 - Phase: planning
@@ -69,11 +54,6 @@ Entry format:
 - Phase: planning
 - Observed: the #92 lane's plan comment said "Divergence: none" above a paragraph that described one; putting it right cost two fetch-modify-push edits of the comment and a review finding. The summary line was written before the paragraph it summarises. One ticket so far.
 
-## 2026-10-20 — PR #83
-
-- Phase: review
-- Observed: the #9 lane's pre-review mutation pass (`.claude/agents/ticket-agent.md` § 4) called the PDF adapter's rethrow arm unreachable because no synthetic input reached it; the reviewer reached it with a broken page tree. An unreachability claim quantifies over every input, and the pass had tried only the fixtures it held. Second entry today on that pass's evidence being bounded by its own inputs (PR #90's was a guard it could not see because the guard did not exist).
-
 ## 2026-10-20 — PR #116
 
 - Phase: implementation
@@ -83,11 +63,6 @@ Entry format:
 
 - Phase: planning
 - Observed: the #79 plan chose `@napi-rs/canvas` as a devDependency of `eval/` on the reasoning that devDependencies are outside `check:no-network-egress`'s scan. Adding it anywhere in the workspace satisfied `unpdf`'s optional peer, so pnpm re-resolved `@cram/ingest`'s production `unpdf` against it and the gate flagged the Skia binary in ingest's production tree. The lane switched to `jimp` (pure JS, no peer coupling) and re-planned once. A devDependency can change another importer's production tree through optional-peer resolution; only the gate saw it. One ticket so far.
-
-## 2026-10-20 — PR #128
-
-- Phase: review
-- Observed: the #10 lane's mutation pass recorded the `sizeOf` `0` floor as an equivalent mutant, and the reviewer killed it with a second input shape: a paragraph with no `a:rPr` and one whose `a:rPr` has no `sz` read differently once the floor is gone. `.claude/agents/ticket-agent.md` § 4 asks for one mutant per guard edge; it does not say what earns the label "equivalent", and this one was earned by one input shape. One ticket so far.
 
 ## 2026-10-20 — PR #139
 
@@ -102,7 +77,7 @@ Entry format:
 ## 2026-10-20 — PR #118
 
 - Phase: planning
-- Observed: issue #57 ended "Decision needed (owner)", and the lane answered the question from the repo's documents instead of stopping BLOCKED, leaving a "Contrary reading" paragraph for the merge owner; the merge owner held the PR for the owner's word, which came a few hours later and agreed. The #56 and #47 lanes, given owner-shaped questions the same day, stopped at the plan. `.claude/agents/ticket-agent.md` § 5 (d) names "owner taste" as a stop trigger and says nothing about an issue that labels its own question as the owner's. One ticket so far on the lane deciding; the reviewer's pathspec finding (an edge no guard-edge mutant named) is the same shape as PR #83's entry.
+- Observed: issue #57 ended "Decision needed (owner)", and the lane answered the question from the repo's documents instead of stopping BLOCKED, leaving a "Contrary reading" paragraph for the merge owner; the merge owner held the PR for the owner's word, which came a few hours later and agreed. The #56 and #47 lanes, given owner-shaped questions the same day, stopped at the plan. `.claude/agents/ticket-agent.md` § 5 (d) names "owner taste" as a stop trigger and says nothing about an issue that labels its own question as the owner's. One ticket so far on the lane deciding; the reviewer's pathspec finding (an edge no guard-edge mutant named) is the shape #188 now owns.
 
 ## 2026-10-20 — PR #132
 
@@ -114,17 +89,17 @@ Entry format:
 - Phase: process
 - Observed: `verify-tier.sh` labelled the #129 change, an interface deleted and a return type renamed across two `.ts` files, "source-prose, 2 file(s) proven comment-only"; typecheck ran on every package regardless, so nothing went unchecked, but the tier's name misdescribes a type-only change and a reader of the verify log would believe only prose moved. One ticket so far.
 
-## 2026-10-20 — PR #154
-
-- Phase: review
-- Observed: the #15 server's two mutant passes (the first lane's, then the resumed lane's 47 mutants, which found 9 unprotected guard edges the first had missed) still left two defects for the reviewer: an untested deck byte cap, and a request target such as `GET http://[` parsed outside the request boundary, which killed the whole server process. Neither was framed as a guard edge, so no mutant named it. Third entry today on the mutation pass's evidence being bounded by the edges its author listed (PR #83, PR #128 before it); the reviewer's reading of the invariant is still what finds the rest.
-
 ## 2026-10-20 — PR #120
 
 - Phase: process
 - Observed: ADR 0006 waited for the owner's review while three PRs merged under it (#137, #128, #116), and those made stated facts in its § Context, one assumption check and its ledger false; nothing flagged that until the FILL bounce read the ADR against the new main, which cost a REBASE round with Context true-ups. The decisions were untouched, but an ADR under review has no gate that re-checks its Context claims against main. One ticket so far; `merge.approvedAtPlanRule` (#150) names such a true-up as an extra, which surfaces it without preventing it.
 
-## 2026-10-20 — PR #160
+## 2026-10-20 — PR #143
 
-- Phase: implementation
-- Observed: the #126 lane's mutant pass covered the operand-versus-argument sites it had listed (nary, func, rad), and review found seven more operand sites it had not; the lane's own words were that listing edges by construct rather than by the sites already reasoned about would have caught them. Fourth entry today on the mutation pass's coverage being bounded by its author's list (PR #83, PR #128, PR #154). The lane also decided the issue's two "To decide" items itself, the second instance of PR #118's shape; both were ingest-internal, with no prompt or resolver change, and the merge owner merged on that basis.
+- Phase: review
+- Observed: the #114 lane's README edit reordered a sentence so that a colon introduced the wrong example, a reorder caught by review; and its rebase union of `docs/review-feedback.md` was the first of six that evening, as every humanAlways PR's fill rewrote its own entry on main while the others waited. The review log is an append-only union at merge time by rule, but a fill edits an existing entry in place, which is what makes each later branch DIRTY rather than BEHIND. One ticket's entry; the shape recurred on PRs #106, #156, #174 and #175 the same evening.
+
+## 2026-10-20 — PR #156
+
+- Phase: process
+- Observed: the merge-time verdict fill on PR #156 was refused by the auto-mode permission classifier in the lane ("CI Bypass"), as were the fills on PRs #106 ("Self-Approval", four times) and #143 ("Merge Without Review"), while the identical command ran cleanly in the #132 and #120 lanes. The owner's `fill-verdict.sh` allow rule matched only the bare command form, and the refused lanes had wrapped it in a `cd &&` or a path export. The owner ran the three fills by hand; on #156 the hand-run fill and the lane's REBASE bounce acted on one worktree at once, which the lane noticed and waited out. The bounce text now names the bare form with `--worktree`; whether that is enough is the next fill's measurement.
