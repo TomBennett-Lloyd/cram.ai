@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import { SlideRef } from './golden-question';
 import { absoluteFields, absoluteRow, type BaselineRow, baselineRow } from './metric-row';
 
-/** The one tokeniser of ADR 0006 § Decision (h) (proposed in #120): lower-cased, punctuation stripped, whitespace-split. */
+/** The one tokeniser of ADR 0006 § Decision (h): lower-cased, punctuation stripped, whitespace-split. */
 export const derivedTextTokens = (text: string): readonly string[] =>
   text
     .toLowerCase()
