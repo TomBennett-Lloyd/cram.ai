@@ -2,16 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { examAnswerability, gradingAgreement } from './exam-metrics';
 
 describe('examAnswerability', () => {
-  it('yields a question only when its gold answer and every rubric point are supported', () => {
-    expect(
-      examAnswerability([
-        { goldAnswer: 'supported', rubricPoints: ['supported', 'supported'] },
-        { goldAnswer: 'supported', rubricPoints: ['supported', 'partial'] },
-        { goldAnswer: 'partial', rubricPoints: ['supported'] },
-        { goldAnswer: 'supported', rubricPoints: [] },
-      ]),
-    ).toMatchObject({ ratio: { numerator: 2, denominator: 4 } });
-  });
+  it.each([
+    { goldAnswer: 'supported', rubricPoints: ['supported', 'supported'], yields: 1 },
+    { goldAnswer: 'supported', rubricPoints: ['supported', 'partial'], yields: 0 },
+    { goldAnswer: 'partial', rubricPoints: ['supported'], yields: 0 },
+    { goldAnswer: 'supported', rubricPoints: [], yields: 1 },
+  ] as const)(
+    'yields $goldAnswer gold with rubric $rubricPoints only when every verdict is supported',
+    ({ goldAnswer, rubricPoints, yields }) => {
+      expect(examAnswerability([{ goldAnswer, rubricPoints }])).toMatchObject({
+        ratio: { numerator: yields, denominator: 1 },
+      });
+    },
+  );
 
   it('is not-measurable with no generated question', () => {
     expect(examAnswerability([])).toMatchObject({ status: 'not-measurable' });

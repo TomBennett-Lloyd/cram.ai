@@ -121,7 +121,23 @@ const steppingClock = () => {
   return () => (now += 1);
 };
 
-const spec = (gateway: EvalRunSpec['gateway']): EvalRunSpec => ({
+/** Says every statement is supported, and lets each source line also say comb cells are hexagons. */
+const credulous: Respond = (wire) => {
+  if (wire.output.name === 'verdict') return content({ verdict: 'supported' });
+  const reply = tutor(false)(wire);
+  if (wire.output.name !== 'units' || reply.status !== 'content') return reply;
+  const { units } = z
+    .strictObject({ units: z.array(z.strictObject({ text: z.string() }).loose()) })
+    .parse(JSON.parse(reply.content));
+  return content({
+    units: units.map((unit) => ({ ...unit, text: `${unit.text} Comb cells are hexagons.` })),
+  });
+};
+
+const spec = (
+  gateway: EvalRunSpec['gateway'],
+  overrides: Partial<EvalRunSpec> = {},
+): EvalRunSpec => ({
   facts: {
     measuredCommit: 'abc1234',
     pullRequest: 1,
@@ -134,14 +150,15 @@ const spec = (gateway: EvalRunSpec['gateway']): EvalRunSpec => ({
   labels: LABELS,
   gateway,
   clock: steppingClock(),
+  ...overrides,
 });
 
-const recordRun = async (respond: Respond) => {
+const recordRun = async (respond: Respond, overrides: Partial<EvalRunSpec> = {}) => {
   const recorder = new RecordingGateway({
     inner: new ScriptedGateway(respond),
     sampling: SAMPLING,
   });
-  const report = await runEval(spec(recorder));
+  const report = await runEval(spec(recorder, overrides));
   const recorded = recorder.recordings();
   if (recorded.status !== 'recorded') throw new Error('the scripted run was nondeterministic');
   return { report, recordings: recorded.recordings };
@@ -194,6 +211,55 @@ describe('runEval', () => {
         { question: 'Who won the football cup?', problems: [{ kind: 'answered-uncovered' }] },
       ],
     });
+  });
+
+  it('headlines the shipping strategy, where it and the cross-encoder alone disagree', async () => {
+    const { report } = await recordRun(credulous, {
+      labels: [
+        ...LABELS,
+        label({
+          text: 'Bees build comb from square cells. Bees build round cells.',
+          quotes: ['Bees build comb from square cells.'],
+          verdict: 'partial',
+        }),
+      ],
+    });
+    const { nli, nliThenLlm } = report.verifierArms;
+    expect(report.verifierStrategy).toBe('nli-then-llm');
+    expect(nli.contradictionSet).not.toEqual(nliThenLlm.contradictionSet);
+    expect(report.metrics.contradictionSet).toEqual(nliThenLlm.contradictionSet);
+    expect(nli.accuracy.precision).not.toEqual(nliThenLlm.accuracy.precision);
+    expect(report.metrics.verifierPrecision).toEqual(nliThenLlm.accuracy.precision);
+  });
+
+  it('times each golden question once, under the shipping strategy only', async () => {
+    const { report } = await recordRun(tutor(false));
+    expect(report.latency.ask).toMatchObject({ samples: QUESTIONS.length });
+    expect(report.verifierArms.nli.perUnitLatency).toMatchObject({ samples: LABELS.length });
+  });
+
+  it('counts recall at the retrieval k, not only the top slide', async () => {
+    const { report } = await recordRun(tutor(false), {
+      questions: [
+        question({
+          question: 'What do bees build, and are workers male?',
+          expectedCitations: [
+            { lectureId: 'l1', slideNo: 1 },
+            { lectureId: 'l1', slideNo: 2 },
+            { lectureId: 'l2', slideNo: 1 },
+          ],
+        }),
+      ],
+    });
+    expect(report.metrics.retrievalRecall).toMatchObject({
+      ratio: { numerator: 3, denominator: 3 },
+    });
+  });
+
+  it('rejects a hand label with no quote rather than verifying it against nothing', async () => {
+    await expect(
+      runEval(spec(new ScriptedGateway(tutor(false)), { labels: [{ ...label(), quotes: [] }] })),
+    ).rejects.toThrow('a hand label has no quote');
   });
 
   it('rejects on a replay miss rather than reporting', async () => {

@@ -113,6 +113,20 @@ describe('RecordingGateway', () => {
     });
   });
 
+  it('keeps the first conflict when the call drifts again', async () => {
+    let calls = 0;
+    const drifting = new ScriptedGateway(() => {
+      calls += 1;
+      return { status: 'content', content: JSON.stringify({ text: String(calls) }) };
+    });
+    const recorder = new RecordingGateway({ inner: drifting, sampling: SAMPLING });
+    for (let call = 0; call < 3; call += 1) await recorder.generator.chat(ask('hi'));
+    expect(recorder.recordings()).toMatchObject({
+      first: { reply: { content: '{"text":"1"}' } },
+      second: { reply: { content: '{"text":"2"}' } },
+    });
+  });
+
   it('records the backend’s reply, so an invalid output replays as invalid', async () => {
     const garbled = new ScriptedGateway(() => ({ status: 'content', content: 'not json' }));
     const recorder = new RecordingGateway({ inner: garbled, sampling: SAMPLING });

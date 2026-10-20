@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { latencySummary, timed } from './latency';
+import { LatencySummary, latencySummary, timed } from './latency';
 
 describe('latencySummary', () => {
   it('takes the middle sample of an odd count and the largest', () => {
@@ -15,6 +15,10 @@ describe('latencySummary', () => {
     expect(latencySummary([40, 10, 20, 30], 'none')).toMatchObject({ medianMs: 25, maxMs: 40 });
   });
 
+  it('orders samples by value, not as strings', () => {
+    expect(latencySummary([100, 9, 10], 'none')).toMatchObject({ medianMs: 10, maxMs: 100 });
+  });
+
   it('summarises a single sample', () => {
     expect(latencySummary([5], 'none')).toMatchObject({ samples: 1, medianMs: 5, maxMs: 5 });
   });
@@ -22,6 +26,17 @@ describe('latencySummary', () => {
   it('is not-measurable with no sample', () => {
     expect(latencySummary([], 'none')).toEqual({ status: 'not-measurable', reason: 'none' });
   });
+});
+
+describe('LatencySummary', () => {
+  const measured = { status: 'measured', samples: 1, medianMs: 5, maxMs: 5 };
+
+  it.each([{ samples: 0 }, { samples: 1.5 }, { medianMs: -1 }, { maxMs: -1 }])(
+    'refuses a summary with %o',
+    (field) => {
+      expect(LatencySummary.safeParse({ ...measured, ...field }).success).toBe(false);
+    },
+  );
 });
 
 describe('timed', () => {

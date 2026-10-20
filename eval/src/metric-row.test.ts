@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { absoluteFields, baselineRow, passed, Ratio } from './metric-row';
+import { z } from 'zod';
+import { absoluteFields, absoluteRow, baselineRow, passed, Ratio } from './metric-row';
 
 describe('Ratio', () => {
   it('refuses a numerator above its denominator', () => {
@@ -12,6 +13,26 @@ describe('Ratio', () => {
 
   it('accepts a numerator equal to its denominator', () => {
     expect(Ratio.safeParse({ numerator: 2, denominator: 2 }).success).toBe(true);
+  });
+
+  it.each([
+    { numerator: -1, denominator: 2 },
+    { numerator: 0.5, denominator: 2 },
+  ])('refuses a numerator that is not a count: $numerator', (ratio) => {
+    expect(Ratio.safeParse(ratio).success).toBe(false);
+  });
+});
+
+describe('absoluteRow', () => {
+  const Row = absoluteRow(z.string());
+
+  it('accepts one failure per item not passed', () => {
+    expect(Row.safeParse(absoluteFields(2, ['x'], 'none')).success).toBe(true);
+  });
+
+  it('refuses a failure count that disagrees with its ratio', () => {
+    const fields = absoluteFields(2, ['x'], 'none');
+    expect(Row.safeParse({ ...fields, failures: [] }).success).toBe(false);
   });
 });
 

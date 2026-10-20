@@ -38,6 +38,28 @@ describe('contradictionSet', () => {
     });
   });
 
+  it('fails a covered item answered from the same slide number in another lecture', () => {
+    const elsewhere = record({ lectureId: 'l2', slideNo: 1, body: 'Cells are square.' });
+    const fromElsewhere = unit('Cells are square.', [citing(elsewhere, 'Cells are square.')]);
+    expect(
+      contradictionSet([asked(grounded(fromElsewhere), [...slides, elsewhere], covered)]),
+    ).toMatchObject({ failures: [{ problems: [{ kind: 'no-expected-citation' }] }] });
+  });
+
+  it('lists a forbidden entry beside a coverage problem, not instead of it', () => {
+    const caveat = unit('Bees are busy with hexagons.', [citing(otherSlide, 'Bees are busy.')]);
+    expect(contradictionSet([asked(grounded(caveat), slides, covered)])).toMatchObject({
+      failures: [
+        {
+          problems: [
+            { kind: 'no-expected-citation' },
+            { kind: 'forbidden-text', entry: 'hexagon' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('fails a covered item answered not-covered', () => {
     expect(contradictionSet([asked(NOT_COVERED, slides, covered)])).toMatchObject({
       failures: [{ problems: [{ kind: 'no-expected-citation' }] }],
