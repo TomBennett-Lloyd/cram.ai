@@ -76,7 +76,7 @@ The counts above — two fix attempts, two re-plans — are provisional, set fro
 
 Source diffs only: a diff holding none of the source extensions `.claude/workflow.json` → `merge.autoRule` lists owes no review.
 
-One synchronous `reviewer` dispatch scoped to `git diff main...HEAD`, naming the prose you wrote yourself — PR body, `docs/tech-debt.md` entries, issue bodies — per `.claude/skills/review-loop/SKILL.md` step 1. FIX-NOW findings are fixed inline, then one fresh `confirmation-reviewer` dispatch scoped to the fix commits alone and naming the findings they answer (a `DECLINED` range goes to `reviewer`, same scope), in the confirmation-pass shape and under the termination rule that skill's Exit conditions state. Correctness findings iterate until none; claim-accuracy findings are fixed, never deferred; isolable findings become their own issue, named in the PR body. Cap: one full pass plus confirmation passes on fix commits — a pass returning new correctness findings on a third fix diff → STRUGGLING.
+One synchronous `reviewer` dispatch scoped to `git diff origin/main...HEAD` after `git fetch origin`, naming the prose you wrote yourself — PR body, `docs/tech-debt.md` entries, issue bodies — per `.claude/skills/review-loop/SKILL.md` step 1. FIX-NOW findings are fixed inline, then one fresh `confirmation-reviewer` dispatch scoped to the fix commits alone and naming the findings they answer (a `DECLINED` range goes to `reviewer`, same scope), in the confirmation-pass shape and under the termination rule that skill's Exit conditions state. Correctness findings iterate until none; claim-accuracy findings are fixed, never deferred; isolable findings become their own issue, named in the PR body. Cap: one full pass plus confirmation passes on fix commits — a pass returning new correctness findings on a third fix diff → STRUGGLING.
 
 This pass is what `.claude/workflow.json` → `merge.reviewedSourceRule` accepts from this lane. Your own read of your own diff is not a review and never satisfies it.
 
@@ -98,7 +98,7 @@ Branch/HEAD: <branch> <sha>        (pasted: git rev-parse HEAD in the worktree)
 PR: #<pr> <url>                    CI: green | red | pending — pasted checks tail + head sha
 Verify: rc=<n>                     (pasted `verify root:` line)
 Plan comment: <url>                Footprint drift vs plan comment: <files | none>
-Changed files: (pasted git diff --name-only main...HEAD)
+Changed files: (pasted git diff --name-only origin/main...HEAD, after git fetch origin)
 Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found>/<fixed>, deferred: <issues | none>
 Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <paths | none>
 Lane model: <the model this agent runs on>
