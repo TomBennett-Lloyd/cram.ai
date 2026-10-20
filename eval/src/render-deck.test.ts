@@ -209,6 +209,38 @@ describe('the raster of an imageOnly slide', () => {
   type Span = readonly [number, number];
   const RASTER_MARGIN = 2 * PAGE.margin;
 
+  it.each([
+    ['its title alone', { title: 'Comb', body: [] }],
+    ['its body alone', { title: '', body: ['Cells are square.'] }],
+  ])('inks %s', async (_, text) => {
+    const image = await rasterOf(text);
+    expect(inked(image, [0, image.width], [0, image.height])).toBe(true);
+  });
+
+  it.each([
+    ['title', { title: 'Bees’ comb' }],
+    ['body', { body: ['Cells – square'] }],
+  ])('refuses a %s character its font cannot draw, naming the slide', async (_, text) => {
+    const odd = lecture('l1', [slide({ slideNo: 2, imageOnly: true, ...text })]);
+    await expect(renderLecturePdf(odd)).rejects.toThrow(
+      /^renderLecturePdf: l1 slide 2: no raster glyph for "[’–]"$/,
+    );
+  });
+
+  it('keeps its speaker notes, which ingestPdf reads back', async () => {
+    const noted = lecture('l1', [slide({ imageOnly: true, speakerNotes: 'Point at the chart.' })]);
+    const result = await ingestPdf({
+      bytes: await renderLecturePdf(noted),
+      fileName: 'l1.pdf',
+      courseId: CourseId.parse('hollowmere'),
+      lectureId: noted.lectureId,
+    });
+    expect(result).toMatchObject({
+      status: 'ingested',
+      slides: [{ kind: 'image-only', record: { speakerNotes: 'Point at the chart.' } }],
+    });
+  });
+
   it('is the page at two pixels per point for a slide that fits', async () => {
     const image = await rasterOf({});
     expect([image.width, image.height]).toEqual([2 * PAGE.width, 2 * PAGE.height]);

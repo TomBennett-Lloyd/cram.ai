@@ -9,7 +9,7 @@ import type { Deck, DeckLecture, DeckSlide } from './deck';
 /** In points; a 16:9 slide. */
 export const PAGE = { width: 960, height: 540, margin: 40 } as const;
 export const TITLE_SIZE = 40;
-/** Scaled with the title, so the body stays below it and `@cram/ingest` reads the largest line as the title (packages/ingest/src/slide-text.ts). */
+/** Scaled with the title, so the body stays smaller and `slideText` (packages/ingest/src/slide-text.ts) finds the title. */
 export const BODY_SIZE = 24;
 const LINE_HEIGHT = 1.4;
 
@@ -59,8 +59,9 @@ const RASTER_MIN = { width: PAGE.width * 2, height: PAGE.height * 2 } as const;
  * The slide's face as a PNG, so its text exists only as pixels
  * (docs/adr/0005-evaluation-as-gate.md § Decision (a)). jimp's fonts come in fixed
  * sizes, so the raster grows to hold its widest line and the page scales it to fit.
+ * jimp prints `?` for a character its font lacks, so such a character is refused.
  */
-const rasteriseSlide = async (slide: DeckSlide): Promise<Uint8Array> => {
+const rasteriseSlide = async (lecture: DeckLecture, slide: DeckSlide): Promise<Uint8Array> => {
   const [titleFont, bodyFont] = await Promise.all([
     loadFont(RASTER_TITLE_FONT),
     loadFont(RASTER_BODY_FONT),
@@ -69,6 +70,14 @@ const rasteriseSlide = async (slide: DeckSlide): Promise<Uint8Array> => {
     { text: slide.title, font: titleFont },
     ...slide.body.map((text) => ({ text, font: bodyFont })),
   ];
+  for (const { text, font } of lines) {
+    for (const char of text) {
+      if (!Object.hasOwn(font.chars, char))
+        throw new Error(
+          `renderLecturePdf: ${lecture.lectureId} slide ${String(slide.slideNo)}: no raster glyph for ${JSON.stringify(char)}`,
+        );
+    }
+  }
   const margin = PAGE.margin * 2;
   const width = Math.max(
     RASTER_MIN.width,
@@ -108,7 +117,7 @@ export const renderLecturePdf = async (lecture: DeckLecture): Promise<Uint8Array
   for (const slide of lecture.slides) {
     const page = doc.addPage([PAGE.width, PAGE.height]);
     if (slide.imageOnly) {
-      const image = await doc.embedPng(await rasteriseSlide(slide));
+      const image = await doc.embedPng(await rasteriseSlide(lecture, slide));
       const { width, height } = image.scaleToFit(PAGE.width, PAGE.height);
       page.drawImage(image, { x: 0, y: PAGE.height - height, width, height });
     } else {
@@ -126,7 +135,7 @@ export const renderLecturePdf = async (lecture: DeckLecture): Promise<Uint8Array
   return doc.save();
 };
 
-/** This checkout's root: renderings are never written inside it (check-no-course-content.sh). */
+/** This checkout's root: renderings are never written inside it (.claude/scripts/check-no-course-content.sh). */
 const CHECKOUT_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 export interface RenderedLecture {
