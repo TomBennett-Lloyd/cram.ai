@@ -1,5 +1,6 @@
 import type { Document, Element, Node } from '@xmldom/xmldom';
 import type { PageText, TextLine } from '../../page-text';
+import { linearOmml } from './omml';
 import { NS } from './ooxml';
 
 const TITLE_PLACEHOLDERS: ReadonlySet<string> = new Set(['title', 'ctrTitle']);
@@ -59,11 +60,14 @@ const paragraphsOf = (
   return paragraphs;
 };
 
-const textOf = (paragraph: Element): string =>
-  [...paragraph.getElementsByTagNameNS(NS.a, '*')]
-    .map((element) => {
-      if (element.localName === 't') return element.textContent ?? '';
-      return element.localName === 'br' ? ' ' : '';
+/** Text runs, line breaks as spaces, and each `a14:m` equation linearised where it stands in the sentence. */
+const textOf = (element: Element): string =>
+  [...element.children]
+    .map((child) => {
+      if (child.namespaceURI === NS.a14 && child.localName === 'm') return linearOmml(child);
+      if (child.namespaceURI === NS.a && child.localName === 't') return child.textContent ?? '';
+      if (child.namespaceURI === NS.a && child.localName === 'br') return ' ';
+      return textOf(child);
     })
     .join('');
 

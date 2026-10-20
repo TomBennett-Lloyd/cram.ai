@@ -110,3 +110,4 @@ shape a sweep that reaches it.
 - [0004 — Storage: one SQLite file per course; FTS5 + sqlite-vec; no shared store](0004-storage.md)
 - [0005 — Evaluation as a merge gate: the synthetic deck, the contradiction set, two tiers, the metrics and their bars](0005-evaluation-as-gate.md)
 - [0003 — Model roles and backends: four roles, each configured alone; encoders in-process, the generator in-process or over private HTTP; candidates measured, not pinned](0003-model-roles-and-backends.md)
+- [0006 — Image-only slides: OCR and captions as derived text, flagged and shown with the original](0006-image-only-slides.md)
