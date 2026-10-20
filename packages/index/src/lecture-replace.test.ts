@@ -11,7 +11,7 @@ import {
   vector,
   type TempCourse,
 } from './course-fixture';
-import type { CourseIndex, IndexedSlide } from './course-index';
+import { CANDIDATES_PER_LIST, type CourseIndex, type IndexedSlide } from './course-index';
 
 const LECTURE_1 = LectureId.parse('lecture-1');
 const LECTURE_2 = LectureId.parse('lecture-2');
@@ -45,8 +45,11 @@ afterEach(() => {
   temp.remove();
 });
 
-const bodies = (query: string, embedding: Float32Array, k = 8): readonly string[] =>
-  course.search({ text: query, embedding }, k).map((hit) => hit.record.body);
+const bodies = (
+  query: string,
+  embedding: Float32Array,
+  k = CANDIDATES_PER_LIST,
+): readonly string[] => course.search({ text: query, embedding }, k).map((hit) => hit.record.body);
 /** Every slide a search can reach, sorted: a row left behind in either index makes it throw or appear here. */
 const reachable = (query: string, embedding: Float32Array): readonly string[] =>
   [...bodies(query, embedding)].sort();

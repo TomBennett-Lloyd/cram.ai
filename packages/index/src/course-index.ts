@@ -84,13 +84,18 @@ export class CourseIndex {
     this.#embedder = embedder;
   }
 
+  #dropIndexRows(id: number): void {
+    this.#db.prepare('delete from slides_fts where rowid = ?').run(id);
+    this.#db.prepare('delete from slide_vec where rowid = ?').run(BigInt(id));
+  }
+
   #writeVector(id: number, embedding: Float32Array): void {
     this.#db
       .prepare('insert into slide_vec (rowid, embedding) values (?, ?)')
       .run(BigInt(id), embedding);
   }
 
-  /** Refuses a batch before anything is written: a record of another course, a slide twice, a vector of the wrong dimension. */
+  /** Refuses a batch before anything is written. */
   #checkBatch(operation: string, slides: readonly IndexedSlide[]): void {
     const seen = new Set<SourceId>();
     for (const { record, embedding } of slides) {
@@ -110,15 +115,12 @@ export class CourseIndex {
   /** Text and vector together; the caller holds the transaction. */
   #writeSlides(slides: readonly IndexedSlide[]): void {
     const upsert = this.#db.prepare(UPSERT_SLIDE).pluck();
-    const dropText = this.#db.prepare('delete from slides_fts where rowid = ?');
-    const dropVector = this.#db.prepare('delete from slide_vec where rowid = ?');
     const writeText = this.#db.prepare(
       'insert into slides_fts (rowid, lecture_title, title, body, speaker_notes, image_captions) values (?, ?, ?, ?, ?, ?)',
     );
     for (const { record, embedding } of slides) {
       const id = RowId.parse(upsert.get(...slideRowValues(record)));
-      dropText.run(id);
-      dropVector.run(BigInt(id));
+      this.#dropIndexRows(id);
       writeText.run(id, ...ftsValues(record));
       this.#writeVector(id, embedding);
     }
@@ -129,15 +131,10 @@ export class CourseIndex {
     const ids = RowIds.parse(
       this.#db.prepare('select id from slides where lecture_id = ?').pluck().all(lectureId),
     );
-    const dropText = this.#db.prepare('delete from slides_fts where rowid = ?');
-    const dropVector = this.#db.prepare('delete from slide_vec where rowid = ?');
     this.#db
       .prepare('delete from topics where slide_id in (select id from slides where lecture_id = ?)')
       .run(lectureId);
-    for (const id of ids) {
-      dropText.run(id);
-      dropVector.run(BigInt(id));
-    }
+    for (const id of ids) this.#dropIndexRows(id);
     this.#db.prepare('delete from slides where lecture_id = ?').run(lectureId);
   }
 
