@@ -43,3 +43,13 @@ Entry format:
 
 - Phase: process
 - Observed: the merge owner's dispatch for #36 named a precedent ("PR #51") that was wrong (the row came from #2, PR #41), and the lane reused it unchecked in its first commit message and plan comment; the reviewer caught it. `.claude/skills/run-issue/SKILL.md`'s ticket-agent lane dispatches with the issue number, the checkout path, the budget mode and the overlap note "and nothing else"; the extra context paragraph is where the false claim rode in. One instance.
+
+## 2026-10-20 — PR #89
+
+- Phase: planning
+- Observed: the #80 plan claimed `eval/src` would pass the comment-density gate once covered, on the strength of a pre-plan run that measured the old scope (16 files, `eval/` excluded); the widened gate put two files over the median and added a docblock cut to the scope mid-flight. A claim about a widened gate needs the widened gate run first. One ticket so far.
+
+## 2026-10-20 — PR #90
+
+- Phase: review
+- Observed: the cycle-1 correctness finding on #70 was a guard that did not exist — a rebuild silently dropped any slide whose lecture had no stored deck. The pre-review mutation pass (`.claude/agents/ticket-agent.md` § 4) deletes guards that exist and cannot find a missing one; only the reviewer's reading of the invariant did. One ticket so far.
