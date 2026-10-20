@@ -16,6 +16,7 @@ export const slide = (overrides: Partial<z.input<typeof SlideRecord>> = {}): Sli
     lectureId: 'lecture-1',
     lectureTitle: 'Lecture 1',
     slideNo: 1,
+    kind: 'content',
     title: '',
     body: '',
     speakerNotes: '',

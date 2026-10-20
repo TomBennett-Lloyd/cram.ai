@@ -57,7 +57,7 @@ describe('ingestPdf', () => {
         },
       ],
     });
-    expect(slides.map(({ kind, record }) => ({ kind, ...record }))).toEqual([
+    expect(slides).toEqual([
       expect.objectContaining({
         kind: 'content',
         slideNo: 1,
@@ -86,7 +86,9 @@ describe('ingestPdf', () => {
     });
     expect(slides[1]).toMatchObject({
       kind: 'image-only',
-      record: { title: '', body: '', derived: false },
+      title: '',
+      body: '',
+      derived: false,
     });
   });
 
@@ -94,7 +96,7 @@ describe('ingestPdf', () => {
     const [slide] = await ingested({
       pages: [{ lines: [line('Rates and orders of reaction'), line('Kinetics', TITLE)] }],
     });
-    expect(slide?.record).toMatchObject({
+    expect(slide).toMatchObject({
       title: 'Kinetics',
       body: 'Rates and orders of reaction',
     });
@@ -112,7 +114,7 @@ describe('ingestPdf', () => {
         },
       ],
     });
-    expect(slide?.record.title).toBe('Worked examples:');
+    expect(slide?.title).toBe('Worked examples:');
   });
 
   it('stamps every slide with the sha256 of the deck bytes and leaves the caller buffer intact', async () => {
@@ -122,7 +124,7 @@ describe('ingestPdf', () => {
     expect(bytes.byteLength).toBeGreaterThan(0);
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(digest);
     if (result.status !== 'ingested') throw new Error(result.status);
-    expect(result.slides.map(({ record }) => record.sourceHash)).toEqual([digest, digest]);
+    expect(result.slides.map(({ sourceHash }) => sourceHash)).toEqual([digest, digest]);
   });
 
   it('reports bytes that are not a PDF as unreadable', async () => {
@@ -155,7 +157,7 @@ describe('ingestPdf', () => {
         },
       ],
     });
-    expect(slide?.record.speakerNotes).toBe('A note');
+    expect(slide?.speakerNotes).toBe('A note');
   });
 
   it('makes no network request while reading a deck', async () => {

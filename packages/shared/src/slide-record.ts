@@ -14,9 +14,12 @@ export type SlideNo = z.infer<typeof SlideNo>;
 export const SourceHash = z.string().min(1).brand<'SourceHash'>();
 export type SourceHash = z.infer<typeof SourceHash>;
 
+export const SlideKind = z.enum(['content', 'references', 'image-only']);
+export type SlideKind = z.infer<typeof SlideKind>;
+
 /**
- * One slide as ingest emits it. A slide with no extractable text is a record,
- * not an error (#9). `derived` marks text produced by OCR or captioning rather
+ * One slide as ingest emits it. A slide with no extractable text is an `image-only`
+ * record, not an error (#9). `derived` marks text produced by OCR or captioning rather
  * than read from the deck (ADR 0006, #6).
  */
 export const SlideRecord = z.object({
@@ -24,6 +27,7 @@ export const SlideRecord = z.object({
   lectureId: LectureId,
   lectureTitle: NonBlankText,
   slideNo: SlideNo,
+  kind: SlideKind,
   title: z.string(),
   body: z.string(),
   speakerNotes: z.string(),

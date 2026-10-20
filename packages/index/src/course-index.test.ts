@@ -89,6 +89,48 @@ describe('CourseIndex.search', () => {
   });
 });
 
+describe('CourseIndex.search on references slides', () => {
+  const REFERENCES = indexed(
+    slide({ slideNo: 1, kind: 'references', body: 'osmosis reading list' }),
+    vector(1, 0, 0, 0),
+  );
+  const CONTENT = indexed(slide({ slideNo: 2, body: 'osmosis moves water' }), vector(0, 0, 1, 0));
+  const IMAGE_ONLY = indexed(slide({ slideNo: 3, kind: 'image-only' }), vector(0, 1, 0, 0));
+  beforeEach(() => {
+    indexLectures(course, [REFERENCES, CONTENT, IMAGE_ONLY]);
+  });
+
+  it('leaves a references slide out of the word list and the vector list by default', () => {
+    const others = ['', 'osmosis moves water'];
+    expect(bodies('reading list', AWAY, 3).toSorted()).toEqual(others);
+    expect(bodies('', vector(1, 0, 0, 0), 3).toSorted()).toEqual(others);
+  });
+
+  it('keeps image-only slides searchable', () => {
+    expect(course.search({ text: '', embedding: vector(0, 1, 0, 0) }, 1)[0]?.record.kind).toBe(
+      'image-only',
+    );
+  });
+
+  it('returns a references slide by its words or its vector when the query includes them', () => {
+    const included = (text: string, embedding: Float32Array) =>
+      course.search({ text, embedding, includeReferences: true }, 1).map((hit) => hit.record.body);
+    expect(included('reading list', AWAY)).toEqual(['osmosis reading list']);
+    expect(included('', vector(1, 0, 0, 0))).toEqual(['osmosis reading list']);
+  });
+
+  it('leaves references slides out before each list is cut, so they never use up its depth', () => {
+    const crowd = Array.from({ length: CANDIDATES_PER_LIST }, (_, index) =>
+      indexed(
+        slide({ lectureId: 'lecture-2', slideNo: index + 1, kind: 'references', body: 'osmosis' }),
+        vector(1, 0, 0, 0),
+      ),
+    );
+    indexLectures(course, crowd);
+    expect(bodies('osmosis', vector(1, 0, 0, 0), 1)).toEqual(['osmosis moves water']);
+  });
+});
+
 describe('CourseIndex.search on k', () => {
   it('returns RETRIEVAL_K slides by default, and never more than the course holds', () => {
     const many = Array.from({ length: RETRIEVAL_K + 2 }, (_, index) =>
@@ -123,6 +165,7 @@ describe('CourseIndex.slides', () => {
       speakerNotes: 'N',
       imageCaptions: ['c1', 'c2'],
       derived: true,
+      kind: 'references',
     });
     indexLectures(course, [indexed(record, AWAY)]);
     expect(course.slides()).toEqual([record]);

@@ -1,12 +1,13 @@
 import type { Database } from 'better-sqlite3';
-import type {
-  CourseId,
-  Deck,
-  LectureId,
-  SlideImage,
-  SlideNo,
-  SlideRecord,
-  SourceId,
+import {
+  SlideKind,
+  type CourseId,
+  type Deck,
+  type LectureId,
+  type SlideImage,
+  type SlideNo,
+  type SlideRecord,
+  type SourceId,
 } from '@cram/shared';
 import { z } from 'zod';
 import type { EmbedderIdentity } from './embedder-identity';
@@ -43,6 +44,8 @@ export interface IndexedSlide {
 export interface SearchQuery {
   readonly text: string;
   readonly embedding: Float32Array;
+  /** Off by default: references pages would dominate BM25 (#9's sizing comment, #78). */
+  readonly includeReferences?: boolean;
 }
 
 export interface SearchHit {
@@ -70,7 +73,9 @@ const requireDimension = (
   }
 };
 
-const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`;
+const SEARCHABLE_IDS = `select id from slides where kind <> '${SlideKind.enum.references}'`;
+
+const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`;
 
 /** One open course file (`docs/adr/0004-storage.md`). */
 export class CourseIndex {
@@ -179,12 +184,16 @@ export class CourseIndex {
     return this.#storedSlides('order by lecture_id, slide_no').map((slide) => slide.record);
   }
 
-  /** BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first. */
+  /**
+   * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
+   * Each list leaves references slides out before it is cut to depth, unless the query includes them.
+   */
   search(query: SearchQuery, k: number = RETRIEVAL_K): readonly SearchHit[] {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
     requireDimension('search', query.embedding, this.#embedder);
     const depth = Math.max(k, CANDIDATES_PER_LIST);
+    const scope = query.includeReferences === true ? '' : `and rowid in (${SEARCHABLE_IDS})`;
     const match = ftsMatchExpression(query.text);
     const bm25 =
       match === undefined
@@ -192,14 +201,16 @@ export class CourseIndex {
         : RowIds.parse(
             this.#db
               .prepare(
-                'select rowid from slides_fts where slides_fts match ? order by rank limit ?',
+                `select rowid from slides_fts where slides_fts match ? ${scope} order by rank limit ?`,
               )
               .pluck()
               .all(match, depth),
           );
     const nearest = RowIds.parse(
       this.#db
-        .prepare('select rowid from slide_vec where embedding match ? and k = ? order by distance')
+        .prepare(
+          `select rowid from slide_vec where embedding match ? and k = ? ${scope} order by distance`,
+        )
         .pluck()
         .all(query.embedding, depth),
     );

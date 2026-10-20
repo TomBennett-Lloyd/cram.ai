@@ -93,6 +93,7 @@ const parse = vi.fn((stored: Deck, courseId: CourseId) =>
           lectureId: stored.lectureId,
           lectureTitle: stored.lectureTitle,
           slideNo: index + 1,
+          kind: 'content',
           title: '',
           body,
           speakerNotes: '',
