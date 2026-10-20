@@ -1,14 +1,11 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { z } from 'zod';
+import type { EncoderPin } from '../../pin';
 import type { EncoderRole } from '../../role';
-
-/** Sidecars read from the snapshot's root, as a Hugging Face repository lays them out. */
-export const TOKENIZER_FILE = 'tokenizer.json';
-export const TOKENIZER_CONFIG_FILE = 'tokenizer_config.json';
-export const MODEL_CONFIG_FILE = 'config.json';
 
 export type EncoderLoadFailureReason = 'unreadable-file' | 'digest-mismatch' | 'invalid-artefact';
 
@@ -49,6 +46,20 @@ export const sha256Of = async (path: string): Promise<string> => {
     throw unreadable(path, error);
   });
   return hash.digest('hex');
+};
+
+/**
+ * Checks every file the pin's manifest names before any is read
+ * (`docs/adr/0003-model-roles-and-backends.md` § Decision (e), (i)).
+ */
+export const verifyManifest = async (directory: string, pin: EncoderPin): Promise<void> => {
+  for (const [file, pinned] of Object.entries(pin.manifest.files)) {
+    const path = join(directory, file);
+    const digest = await sha256Of(path);
+    if (digest !== pinned) {
+      throw new ArtefactRefused('digest-mismatch', `${path}: sha256 ${digest}, pinned ${pinned}`);
+    }
+  }
 };
 
 export const readJson = async <S extends z.ZodType>(

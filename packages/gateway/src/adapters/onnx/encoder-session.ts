@@ -3,15 +3,8 @@ import { Tokenizer } from '@huggingface/tokenizers';
 import { InferenceSession, type OnnxValue, Tensor } from 'onnxruntime-node';
 import { z } from 'zod';
 import type { OverLength } from '../../encoder-requests';
-import type { EmbedderPin, RerankerPin, VerifierPin } from '../../pin';
-import {
-  ArtefactRefused,
-  invalid,
-  readJson,
-  sha256Of,
-  TOKENIZER_CONFIG_FILE,
-  TOKENIZER_FILE,
-} from './encoder-artefact';
+import { type EncoderPin, TOKENIZER_CONFIG_FILE, TOKENIZER_FILE } from '../../pin';
+import { invalid, readJson, verifyManifest } from './encoder-artefact';
 import { encodeInput } from './input-encoding';
 
 /** `z.int()` admits only safe integers, so Hugging Face's "unset" sentinel is refused; the load probe refuses one too small. */
@@ -33,7 +26,7 @@ const int64 = (values: readonly number[]): Tensor =>
   new Tensor('int64', BigInt64Array.from(values, BigInt), [1, values.length]);
 
 export interface EncoderSessionSpec {
-  readonly pin: EmbedderPin | VerifierPin | RerankerPin;
+  readonly pin: EncoderPin;
   readonly directory: string;
   /** `last_hidden_state` for the embedder, `logits` for a classifier head. */
   readonly output: string;
@@ -116,16 +109,10 @@ export class EncoderSession {
   }
 }
 
-/** Verifies the model against its pin's digest before any of it is loaded (`docs/adr/0003-model-roles-and-backends.md` § Decision (e), (i)). */
+/** Opens the pinned encoder once its whole manifest is verified. */
 export const openEncoderSession = async (spec: EncoderSessionSpec): Promise<EncoderSession> => {
+  await verifyManifest(spec.directory, spec.pin);
   const modelPath = join(spec.directory, spec.pin.artefact.file);
-  const digest = await sha256Of(modelPath);
-  if (digest !== spec.pin.sha256) {
-    throw new ArtefactRefused(
-      'digest-mismatch',
-      `${modelPath}: sha256 ${digest}, pinned ${spec.pin.sha256}`,
-    );
-  }
   const tokenizerPath = join(spec.directory, TOKENIZER_FILE);
   const tokenizerJson = await readJson(tokenizerPath, TokenizerJson);
   const tokenizerConfigPath = join(spec.directory, TOKENIZER_CONFIG_FILE);

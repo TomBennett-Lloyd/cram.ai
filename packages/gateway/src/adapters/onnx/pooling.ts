@@ -1,4 +1,4 @@
-import type { Pooling } from '../../role-config';
+import type { Pooling } from '../../pin';
 
 const rowsOf = (hidden: Float32Array, tokens: number, width: number): Float32Array[] =>
   Array.from({ length: tokens }, (_, token) => hidden.subarray(token * width, (token + 1) * width));

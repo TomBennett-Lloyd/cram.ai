@@ -11,11 +11,7 @@ const config = {
     sampling: { temperature: 0, seed: 0 },
   },
   verifier: { pin: PROVISIONAL_DEFAULT_PINS.verifier, directory: '/models/verifier' },
-  embedder: {
-    pin: PROVISIONAL_DEFAULT_PINS.embedder,
-    directory: '/models/embedder',
-    pooling: 'cls',
-  },
+  embedder: { pin: PROVISIONAL_DEFAULT_PINS.embedder, directory: '/models/embedder' },
 };
 
 const withEndpoint = (endpoint: string) => ({
@@ -29,7 +25,7 @@ describe('GatewayConfig', () => {
   });
 
   it('accepts a reranker pinned to the reranker role only', () => {
-    const reranker = { ...PROVISIONAL_DEFAULT_PINS.embedder, role: 'reranker' };
+    const reranker = { ...PROVISIONAL_DEFAULT_PINS.verifier, role: 'reranker' };
     const directory = '/models/reranker';
     expect(
       GatewayConfig.safeParse({ ...config, reranker: { pin: reranker, directory } }).success,
@@ -37,7 +33,7 @@ describe('GatewayConfig', () => {
     expect(
       GatewayConfig.safeParse({
         ...config,
-        reranker: { pin: PROVISIONAL_DEFAULT_PINS.embedder, directory },
+        reranker: { pin: PROVISIONAL_DEFAULT_PINS.verifier, directory },
       }).success,
     ).toBe(false);
   });
@@ -84,10 +80,4 @@ describe('GatewayConfig', () => {
       ).toBe(false);
     },
   );
-
-  it.each(['max', undefined])('refuses an embedder pooling of %j', (pooling) => {
-    expect(
-      GatewayConfig.safeParse({ ...config, embedder: { ...config.embedder, pooling } }).success,
-    ).toBe(false);
-  });
 });

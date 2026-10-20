@@ -7,7 +7,7 @@ import { PROVISIONAL_DEFAULT_PINS } from './provisional-pins';
 import type { Recording } from './recording';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
-const rerankerPin = RerankerPin.parse({ ...pins.embedder, role: 'reranker' });
+const rerankerPin = RerankerPin.parse({ ...pins.verifier, role: 'reranker' });
 
 const sampling = { temperature: 0, seed: 0 };
 const Answer = z.object({ text: z.string() });

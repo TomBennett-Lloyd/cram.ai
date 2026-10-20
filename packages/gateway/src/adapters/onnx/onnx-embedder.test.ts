@@ -3,8 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { EmbeddingResult } from '../../encoder-requests';
-import { EmbedderPin } from '../../pin';
-import type { Pooling } from '../../role-config';
+import { EmbedderPin, type Pooling } from '../../pin';
 import {
   type EncoderFixture,
   embedderGraph,
@@ -13,7 +12,9 @@ import {
   INT64,
   loaded,
   MISMATCHED_SHA256,
+  MODEL_FILE,
   rows,
+  SNAPSHOT_PATHS,
   segmentCounter,
   writeEncoderFixture,
 } from './encoder-fixture';
@@ -27,13 +28,13 @@ afterAll(async () => {
   await rm(parent, { recursive: true, force: true });
 });
 
-const embedder = async (fixture: EncoderFixture, pooling: Pooling = 'cls', sha256?: string) => {
+const embedder = async (fixture: EncoderFixture, pooling: Pooling = 'cls', mismatched?: string) => {
   const written = await writeEncoderFixture(parent, fixture);
   const pin = EmbedderPin.parse({
     role: 'embedder',
-    ...fixturePinFields(sha256 ?? written.sha256),
+    ...fixturePinFields(written.files, mismatched, pooling),
   });
-  return loadOnnxEmbedder({ pin, directory: written.directory, pooling });
+  return loadOnnxEmbedder({ pin, directory: written.directory });
 };
 
 const unit = (...values: number[]): number[] =>
@@ -152,17 +153,33 @@ describe('loadOnnxEmbedder', () => {
     });
   });
 
-  it('refuses a model whose digest is not the pin’s, naming both', async () => {
-    const load = await embedder({ graph: idRows }, 'cls', MISMATCHED_SHA256);
-    if (load.status !== 'load-failed') throw new Error('loaded under a mismatched pin');
-    expect(load.reason).toBe('digest-mismatch');
-    expect(load.detail).toContain(`pinned ${MISMATCHED_SHA256}`);
+  it.each(SNAPSHOT_PATHS)(
+    'refuses a %s whose digest is not the manifest’s, naming both',
+    async (file) => {
+      const load = await embedder({ graph: idRows }, 'cls', file);
+      if (load.status !== 'load-failed') throw new Error('loaded under a mismatched pin');
+      expect(load.reason).toBe('digest-mismatch');
+      expect(load.detail).toContain(`${file}: sha256 `);
+      expect(load.detail).toContain(`pinned ${MISMATCHED_SHA256}`);
+    },
+  );
+
+  it('checks every digest before parsing any file', async () => {
+    const fixture = { graph: idRows, files: { 'tokenizer_config.json': '{' } };
+    expect(await embedder(fixture, 'cls', 'tokenizer.json')).toMatchObject({
+      reason: 'digest-mismatch',
+    });
+    expect(await embedder(fixture, 'cls', MODEL_FILE)).toMatchObject({
+      reason: 'digest-mismatch',
+    });
   });
 
   it('throws on a relative directory, which is the caller’s config bug', async () => {
-    const pin = EmbedderPin.parse({ role: 'embedder', ...fixturePinFields(MISMATCHED_SHA256) });
-    await expect(loadOnnxEmbedder({ pin, directory: 'models', pooling: 'cls' })).rejects.toThrow(
-      /absolute path/,
-    );
+    const files = Object.fromEntries(SNAPSHOT_PATHS.map((file) => [file, MISMATCHED_SHA256]));
+    const pin = EmbedderPin.parse({
+      role: 'embedder',
+      ...fixturePinFields(files, undefined, 'cls'),
+    });
+    await expect(loadOnnxEmbedder({ pin, directory: 'models' })).rejects.toThrow(/absolute path/);
   });
 });
