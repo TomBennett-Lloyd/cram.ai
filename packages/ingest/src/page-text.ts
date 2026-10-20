@@ -8,6 +8,7 @@ export interface TextLine {
 
 /** A page as a format adapter reads it: the boundary every deck format (PDF, PPTX #10) produces. */
 export interface PageText {
+  readonly markedTitle?: string;
   readonly lines: readonly TextLine[];
   readonly notes: string;
 }
