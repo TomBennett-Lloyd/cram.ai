@@ -1,3 +1,4 @@
+import Database from 'better-sqlite3';
 import { LectureId, SlideNo, SourceId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -113,17 +114,37 @@ describe('CourseIndex.replaceLecture', () => {
     expect(course.slides().map((s) => s.body)).toEqual(['alpha', 'beta', 'gamma', 'enzymes']);
   });
 
-  it('keeps the old lecture whole when a write fails partway through', () => {
+  it('refuses a slide image number twice in one batch, and writes nothing', () => {
     expect(() => {
       course.replaceLecture(
         deck({ content: new TextEncoder().encode('new deck') }),
         [slideImage(1, 'one'), slideImage(1, 'one again')],
         lectureOne(['delta']),
       );
-    }).toThrow(/UNIQUE/);
+    }).toThrow(/^replaceLecture: slide image lecture-1\/1 appears twice in one batch$/);
+    expect(course.slides().map((s) => s.body)).toEqual(['alpha', 'beta', 'gamma', 'enzymes']);
+    expect(text(course.deck(LECTURE_1)?.content)).toBe('old deck');
+  });
+
+  it('keeps the old lecture whole when a write fails partway through', () => {
+    // The batch passes every entry check, so the only way to fail it mid-transaction is the file
+    // itself: a trigger refuses the second new slide, after the drop and the deck write (#92).
+    const file = new Database(temp.spec.path);
+    file.exec(
+      "create trigger refuse_marked before insert on slides when new.body = 'refused' begin select raise(abort, 'injected failure'); end",
+    );
+    file.close();
+    expect(() => {
+      course.replaceLecture(
+        deck({ content: new TextEncoder().encode('new deck') }),
+        [slideImage(1, 'new one')],
+        lectureOne(['delta', 'refused']),
+      );
+    }).toThrow(/injected failure/);
     expect(course.slides().map((s) => s.body)).toEqual(['alpha', 'beta', 'gamma', 'enzymes']);
     expect(bodies('gamma', OTHER, 1)).toEqual(['gamma']);
     expect(text(course.deck(LECTURE_1)?.content)).toBe('old deck');
+    expect(text(course.slideImage(LECTURE_1, SlideNo.parse(3))?.content)).toBe('old three');
   });
 });
 

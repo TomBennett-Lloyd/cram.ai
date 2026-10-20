@@ -58,6 +58,22 @@ describe('CourseIndex stored decks', () => {
     course.close();
   });
 
+  it('refuses a slide image number twice in one batch, and writes nothing', () => {
+    const course = openOrFail(temp.spec);
+    course.storeDeck(deck(), [slideImage(1, 'old one')]);
+    expect(() => {
+      course.storeDeck(deck({ content: new TextEncoder().encode('new deck') }), [
+        slideImage(1, 'one'),
+        slideImage(2, 'two'),
+        slideImage(1, 'one again'),
+      ]);
+    }).toThrow(/^storeDeck: slide image lecture-1\/1 appears twice in one batch$/);
+    expect(text(course.deck(LECTURE)?.content)).toBe('deck bytes');
+    expect(text(course.slideImage(LECTURE, slideNo(1))?.content)).toBe('old one');
+    expect(course.slideImage(LECTURE, slideNo(2))).toBeUndefined();
+    course.close();
+  });
+
   it('answers undefined for a lecture or slide it has no deck or image for', () => {
     const course = openOrFail(temp.spec);
     expect(course.deck(LECTURE)).toBeUndefined();
