@@ -18,7 +18,7 @@ Slides are parsed into one record per slide and indexed in a local SQLite file (
 
 ## Local model backend
 
-`pnpm models:pull` sets up developer mode's generator on a Mac (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)): the pinned Ollama, serving on 127.0.0.1 only, with the pinned generator GGUF imported as it is. It prints the endpoint and model name for the gateway config. Re-running it changes nothing that already matches the pins.
+`pnpm models:pull` sets up developer mode's generator on a Mac (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)): the pinned Ollama, serving on loopback only, with the pinned generator GGUF imported as it is. It prints the endpoint and model name for the gateway config. Re-running it changes nothing that already matches the pins.
 
 ## How this repo is built
 
