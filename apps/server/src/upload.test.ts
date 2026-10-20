@@ -1,6 +1,7 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { CourseId } from '@cram/shared';
+import { CourseId, LectureId } from '@cram/shared';
+import { EmbedderIdentity, openCourse } from '@cram/index';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
@@ -14,6 +15,7 @@ import {
   stopTestServer,
   type TestServer,
   uploadPath,
+  WordEmbedder,
 } from './server-fixture';
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
@@ -37,6 +39,22 @@ const upload = async (
   path = uploadPath('bio', 'l1', 'hive.pdf'),
 ) => send(server.port, { method: 'POST', path, headers: { 'content-type': contentType }, body });
 
+/** The `l1` deck in the `bio` course file, opened under the identity `WordEmbedder`'s pin names. */
+const lectureDeckIn = (dataDir: string) => {
+  const { pin } = new WordEmbedder();
+  const opened = openCourse({
+    path: courseFilePath(dataDir, CourseId.parse('bio')),
+    courseId: CourseId.parse('bio'),
+    embedder: EmbedderIdentity.parse({ model: `${pin.model}@${pin.sha256}`, dimension: 8 }),
+  });
+  if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
+  try {
+    return opened.course.deck(LectureId.parse('l1'));
+  } finally {
+    opened.course.close();
+  }
+};
+
 const progressOf = async ({ server }: TestServer, courseId = 'bio') =>
   (
     (await settledStatus(server.port, courseId)).json as { uploads: { progress: unknown }[] }
@@ -45,7 +63,7 @@ const progressOf = async ({ server }: TestServer, courseId = 'bio') =>
 describe('POST /courses/:id/decks', () => {
   it('queues the deck, then indexes it and flags its image-only pages by slide number', async () => {
     const server = await started();
-    const accepted = await upload(server, await pdfDeck(HIVE), 'application/pdf; charset=binary');
+    const accepted = await upload(server, await pdfDeck(HIVE), 'Application/PDF ; charset=binary');
     expect(accepted.status).toBe(202);
     expect(accepted.json).toMatchObject({
       lectureId: 'l1',
@@ -117,6 +135,37 @@ describe('POST /courses/:id/decks', () => {
   });
 });
 
+describe('the course file an upload writes', () => {
+  it('stores the deck under the embedder the pin and its vectors name', async () => {
+    const server = await started();
+    const deck = await pdfDeck(HIVE);
+    await upload(server, deck);
+    await settledStatus(server.server.port, 'bio');
+    const stored = lectureDeckIn(server.dataDir);
+    expect(stored?.lectureTitle).toBe('The Hive');
+    expect(new Uint8Array(stored?.content ?? [])).toEqual(deck);
+  });
+
+  it('is written before close resolves, though the upload was still queued', async () => {
+    const server = await started();
+    await upload(server, await pdfDeck(HIVE));
+    await server.server.close();
+    test = undefined;
+    expect(lectureDeckIn(server.dataDir)?.lectureTitle).toBe('The Hive');
+    rmSync(server.dataDir, { recursive: true, force: true });
+  });
+
+  it('outlives the server: after a restart the course has no uploads, and is not missing', async () => {
+    const server = await started();
+    await upload(server, await pdfDeck(HIVE));
+    await server.server.close();
+    test = await startTestServer(undefined, server.dataDir);
+    const status = await send(test.server.port, { method: 'GET', path: '/courses/bio/ingest' });
+    expect(status.status).toBe(200);
+    expect(status.json).toEqual({ courseId: 'bio', uploads: [] });
+  });
+});
+
 describe('GET /courses/:id/ingest', () => {
   it('answers no-such-course for a course with no file and no uploads', async () => {
     const { server } = await started();
@@ -129,7 +178,7 @@ describe('GET /courses/:id/ingest', () => {
     const { server } = await started();
     const statusOf = async (courseId: string) =>
       (await send(server.port, { method: 'GET', path: `/courses/${courseId}/ingest` })).status;
-    for (const accepted of ['b', 'bio-101', '7', 'a'.repeat(64), 'con1', 'com0'])
+    for (const accepted of ['b', 'bio-101', '7', 'a'.repeat(64), 'con1', 'com0', 'lpt0', 'bacon'])
       expect(await statusOf(accepted), accepted).toBe(404);
     for (const refused of [
       'Bio',
@@ -144,6 +193,8 @@ describe('GET /courses/:id/ingest', () => {
       'aux',
       'nul',
       'com1',
+      'com9',
+      'lpt1',
       'lpt9',
     ])
       expect(await statusOf(refused), refused).toBe(400);

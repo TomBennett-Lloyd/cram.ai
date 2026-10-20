@@ -5,6 +5,7 @@ import {
   Deck,
   type DeckMediaType,
   type LectureId,
+  type SlideRecord,
   type UploadProgress,
 } from '@cram/shared';
 import { type CourseFiles, openForWrite } from './course-file';
@@ -28,6 +29,15 @@ const ADAPTERS = {
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': ingestPptx,
 } satisfies Record<DeckMediaType, (deck: DeckFile) => unknown>;
 
+/** The deck as the course file stores it; a deck with no slides has no title to read. */
+export const lectureDeck = (job: IngestJob, records: readonly SlideRecord[]): Deck =>
+  Deck.parse({
+    lectureId: job.lectureId,
+    lectureTitle: records[0]?.lectureTitle ?? UNTITLED_LECTURE,
+    mediaType: job.mediaType,
+    content: job.bytes,
+  });
+
 /** Ingest → embed → index one deck, replacing its lecture whole (`CourseIndex.replaceLecture`). */
 export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<UploadProgress> => {
   const ingested = await ADAPTERS[job.mediaType](job);
@@ -37,14 +47,8 @@ export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<Uplo
   const indexed = await embedSlides(deps.embedder, records);
   const opened = openForWrite(deps.files, job.courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
-  const deck = Deck.parse({
-    lectureId: job.lectureId,
-    lectureTitle: records[0]?.lectureTitle ?? UNTITLED_LECTURE,
-    mediaType: job.mediaType,
-    content: job.bytes,
-  });
   try {
-    opened.course.replaceLecture(deck, [], indexed);
+    opened.course.replaceLecture(lectureDeck(job, records), [], indexed);
   } finally {
     opened.course.close();
   }

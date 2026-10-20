@@ -61,12 +61,15 @@ describe('startServer', () => {
     expect(await status(path, { origin: 'http://evil.example' })).toBe(403);
     expect(await status(path, { origin: `https://127.0.0.1:${String(port)}` })).toBe(403);
     expect(await status(path, { origin: 'null' })).toBe(403);
+    expect(await status(path, { origin: `HTTP://LOCALHOST:${String(port)}` })).toBe(403);
   });
 
   it('answers an unknown path with 404 and a known one with the wrong method with 405', async () => {
     expect(await status('/courses/bio/toString')).toBe(404);
     expect(await status('/courses/bio/ingest/extra')).toBe(404);
     expect(await status('/')).toBe(404);
+    expect(await status('/x/courses/bio/ingest')).toBe(404);
+    expect(await status('/courses/a/b/ingest')).toBe(404);
     const wrong = await send(test.server.port, { method: 'POST', path: '/courses/bio/ingest' });
     expect(wrong.status).toBe(405);
     expect(wrong.headers.allow).toBe('GET');
@@ -77,6 +80,17 @@ describe('startServer', () => {
 });
 
 describe('startServer, before it listens', () => {
+  it('rejects when its port is taken', async () => {
+    await expect(
+      startServer({
+        gateway: gatewayOf([]),
+        dataDir: test.dataDir,
+        port: test.server.port,
+        log: () => undefined,
+      }),
+    ).rejects.toThrow('EADDRINUSE');
+  });
+
   it('refuses to start on an embedder that breaks its one-vector-per-text contract', async () => {
     const silent: Embedder = { pin: new WordEmbedder().pin, embed: () => Promise.resolve([]) };
     await expect(

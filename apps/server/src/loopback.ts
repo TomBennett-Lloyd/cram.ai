@@ -10,6 +10,6 @@ export const isOwnOriginRequest = (headers: IncomingHttpHeaders, port: number): 
   const hosts = HOST_NAMES.map((name) => `${name}:${String(port)}`);
   const host = headers.host?.toLowerCase();
   if (host === undefined || !hosts.includes(host)) return false;
-  const origin = headers.origin?.toLowerCase();
+  const { origin } = headers;
   return origin === undefined || hosts.some((own) => origin === `http://${own}`);
 };

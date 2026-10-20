@@ -76,8 +76,8 @@ export interface TestServer {
 
 export const startTestServer = async (
   gateway: ModelGateway = gatewayOf([]),
+  dataDir: string = mkdtempSync(join(tmpdir(), 'cram-server-')),
 ): Promise<TestServer> => {
-  const dataDir = mkdtempSync(join(tmpdir(), 'cram-server-'));
   const logs: LogEntry[] = [];
   const server = await startServer({ gateway, dataDir, port: 0, log: (entry) => logs.push(entry) });
   return { server, dataDir, logs };
