@@ -67,3 +67,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/models-pull.sh` (Modelfile `num_ctx`); the installed app's generator backend (#7)
 - What: developer mode serves the artefact's trained context length, and Ollama sizes the KV cache to it when the model loads. The installed app's context will be chosen under A3's memory budget (#7). Nothing owns the value both modes should share, and the prompt budget (#13) has to fit the smaller of the two.
 - Source: #20 review cycle 1
+
+## 2026-10-20 — the quotable fields of a SlideRecord are listed in two packages
+
+- Where: `packages/grounding/src/slide-text.ts` `slideText`; `packages/index/src/confirmation.ts` `textHashOf`
+- What: `slideText` decides which fields a quote resolves against (title, body, speaker notes, image captions), and `textHashOf` hashes those same fields to decide when a confirmation of derived text is void (`docs/adr/0006-image-only-slides.md` § Decision (g)). The two must change together. If `slideText` gained a field and `textHashOf` did not, an edit to quotable text would leave the confirmation standing. `@cram/index` cannot import `@cram/grounding`, so the field list's single owner belongs in `@cram/shared`, and both functions would read it from there.
+- Source: #109 review

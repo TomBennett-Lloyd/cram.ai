@@ -1,6 +1,5 @@
 import type { Database } from 'better-sqlite3';
 import {
-  SlideKind,
   type CourseId,
   type Deck,
   type LectureId,
@@ -11,8 +10,17 @@ import {
   type SourceId,
 } from '@cram/shared';
 import { z } from 'zod';
+import {
+  confirmationState,
+  confirmDerived,
+  dropVoidConfirmations,
+  UNCONFIRMED_DERIVED,
+  type ConfirmationState,
+  type ConfirmResult,
+} from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
+import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
 import { createVectorTable } from './schema';
 import {
@@ -47,7 +55,18 @@ export interface SearchQuery {
   readonly embedding: Float32Array;
   /** Off by default: references pages would dominate BM25 (#9's sizing comment, #78). */
   readonly includeReferences?: boolean;
+  /** On for exam generation only (`docs/standards/grounding.md` rule 10); Ask and notes cite derived text unconfirmed. */
+  readonly excludeUnconfirmedDerived?: boolean;
 }
+
+/** A listing exam generation can draw its target slides from (`docs/plan.md` §3.5). */
+export interface SlideListing {
+  /** On for exam generation only, as `SearchQuery.excludeUnconfirmedDerived` is. */
+  readonly excludeUnconfirmedDerived?: boolean;
+}
+
+const listed = (listing: SlideListing): string =>
+  listing.excludeUnconfirmedDerived === true ? `and not (${UNCONFIRMED_DERIVED})` : '';
 
 export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-slide' };
 
@@ -68,17 +87,6 @@ const requireDimension = (
     );
   }
 };
-
-const REFERENCES = `'${SlideKind.enum.references}'`;
-
-/**
- * Each list's references filter. vec0 drops rows before `k` only for `rowid in`; FTS5 given
- * `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR, `retrieval.measure.test.ts`).
- */
-const WITHOUT_REFERENCES = {
-  bm25: `and rowid not in (select id from slides where kind = ${REFERENCES})`,
-  vector: `and rowid in (select id from slides where kind <> ${REFERENCES})`,
-} as const;
 
 const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (${SLIDE_COLUMNS.replace(/\w+/g, '?')}) returning id`;
 
@@ -151,6 +159,7 @@ export class CourseIndex {
    * Replaces the lecture's deck, slide images and slides in one transaction, so a re-uploaded deck
    * with fewer slides leaves none of the old ones behind (#71). Topic tags go with the old slides.
    * The only slide write, so every slide has a stored deck to rebuild from (rebuild-course.ts, #93).
+   * A confirmation outlives it while its slide's text does.
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
     this.#checkBatch('replaceLecture', slides);
@@ -165,6 +174,7 @@ export class CourseIndex {
       this.#dropLectureSlides(deck.lectureId);
       writeDeck(this.#db, deck, images);
       this.#writeSlides(slides);
+      dropVoidConfirmations(this.#db);
     })();
   }
 
@@ -172,6 +182,7 @@ export class CourseIndex {
   removeLecture(lectureId: LectureId): RemoveLectureResult {
     const removed = this.#db.transaction(() => {
       this.#dropLectureSlides(lectureId);
+      dropVoidConfirmations(this.#db);
       return deleteDeck(this.#db, lectureId);
     })();
     return removed ? { status: 'removed' } : { status: 'no-such-lecture' };
@@ -185,20 +196,26 @@ export class CourseIndex {
   }
 
   /** Every slide in the course, by lecture then slide number. */
-  slides(): readonly SlideRecord[] {
-    return this.#storedSlides('order by lecture_id, slide_no').map((slide) => slide.record);
+  slides(listing: SlideListing = {}): readonly SlideRecord[] {
+    return this.#storedSlides(`where true ${listed(listing)} order by lecture_id, slide_no`).map(
+      (slide) => slide.record,
+    );
   }
 
   /**
    * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
-   * Each list leaves references slides out before it is cut to depth, unless the query includes them.
+   * Each list leaves out what the query excludes before it is cut to depth: references slides unless
+   * included, and unconfirmed derived slides when asked.
    */
   search(query: SearchQuery, k: number = RETRIEVAL_K): readonly RetrievedSlide[] {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
     requireDimension('search', query.embedding, this.#embedder);
     const depth = Math.max(k, CANDIDATES_PER_LIST);
-    const filter = query.includeReferences === true ? { bm25: '', vector: '' } : WITHOUT_REFERENCES;
+    const filter = listFilters({
+      references: query.includeReferences !== true,
+      unconfirmedDerived: query.excludeUnconfirmedDerived === true,
+    });
     const match = ftsMatchExpression(query.text);
     const bm25 =
       match === undefined
@@ -242,10 +259,20 @@ export class CourseIndex {
     return { status: 'set' };
   }
 
+  /** The student confirms the derived text of `seen`, the record they were shown beside its image (ADR 0006 § Decision (g)). */
+  confirmDerived(seen: SlideRecord, confirmedAt: Date): ConfirmResult {
+    if (seen.courseId !== this.#courseId) return { status: 'no-such-slide' };
+    return confirmDerived(this.#db, sourceIdOf(seen), seen, confirmedAt);
+  }
+
+  confirmation(sourceId: SourceId): ConfirmationState {
+    return confirmationState(this.#db, sourceId);
+  }
+
   /** Every slide tagged `tag`, by lecture then slide number. */
-  slidesTagged(tag: string): readonly SlideRecord[] {
+  slidesTagged(tag: string, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
-      'where id in (select slide_id from topics where tag = ?) order by lecture_id, slide_no',
+      `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
       tag,
     ).map((slide) => slide.record);
   }
