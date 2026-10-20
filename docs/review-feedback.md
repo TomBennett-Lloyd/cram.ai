@@ -410,3 +410,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: #105 showed the count does not refuse a HUMAN batch by construction; the classify guard PR #213 added does. `.claude/workflow.json` is a `humanAlways` path, so the owner decides.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: Owner, chat, 2026-10-21: "approve 269, 175, 199, 204, 259". Approved, no changes.
+
+## 2026-10-20 — issue #107 — ingest-egress-entries-napi-rs-canvas
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - grant `.claude/network-egress.allowlist` entries for `@napi-rs/canvas` 1.0.11 (MIT), the canvas `unpdf`'s `renderPageAsImage` draws each PDF page on (`docs/adr/0006-image-only-slides.md` § Decision (c), A7). `check:no-network-egress` flags it on its builtin arm for `load-image.js`, which requires `http` and `https` only when `loadImage` is given a URL, and `js-binding.js`'s `isMuslFromChildProcess`, the last of its Linux musl probes, which requires `child_process`. pdf.js reaches it only through `createCanvas` and the `DOMMatrix`, `ImageData` and `Path2D` constructors, and `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts` now refuses `http` and `https` `request` and `get` as well as `fetch` and `XMLHttpRequest` while a deck is read and rendered. It has no install script, so `allowBuilds` gains nothing;
+  - grant entries for three of its per-platform prebuilt Skia binaries, flagged on the native arm: `@napi-rs/canvas-darwin-arm64` (the development machine), `@napi-rs/canvas-win32-x64-msvc` (the Windows target) and `@napi-rs/canvas-linux-x64-gnu` (CI's runner). Each tarball's `sbom.cdx.json` lists no HTTP or TLS client crate. A contributor on any other platform installs a variant the list does not name, and the gate stops them there;
+  - note the A8 finding filed as #169: `npm search pptx render` lists Node PPTX renderers (`pptx-glimpse`, `@office-kit/pptx-preview`), so A8's premise that none exists does not hold at the listing level; the choice between A8's embedded picture and a renderer is the owner's there.
+- **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
