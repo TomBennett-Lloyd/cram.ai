@@ -197,6 +197,16 @@ describe('ingestPptx', () => {
     expect(record).toMatchObject({ title: 'Worked examples', body: ENOUGH });
   });
 
+  it('reads a run with no properties and one with properties but no size as the same size', () => {
+    const sizeless = paragraphOf(
+      '<a:r><a:rPr lang="en-GB" b="1"/><a:t>Second line here</a:t></a:r>',
+    );
+    const [record] = records({
+      slides: [{ shapes: [shape(['Worked examples', sizeless, ENOUGH])] }],
+    });
+    expect(record?.title).toBe('Worked examples');
+  });
+
   it('reads an unreadable run size as inherited', () => {
     const [record] = records({
       slides: [

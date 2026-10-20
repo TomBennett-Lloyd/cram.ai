@@ -216,8 +216,14 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-19 — ingest glues any unmarked line after a bullet onto that bullet
 
 - Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
-- What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares, so it waits for that ticket or a later one.
+- What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares.
 - Source: issue #9 (review cycle 1)
+
+## 2026-10-20 — a UTF-16 PPTX part is reported as damaged
+
+- Where: `decodeUtf8` and `readXml` in `packages/ingest/src/adapters/pptx/ooxml.ts`
+- What: OPC permits XML parts encoded in UTF-16, but every part is decoded as fatal UTF-8. A conforming UTF-16 part (BOM `FF FE`) therefore comes back as `damaged`, which blames the deck for the reader's limit (`docs/standards/error-handling.md` rule 1, blame tiebreak). It is a value with an honest detail, and PowerPoint writes UTF-8. Sniffing the BOM is the fix if a real deck ever shows one.
+- Source: #10 review cycle 1
 
 ## 2026-10-20 — PdfUnreadableReason is hand-written beside the mapping that produces it
 

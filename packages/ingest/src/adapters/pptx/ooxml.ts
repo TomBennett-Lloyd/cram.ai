@@ -25,7 +25,6 @@ export class UnreadablePptx extends Error {
   }
 }
 
-/** The deck's zip entries by part name. */
 export type Parts = Readonly<Record<string, Uint8Array>>;
 
 export interface Relationship {

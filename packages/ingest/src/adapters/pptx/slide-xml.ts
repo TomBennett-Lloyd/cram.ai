@@ -5,11 +5,11 @@ import { NS } from './ooxml';
 const TITLE_PLACEHOLDERS: ReadonlySet<string> = new Set(['title', 'ctrTitle']);
 const SKIPPED_PLACEHOLDERS: ReadonlySet<string> = new Set(['sldNum', 'ftr', 'dt']);
 
-/** `a:sz` is hundredths of a point. */
+/** `a:rPr`'s `sz` is hundredths of a point (ECMA-376 `ST_TextFontSize`). */
 const SZ_PER_POINT = 100;
 
 interface Paragraph {
-  /** The placeholder type of the shape holding it; `undefined` outside a placeholder. */
+  /** The `p:ph` type of the shape holding it. */
   readonly placeholder: string | undefined;
   readonly element: Element;
 }

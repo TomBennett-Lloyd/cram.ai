@@ -1,6 +1,6 @@
 import type { SlideRecord } from '@cram/shared';
 
-/** One line of a page's text layer, in reading order; `size` is the largest glyph size on it. */
+/** One line of a page's text layer, in reading order. */
 export interface TextLine {
   readonly text: string;
   readonly size: number;

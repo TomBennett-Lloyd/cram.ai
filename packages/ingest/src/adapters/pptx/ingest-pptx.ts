@@ -58,7 +58,7 @@ const pageOf = (parts: Parts, slidePart: string): PageText => {
   };
 };
 
-/** One page per `p:sldId`, in the presentation's order, which part names do not follow. */
+/** One page per `p:sldId`, in the presentation's order (ingest-pptx.test.ts). */
 const pagesOf = (parts: Parts): PageText[] => {
   if (parts[PRESENTATION] === undefined)
     throw new UnreadablePptx('not-a-pptx', `no ${PRESENTATION}`);
