@@ -129,8 +129,16 @@ const CONSTRUCTS: ReadonlyMap<string, Construct> = new Map<string, Construct>([
   ['eqArr', (element, read) => childrenNamed(element, 'e').map(read).join('; ')],
 ]);
 
-const linear: Read = (element) =>
-  (CONSTRUCTS.get(element.localName ?? '') ?? sequence)(element, linear);
-
 /** An `a14:m` equation as one line of text, so a quote can cite it verbatim (#126). */
-export const linearOmml = (equation: Element): string => sequence(equation, linear);
+export const linearOmml = (equation: Element): string => {
+  /** Each element is read once: an operand is read again to bracket it, which would otherwise compound with depth. */
+  const texts = new Map<Element, string>();
+  const read: Read = (element) => {
+    const cached = texts.get(element);
+    if (cached !== undefined) return cached;
+    const text = (CONSTRUCTS.get(element.localName ?? '') ?? sequence)(element, read);
+    texts.set(element, text);
+    return text;
+  };
+  return sequence(equation, read);
+};

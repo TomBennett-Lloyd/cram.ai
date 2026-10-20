@@ -186,4 +186,14 @@ describe('linearOmml', () => {
       'a=b c=d',
     );
   });
+
+  it('reads each element once, so a deep nesting is read in milliseconds', () => {
+    // Read without the cache, depth 20 takes seconds: each level reads its operand twice.
+    const depth = 20;
+    let nested = r('x');
+    for (let level = 0; level < depth; level++) nested = sup(nested, r('2'));
+    const started = performance.now();
+    expect(linear(oMath(nested))).toBe(`${'('.repeat(depth - 1)}x${'^2)'.repeat(depth - 1)}^2`);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
 });
