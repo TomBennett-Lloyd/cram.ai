@@ -16,6 +16,10 @@ Slides are parsed into one record per slide and indexed in a local SQLite file (
 
 `pnpm verify` is the pre-commit gate and `pnpm verify:full` is what CI runs; see [`CLAUDE.md`](CLAUDE.md) for the rest of the command surface.
 
+## Local model backend
+
+`pnpm models:pull` sets up developer mode's generator on a Mac (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)): the pinned Ollama, serving on 127.0.0.1 only, with the pinned generator GGUF imported as it is. It prints the endpoint and model name for the gateway config. Re-running it changes nothing that already matches the pins.
+
 ## How this repo is built
 
 The build process is the other half of the deliverable. Every change starts as a GitHub issue, is planned by an agent into the issue, implemented in an isolated worktree, reviewed by an independent agent pass, and merged by rule; every merged PR gets a retrospective whose only outputs are a workflow fix or a friction-log entry. The agents, skills, hooks and gates live in [`.claude/`](.claude/) and were ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo), where each rule was earned — citations of the form `cumulo#<n>` point there.
