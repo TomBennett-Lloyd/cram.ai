@@ -37,10 +37,13 @@ export const deck = (overrides: Partial<z.input<typeof Deck>> = {}): Deck =>
 export const slideImage = (slideNo: number, content: string): SlideImage =>
   SlideImage.parse({ slideNo, mediaType: 'image/png', content: new TextEncoder().encode(content) });
 
-/** Stores a deck for each lecture, which `CourseIndex.upsertSlides` requires of every slide. */
-export const storeDecks = (course: CourseIndex, lectureIds: readonly string[]): void => {
-  for (const lectureId of lectureIds)
-    course.storeDeck(deck({ lectureId, lectureTitle: `Deck for ${lectureId}` }), []);
+/** Writes each lecture the slides name, whole, through `CourseIndex.replaceLecture`, with a fixture deck and no images. */
+export const indexLectures = (course: CourseIndex, slides: readonly IndexedSlide[]): void => {
+  const lectureIds = new Set(slides.map(({ record }) => record.lectureId));
+  for (const lectureId of lectureIds) {
+    const lecture = slides.filter(({ record }) => record.lectureId === lectureId);
+    course.replaceLecture(deck({ lectureId, lectureTitle: `Deck for ${lectureId}` }), [], lecture);
+  }
 };
 
 /** File bytes as text, so a test compares contents whatever the byte-array class. */

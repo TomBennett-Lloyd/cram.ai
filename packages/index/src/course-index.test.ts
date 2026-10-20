@@ -2,9 +2,9 @@ import { SourceId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   indexed,
+  indexLectures,
   openOrFail,
   slide,
-  storeDecks,
   tempCourse,
   vector,
   type TempCourse,
@@ -18,7 +18,6 @@ let course: CourseIndex;
 beforeEach(() => {
   temp = tempCourse();
   course = openOrFail(temp.spec);
-  storeDecks(course, ['lecture-1', 'lecture-2']);
 });
 afterEach(() => {
   course.close();
@@ -33,15 +32,16 @@ const bodies = (text: string, embedding: Float32Array, k?: number) =>
   ).map((hit) => hit.record.body);
 
 describe('CourseIndex.search', () => {
+  const LECTURE_1 = [
+    indexed(
+      slide({ slideNo: 1, body: 'osmosis moves water across a membrane' }),
+      vector(1, 0, 0, 0),
+    ),
+    indexed(slide({ slideNo: 2, body: 'diffusion spreads solutes' }), vector(0, 1, 0, 0)),
+    indexed(slide({ slideNo: 3, body: 'the krebs cycle' }), vector(0, 0, 1, 0)),
+  ];
   beforeEach(() => {
-    course.upsertSlides([
-      indexed(
-        slide({ slideNo: 1, body: 'osmosis moves water across a membrane' }),
-        vector(1, 0, 0, 0),
-      ),
-      indexed(slide({ slideNo: 2, body: 'diffusion spreads solutes' }), vector(0, 1, 0, 0)),
-      indexed(slide({ slideNo: 3, body: 'the krebs cycle' }), vector(0, 0, 1, 0)),
-    ]);
+    indexLectures(course, LECTURE_1);
   });
 
   it('finds a slide by its words when its vector points elsewhere', () => {
@@ -72,7 +72,8 @@ describe('CourseIndex.search', () => {
   });
 
   it('searches speaker notes, image captions and the lecture title as well as the body', () => {
-    course.upsertSlides([
+    indexLectures(course, [
+      ...LECTURE_1,
       indexed(slide({ slideNo: 4, body: 'notes slide', speakerNotes: 'mitochondria' }), AWAY),
       indexed(slide({ slideNo: 5, body: 'caption slide', imageCaptions: ['a chloroplast'] }), AWAY),
       indexed(
@@ -93,14 +94,15 @@ describe('CourseIndex.search on k', () => {
     const many = Array.from({ length: RETRIEVAL_K + 2 }, (_, index) =>
       indexed(slide({ slideNo: index + 1, body: `cell ${String(index)}` }), vector(1, index, 0, 0)),
     );
-    course.upsertSlides(many);
+    indexLectures(course, many);
     expect(bodies('cell', AWAY)).toHaveLength(RETRIEVAL_K);
     expect(bodies('cell', AWAY, RETRIEVAL_K + 10)).toHaveLength(RETRIEVAL_K + 2);
   });
 
   it('returns k slides when k is deeper than CANDIDATES_PER_LIST', () => {
     const deep = CANDIDATES_PER_LIST + 5;
-    course.upsertSlides(
+    indexLectures(
+      course,
       Array.from({ length: deep }, (_, index) =>
         indexed(slide({ slideNo: index + 1, body: 'cell' }), vector(1, index, 0, 0)),
       ),
@@ -113,8 +115,8 @@ describe('CourseIndex.search on k', () => {
   });
 });
 
-describe('CourseIndex.upsertSlides', () => {
-  it('stores records exactly as given', () => {
+describe('CourseIndex.slides', () => {
+  it('returns records exactly as written', () => {
     const record = slide({
       title: 'T',
       body: 'B',
@@ -122,63 +124,14 @@ describe('CourseIndex.upsertSlides', () => {
       imageCaptions: ['c1', 'c2'],
       derived: true,
     });
-    course.upsertSlides([indexed(record, AWAY)]);
+    indexLectures(course, [indexed(record, AWAY)]);
     expect(course.slides()).toEqual([record]);
-  });
-
-  it('replaces an existing slide in place: new words and vector match, old ones do not, tags survive', () => {
-    const other = vector(0, 0, 1, 0);
-    course.upsertSlides([
-      indexed(slide({ body: 'old words' }), vector(1, 0, 0, 0)),
-      indexed(slide({ slideNo: 2, body: 'unrelated' }), other),
-    ]);
-    expect(course.setTopics(sourceIdOf(slide()), ['cells'])).toEqual({ status: 'set' });
-    course.upsertSlides([indexed(slide({ body: 'new words' }), vector(0, 1, 0, 0))]);
-    expect(course.slides().map((s) => s.body)).toEqual(['new words', 'unrelated']);
-    // A slide still matching 'old' would outrank one found by its vector alone.
-    expect(bodies('old', other, 1)).toEqual(['unrelated']);
-    expect(bodies('new', other, 1)).toEqual(['new words']);
-    expect(bodies('', vector(0, 1, 0, 0), 1)).toEqual(['new words']);
-    expect(course.slidesTagged('cells').map((s) => s.body)).toEqual(['new words']);
-  });
-
-  it('writes nothing from a batch holding a record of another course', () => {
-    expect(() => {
-      course.upsertSlides([
-        indexed(slide(), AWAY),
-        indexed(slide({ slideNo: 2, courseId: 'course-b' }), AWAY),
-      ]);
-    }).toThrow(/belongs to course course-b/);
-    expect(course.slides()).toEqual([]);
-  });
-
-  it('writes nothing from a batch holding a slide whose lecture has no stored deck', () => {
-    expect(() => {
-      course.upsertSlides([
-        indexed(slide(), AWAY),
-        indexed(slide({ lectureId: 'lecture-9' }), AWAY),
-      ]);
-    }).toThrow(/lecture-9\/1 is in lecture lecture-9, which has no stored deck/);
-    expect(course.slides()).toEqual([]);
-  });
-
-  it('writes nothing from a batch naming one slide twice, or holding a vector of the wrong dimension', () => {
-    expect(() => {
-      course.upsertSlides([indexed(slide(), AWAY), indexed(slide(), AWAY)]);
-    }).toThrow(/twice/);
-    expect(() => {
-      course.upsertSlides([
-        indexed(slide(), AWAY),
-        indexed(slide({ slideNo: 2 }), vector(1, 0, 0)),
-      ]);
-    }).toThrow(/3 dimensions/);
-    expect(course.slides()).toEqual([]);
   });
 });
 
 describe('CourseIndex topics', () => {
   beforeEach(() => {
-    course.upsertSlides([
+    indexLectures(course, [
       indexed(slide({ slideNo: 2, body: 'second' }), AWAY),
       indexed(slide({ slideNo: 1, body: 'first' }), AWAY),
     ]);
@@ -208,7 +161,7 @@ describe('CourseIndex.replaceEmbedder', () => {
   const two = sourceIdOf(slide({ slideNo: 2 }));
 
   beforeEach(() => {
-    course.upsertSlides([
+    indexLectures(course, [
       indexed(slide({ slideNo: 1 }), AWAY),
       indexed(slide({ slideNo: 2 }), AWAY),
     ]);
