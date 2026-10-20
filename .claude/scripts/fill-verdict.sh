@@ -3,8 +3,8 @@
 # The branch half of the humanAlways merge ritual, once the owner has decided: fill the PR's
 # docs/review-feedback.md entry (Category and Verdict — both placeholders, never one), flip every
 # `proposed` ADR the PR adds or modifies to `accepted`, run `pnpm verify`, commit, push. A modified
-# ADR already `accepted` or `superseded by NNNN` — an amendment or a supersession, both
-# docs/adr/README.md shapes — is left as it is; an added one must be `proposed` (#57).
+# ADR whose Status is already `accepted` or `superseded by NNNN` (docs/adr/0000-template.md's
+# vocabulary) is left as it is; an added one must be `proposed` (#57).
 # merge-pr.sh refuses an unfilled entry and never fills one (its header says why); this script
 # is the fill, and it writes only what the caller passes — the verdict is the caller's.
 #
@@ -193,12 +193,12 @@ out=$(git -C "$wt" fetch --quiet origin "$base_ref" 2>&1) || fail 'fill' "could 
 merge_base=$(git -C "$wt" merge-base FETCH_HEAD HEAD 2>&1) || fail 'fill' "no merge base with '$base_ref': $merge_base"
 
 # docs/adr/README.md exempts the template from the Status rule; --no-renames keeps a renamed ADR
-# visible as added. adr_status holds each path's A or M, in adrs' order.
+# visible as added; :(glob) keeps `*` from matching a subdirectory's files.
 adrs=() adr_status=()
 while IFS=$'\t' read -r status path; do
   [ -n "$path" ] && [ "$path" != "docs/adr/0000-template.md" ] && adrs+=("$path") adr_status+=("$status:$path")
 done <<EOF
-$(git -C "$wt" diff --name-status --no-renames --diff-filter=AM "$merge_base" HEAD -- 'docs/adr/[0-9]*.md')
+$(git -C "$wt" diff --name-status --no-renames --diff-filter=AM "$merge_base" HEAD -- ':(glob)docs/adr/[0-9]*.md')
 EOF
 
 feedback_log=$(node -e '
@@ -220,7 +220,7 @@ added_headings=$(git -C "$wt" diff "$merge_base" HEAD -- "$feedback_log" | sed -
 # TAB-separated record per touched ADR: `accepted <number>` for a flip, `kept <number> <status>`
 # for a modified ADR left as it is.
 fill_err=$(mktemp "${TMPDIR:-/tmp}/fill-verdict-$pr_number.XXXXXX") || fail 'fill' "mktemp failed"
-flipped=$(cd "$wt" && node -e '
+adr_records=$(cd "$wt" && node -e '
 const fs = require("fs");
 const [log, added, issue, pr, category, verdict, placeholder, ...adrs] = process.argv.slice(1);
 const addedHeadings = new Set(added.split("\n"));
@@ -268,7 +268,7 @@ const kept = [];
 for (const arg of adrs) {
   const added = arg.startsWith("A:");
   const path = arg.slice(2);
-  if (!/^docs\/adr\/\d{4}-/.test(path)) refuse(path + " is not named docs/adr/NNNN-<slug>.md, so it has no number to record");
+  if (!/^docs\/adr\/\d{4}-/.test(path)) refuse(path + " is not named docs/adr/NNNN-*.md, so it has no number to record");
   const text = fs.readFileSync(path, "utf8").split("\n");
   const header = text.findIndex((l) => /^## /.test(l));
   const status = text.slice(0, header < 0 ? text.length : header).map((l, i) => [l, i]).filter(([l]) => /^- \*\*Status:\*\* /.test(l));
@@ -323,7 +323,7 @@ while IFS= read -r record; do
     kept_clause="$kept_clause; ADR $n left $value"
   fi
 done <<EOF
-$flipped
+$adr_records
 EOF
 step 'fill' "$feedback_log entry filled${adr_clause:+, ${adr_clause#; }}${kept_clause:+; ${kept_clause#; }}"
 

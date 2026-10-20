@@ -223,6 +223,18 @@ expect_rc 0
 expect_stdout 'ADR 0009 accepted'
 end
 
+begin "a subdirectory's file under docs/adr is not an ADR: left as it is"
+fixture adrsubdir
+must mkdir -p "$WT/docs/adr/0008-assets"
+printf '# Notes\n\n- **Status:** proposed\n' >"$WT/docs/adr/0008-assets/notes.md"
+seal
+run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+expect_rc 0
+[ "$(sed -n 3p "$WT/docs/adr/0008-assets/notes.md")" = '- **Status:** proposed' ] || bad "the subdirectory file was flipped"
+[ "$(git -C "$WT" log -1 --format=%s)" = "#50: verdict — approved-no-changes" ] ||
+  bad "subject: $(git -C "$WT" log -1 --format=%s)"
+end
+
 begin 'a parenthesised qualifier after a listed category is accepted verbatim'
 fixture qualifier
 seal
@@ -388,7 +400,7 @@ for value in 'superseded by 7' 'superseded by 00070' 'superseded by NNNN' 'super
   end
 done
 
-# Each name matches the subject's docs/adr/[0-9]*.md pathspec but not NNNN-<slug>.md.
+# Each name matches the subject's docs/adr/[0-9]*.md pathspec but not NNNN-*.md.
 for name in 0008.md 008-short.md 00a8-odd.md; do
   begin "refuses an ADR named $name before writing anything"
   fixture "adrname-$name"
@@ -396,7 +408,7 @@ for name in 0008.md 008-short.md 00a8-odd.md; do
   seal
   run 50 --category approved-no-changes --verdict approved "$ROOT"
   expect_rc 1
-  expect_stderr "docs/adr/$name is not named docs/adr/NNNN-<slug>.md"
+  expect_stderr "docs/adr/$name is not named docs/adr/NNNN-*.md"
   expect_untouched
   end
 done
