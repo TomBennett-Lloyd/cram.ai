@@ -1,11 +1,13 @@
 export { slidesFromPages, UNTITLED_LECTURE, type DeckSource } from './deck';
 export type { IngestedSlide, PageText, SlideKind, TextLine } from './page-text';
+export type { DeckFile, IngestResult } from './adapters/deck-file';
 export {
   ingestPdf,
-  type PdfDeck,
   type PdfIngestResult,
-  type UnreadableReason,
+  type PdfUnreadableReason,
 } from './adapters/pdf/ingest-pdf';
+export { ingestPptx, type PptxIngestResult } from './adapters/pptx/ingest-pptx';
+export type { PptxUnreadableReason } from './adapters/pptx/ooxml';
 export {
   BULLET_MARKERS,
   REFERENCES_TITLE,

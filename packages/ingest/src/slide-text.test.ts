@@ -58,6 +58,37 @@ describe('slideText title', () => {
   });
 });
 
+describe('slideText marked title', () => {
+  const marked = (markedTitle: string, ...lines: TextLine[]): PageText => ({
+    markedTitle,
+    lines,
+    notes: '',
+  });
+
+  it('takes the marked title and keeps every line in the body, whatever its size', () => {
+    const text = slideText(marked('Rate laws', line(ENOUGH), line('Aside', TITLE)), 3);
+    expect(text).toEqual({ kind: 'content', title: 'Rate laws', body: `${ENOUGH}\nAside` });
+  });
+
+  it('keeps an empty marked title empty rather than promoting the first line', () => {
+    expect(slideText(marked('', line(ENOUGH)), 3)).toMatchObject({ title: '', body: ENOUGH });
+  });
+
+  it('collapses whitespace inside the marked title', () => {
+    expect(slideText(marked('  Rate \n laws ', line(ENOUGH)), 3).title).toBe('Rate laws');
+  });
+
+  it("counts the marked title's words toward the text layer", () => {
+    const title = Array.from({ length: THIN_TEXT_LAYER_WORDS - 1 }, () => 'label').join(' ');
+    expect(slideText(marked(title, line('one')), 3).kind).toBe('content');
+    expect(slideText(marked(title), 3)).toEqual({ kind: 'image-only', title, body: '' });
+  });
+
+  it('classifies a references page by its marked title', () => {
+    expect(slideText(marked('References', line(ENOUGH)), 40).kind).toBe('references');
+  });
+});
+
 describe('slideText page numbers', () => {
   it('drops a digit-only line equal to the slide number', () => {
     const text = slideText(page(line('7', FOOTER), line('Kinetics', TITLE), line(ENOUGH)), 7);

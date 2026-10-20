@@ -94,20 +94,40 @@ const bodyOf = (lines: readonly TextLine[]): string => {
   return blocks.join('\n');
 };
 
-/** A page's title, body and kind, from its text layer alone (#9). */
+interface TitledLines {
+  readonly title: string;
+  readonly bodyLines: readonly TextLine[];
+}
+
+const inferTitle = (lines: readonly TextLine[]): TitledLines => {
+  const [start, end] = titleRange(lines);
+  return {
+    title: lines
+      .slice(start, end)
+      .map((line) => line.text)
+      .join(' '),
+    bodyLines: [...lines.slice(0, start), ...lines.slice(end)],
+  };
+};
+
+const wordCount = (text: string): number => text.match(WORD)?.length ?? 0;
+
+/** A page's title, body and kind: the title the format marks, else the one its text layer implies (#9). */
 export const slideText = (page: PageText, slideNo: SlideNo): SlideText => {
   const lines = joinBulletMarkers(
     page.lines
       .map((line) => ({ text: collapse(line.text), size: line.size }))
       .filter((line) => line.text !== '' && !isPageNumber(line, slideNo)),
   );
-  const [start, end] = titleRange(lines);
-  const title = lines
-    .slice(start, end)
-    .map((line) => line.text)
-    .join(' ');
-  const words = lines.reduce((count, line) => count + (line.text.match(WORD)?.length ?? 0), 0);
+  const { title, bodyLines } =
+    page.markedTitle === undefined
+      ? inferTitle(lines)
+      : { title: collapse(page.markedTitle), bodyLines: lines };
+  const words = bodyLines.reduce((count, line) => count + wordCount(line.text), wordCount(title));
   if (words < THIN_TEXT_LAYER_WORDS) return { kind: 'image-only', title, body: '' };
-  const body = bodyOf([...lines.slice(0, start), ...lines.slice(end)]);
-  return { kind: REFERENCES_TITLE.test(title) ? 'references' : 'content', title, body };
+  return {
+    kind: REFERENCES_TITLE.test(title) ? 'references' : 'content',
+    title,
+    body: bodyOf(bodyLines),
+  };
 };
