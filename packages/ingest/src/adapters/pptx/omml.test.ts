@@ -211,7 +211,7 @@ describe('linearOmml', () => {
   });
 
   describe('math alphanumerics (#159)', () => {
-    it("reads each of PowerPoint's styled letters and digits as its plain one", () => {
+    it("reads PowerPoint's styled characters in their NFKC form", () => {
       expect(linear(oMath(r('𝐸'), r('='), r('𝑚'), sup(r('𝑐'), r('2'))))).toBe('E=mc^2');
       const styled = ['ℎ𝐸𝑧', '𝐀𝐁𝐚𝐛', '𝒗𝒘', 'ℝℤ', 'ℒℋ', '𝔤ℜ', '𝘹𝘺', '𝚙𝚚', '𝛤𝜔𝜕𝛻𝜙𝜃', '𝛂', '𝟕', '𝟙𝟚'];
       expect(styled.map((text) => linear(oMath(r(text))))).toEqual([

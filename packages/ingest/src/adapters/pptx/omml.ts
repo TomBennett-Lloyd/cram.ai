@@ -27,10 +27,7 @@ const argument = (element: Element, name: string, read: Read): string => {
 /** `ST_OnOff`'s false values (ECMA-376 Part 1 § 22.9.2.7). */
 const OFF: ReadonlySet<string> = new Set(['off', 'false', '0']);
 
-/**
- * A math alphanumeric, or a Letterlike Symbol standing in one of that block's reserved holes: each
- * is a plain letter or digit in a font style, which its NFKC form drops (#159).
- */
+/** A math alphanumeric, or a Letterlike Symbol standing in one of that block's reserved holes (#159). */
 const MATH_ALPHANUMERIC = /[\u{1D400}-\u{1D7FF}ℂℊℋℌℍℎℐℑℒℕℙℚℛℜℝℤℨℬℭℯℰℱℳℴ]/gu;
 
 /** A math run's letters as plain letters, so a plain-letter search or quote matches them (#159). */

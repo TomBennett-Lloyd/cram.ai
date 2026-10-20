@@ -15,8 +15,7 @@ const mathRun = (text: string): string =>
   `<m:r><a:rPr><a:latin typeface="Cambria Math"/></a:rPr><m:t>${text}</m:t></m:r>`;
 
 /**
- * `E=mc^2+â` in the characters PowerPoint 16.114 wrote in #159's two probes, run before the
- * owner's hold. Assumption: PowerPoint writes math alphanumerics in `m:t`. Check it on a
+ * `E=mc^2+â` in the characters PowerPoint 16.114 wrote in #159's probes. Assumption: PowerPoint writes math alphanumerics in `m:t`. Check it on a
  * self-authored deck: `unzip -p <deck>.pptx ppt/slides/slide1.xml | grep -o '<m:t>[^<]*</m:t>'`.
  */
 const POWERPOINT_EQUATION = equation(
