@@ -25,6 +25,7 @@
     "check:node-types": "bash .claude/scripts/check-node-types.sh",
     "check:supply-chain-policy": "bash .claude/scripts/check-supply-chain-policy.sh",
     "format": "prettier --write .",
+    "models:pull": "bash .claude/scripts/models-pull.sh",
     "format:check": "prettier --check .",
     "verify": "pnpm verify:root && bash .claude/scripts/verify-tier.sh",
     "verify:full": "pnpm verify:root && pnpm lint && pnpm typecheck && pnpm check:comment-density && pnpm test && pnpm check:adr-index && pnpm check:ledgers && pnpm check:module-names && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:node-types && pnpm check:supply-chain-policy && pnpm check:markdown-links && pnpm test:scripts && pnpm format:check",

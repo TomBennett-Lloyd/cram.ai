@@ -239,6 +239,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/gateway/src/adapters/openai-http/chat-completion.ts` `chatCompletionBody`; `packages/gateway/src/adapters/openai-http/openai-http-generator.ts` `OpenAiHttpGenerator.reply`
 - What: the OpenAI-compatible API cannot set Ollama's context length (its `docs/api/openai-compatibility.mdx`, "Setting the local context size"), and Ollama trims messages that do not fit, logging only at debug level. The adapter reads no `usage.prompt_tokens`, so a long retrieved context can reach the model cut short with nothing reported (`docs/standards/error-handling.md` rule 5). The context is #20's Modelfile setup to fix, and the prompt budget is #13's.
 - Source: #12 review cycle 1
+- Update 2026-10-20 (#20): `pnpm models:pull` now sets `num_ctx` to the artefact's trained context length, so the server no longer trims below what the model can take. A prompt past that length is still trimmed silently, because the adapter still reads no `usage.prompt_tokens`. That half and the prompt budget stay open.
 
 ## 2026-10-20 — the ledger sweep engine is restated outside its owner with no ledger
 
