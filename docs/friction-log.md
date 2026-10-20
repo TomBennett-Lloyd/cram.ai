@@ -88,3 +88,8 @@ Entry format:
 
 - Phase: review
 - Observed: the #10 lane's mutation pass recorded the `sizeOf` `0` floor as an equivalent mutant, and the reviewer killed it with a second input shape: a paragraph with no `a:rPr` and one whose `a:rPr` has no `sz` read differently once the floor is gone. `.claude/agents/ticket-agent.md` § 4 asks for one mutant per guard edge; it does not say what earns the label "equivalent", and this one was earned by one input shape. One ticket so far.
+
+## 2026-10-20 — PR #139
+
+- Phase: planning
+- Observed: the #40 lane's own plan-comment sweep, written `git grep -E … P\b`, dropped four hits that `-P` returns, which is the defect the ticket was fixing; the lane noticed only because one expected hit (`check-ledgers.sh:254`) was missing from the output. A sweep's output is read for what it contains, not for what it should contain, so a dead arm is invisible unless a known hit is absent. `docs/standards/evidence.md` member 10 now names the fixture; one ticket so far on the reading habit.
