@@ -118,3 +118,13 @@ Entry format:
 
 - Phase: review
 - Observed: the #15 server's two mutant passes (the first lane's, then the resumed lane's 47 mutants, which found 9 unprotected guard edges the first had missed) still left two defects for the reviewer: an untested deck byte cap, and a request target such as `GET http://[` parsed outside the request boundary, which killed the whole server process. Neither was framed as a guard edge, so no mutant named it. Third entry today on the mutation pass's evidence being bounded by the edges its author listed (PR #83, PR #128 before it); the reviewer's reading of the invariant is still what finds the rest.
+
+## 2026-10-20 — PR #143
+
+- Phase: review
+- Observed: the #114 lane's README edit reordered a sentence so that a colon introduced the wrong example, a reorder caught by review; and its rebase union of `docs/review-feedback.md` was the first of six that evening, as every humanAlways PR's fill rewrote its own entry on main while the others waited. The review log is an append-only union at merge time by rule, but a fill edits an existing entry in place, which is what makes each later branch DIRTY rather than BEHIND. One ticket's entry; the shape recurred on PRs #106, #156, #174 and #175 the same evening.
+
+## 2026-10-20 — PR #156
+
+- Phase: process
+- Observed: the merge-time verdict fill on PR #156 was refused by the auto-mode permission classifier in the lane ("CI Bypass"), as were the fills on PRs #106 ("Self-Approval", four times) and #143 ("Merge Without Review"), while the identical command ran cleanly in the #132 and #120 lanes. The owner's `fill-verdict.sh` allow rule matched only the bare command form, and the refused lanes had wrapped it in a `cd &&` or a path export. The owner ran the three fills by hand; on #156 the hand-run fill and the lane's REBASE bounce acted on one worktree at once, which the lane noticed and waited out. The bounce text now names the bare form with `--worktree`; whether that is enough is the next fill's measurement.
