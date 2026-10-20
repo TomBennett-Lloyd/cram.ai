@@ -7,6 +7,7 @@ description: Owns one small same-surface batch of GitHub issues, full lifecycle
   top-level session RELEASEs it after merge. Dispatched by the /run-issue skill. Never
   merges; the top-level session owns merging.
 model: opus
+effort: medium
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.

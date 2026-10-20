@@ -2,6 +2,7 @@
 name: planner
 description: Breaks a GitHub issue into a fully specified implementation plan of self-contained chunks executable by sub-agents. Dispatched by the /plan-issue skill at the start of any non-trivial task.
 model: fable
+effort: high
 tools: Read, Glob, Grep, Bash
 ---
 
