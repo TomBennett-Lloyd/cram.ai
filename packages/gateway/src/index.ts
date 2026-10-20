@@ -10,11 +10,15 @@ export {
   OutputName,
 } from './chat';
 export {
+  EmbeddingResult,
   EmbedRequest,
   EntailmentPair,
   EntailmentResult,
   EntailRequest,
+  OverLength,
+  RecordedEmbedding,
   RerankRequest,
+  RerankResult,
 } from './encoder-requests';
 export {
   FakeGateway,
