@@ -204,7 +204,7 @@ Classification (.claude/workflow.json):
             humanAlways paths touched: <paths | none>
   If HUMAN: `awaiting-review` label applied: yes; one-paragraph review guide: <below>
 
-Changed files (pasted: git diff --name-only main...HEAD):
+Changed files (pasted: git diff --name-only origin/main...HEAD, after git fetch origin):
   <one per line>
 Footprint drift vs checkpoint: <files beyond the declared footprint | none>
 
@@ -212,7 +212,7 @@ Per-ticket (batch only), one line per member:
   #<m>: DONE — chunks <ids> verified; `Closes #<m>` in PR body
   #<m>: DROPPED — <why>; commit removed in curation (nothing reaches main); status
     comment posted; no Closes line
-Branch commits (batch only; pasted: git log --oneline main..HEAD):
+Branch commits (batch only; pasted: git log --oneline origin/main..HEAD):
   <sha> #<m>: <first line>     — exactly one line per surviving member, no others;
   this is the curated-history invariant the merge owner verifies mechanically
   (commit count == surviving-member count, each referencing its issue) before merging
