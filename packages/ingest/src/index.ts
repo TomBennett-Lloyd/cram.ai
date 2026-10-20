@@ -1,5 +1,5 @@
 export { slidesFromPages, UNTITLED_LECTURE, type DeckSource } from './deck';
-export type { IngestedSlide, PageText, SlideKind, TextLine } from './page-text';
+export type { PageText, TextLine } from './page-text';
 export type { DeckFile, IngestResult } from './adapters/deck-file';
 export {
   ingestPdf,

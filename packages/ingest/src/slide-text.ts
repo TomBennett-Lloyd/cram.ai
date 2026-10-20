@@ -1,12 +1,12 @@
-import type { SlideNo } from '@cram/shared';
-import type { PageText, SlideKind, TextLine } from './page-text';
+import type { SlideKind, SlideNo } from '@cram/shared';
+import type { PageText, TextLine } from './page-text';
 
 /** A page with fewer words than this outside its page number has a thin text layer (#9). */
 export const THIN_TEXT_LAYER_WORDS = 5;
 
 export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', '–', '➢', '➤'] as const;
 
-/** Titles that mark a references page (#9); keeping those out of retrieval is #78's. */
+/** Titles that mark a references page (#9), which `CourseIndex.search` leaves out by default (#78). */
 export const REFERENCES_TITLE =
   /^(references|reference list|bibliography|further readings?|reading lists?|works cited)\b/i;
 

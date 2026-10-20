@@ -6,7 +6,7 @@ export const sourceIdOf = (slide: Pick<SlideRecord, 'lectureId' | 'slideNo'>): S
   SourceId.parse(`${slide.lectureId}/${String(slide.slideNo)}`);
 
 export const SLIDE_COLUMNS =
-  'source_id, lecture_id, lecture_title, slide_no, title, body, speaker_notes, image_captions, derived, source_hash';
+  'source_id, lecture_id, lecture_title, slide_no, kind, title, body, speaker_notes, image_captions, derived, source_hash';
 
 const SlideRow = z.object({
   id: z.number().int(),
@@ -14,6 +14,7 @@ const SlideRow = z.object({
   lecture_id: z.string(),
   lecture_title: z.string(),
   slide_no: z.number(),
+  kind: z.string(),
   title: z.string(),
   body: z.string(),
   speaker_notes: z.string(),
@@ -38,6 +39,7 @@ export const slideFromRow = (row: unknown, courseId: CourseId): StoredSlide => {
       lectureId: parsed.lecture_id,
       lectureTitle: parsed.lecture_title,
       slideNo: parsed.slide_no,
+      kind: parsed.kind,
       title: parsed.title,
       body: parsed.body,
       speakerNotes: parsed.speaker_notes,
@@ -54,6 +56,7 @@ export const slideRowValues = (record: SlideRecord): readonly (string | number)[
   record.lectureId,
   record.lectureTitle,
   record.slideNo,
+  record.kind,
   record.title,
   record.body,
   record.speakerNotes,

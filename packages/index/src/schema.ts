@@ -1,10 +1,10 @@
 import type { Database } from 'better-sqlite3';
-import type { CourseId } from '@cram/shared';
+import { SlideKind, type CourseId } from '@cram/shared';
 import type { EmbedderIdentity } from './embedder-identity';
 import { STORED_DECK_TABLES } from './stored-deck';
 
 /** Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)). */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -22,6 +22,8 @@ export const classifySchema = (
   return fileVersion < appVersion ? 'older' : 'current';
 };
 
+const KINDS = SlideKind.options.map((kind) => `'${kind}'`).join(', ');
+
 const TABLES = `
   create table course (
     singleton integer primary key check (singleton = 1),
@@ -35,6 +37,7 @@ const TABLES = `
     lecture_id text not null,
     lecture_title text not null,
     slide_no integer not null,
+    kind text not null check (kind in (${KINDS})),
     title text not null,
     body text not null,
     speaker_notes text not null,
