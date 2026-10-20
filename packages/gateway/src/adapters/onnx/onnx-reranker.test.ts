@@ -23,9 +23,12 @@ afterAll(async () => {
   await rm(parent, { recursive: true, force: true });
 });
 
-const reranker = async (fixture: EncoderFixture) => {
+const reranker = async (fixture: EncoderFixture, mismatched?: string) => {
   const written = await writeEncoderFixture(parent, fixture);
-  const pin = RerankerPin.parse({ role: 'reranker', ...fixturePinFields(written.sha256) });
+  const pin = RerankerPin.parse({
+    role: 'reranker',
+    ...fixturePinFields(written.files, mismatched),
+  });
   return loadOnnxReranker({ pin, directory: written.directory });
 };
 
@@ -83,5 +86,10 @@ describe('loadOnnxReranker', () => {
 
   it('loads when model_max_length equals the pair probe length', async () => {
     expect(await reranker({ graph: relevance, maxLength: 3 })).toMatchObject({ status: 'loaded' });
+  });
+
+  it('refuses a tokenizer.json whose digest is not the manifest’s', async () => {
+    const load = await reranker({ graph: segmentCounter }, 'tokenizer.json');
+    expect(load).toMatchObject({ status: 'load-failed', reason: 'digest-mismatch' });
   });
 });

@@ -1,15 +1,9 @@
 import { join } from 'node:path';
 import { type EntailmentResult, EntailRequest } from '../../encoder-requests';
 import type { Verifier } from '../../model-gateway';
-import type { VerifierPin } from '../../pin';
+import { MODEL_CONFIG_FILE, type VerifierPin } from '../../pin';
 import { VerifierConfig } from '../../role-config';
-import {
-  type EncoderLoad,
-  invalid,
-  loadedOrRefused,
-  MODEL_CONFIG_FILE,
-  readJson,
-} from './encoder-artefact';
+import { type EncoderLoad, invalid, loadedOrRefused, readJson } from './encoder-artefact';
 import {
   brokenInvariant,
   type EncoderSession,

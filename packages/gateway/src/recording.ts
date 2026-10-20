@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { canonicalJson } from './canonical-json';
 import { ChatWireRequest, GeneratorReply } from './chat';
 import {
   EmbedRequest,
@@ -8,7 +9,7 @@ import {
   RerankRequest,
   RerankResult,
 } from './encoder-requests';
-import { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
+import { EmbedderPin, GeneratorPin, type ModelPin, RerankerPin, VerifierPin } from './pin';
 import { Sampling } from './role-config';
 
 const oneReplyPerInput = (replies: number, inputs: number): boolean => replies === inputs;
@@ -54,3 +55,14 @@ export const Recording = z.discriminatedUnion('role', [
     }),
 ]);
 export type Recording = z.infer<typeof Recording>;
+
+/** A call as its recording identifies it; the pin names the role. */
+export interface RecordedCall {
+  readonly pin: ModelPin;
+  readonly request: unknown;
+  readonly sampling?: Sampling;
+}
+
+/** The one key a recording is stored and replayed by: everything but the reply, in key-order-free JSON. */
+export const recordingKey = ({ pin, request, sampling }: RecordedCall): string =>
+  canonicalJson({ pin, request, sampling });

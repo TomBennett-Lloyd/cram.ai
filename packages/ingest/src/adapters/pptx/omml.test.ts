@@ -210,6 +210,41 @@ describe('linearOmml', () => {
       );
   });
 
+  describe('math alphanumerics (#159)', () => {
+    it("reads PowerPoint's styled characters in their NFKC form", () => {
+      expect(linear(oMath(r('𝐸'), r('='), r('𝑚'), sup(r('𝑐'), r('2'))))).toBe('E=mc^2');
+      const styled = ['ℎ𝐸𝑧', '𝐀𝐁𝐚𝐛', '𝒗𝒘', 'ℝℤ', 'ℒℋ', '𝔤ℜ', '𝘹𝘺', '𝚙𝚚', '𝛤𝜔𝜕𝛻𝜙𝜃', '𝛂', '𝟕', '𝟙𝟚'];
+      expect(styled.map((text) => linear(oMath(r(text))))).toEqual([
+        'hEz',
+        'ABab',
+        'vw',
+        'RZ',
+        'LH',
+        'gR',
+        'xy',
+        'pq',
+        'Γω∂∇φθ',
+        'α',
+        '7',
+        '12',
+      ]);
+    });
+
+    it("reads the block's last character, and every Letterlike Symbol filling one of its holes", () => {
+      expect(linear(oMath(r('𝟿')))).toBe('9');
+      expect(linear(oMath(r('ℂℊℋℌℍℎℐℑℒℕℙℚℛℜℝℤℨℬℭℯℰℱℳℴ')))).toBe('CgHHHhIILNPQRRRZZBCeEFMo');
+    });
+
+    it('leaves every other compatibility character as written', () => {
+      expect(linear(oMath(r('ℓⅆ…²′∬ﬁµ')))).toBe('ℓⅆ…²′∬ﬁµ');
+    });
+
+    it('composes an accent with its plain base where Unicode has the composite', () => {
+      expect(linear(oMath(construct('acc', [], e(r('𝑎')))))).toBe('\u00E2');
+      expect(linear(oMath(construct('bar', [['pos', 'top']], e(r('𝑥')))))).toBe('x\u0305');
+    });
+  });
+
   it('reads each equation of a display paragraph, spaced', () => {
     expect(linear(arg('oMathPara', '<m:oMathParaPr/>', oMath(r('a=b')), oMath(r('c=d'))))).toBe(
       'a=b c=d',

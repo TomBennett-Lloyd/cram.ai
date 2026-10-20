@@ -95,10 +95,11 @@ No model has run in this repo, so every figure below is an `Assumption:` with th
     - Per-unit verifier latency on the target machine class is the tiebreak.
     - #47's first run records this on the development class; the target-class run before a release (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)) confirms it.
 - **(e) The pin shape.**
-  - A pin is `{role, backend, model, artefact, sha256, licence}`:
+  - A pin is `{role, backend, model, artefact, sha256, licence}`, and an encoder pin adds `manifest` (amended 2026-10-20; § Amendments):
     - `model` is the upstream repository id;
     - `artefact` is the repository and file, which fixes the quantisation;
-    - `sha256` is the artefact's digest;
+    - `manifest`, on an encoder pin only, is the sha256 of `artefact.file`, `tokenizer.json`, `tokenizer_config.json` and `config.json`, each by its path in the snapshot, and on the embedder its pooling;
+    - `sha256` is the generator artefact's digest, and on an encoder pin the digest of its manifest's canonical JSON;
     - `licence` is an SPDX id, or the licence's own name where SPDX has none.
   - This is `docs/adr/0005-evaluation-as-gate.md` § Decision (f)'s "model pin per role". A report records the pins that ran, not the defaults.
   - The embedder pin's (model, sha256) is the embedder identity that `docs/adr/0004-storage.md` § Decision (c) has the course file record. A different digest is a different embedder, and the course is re-embedded rather than searched.
@@ -144,7 +145,7 @@ No model has run in this repo, so every figure below is an `Assumption:` with th
   - Getting weights onto the machine is someone else's decision:
     - in the installed app, ADR 0007's (#7), including any first-launch download, which the owner confirmed on 2026-10-19 (the plan's Q5: "yeah you can download the weights");
     - in developer mode, #20's.
-  - Every pin's `sha256` lets either path verify what it fetched.
+  - Every pin's digests (the generator's `sha256`, an encoder's `manifest`) let either path verify what it fetched.
   - A runtime dependency that can download weights (`node-llama-cpp` exports a model downloader) or that ships a native addon is detected by `.claude/scripts/check-no-network-egress.sh`. Its allow-list entry is the owner's decision at the ticket that adds the dependency (#18).
   - No role trains, fine-tunes or adapts on course content. A course's text reaches a model only as a prompt or an input pair, and only on a machine (c) admits. The bound is the first `CLAUDE.md` bullet cited above, cited, not restated. That covers the owner's question of 2026-10-19 ("we don't want to have our data used for training"). The training-data caveats in (g) are about the datasets the candidate models were trained on, never about the student's data.
 - **(j) Relocating the generator is placed, not adopted.**
@@ -153,7 +154,7 @@ No model has run in this repo, so every figure below is an `Assumption:` with th
   - The evidence that opens that decision: a target-class run whose Ask latency the owner judges unusable, or exam quality below its metrics, after the in-laptop steps in § Consequences have been tried.
 - **(k) Assumptions.** Each is checked before anything is built on it, and the ticket named in (l) records the result. The memory budget is stated as an expression and never as a computed total (`docs/standards/architecture.md` rule 12).
   - Assumption: A1 — each candidate's licence is as (g) tables it. Check: `curl -s https://huggingface.co/api/models/<repo> | jq -r .cardData.license`, then read the repository's licence file.
-  - Assumption: A2 — each artefact's size and digest, which the pin records. Check: `curl -s "https://huggingface.co/api/models/<repo>?blobs=true" | jq -r '.siblings[] | select(.rfilename == "<file>") | [.size, .lfs.sha256] | @tsv'`.
+  - Assumption: A2 — each artefact's size and digest, which the pin records. Check: `curl -s "https://huggingface.co/api/models/<repo>?blobs=true" | jq -r '.siblings[] | select(.rfilename == "<file>") | [.size, .lfs.sha256] | @tsv'`. A file stored outside LFS has no `lfs.sha256`, so an encoder's tokenizer and config digests are `curl -sfL https://huggingface.co/<repo>/resolve/<revision>/<file> | shasum -a 256`, at a revision whose model `lfs.sha256` is the one the manifest records.
   - Assumption: A3 — the resident set of every loaded role fits the memory left on the target machine. That set is generator weights + context length × KV-cache bytes per token + the encoders + runtime buffers. Planning arithmetic suggests the 4B default with a long f16 context does not fit, before the encoders load. Check: `npx --yes node-llama-cpp inspect estimate <gguf>` on the development machine across context lengths and KV-cache types, then `npx --yes node-llama-cpp inspect measure <gguf>` on the target machine.
   - Assumption: A4 — Ask's time to first token on the target machine is dominated by prompt processing (#3's comment expects tens of seconds at 4B). Check: #47's target-class run records time to first token and tokens per second per role.
   - Assumption: A5 — the cross-encoder verifies a unit in well under a second on the target CPU. Check: #47's target-class run records per-unit verifier latency for both arms.
@@ -175,7 +176,7 @@ No model has run in this repo, so every figure below is an `Assumption:` with th
   - #47: both verifier arms measured, (d)'s rule applied, the first measured pins recorded, and per-role latency in the report beyond `docs/adr/0005-evaluation-as-gate.md` § Decision (f)'s floor.
   - #20: pulls only the generator, since Ollama serves no encoder role.
   - #7 and M5 (`docs/plan.md` §8): the `node-llama-cpp` adapter, weight acquisition, and the allow-list entries both runtimes need.
-- **(m) Restatement ledger**, undeclared, in the prose form `docs/standards/architecture.md` rule 9 prescribes, following `docs/adr/0004-storage.md` § Decision (h)'s precedent. Owned here: the role set in (a), the backend-per-role-and-mode rule in (c), the verifier rule in (d), the pin shape in (e) and the config location in (f).
+- **(m) Restatement ledger**, undeclared, in the prose form `docs/standards/architecture.md` rule 9 prescribes, following `docs/adr/0004-storage.md` § Decision (h)'s precedent. Owned here: the role set in (a), the backend-per-role-and-mode rule in (c), the verifier rule in (d), the pin shape in (e) (declared since its 2026-10-20 amendment at `.claude/ledgers/model-pin-shape.ledger`; § Amendments) and the config location in (f).
 
   Sweep: `git grep -n -iE '0003-model-roles|ADR 0003|node-llama-cpp|onnx|ollama|vllm|embedder|rerank|cross-encoder|(^|[^a-z])NLI([^a-z]|$)|model (pin|config|choice|size)|model and hardware|role config|gguf|qwen|gemma|phi-4|llama 3|deberta|bge|nomic' -- ':/' ':/!docs/adr/0003-model-roles-and-backends.md' ':/!pnpm-lock.yaml'`, whose first two arms are the citation arms. Run at `60c6317` on 2026-10-19 for branch `3-adr-0003-model-roles`, with this change's edits in the working tree. Its hits, by file:
 
@@ -257,3 +258,15 @@ Only if those fail does (j)'s relocation become the owner's decision. The first 
 - llama.cpp gaining a classification context, which would let one runtime serve every role.
 - The owner admitting a non-permissive licence.
 - A non-English course, which reopens (g)'s embedder row.
+
+## Amendments
+
+- **2026-10-20 — (e)'s pin shape: an encoder pin's `sha256` digests a manifest** (#124, by the owner's decision on that issue: "issue 124 extend the pin to a manifest").
+  - Was: `{role, backend, model, artefact, sha256, licence}` for every role, with `sha256` the digest of one artefact file. The embedder's pooling sat in role config, outside the pin.
+  - Now: an encoder pin adds `manifest`, which holds the sha256 of `artefact.file`, `tokenizer.json`, `tokenizer_config.json` and `config.json`, each keyed by snapshot path, plus the embedder's pooling. Its `sha256` is the manifest's digest. The generator pin is unchanged, because a GGUF file carries its own tokenizer. The schema is in `packages/gateway/src/pin.ts` (`EncoderManifest`, `manifestDigest`), and the provisional manifests are in `packages/gateway/src/provisional-pins.ts`.
+  - Wrong as written: the tokenizer, `model_max_length`, `id2label` and the pooling each change an encoder's outputs, and none of them moved the digest. So (e)'s embedder identity would not have seen a tokenizer or pooling change, and an eval report's pins would not have identified what ran. The decision stands: the pin identifies what ran, and the shape now does that for the encoders too.
+  - Trued up inline, as carriers: (e)'s shape bullets, (i)'s digest line, and A2's check, which gains the command for a file stored outside LFS.
+  - Citers that hold under the new shape, so are not annotated: `docs/adr/0004-storage.md` § Decision (c) (the course file records which embedder produced its vectors); `docs/plan.md` §3.3's ownership line, which points here for "the pin shape"; `apps/server/src/slide-embedding.ts`'s `embedderIdentity`, which records `model@sha256` as the course's embedder identity and now moves with the manifest; this ADR's (e) embedder-identity bullet and Options considered B. Also `docs/adr/0005-evaluation-as-gate.md` § Decision (f) ("the model pin per role"), which the sweep did not return: it was found through (e)'s own bullet citing it and § Context's quotation of it.
+  - Sweep: ``git grep -n -iE '0003-model-roles[^ ]*\.md`? § Decision \(e\)|ADR 0003 \(e\)|pin shape|embedder identity|re-embedded|sha256|pooling|tokenizer_config|tokenizer\.json|(^|[^a-z])config\.json|EmbedderConfig|model_max_length|id2label' -- ':/' ':/!pnpm-lock.yaml'``, run at `16988d1` on 2026-10-20 for branch `124-pin-manifest`, before its first edit.
+  - Annotated, as a quoting ADR: `docs/adr/0006-image-only-slides.md` § Decision (c)'s pin sentence, which puts the OCR pin in (e)'s shape. It now names the manifest form and carries its own dated entry. It and `slide-embedding.ts` merged after the sweep's commit and were found by the ledger's sweep on rebase.
+  - Restatement ledger: the pin shape's share of (m) is declared at `.claude/ledgers/model-pin-shape.ledger`, and `check:ledgers` re-runs its sweep. The other values (m) owns have not moved, so they stay in its prose form.
