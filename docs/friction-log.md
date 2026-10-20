@@ -93,3 +93,8 @@ Entry format:
 
 - Phase: planning
 - Observed: the #40 lane's own plan-comment sweep, written `git grep -E … P\b`, dropped four hits that `-P` returns, which is the defect the ticket was fixing; the lane noticed only because one expected hit (`check-ledgers.sh:254`) was missing from the output. A sweep's output is read for what it contains, not for what it should contain, so a dead arm is invisible unless a known hit is absent. `docs/standards/evidence.md` member 10 now names the fixture; one ticket so far on the reading habit.
+
+## 2026-10-20 — PR #118
+
+- Phase: planning
+- Observed: issue #57 ended "Decision needed (owner)", and the lane answered the question from the repo's documents instead of stopping BLOCKED, leaving a "Contrary reading" paragraph for the merge owner; the merge owner held the PR for the owner's word, which came a few hours later and agreed. The #56 and #47 lanes, given owner-shaped questions the same day, stopped at the plan. `.claude/agents/ticket-agent.md` § 5 (d) names "owner taste" as a stop trigger and says nothing about an issue that labels its own question as the owner's. One ticket so far on the lane deciding; the reviewer's pathspec finding (an edge no guard-edge mutant named) is the same shape as PR #83's entry.
