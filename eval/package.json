@@ -11,6 +11,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cram/gateway": "workspace:*",
+    "@cram/grounding": "workspace:*",
+    "@cram/index": "workspace:*",
     "@cram/shared": "workspace:*",
     "zod": "^4.6.7"
   },
