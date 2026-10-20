@@ -7,3 +7,6 @@ export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { Unit, UnitKind } from './unit';
 export { PartialPolicy, Verdict, WithheldReason } from './verification';
 export { WithheldUnit } from './withheld';
+export { ApiRefusal } from './api-refusal';
+export { AskReply, AskRequest } from './ask';
+export { IngestStatus, Upload, UploadId } from './ingest-status';
