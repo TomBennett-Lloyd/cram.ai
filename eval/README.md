@@ -7,3 +7,5 @@ The synthetic evaluation course: its deck, golden questions and hand labels. Wha
 - `eval/labels/verifier.jsonl` — the verifier hand labels, one `HandLabel` per line (`eval/src/hand-label.ts`).
 
 `auditEvalCourse` (`eval/src/audit.ts`) checks the three against each other, and `eval/src/eval-course.test.ts` runs it over the committed files under `pnpm test`.
+
+`renderDeckPdfs` (`eval/src/render-deck.ts`) renders the deck to one PDF per lecture at test time, into a directory outside the checkout, for the ingest path: an `imageOnly` slide becomes a single image with no text layer. `eval/src/render-deck.test.ts` reads every rendering back through `@cram/ingest`'s `ingestPdf`. No rendering is tracked.

@@ -1,12 +1,13 @@
 import type { Database } from 'better-sqlite3';
-import type {
-  CourseId,
-  Deck,
-  LectureId,
-  SlideImage,
-  SlideNo,
-  SlideRecord,
-  SourceId,
+import {
+  SlideKind,
+  type CourseId,
+  type Deck,
+  type LectureId,
+  type SlideImage,
+  type SlideNo,
+  type SlideRecord,
+  type SourceId,
 } from '@cram/shared';
 import { z } from 'zod';
 import type { EmbedderIdentity } from './embedder-identity';
@@ -21,7 +22,13 @@ import {
   sourceIdOf,
   type StoredSlide,
 } from './slide-row';
-import { deleteDeck, readDeck, readSlideImage, writeDeck } from './stored-deck';
+import {
+  deleteDeck,
+  readDeck,
+  readSlideImage,
+  requireDistinctSlideImages,
+  writeDeck,
+} from './stored-deck';
 
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
@@ -37,6 +44,8 @@ export interface IndexedSlide {
 export interface SearchQuery {
   readonly text: string;
   readonly embedding: Float32Array;
+  /** Off by default: references pages would dominate BM25 (#9's sizing comment, #78). */
+  readonly includeReferences?: boolean;
 }
 
 export interface SearchHit {
@@ -64,13 +73,18 @@ const requireDimension = (
   }
 };
 
-const UPSERT_SLIDE = `
-  insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  on conflict (source_id) do update set
-    lecture_title = excluded.lecture_title, title = excluded.title, body = excluded.body,
-    speaker_notes = excluded.speaker_notes, image_captions = excluded.image_captions,
-    derived = excluded.derived, source_hash = excluded.source_hash
-  returning id`;
+const REFERENCES = `'${SlideKind.enum.references}'`;
+
+/**
+ * Each list's references filter. vec0 drops rows before `k` only for `rowid in`; FTS5 given
+ * `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR, `retrieval.measure.test.ts`).
+ */
+const WITHOUT_REFERENCES = {
+  bm25: `and rowid not in (select id from slides where kind = ${REFERENCES})`,
+  vector: `and rowid in (select id from slides where kind <> ${REFERENCES})`,
+} as const;
+
+const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (${SLIDE_COLUMNS.replace(/\w+/g, '?')}) returning id`;
 
 /** One open course file (`docs/adr/0004-storage.md`). */
 export class CourseIndex {
@@ -112,15 +126,14 @@ export class CourseIndex {
     }
   }
 
-  /** Text and vector together; the caller holds the transaction. */
+  /** Text and vector together; the caller holds the transaction and has dropped the lecture's rows. */
   #writeSlides(slides: readonly IndexedSlide[]): void {
-    const upsert = this.#db.prepare(UPSERT_SLIDE).pluck();
+    const insert = this.#db.prepare(INSERT_SLIDE).pluck();
     const writeText = this.#db.prepare(
       'insert into slides_fts (rowid, lecture_title, title, body, speaker_notes, image_captions) values (?, ?, ?, ?, ?, ?)',
     );
     for (const { record, embedding } of slides) {
-      const id = RowId.parse(upsert.get(...slideRowValues(record)));
-      this.#dropIndexRows(id);
+      const id = RowId.parse(insert.get(...slideRowValues(record)));
       writeText.run(id, ...ftsValues(record));
       this.#writeVector(id, embedding);
     }
@@ -139,29 +152,13 @@ export class CourseIndex {
   }
 
   /**
-   * Inserts or replaces slides by `SourceId`, text and vector together; topic tags survive a replace.
-   * A slide's lecture must have a stored deck, so that a rebuild re-derives every slide (rebuild-course.ts).
-   */
-  upsertSlides(slides: readonly IndexedSlide[]): void {
-    this.#checkBatch('upsertSlides', slides);
-    const hasDeck = this.#db.prepare('select count(*) from decks where lecture_id = ?').pluck();
-    for (const { record } of slides) {
-      if (hasDeck.get(record.lectureId) !== 1)
-        throw new Error(
-          `upsertSlides: ${sourceIdOf(record)} is in lecture ${record.lectureId}, which has no stored deck`,
-        );
-    }
-    this.#db.transaction(() => {
-      this.#writeSlides(slides);
-    })();
-  }
-
-  /**
    * Replaces the lecture's deck, slide images and slides in one transaction, so a re-uploaded deck
    * with fewer slides leaves none of the old ones behind (#71). Topic tags go with the old slides.
+   * The only slide write, so every slide has a stored deck to rebuild from (rebuild-course.ts, #93).
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
     this.#checkBatch('replaceLecture', slides);
+    requireDistinctSlideImages('replaceLecture', deck.lectureId, images);
     for (const { record } of slides) {
       if (record.lectureId !== deck.lectureId)
         throw new Error(
@@ -196,12 +193,16 @@ export class CourseIndex {
     return this.#storedSlides('order by lecture_id, slide_no').map((slide) => slide.record);
   }
 
-  /** BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first. */
+  /**
+   * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
+   * Each list leaves references slides out before it is cut to depth, unless the query includes them.
+   */
   search(query: SearchQuery, k: number = RETRIEVAL_K): readonly SearchHit[] {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
     requireDimension('search', query.embedding, this.#embedder);
     const depth = Math.max(k, CANDIDATES_PER_LIST);
+    const filter = query.includeReferences === true ? { bm25: '', vector: '' } : WITHOUT_REFERENCES;
     const match = ftsMatchExpression(query.text);
     const bm25 =
       match === undefined
@@ -209,14 +210,16 @@ export class CourseIndex {
         : RowIds.parse(
             this.#db
               .prepare(
-                'select rowid from slides_fts where slides_fts match ? order by rank limit ?',
+                `select rowid from slides_fts where slides_fts match ? ${filter.bm25} order by rank limit ?`,
               )
               .pluck()
               .all(match, depth),
           );
     const nearest = RowIds.parse(
       this.#db
-        .prepare('select rowid from slide_vec where embedding match ? and k = ? order by distance')
+        .prepare(
+          `select rowid from slide_vec where embedding match ? and k = ? ${filter.vector} order by distance`,
+        )
         .pluck()
         .all(query.embedding, depth),
     );
@@ -275,11 +278,6 @@ export class CourseIndex {
         .run(embedder.model, embedder.dimension);
     })();
     this.#embedder = embedder;
-  }
-
-  /** Stores the lecture's uploaded deck and its rendered slide images, replacing any it had. */
-  storeDeck(deck: Deck, images: readonly SlideImage[]): void {
-    writeDeck(this.#db, deck, images);
   }
 
   deck(lectureId: LectureId): Deck | undefined {

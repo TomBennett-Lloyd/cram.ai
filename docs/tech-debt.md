@@ -51,8 +51,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-14 — ADR 0001 (d) ledger sweep has no citation arm
 
 - Where: `docs/adr/0001-grounding-architecture.md` § Decision (d), the restatement-ledger sentence
-- What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. No carrier is missed today; add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
+- What: `docs/standards/architecture.md` rule 9 wants a ledger's sweep to carry a citation arm (`0001-grounding-architecture.md` § Decision (d)) beside the literal arm. Add the arm when the ledger moves to the declared `.claude/ledgers/` form at the first value move.
 - Source: #1 review cycle 2
+- Update 2026-10-20 (#29): the floor also misses two carriers #8 added, `packages/shared/src/verification.ts` (`Verdict`, `PartialPolicy`) and its test. The recorded sweep returns the first only through its policy arm and the test not at all, because its verdict arm matches the prose list form and not the TypeScript enum form. Both join the ledger when it is declared; #29 holds that acceptance open.
 
 ## 2026-10-15 — merge-pr.sh member loop expands pr_commits unguarded
 
@@ -186,6 +187,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/open-course.ts` `EmbedSlides`
 - What: the gateway's expected failures (backend down, rate-limited) will be values once #12 defines its failure type (`docs/standards/error-handling.md` rule 1); this signature then needs a value arm, and `reembedCourse` a result for it.
 - Source: #11 review cycle 1
+- Update 2026-10-19 (#12): `packages/gateway/src/model-gateway.ts` `Embedder.embed` has no failure value; the encoders run in-process, so only `Generator.chat` returns one (`backend-failed`). This entry stands only if #66's adapter finds an expected encoder failure.
 
 ## 2026-10-19 — topic tags are bare strings
 
@@ -198,15 +200,47 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0001-grounding-architecture.md` § Decision (d); `eval/labels/verifier.jsonl` (its first label, reworded to "Your slides say worker bees are male." to avoid the question)
 - What: a unit reading "lecture 4, slide 12 says …" (the reporter phrasing `CLAUDE.md` § Hard constraints uses) names a lecture its quotes cannot show, and resolution checks only `sourceId` and quote. Whether the verifier treats the attribution as a claim or ignores it as framing is unowned; #13's claim split, or an ADR 0001 amendment, decides, and the hand labels follow.
 - Source: #14 review cycle 1
+- Update 2026-10-20 (#13): the generation and rewrite prompts (`packages/grounding/src/prompts/generation-prompt.ts`, `packages/grounding/src/prompts/rewrite-prompt.ts`) ask for no lecture or slide name in a unit's text, and `splitClaims` (`packages/grounding/src/claims.ts`) strips nothing. Whether the verifier credits a frame the model writes anyway is still unowned.
 
 ## 2026-10-20 — mustNotContain and resolution normalise whitespace but not typographic apostrophes
 
 - Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (c); `docs/standards/grounding.md` rule 3; `eval/src/golden-question.ts` `firstForbiddenEntry`
 - What: an entry such as `can't see red` misses a model's U+2019 `can’t`, and a model quote of "tomorrow’s weather" would be withheld as `dangling-citation` against the deck's straight apostrophe. The fix is a decision for the matching rule's owners (ADR 0005 (c) for `mustNotContain`, #13 for resolution), not for the fixture.
 - Source: #14 review cycle 1
+- Update 2026-10-20 (#13): resolution's half is decided. `resolveCitations` (`packages/grounding/src/resolve-citations.ts`) normalises whitespace only, as `docs/adr/0001-grounding-architecture.md` § Decision (c) fixes it, so a typographic-apostrophe quote is withheld. Widening it is an amendment of that ADR. The `mustNotContain` half stays open for ADR 0005 (c).
 
 ## 2026-10-20 — the contradiction set's caveat phrasings are copied per item with no owner
 
 - Where: `eval/questions.jsonl`, the trailing `in reality`, `misconception`, `mainstream` and `contrary to` entries of every cited contradiction item
 - What: one intent, many copies (`docs/standards/structure.md` rule 7), and the line schema ADR 0005 (c) fixes cannot share them. The set is also narrow for ADR 0001 § Context's unsolicited caveat: it holds no `actually`, `in fact` or `commonly believed`. Either an `auditEvalCourse` arm asserting every cited item carries the same caveat set, or an ADR 0005 (c) amendment.
 - Source: #14 review cycle 1
+
+## 2026-10-19 — ingest glues any unmarked line after a bullet onto that bullet
+
+- Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
+- What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares.
+- Source: issue #9 (review cycle 1)
+
+## 2026-10-20 — a UTF-16 PPTX part is reported as damaged
+
+- Where: `decodeUtf8` and `readXml` in `packages/ingest/src/adapters/pptx/ooxml.ts`
+- What: OPC permits XML parts encoded in UTF-16, but every part is decoded as fatal UTF-8. A conforming UTF-16 part (BOM `FF FE`) therefore comes back as `damaged`, which blames the deck for the reader's limit (`docs/standards/error-handling.md` rule 1, blame tiebreak). It is a value with an honest detail, and PowerPoint writes UTF-8. Sniffing the BOM is the fix if a real deck ever shows one.
+- Source: #10 review cycle 1
+
+## 2026-10-20 — PdfUnreadableReason is hand-written beside the mapping that produces it
+
+- Where: `PdfUnreadableReason` and `UNREADABLE` in `packages/ingest/src/adapters/pdf/ingest-pdf.ts`
+- What: the exception enum and the `UNREADABLE` record are compile-checked against each other, and so are the record and the union. A member added to the union with no exception mapped to it still type-checks, though, and consumers get a dead arm. Deriving the union from `UNREADABLE`'s values (`as const satisfies Record<…>`) closes that direction.
+- Source: issue #9 (confirmation pass)
+
+## 2026-10-19 — a generator prompt past the server's context is trimmed silently
+
+- Where: `packages/gateway/src/adapters/openai-http/chat-completion.ts` `chatCompletionBody`; `packages/gateway/src/adapters/openai-http/openai-http-generator.ts` `OpenAiHttpGenerator.reply`
+- What: the OpenAI-compatible API cannot set Ollama's context length (its `docs/api/openai-compatibility.mdx`, "Setting the local context size"), and Ollama trims messages that do not fit, logging only at debug level. The adapter reads no `usage.prompt_tokens`, so a long retrieved context can reach the model cut short with nothing reported (`docs/standards/error-handling.md` rule 5). The context is #20's Modelfile setup to fix, and the prompt budget is #13's.
+- Source: #12 review cycle 1
+
+## 2026-10-20 — the ledger sweep engine is restated outside its owner with no ledger
+
+- Where: `.claude/scripts/check-ledgers.sh` header, THE FORMAT block (the owner: `sweep: <PCRE>`); `.claude/scripts/sweep-report.sh` header `sweep=` field and its ledger-sweep re-run; `.claude/scripts/sweep-report.test.sh` comments on an invalid PCRE.
+- What: both scripts must run a ledger's sweep in the same engine, or `sweep-report.sh` reports a different file set from the one `check:ledgers` enforces (`docs/standards/evidence.md` member 10 is how far engines diverge). The engine is stated at each site and no `.claude/ledgers/` entry lists them, although `docs/standards/architecture.md` rule 9 asks for one once a second site is found.
+- Source: #40 review

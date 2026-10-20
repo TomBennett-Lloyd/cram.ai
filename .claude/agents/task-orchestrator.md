@@ -40,8 +40,9 @@ your issue's comments; the top-level never posts them for you.
 1. **Reconcile disk state at the start of EVERY round** — fresh dispatch, RESUME, PROCEED,
    and every bounce alike (you may have been killed, compacted, or the merge owner may have
    acted on your branch since your context formed — your context is a hypothesis about disk,
-   never disk): check `git worktree list` for this issue's worktree, `git log main..<branch>`
-   for committed waves, `git status` for uncommitted work, the issue for an existing
+   never disk): check `git worktree list` for this issue's worktree,
+   `git log origin/main..<branch>` after `git fetch origin` for committed waves (never
+   local `main`; #95), `git status` for uncommitted work, the issue for an existing
    plan/ledger, `gh pr list --head <branch>` for a PR and its state. Adopt what is done: tick
    ledger boxes the commits prove; commit a clean uncommitted wave only after running its
    chunks' Verify: commands yourself; never re-dispatch a chunk whose files the tree already

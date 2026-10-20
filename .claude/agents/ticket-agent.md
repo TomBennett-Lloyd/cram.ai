@@ -68,7 +68,7 @@ The branch squash-merges, so commit count is free; every commit subject begins `
 
 The counts above — two fix attempts, two re-plans — are provisional, set from judgement rather than data (owner decision 2026-09-10); `.claude/workflow.json` → `orchestration.costEvidence` says what trues them.
 
-**PARTIAL is the honest exit** when some acceptance criteria are met and ship standalone: commit and push those, open the PR `--draft`, list the unmet ones. A DONE carrying a known bug or an unmet criterion is the one unforgivable report.
+**PARTIAL is the honest exit** when some acceptance criteria are met and ship standalone: commit and push those, list the unmet ones, and open the PR `--draft` only while this branch still owes them. An unmet criterion that a rule defers to its own later PR ships ready instead, the deferral and its rule named in the report and `Part of #n` in the PR body so the issue stays open: PR #104 shipped #29's withheld-reason half ready, because `docs/standards/architecture.md` rule 9 times the ADR 0001 (d) half to the vocabulary's next move, and a draft would have waited for nothing (#119). A DONE carrying a known bug or an unmet criterion is the one unforgivable report.
 
 **DONE is final: after it you push nothing unprompted** — a bounce (rule 8) is the only thing that reopens the branch. The merge owner may merge the reported HEAD the moment the report lands, and a later push re-creates the deleted branch and never reaches `main`: cumulo#583's lane reported DONE with a reviewer check on its rebase still running, then pushed that check's fix after the merge (2b7e9b9, committed 41 s after it), so it was lost. Work you still owe the branch — a review pass, a rebase confirmation — makes the report PARTIAL, naming it.
 

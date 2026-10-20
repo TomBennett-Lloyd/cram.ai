@@ -1,0 +1,90 @@
+import { posix } from 'node:path';
+import { DOMParser, onErrorStopParsing, ParseError, type Document } from '@xmldom/xmldom';
+import { z } from 'zod';
+
+export const NS = {
+  a: 'http://schemas.openxmlformats.org/drawingml/2006/main',
+  p: 'http://schemas.openxmlformats.org/presentationml/2006/main',
+  r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+  rel: 'http://schemas.openxmlformats.org/package/2006/relationships',
+  mc: 'http://schemas.openxmlformats.org/markup-compatibility/2006',
+} as const;
+
+export const NOTES_SLIDE_RELATIONSHIP =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide';
+
+export type PptxUnreadableReason = 'not-a-pptx' | 'encrypted' | 'damaged';
+
+/** A deck its own bytes cannot yield; `ingestPptx` returns it as a value (docs/standards/error-handling.md rule 1). */
+export class UnreadablePptx extends Error {
+  readonly reason: PptxUnreadableReason;
+
+  constructor(reason: PptxUnreadableReason, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.reason = reason;
+  }
+}
+
+export type Parts = Readonly<Record<string, Uint8Array>>;
+
+export interface Relationship {
+  readonly type: string;
+  /** The part name the target resolves to. */
+  readonly target: string;
+}
+
+const RelationshipAttributes = z.object({
+  Id: z.string(),
+  Type: z.string(),
+  Target: z.string(),
+});
+
+const decodeUtf8 = (bytes: Uint8Array, partName: string): string => {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (error) {
+    throw new UnreadablePptx('damaged', `${partName} is not UTF-8`, { cause: error });
+  }
+};
+
+export const readXml = (parts: Parts, partName: string): Document => {
+  const bytes = parts[partName];
+  if (bytes === undefined) throw new UnreadablePptx('damaged', `${partName} is missing`);
+  const text = decodeUtf8(bytes, partName);
+  try {
+    return new DOMParser({ onError: onErrorStopParsing }).parseFromString(text, 'text/xml');
+  } catch (error) {
+    if (!(error instanceof ParseError)) throw error;
+    throw new UnreadablePptx('damaged', `${partName} is not well-formed XML: ${error.message}`, {
+      cause: error,
+    });
+  }
+};
+
+const resolveTarget = (partName: string, target: string): string =>
+  target.startsWith('/') ? target.slice(1) : posix.join(posix.dirname(partName), target);
+
+/** A part's relationships by id; a part with no relationships part has none. */
+export const relationshipsOf = (
+  parts: Parts,
+  partName: string,
+): ReadonlyMap<string, Relationship> => {
+  const relsName = posix.join(posix.dirname(partName), '_rels', `${posix.basename(partName)}.rels`);
+  const relationships = new Map<string, Relationship>();
+  if (parts[relsName] === undefined) return relationships;
+  for (const element of readXml(parts, relsName).getElementsByTagNameNS(NS.rel, 'Relationship')) {
+    const attributes = RelationshipAttributes.safeParse({
+      Id: element.getAttribute('Id'),
+      Type: element.getAttribute('Type'),
+      Target: element.getAttribute('Target'),
+    });
+    if (!attributes.success)
+      throw new UnreadablePptx(
+        'damaged',
+        `${relsName} has a relationship without Id, Type or Target`,
+      );
+    const { Id, Type, Target } = attributes.data;
+    relationships.set(Id, { type: Type, target: resolveTarget(partName, Target) });
+  }
+  return relationships;
+};
