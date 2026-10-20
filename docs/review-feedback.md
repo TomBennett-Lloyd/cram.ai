@@ -2,7 +2,7 @@
 
 _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13 (header only; cumulo's entries were not carried over)._
 
-Every substantive piece of human review feedback — on plans or PRs — gets an entry here. On a `humanAlways` PR the entry does not wait for the owner to speak: it **begins on the branch before review**, stating what the PR asks the owner to decide, and **completes at merge**, when whoever merges fills in both the category and the verdict (see `## Entry format`). Feedback that arrives outside a PR is still logged as it is addressed. `/retro` mines this log to update standards and agent guidance, and the graduation rule below reads its categories, so the vocabulary has to mean something: it is declared here, closed, and trued up to what the entries actually say.
+Every substantive piece of human review feedback — on plans or PRs — gets an entry here. On a `humanAlways` PR the entry does not wait for the owner to speak: it **begins on the branch before review**, stating what the PR asks the owner to decide, and **completes at merge**, when whoever merges fills in both the category and the verdict (see `## Entry format`). The one exception is an `approved-at-plan` entry, which the lane fills before its report, the owner having decided at the plan. Feedback that arrives outside a PR is still logged as it is addressed. `/retro` mines this log to update standards and agent guidance, and the graduation rule below reads its categories, so the vocabulary has to mean something: it is declared here, closed, and trued up to what the entries actually say.
 
 ## Entry format
 
@@ -18,7 +18,7 @@ Every substantive piece of human review feedback — on plans or PRs — gets an
 
 One entry per distinct feedback item; the slug names that item's subject and disambiguates multiple items arising from the same review. The `PR/issue #n` segment is present when the feedback attaches to one PR or issue, and omitted when it arrived in chat outside any single one — name the PRs in the body instead.
 
-**The pre-label state.** An entry written on a `humanAlways` branch before review — the state `merge.mergeRitual` in `.claude/workflow.json` requires, since the entry has to be part of the diff the owner approves — fills **Feedback** with _what the PR asks the owner to decide: the ask, never a prediction of the answer_, and writes both **Category** and **Verdict** as the literal placeholder `pending — filled at merge`. Whoever merges fills both **on the branch, before the label comes off**, in the commit that responds to the approval — `.claude/scripts/fill-verdict.sh` is how; a clean approval gets a one-line verdict commit and nothing more. A merged entry still reading `pending` is a verdict nobody filled, and it reads as exactly that — which is why the placeholder is literal and identical everywhere, and why an entry that guessed the category and the verdict instead would be indistinguishable from a record of what was actually decided. That distinguishability is the whole point of the form.
+**The pre-label state.** An entry written on a `humanAlways` branch before review — the state `merge.mergeRitual` in `.claude/workflow.json` requires, since the entry has to be part of the diff the owner approves — fills **Feedback** with _what the PR asks the owner to decide: the ask, never a prediction of the answer_, and writes both **Category** and **Verdict** as the literal placeholder `pending — filled at merge`. Whoever merges fills both **on the branch, before the label comes off**, in the commit that responds to the approval — `.claude/scripts/fill-verdict.sh` is how; a clean approval gets a one-line verdict commit and nothing more. An `approved-at-plan` entry is filled the same way, by the lane before its report and with no label ever on, because the decision it records is the owner's `PROCEED` (`.claude/workflow.json` → `merge.approvedAtPlanRule`). A merged entry still reading `pending` is a verdict nobody filled, and it reads as exactly that — which is why the placeholder is literal and identical everywhere, and why an entry that guessed the category and the verdict instead would be indistinguishable from a record of what was actually decided. That distinguishability is the whole point of the form.
 
 **Restatement ledger for the placeholder literal** (`docs/standards/architecture.md` rule 9). The sentence above owns the string `pending — filled at merge`; "literal and identical everywhere" is the property, so the sites that quote it have to move with it. **A change to the string re-runs the sweep** — `git grep -nF 'pending — filled at merge' -- ':/'`, plus an arm shaped around the claim, since a paraphrase ("the placeholder", "left pending") is invisible to a literal sweep. This list names the carriers that sweep found; it promises nothing about being all of them, and an enumeration that promised that would be falsified by the next quoting site.
 
@@ -37,6 +37,7 @@ Closed list — every entry's category is one of these:
 - **convention** — a documentation or process convention the repo follows, distinct from the code it describes (e.g. how ADRs are amended).
 - **gate-calibration** — where an approval gate sits: which changes need the human, which run autonomously, recorded when the gate itself moves.
 - **approved-no-changes** — the owner approved a human-gated change with no revisions requested. Logged because a quiet category has to be distinguishable from an unlogged one. It is assigned at verdict time by whoever merges, never predicted before the label comes off: a pre-label entry writes `pending — filled at merge` and waits for the approval it would otherwise be guessing at.
+- **approved-at-plan** — an `adr` PR that carried nothing beyond the plan the owner approved, and merged on that plan-time `PROCEED` with no second ask (`.claude/workflow.json` → `merge.approvedAtPlanRule`, which owns when). Its Verdict names the `PROCEED`'s date and words. Not a prediction: the lane fills it only after the approval exists, and a PR with any extra beyond the plan takes `pending — filled at merge` instead.
 - **other** — feedback that genuinely fits none of the above. Reach for it last.
 
 A parenthesised qualifier after the category — `other (verification rigour)`, `issue #n (plan review)` — is a permitted annotation, not a category. Only the bare word before the parenthesis counts as the category. A feedback item that needs a category not listed here adds one to this list in the same PR as the entry — that is what keeps the list both closed and honest. `pending — filled at merge` is a declared placeholder and not a category: it is valid only on an unmerged branch, where it says the owner has not decided yet and so no category can honestly be chosen. It is deliberately absent from the list above, because a category on that list is selectable and this one must never be.
@@ -46,6 +47,7 @@ A parenthesised qualifier after the category — `other (verification rigour)`, 
 A category going quiet across consecutive reviews is the evidence for graduating that gate toward autonomy (a flag flip in `.claude/workflow.json`, proposed as its own PR, decided by the user). In terms of the vocabulary above:
 
 - Quiet means no change-requesting entry in that category. **approved-no-changes** entries are positive evidence of quiet, not entries against the subject category.
+- **approved-at-plan** entries record a decision taken at the plan, not a review of the PR, so they count neither for nor against any category's quiet.
 - **gate-calibration** entries record a gate that has already moved. They are the rule's output, not its input, and never count as evidence for the next move.
 - A category with no entries at all has never been exercised. That is absence of evidence, not evidence of quiet, and cannot on its own graduate a gate.
 
@@ -248,3 +250,18 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("nice approve all those PRs")
+
+## 2026-10-20 — issue #150 — adr-pr-merges-on-plan-approval
+
+- **Category**: pending — filled at merge
+- **Feedback**: the direction was given in chat on 2026-10-20, quoted in #150: "i feel like there are lots of cases where if i've approved a plan for an ADR, i shouldn't have to re-approve the actual PR unless there's something extra that wasn't in the plan?" The PR asks the owner to decide the wording that carries it:
+  - `.claude/workflow.json` → `merge.approvedAtPlanRule`, the new key that owns the exception: when it applies, the three pieces of pasted evidence, what counts as an extra, and what an extra does; and `merge.humanAlwaysRule`'s pointer to it;
+  - that "the plan" means the plan comment as it stood at the `PROCEED`, so a `Footprint change:` line added later is an extra;
+  - that the lane fills the entry with `fill-verdict.sh` before its report, which also flips the ADR to `accepted` on the branch, and that an extra arriving after the fill reverts both;
+  - the `CLAUDE.md` § Workflow merge-policy sentence;
+  - `.claude/agents/ticket-agent.md` rule 2's frozen-plan-comment sentence, rule 7's approved-at-plan paragraph, rule 8's rebase sentence and the `Extras beyond the approved plan:` report field;
+  - `.claude/skills/review-loop/SKILL.md` step 5's exception sentence, and `.claude/skills/run-issue/SKILL.md` step 4's mapping check by the merge owner, a carrier the issue's list omits;
+  - the `approved-at-plan` category, and the graduation-rule bullet saying it counts neither for nor against any category's quiet.
+- **Why**: `.claude/workflow.json` and `CLAUDE.md` are `humanAlways` paths, and this PR has no owner-approved plan, so it is the case the new rule leaves on the second approval.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
