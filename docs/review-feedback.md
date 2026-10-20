@@ -259,7 +259,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #6 — adr-0006-image-only-slides
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide:
   - accept `docs/adr/0006-image-only-slides.md` § Decision (a)–(k), in particular:
     - (a) the text layer as the only trigger, with its threshold owned by `THIN_TEXT_LAYER_WORDS`;
@@ -275,4 +275,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept the `docs/adr/README.md` index row placed after 0003's.
 - **Why**: `docs/adr/**` is a `humanAlways` path and the issue carries `adr`, so the owner decides, not the review loop.
 - **How applied**: the PR as proposed: ADR 0006 at `proposed`, plus the pointers. It is revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("nice approve all those PRs")

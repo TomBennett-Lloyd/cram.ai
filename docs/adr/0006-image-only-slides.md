@@ -1,6 +1,6 @@
 # 0006 — Image-only slides: OCR and captions as derived text, flagged and shown with the original
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-20
 - **Issue:** #6
 
