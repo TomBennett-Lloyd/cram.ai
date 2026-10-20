@@ -53,3 +53,8 @@ Entry format:
 
 - Phase: review
 - Observed: the cycle-1 correctness finding on #70 was a guard that did not exist — a rebuild silently dropped any slide whose lecture had no stored deck. The pre-review mutation pass (`.claude/agents/ticket-agent.md` § 4) deletes guards that exist and cannot find a missing one; only the reviewer's reading of the invariant did. One ticket so far.
+
+## 2026-10-20 — PR #101
+
+- Phase: planning
+- Observed: the first lane to run under `.claude/agents/ticket-agent.md` § 2's new sweep sentence (#87) found a carrier its issue did not name — `task-orchestrator.md` rule 1's reconcile range, which PR #96's narrower sweep had missed — and declared it as a footprint change before the first edit. No new signal; recorded so the next graduation check can see the rule's first catch.
