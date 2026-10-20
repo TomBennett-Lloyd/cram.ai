@@ -12,4 +12,6 @@ carrier: packages/gateway/src/adapters/onnx/encoder-fixture.ts
 carrier: packages/gateway/src/adapters/onnx/onnx-embedder.test.ts
 carrier: packages/gateway/src/adapters/onnx/onnx-verifier.test.ts
 carrier: packages/gateway/src/adapters/onnx/onnx-reranker.test.ts
+carrier: apps/server/src/slide-embedding.ts
+carrier: docs/adr/0006-image-only-slides.md
 excluded: docs/review-feedback.md
