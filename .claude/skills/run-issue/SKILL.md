@@ -63,6 +63,12 @@ the section before you dispatch.
    as a bounce because only it writes to its worktree; the agent does it with
    `bash .claude/scripts/fill-verdict.sh <pr> --category <category> --verdict "<text>"`, and on
    an `/execute`-path branch, which has no lane agent, you run that script yourself.
+   An ADR PR whose report reads `Extras beyond the approved plan: none`
+   (`.claude/workflow.json` → `merge.approvedAtPlanRule`) owes neither that bounce nor the
+   label — the lane filled the entry before reporting — and your diff check reads one thing
+   more: the pasted Decision mapping, against the plan comment as it stood at the `PROCEED`
+   and against the ADR's § Decision. An extra the lane did not list is a `FIX —` bounce,
+   never a merge.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
    `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
    poll, a merge taken only from `CLEAN`, and then, only once the PR reports `MERGED`, the
