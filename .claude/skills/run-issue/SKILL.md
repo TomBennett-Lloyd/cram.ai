@@ -40,7 +40,9 @@ the section before you dispatch.
    `STATUS: BLOCKED — owner decision: <the plan summary and the questions>`; put that
    summary and the plan comment's link to the owner in chat, and send the answer back to the
    warm agent verbatim — `PROCEED — <the owner's words>` or `REVISE — <feedback>`
-   (`.claude/agents/ticket-agent.md` rule 2), a `REVISE` returning to this step.
+   (`.claude/agents/ticket-agent.md` rule 2), a `REVISE` returning to this step. The
+   `approved-at-plan` fill a `PROCEED` can lead to runs in the lane under step 4's bare form
+   and its no-retry rule.
    `planApproval.alwaysRequiredFor` is enforced twice — by the agent's stop, and by your own
    `gh issue view <n> --json labels` on its first report, so an `adr` issue that reaches step
    4 without this relay goes back to it — and never skipped: a `PROCEED` the owner did not
@@ -60,9 +62,15 @@ the section before you dispatch.
    cap**: past that, report to the owner instead of bouncing a third time. Then the merge
    chain of `.claude/skills/review-loop/SKILL.md` step 5, unchanged — including the
    `humanAlways` ritual, and the merge-time `Category`/`Verdict` fill, which reaches the agent
-   as a bounce because only it writes to its worktree; the agent does it with
-   `bash .claude/scripts/fill-verdict.sh <pr> --category <category> --verdict "<text>"`, and on
-   an `/execute`-path branch, which has no lane agent, you run that script yourself.
+   as a bounce because only it writes to its worktree:
+   `FILL — bash .claude/scripts/fill-verdict.sh <pr> --category <category> --verdict "<text>" --worktree <path>`,
+   filled in and sent verbatim. The agent runs it exactly as sent, from any cwd, with no `cd`,
+   `export`, prefix, pipe or redirect, because the owner's permission allow rule matches the
+   bare form and nothing wrapped around it (#205). An agent the permission classifier refuses
+   once, on that fill or on a rebase's conflict resolution, returns `BLOCKED` with its git
+   state and never retries (`.claude/agents/ticket-agent.md` rule 8); you then run the same
+   bare command yourself. On an `/execute`-path branch, which has no lane agent, you run it
+   yourself from the start.
    An ADR PR whose report reads `Extras beyond the approved plan: none`
    (`.claude/workflow.json` → `merge.approvedAtPlanRule`) owes neither that bounce nor the
    label — the lane filled the entry before reporting — and your diff check reads one thing
@@ -83,6 +91,10 @@ the section before you dispatch.
    `gh pr update-branch` yourself; it is mechanical. `DIRTY` → `REBASE — <what merged since
 this branch was cut, which files, what the union rule expects>` to the warm agent, which
    rebases per its rule 8 and re-reports. The second merger rebases, always; merges serialise.
+   A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase and
+   pushes nothing more, which makes the worktree yours: finish the rebase there — git only,
+   under every rule `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify,
+   force-push the branch, then run any fill the PR still owes per step 4 (#205).
 6. **Release**: PR merged, issue closed, no bounce open → the `## Lane report` in the PR body
    is the retro's first-hand input; run `/retro`; remove the row. A wedged agent (no report,
    no branch movement) gets the worktree and the issue inspected FIRST, then `TaskStop`, then
