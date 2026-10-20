@@ -9,6 +9,7 @@ import {
   answer,
   cite,
   FailingEmbedder,
+  ShortEmbedder,
   gatewayOf,
   generated,
   judged,
@@ -166,6 +167,17 @@ describe('POST /courses/:id/ask', () => {
     expect(large.status).toBe(413);
     expect(large.json).toEqual({ status: 'payload-too-large' });
     expect((await askBio(test, bodyOf(MAX_ASK_BYTES))).status).toBe(404);
+  });
+
+  it('refuses a question longer than the embedder takes, with its limit', async () => {
+    test = await startTestServer(gatewayOf([], new ShortEmbedder(6)));
+    const path = courseFilePath(test.dataDir, CourseId.parse('bio'));
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, '');
+    const long = JSON.stringify({ question: 'why do the worker bees of the hive dance so' });
+    const reply = await askBio(test, long);
+    expect(reply.status).toBe(422);
+    expect(reply.json).toEqual({ status: 'question-over-length', maxInputTokens: 6 });
   });
 
   it('answers 500 when retrieval throws, logging the error by name alone', async () => {

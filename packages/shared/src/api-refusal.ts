@@ -16,5 +16,9 @@ export const ApiRefusal = z.union([
   }),
   z.strictObject({ status: z.literal('bad-request'), issue: NonBlankText }),
   z.strictObject({ status: z.literal('course-unavailable'), problem: NonBlankText }),
+  z.strictObject({
+    status: z.literal('question-over-length'),
+    maxInputTokens: z.number().int().positive(),
+  }),
 ]);
 export type ApiRefusal = z.infer<typeof ApiRefusal>;

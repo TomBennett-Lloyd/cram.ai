@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { dirname } from 'node:path';
 import { CourseId, LectureId } from '@cram/shared';
@@ -18,6 +18,7 @@ import {
   type TestServer,
   uploadPath,
   WordEmbedder,
+  ShortEmbedder,
 } from './server-fixture';
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
@@ -159,6 +160,16 @@ describe('POST /courses/:id/decks', () => {
     const empty = await upload(server, '');
     expect(empty.status).toBe(400);
     expect(empty.json).toEqual({ status: 'bad-request', issue: 'the deck is empty' });
+  });
+
+  it('indexes nothing of a deck with a slide longer than the embedder takes, naming that slide', async () => {
+    const server = await started(startTestServer(gatewayOf([], new ShortEmbedder(6))));
+    const deck = [['Bees'], ['Bees', 'one two three four five six seven eight nine ten']];
+    await upload(server, await pdfDeck(deck));
+    expect(await progressOf(server)).toEqual([
+      { state: 'over-length', slides: [2], maxInputTokens: 6 },
+    ]);
+    expect(existsSync(courseFilePath(server.dataDir, CourseId.parse('bio')))).toBe(false);
   });
 
   it('refuses a deck one byte over its cap, and accepts one longer than a question may be', async () => {

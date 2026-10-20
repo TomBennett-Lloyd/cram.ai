@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { send, startTestServer, stopTestServer, type TestServer } from './server-fixture';
 import { startServer } from './server';
 import type { Embedder } from '@cram/gateway';
-import { gatewayOf, WordEmbedder } from './server-fixture';
+import { gatewayOf, ShortEmbedder, WordEmbedder } from './server-fixture';
 
 const nonLoopbackAddress = (): string | undefined =>
   Object.values(networkInterfaces())
@@ -169,10 +169,14 @@ describe('startServer, before it listens', () => {
         port: 0,
         log: () => undefined,
       }),
-    ).rejects.toThrow('returned 0 vectors for 1 texts');
+    ).rejects.toThrow('returned 0 results for 1 texts');
     const extra: Embedder = {
       pin: new WordEmbedder().pin,
-      embed: () => Promise.resolve([new Float32Array(8), new Float32Array(8)]),
+      embed: () =>
+        Promise.resolve([
+          { status: 'embedded', vector: new Float32Array(8) },
+          { status: 'embedded', vector: new Float32Array(8) },
+        ] as const),
     };
     await expect(
       startServer({
@@ -181,6 +185,17 @@ describe('startServer, before it listens', () => {
         port: 0,
         log: () => undefined,
       }),
-    ).rejects.toThrow('returned 2 vectors for 1 texts');
+    ).rejects.toThrow('returned 2 results for 1 texts');
+  });
+
+  it('refuses to start on an embedder its own probe is too long for', async () => {
+    await expect(
+      startServer({
+        gateway: gatewayOf([], new ShortEmbedder(1)),
+        dataDir: '/nonexistent',
+        port: 0,
+        log: () => undefined,
+      }),
+    ).rejects.toThrow('did not embed its probe');
   });
 });

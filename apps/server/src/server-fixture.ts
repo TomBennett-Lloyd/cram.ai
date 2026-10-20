@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   chatWireRequest,
   type Embedder,
+  type EmbeddingResult,
   type EmbedRequest,
   type EntailmentResult,
   FakeGateway,
@@ -31,7 +32,7 @@ import { PROBE_TEXT } from './slide-embedding';
 
 const DIMENSION = 8;
 
-const wordVector = (text: string): Float32Array => {
+const wordVector = (text: string): Float32Array<ArrayBuffer> => {
   const vector = new Float32Array(DIMENSION);
   for (const word of text.toLowerCase().match(/[a-z]+/g) ?? []) {
     let bucket = 0;
@@ -45,14 +46,37 @@ const wordVector = (text: string): Float32Array => {
 export class WordEmbedder implements Embedder {
   readonly pin = PROVISIONAL_DEFAULT_PINS.embedder;
 
-  embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
-    return Promise.resolve(request.texts.map(wordVector));
+  embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+    return Promise.resolve(
+      request.texts.map((text) => ({ status: 'embedded', vector: wordVector(text) })),
+    );
+  }
+}
+
+/** A `WordEmbedder` whose input limit is `maxWords` words, counted as its tokens. */
+export class ShortEmbedder extends WordEmbedder {
+  readonly #maxWords: number;
+
+  constructor(maxWords: number) {
+    super();
+    this.#maxWords = maxWords;
+  }
+
+  override embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+    return Promise.resolve(
+      request.texts.map((text) => {
+        const inputTokens = text.split(/\s+/).filter(Boolean).length;
+        return inputTokens > this.#maxWords
+          ? { status: 'over-length', inputTokens, maxInputTokens: this.#maxWords }
+          : { status: 'embedded', vector: wordVector(text) };
+      }),
+    );
   }
 }
 
 /** Answers its start-up probe, then throws on every other text with that text as the message. */
 export class FailingEmbedder extends WordEmbedder {
-  override embed(request: EmbedRequest): Promise<readonly Float32Array[]> {
+  override embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
     const [text] = request.texts;
     return text === PROBE_TEXT ? super.embed(request) : Promise.reject(new Error(text));
   }
@@ -164,7 +188,7 @@ export const retrievedFrom = async (
     lectureId: LectureId.parse(lectureId),
   });
   if (ingested.status !== 'ingested') throw new Error('retrievedFrom: fixture deck unreadable');
-  return ingested.slides.map(({ record }) => ({ sourceId: sourceIdOf(record), record }));
+  return ingested.slides.map((record) => ({ sourceId: sourceIdOf(record), record }));
 };
 
 export const cite = (sourceId: string, quote: string): Citation => ({

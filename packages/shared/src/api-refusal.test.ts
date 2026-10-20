@@ -12,4 +12,10 @@ describe('ApiRefusal', () => {
       ApiRefusal.safeParse({ status: 'course-unavailable', problem: 'newer-schema' }).success,
     ).toBe(true);
   });
+
+  it('carries the embedder limit on a question too long to embed', () => {
+    const refusal = { status: 'question-over-length' };
+    expect(ApiRefusal.safeParse({ ...refusal, maxInputTokens: 512 }).success).toBe(true);
+    expect(ApiRefusal.safeParse(refusal).success).toBe(false);
+  });
 });

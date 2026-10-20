@@ -7,7 +7,8 @@ export type UploadId = z.infer<typeof UploadId>;
 
 /**
  * Where one uploaded deck has got to in ingest. An `imageOnly` page is reported and never an
- * error (ADR 0006 § Decision (b), proposed in #120). `reason` and `problem`
+ * error (ADR 0006 § Decision (b), proposed in #120). An `over-length` deck has slides longer than
+ * the embedder takes, which are never truncated, so nothing of it is indexed (#77 splits them). `reason` and `problem`
  * are vocabularies `@cram/ingest` and `@cram/index` own, carried as text to keep one owner each.
  */
 export const UploadProgress = z.discriminatedUnion('state', [
@@ -19,6 +20,11 @@ export const UploadProgress = z.discriminatedUnion('state', [
     imageOnly: z.array(SlideNo),
   }),
   z.strictObject({ state: z.literal('unreadable'), reason: NonBlankText, detail: z.string() }),
+  z.strictObject({
+    state: z.literal('over-length'),
+    slides: z.array(SlideNo).min(1),
+    maxInputTokens: z.number().int().positive(),
+  }),
   z.strictObject({ state: z.literal('course-unavailable'), problem: NonBlankText }),
   z.strictObject({ state: z.literal('failed') }),
 ]);

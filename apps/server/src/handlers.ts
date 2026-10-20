@@ -120,6 +120,9 @@ export const askQuestion = async (route: RouteRequest, context: HandlerContext):
     case 'no-such-course':
       sendRefusal(response, 404, { status: 'no-such-course' });
       return;
+    case 'question-over-length':
+      sendRefusal(response, 422, outcome);
+      return;
     case 'course-unavailable':
       sendRefusal(response, 409, { status: 'course-unavailable', problem: outcome.problem });
       return;
