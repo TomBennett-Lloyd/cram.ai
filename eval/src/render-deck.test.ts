@@ -190,7 +190,7 @@ describe('layoutSlide', () => {
   });
 });
 
-describe('an imageOnly slide too large for the page', () => {
+describe('the raster of an imageOnly slide', () => {
   const rasterOf = async (overrides: Parameters<typeof slide>[0]): Promise<PageImage> => {
     const bytes = await renderLecturePdf(lecture('l1', [slide({ imageOnly: true, ...overrides })]));
     const image = (await pageImages(bytes))[0]?.[0];
@@ -198,15 +198,41 @@ describe('an imageOnly slide too large for the page', () => {
     return image;
   };
 
-  it('widens the raster to hold its widest line', async () => {
-    const image = await rasterOf({ body: ['w'.repeat(300)] });
-    expect(image.width).toBeGreaterThan(2 * PAGE.width);
+  /** Whether any pixel in columns [x0, x1) and rows [y0, y1) is darker than mid-grey. */
+  const inked = (image: PageImage, [x0, x1]: Span, [y0, y1]: Span): boolean => {
+    const channels = image.pixels.length / (image.width * image.height);
+    for (let y = y0; y < y1; y++)
+      for (let x = x0; x < x1; x++)
+        if ((image.pixels[(y * image.width + x) * channels] ?? 255) < 128) return true;
+    return false;
+  };
+  type Span = readonly [number, number];
+  const RASTER_MARGIN = 2 * PAGE.margin;
+
+  it('is the page at two pixels per point for a slide that fits', async () => {
+    const image = await rasterOf({});
+    expect([image.width, image.height]).toEqual([2 * PAGE.width, 2 * PAGE.height]);
   });
 
-  it('lengthens the raster to hold every line', async () => {
+  it('widens to hold its widest line, keeping the right margin blank', async () => {
+    const image = await rasterOf({ body: ['w'.repeat(300)] });
+    expect(image.width).toBeGreaterThan(2 * PAGE.width);
+    expect(inked(image, [image.width - RASTER_MARGIN, image.width], [0, image.height])).toBe(false);
+    expect(inked(image, [image.width - 2 * RASTER_MARGIN, image.width], [0, image.height])).toBe(
+      true,
+    );
+  });
+
+  it('lengthens to hold every line, keeping the bottom margin blank', async () => {
     const image = await rasterOf({
       body: Array.from({ length: 60 }, (_, n) => `Item ${String(n)}`),
     });
     expect(image.height).toBeGreaterThan(2 * PAGE.height);
+    expect(inked(image, [0, image.width], [image.height - RASTER_MARGIN, image.height])).toBe(
+      false,
+    );
+    expect(inked(image, [0, image.width], [image.height - 2 * RASTER_MARGIN, image.height])).toBe(
+      true,
+    );
   });
 });
