@@ -367,6 +367,7 @@ POLL_TIMEOUT=30
 GH_TIMEOUT=60
 FAKE_BOX="" # non-empty: the watchdog's sleep is sleep_stub's, which fires only at a hang
 
+# MERGE_METHOD, set as a prefix (`MERGE_METHOD=rebase run_merge`), passes --method.
 run_merge() { # run_merge [caller's working directory]
   capture -C "${1:-$REPO}" env \
     PATH="${FAKE_BOX:+$ROOT/clock:}$PATH" \
@@ -380,7 +381,7 @@ run_merge() { # run_merge [caller's working directory]
     MERGE_PR_CONFIRM_RETRIES=2 \
     MERGE_PR_READ_RETRIES=2 \
     MERGE_PR_GH_TIMEOUT_SECONDS="$GH_TIMEOUT" \
-    bash "$SUBJECT" "$PR" "$REPO"
+    bash "$SUBJECT" ${MERGE_METHOD:+--method "$MERGE_METHOD"} "$PR" "$REPO"
 }
 
 called() { # called <exact calls.log line>
@@ -1041,6 +1042,92 @@ expect_not_called "pr update-branch $PR"
 end
 
 # ==========================================================================================
+# 10-ii. a --rebase PR that classifies HUMAN is refused at classify, naming routeRule (#105)
+# ==========================================================================================
+# routeRule keeps humanAlways paths out of batches (#56). A batch whose verdict was
+# folded into a member's commit by hand passes the curated-history count, so the
+# count alone would merge it; and one carrying its verdict commit must be told the
+# rule rather than a commit count.
+begin "a curated batch that classifies HUMAN is refused at classify, naming routeRule"
+fixture batch-human-curated
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second"
+V_FILES="CLAUDE.md,docs/review-feedback.md"
+cat >"$STATE/diff" <<'EOF'
+diff --git a/docs/review-feedback.md b/docs/review-feedback.md
+--- a/docs/review-feedback.md
++++ b/docs/review-feedback.md
+@@ -1,0 +2,4 @@
++## 2026-09-11 — PR #490 — merge-ritual-script
++
++- **Category**: approved-no-changes
++- **Verdict**: Approved without changes — owner, in chat.
+EOF
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'classify — FAILED'
+expect_stderr 'a --rebase PR classifies HUMAN (humanAlways: CLAUDE.md)'
+expect_stderr 'orchestration.routeRule'
+expect_not_called "pr update-branch $PR"
+expect_not_called "pr merge $PR --rebase"
+end
+
+begin "a HUMAN batch carrying its verdict commit is told routeRule, not the commit count"
+fixture batch-human-verdict-commit
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second,#21: fill review-feedback verdict"
+V_FILES="docs/adr/0007-thing.md,docs/review-feedback.md"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'a --rebase PR classifies HUMAN (humanAlways: docs/adr/0007-thing.md)'
+expect_not_stderr 'curated history'
+expect_not_called "pr merge $PR --rebase"
+end
+
+begin "--method rebase on a single HUMAN PR is refused the same way"
+fixture method-rebase-human
+V_FILES=".claude/workflow.json"
+write_view default
+write_merged_view
+MERGE_METHOD=rebase run_merge
+expect_rc 1
+expect_stderr 'a --rebase PR classifies HUMAN (humanAlways: .claude/workflow.json)'
+expect_stderr 'or pass --method squash if this PR is a single issue'
+expect_not_called "pr merge $PR --rebase"
+end
+
+# A run against a HUMAN batch someone already merged has nothing left to refuse, and
+# finishing what is owed is what makes the script re-runnable from any state.
+begin "an already-MERGED HUMAN batch is not refused at classify"
+fixture batch-human-merged
+V_STATE="MERGED"
+V_MSST="UNKNOWN"
+V_LABELS="awaiting-review"
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second"
+V_FILES="CLAUDE.md"
+cat >"$STATE/diff" <<'EOF'
+diff --git a/docs/review-feedback.md b/docs/review-feedback.md
+--- a/docs/review-feedback.md
++++ b/docs/review-feedback.md
+@@ -1,0 +2,4 @@
++## 2026-09-11 — PR #490 — merge-ritual-script
++
++- **Category**: approved-no-changes
++- **Verdict**: Approved without changes — owner, in chat.
+EOF
+write_view default
+run_merge
+expect_rc 0
+expect_not_stderr 'orchestration.routeRule'
+expect_stdout "'awaiting-review' removed, after the merge"
+end
+
+# ==========================================================================================
 # 10b. a batch that is not CLEAN is bounced to its owner, never updated from here
 # ==========================================================================================
 begin "a BEHIND --rebase batch is refused with the curate-onto-main bounce"
@@ -1091,11 +1178,7 @@ V_BODY="Closes #21 and Closes #22"
 V_COMMITS="#21: the first,#22: the second"
 write_view default
 write_merged_view
-capture -C "$REPO" env \
-  MERGE_PR_GH_CMD="$ROOT/gh" MERGE_PR_REAP_CMD="$ROOT/reap" \
-  MERGE_PR_POLL_INTERVAL_SECONDS=0 MERGE_PR_POLL_TIMEOUT_SECONDS=30 \
-  MERGE_PR_RETRY_SECONDS=0 MERGE_PR_CONFIRM_RETRIES=2 \
-  bash "$SUBJECT" --method squash "$PR" "$REPO"
+MERGE_METHOD=squash run_merge
 expect_rc 0
 expect_stdout 'overridden to squash'
 expect_called "pr update-branch $PR"

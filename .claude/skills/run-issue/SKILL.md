@@ -167,8 +167,9 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    moves only when the merge owner pulls (#95). CI green AND curated history are both
    required; either failing blocks the merge.
    `merge-pr.sh` (ticket-agent lane, step 4) runs this chain for a batch too, and knows
-   the two differences: it checks the curated history itself, from the PR's commit list
-   on GitHub, and refuses without it, and
+   the three differences: it checks the curated history itself, from the PR's commit list
+   on GitHub, and refuses without it; it refuses a `--rebase` PR that classifies HUMAN,
+   naming routeRule, ahead of that check, and leaves naming the member to your `FIX` bounce; and
    it never runs `gh pr update-branch` on a `--rebase` PR — it reports the bounce below
    instead of taking it, since only the branch's owner can curate and force-push.
    A batch that is BEHIND or conflicted gets a "curate onto latest main" bounce instead of
