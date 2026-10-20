@@ -361,16 +361,18 @@ expect_untouched
 end
 
 # An added ADR is proposed until the fill accepts it; a modified one may already stand (#57).
-begin 'refuses an added ADR that is not proposed, writing nothing at all'
-fixture adradded
-printf '# 0007 — New\n\n- **Status:** accepted\n\n## Context\n' >"$WT/docs/adr/0007-new.md"
-seal
-run 50 --category approved-no-changes --verdict approved "$ROOT"
-expect_rc 1
-expect_stderr 'docs/adr/0007-new.md is added by this PR and reads "- **Status:** accepted"'
-[ "$(placeholders_in "$WT/$LOG")" = 6 ] || bad "the log was written before the ADR refusal"
-expect_untouched
-end
+for value in accepted 'proposed (draft)'; do
+  begin "refuses an added ADR whose Status reads '$value', writing nothing at all"
+  fixture "adradded-${value//[^a-z]/-}"
+  printf '# 0007 — New\n\n- **Status:** %s\n\n## Context\n' "$value" >"$WT/docs/adr/0007-new.md"
+  seal
+  run 50 --category approved-no-changes --verdict approved "$ROOT"
+  expect_rc 1
+  expect_stderr "docs/adr/0007-new.md is added by this PR and reads \"- **Status:** $value\""
+  [ "$(placeholders_in "$WT/$LOG")" = 6 ] || bad "the log was written before the ADR refusal"
+  expect_untouched
+  end
+done
 
 for value in 'superseded by 7' 'superseded by 00070' 'superseded by NNNN' 'superseded by 0007 in part' \
   'partly superseded by 0007' 'accepted in part' 'not accepted' 'Accepted'; do
@@ -386,15 +388,18 @@ for value in 'superseded by 7' 'superseded by 00070' 'superseded by NNNN' 'super
   end
 done
 
-begin 'refuses an ADR not named NNNN-<slug>.md before writing anything'
-fixture adrname
-printf '# 0008\n\n- **Status:** proposed\n' >"$WT/docs/adr/0008.md"
-seal
-run 50 --category approved-no-changes --verdict approved "$ROOT"
-expect_rc 1
-expect_stderr 'docs/adr/0008.md is not named docs/adr/NNNN-<slug>.md'
-expect_untouched
-end
+# Each name matches the subject's docs/adr/[0-9]*.md pathspec but not NNNN-<slug>.md.
+for name in 0008.md 008-short.md 00a8-odd.md; do
+  begin "refuses an ADR named $name before writing anything"
+  fixture "adrname-$name"
+  printf '# 0008\n\n- **Status:** proposed\n' >"$WT/docs/adr/$name"
+  seal
+  run 50 --category approved-no-changes --verdict approved "$ROOT"
+  expect_rc 1
+  expect_stderr "docs/adr/$name is not named docs/adr/NNNN-<slug>.md"
+  expect_untouched
+  end
+done
 
 begin 'refuses several Closes lines that do not include the branch number'
 fixture closes

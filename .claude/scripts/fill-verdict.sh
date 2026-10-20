@@ -268,7 +268,7 @@ const kept = [];
 for (const arg of adrs) {
   const added = arg.startsWith("A:");
   const path = arg.slice(2);
-  if (!/^docs\/adr\/\d{4}-[^/]+\.md$/.test(path)) refuse(path + " is not named docs/adr/NNNN-<slug>.md, so it has no number to record");
+  if (!/^docs\/adr\/\d{4}-/.test(path)) refuse(path + " is not named docs/adr/NNNN-<slug>.md, so it has no number to record");
   const text = fs.readFileSync(path, "utf8").split("\n");
   const header = text.findIndex((l) => /^## /.test(l));
   const status = text.slice(0, header < 0 ? text.length : header).map((l, i) => [l, i]).filter(([l]) => /^- \*\*Status:\*\* /.test(l));
@@ -311,7 +311,7 @@ adr_clause="" kept_clause=""
 while IFS= read -r record; do
   [ -n "$record" ] || continue
   IFS=$'\t' read -r verb n value <<<"$record"
-  case "$n" in '' | *[!0-9]*) verb="" ;; esac
+  case "$n" in [0-9][0-9][0-9][0-9]) ;; *) verb="" ;; esac
   case "$verb" in accepted | kept) ;; *)
     restore 'fill' "node printed '$record' where an ADR record belongs"
     fail 'fill' "node printed '$record' where an ADR record belongs; tree restored"
