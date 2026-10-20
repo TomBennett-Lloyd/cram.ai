@@ -73,9 +73,18 @@ const requireDimension = (
   }
 };
 
-const SEARCHABLE_IDS = `select id from slides where kind <> '${SlideKind.enum.references}'`;
+const REFERENCES = `'${SlideKind.enum.references}'`;
 
-const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id`;
+/**
+ * Each list's references filter. vec0 drops rows before `k` only for `rowid in`; FTS5 given
+ * `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR, `retrieval.measure.test.ts`).
+ */
+const WITHOUT_REFERENCES = {
+  bm25: `and rowid not in (select id from slides where kind = ${REFERENCES})`,
+  vector: `and rowid in (select id from slides where kind <> ${REFERENCES})`,
+} as const;
+
+const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (${SLIDE_COLUMNS.replace(/\w+/g, '?')}) returning id`;
 
 /** One open course file (`docs/adr/0004-storage.md`). */
 export class CourseIndex {
@@ -193,7 +202,7 @@ export class CourseIndex {
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
     requireDimension('search', query.embedding, this.#embedder);
     const depth = Math.max(k, CANDIDATES_PER_LIST);
-    const scope = query.includeReferences === true ? '' : `and rowid in (${SEARCHABLE_IDS})`;
+    const filter = query.includeReferences === true ? { bm25: '', vector: '' } : WITHOUT_REFERENCES;
     const match = ftsMatchExpression(query.text);
     const bm25 =
       match === undefined
@@ -201,7 +210,7 @@ export class CourseIndex {
         : RowIds.parse(
             this.#db
               .prepare(
-                `select rowid from slides_fts where slides_fts match ? ${scope} order by rank limit ?`,
+                `select rowid from slides_fts where slides_fts match ? ${filter.bm25} order by rank limit ?`,
               )
               .pluck()
               .all(match, depth),
@@ -209,7 +218,7 @@ export class CourseIndex {
     const nearest = RowIds.parse(
       this.#db
         .prepare(
-          `select rowid from slide_vec where embedding match ? and k = ? ${scope} order by distance`,
+          `select rowid from slide_vec where embedding match ? and k = ? ${filter.vector} order by distance`,
         )
         .pluck()
         .all(query.embedding, depth),

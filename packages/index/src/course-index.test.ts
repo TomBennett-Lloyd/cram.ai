@@ -95,7 +95,10 @@ describe('CourseIndex.search on references slides', () => {
     vector(1, 0, 0, 0),
   );
   const CONTENT = indexed(slide({ slideNo: 2, body: 'osmosis moves water' }), vector(0, 0, 1, 0));
-  const IMAGE_ONLY = indexed(slide({ slideNo: 3, kind: 'image-only' }), vector(0, 1, 0, 0));
+  const IMAGE_ONLY = indexed(
+    slide({ slideNo: 3, kind: 'image-only', title: 'mitochondria' }),
+    vector(0, 1, 0, 0),
+  );
   beforeEach(() => {
     indexLectures(course, [REFERENCES, CONTENT, IMAGE_ONLY]);
   });
@@ -106,10 +109,11 @@ describe('CourseIndex.search on references slides', () => {
     expect(bodies('', vector(1, 0, 0, 0), 3).toSorted()).toEqual(others);
   });
 
-  it('keeps image-only slides searchable', () => {
-    expect(course.search({ text: '', embedding: vector(0, 1, 0, 0) }, 1)[0]?.record.kind).toBe(
-      'image-only',
-    );
+  it('keeps image-only slides searchable by their words and their vector', () => {
+    const top = (text: string, embedding: Float32Array) =>
+      course.search({ text, embedding }, 1)[0]?.record.kind;
+    expect(top('', vector(0, 1, 0, 0))).toBe('image-only');
+    expect(top('mitochondria', vector(0, 0, 1, 0))).toBe('image-only');
   });
 
   it('returns a references slide by its words or its vector when the query includes them', () => {
@@ -127,7 +131,9 @@ describe('CourseIndex.search on references slides', () => {
       ),
     );
     indexLectures(course, crowd);
-    expect(bodies('osmosis', vector(1, 0, 0, 0), 1)).toEqual(['osmosis moves water']);
+    expect(bodies('', vector(1, 0, 0, 0), 2).toSorted()).toEqual(['', 'osmosis moves water']);
+    // The vector list ranks the image-only slide first, so only the word list can lift content above it.
+    expect(bodies('osmosis', vector(0, 1, 0, 0), 1)).toEqual(['osmosis moves water']);
   });
 });
 
