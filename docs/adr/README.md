@@ -2,7 +2,7 @@
 
 _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
 
-Numbered. Once **merged**, a decision is immutable: changed your mind → supersede, never rewrite. Stated parameter values that the code later legitimately moves are the one narrow exception — see **Amendments** below. Before merge an ADR is still a draft under review: amending it in place in response to review feedback is correct, and cheaper than merging a decision you already know is wrong and superseding it immediately. Write one when a decision is expensive to reverse, cross-deployable, or would surprise a newcomer — see `docs/standards/architecture.md` rule 6.
+Numbered. Once **merged**, a decision is immutable: changed your mind → supersede, never rewrite. Two edits to a merged ADR are allowed, both narrow — its stated parameter values when the code later legitimately moves them, and its Status line when a later ADR supersedes it; see **Amendments** below. Before merge an ADR is still a draft under review: amending it in place in response to review feedback is correct, and cheaper than merging a decision you already know is wrong and superseding it immediately. Write one when a decision is expensive to reverse, cross-deployable, or would surprise a newcomer — see `docs/standards/architecture.md` rule 6.
 
 Format: copy `0000-template.md` → `NNNN-short-title.md`, then add a row to the index below.
 
@@ -11,8 +11,9 @@ if a `NNNN-*.md` file here has no index row, or if a row links a file that does 
 that number. Rows must keep the `- [NNNN — Title](NNNN-slug.md)` shape the gate parses.
 
 A row may carry one optional annotation after the link — an em dash with a space on each side,
-then non-empty text — which is where supersession is recorded, since ADRs are superseded rather
-than edited:
+then non-empty text — which is where the index records a supersession. The superseded ADR's own
+Status line records it too (see **Amendments**), so a reader who opens the old file directly
+learns it is no longer current:
 
 ```
 - [0042 — Example decision](0042-example-decision.md) — superseded by 0043
@@ -33,8 +34,11 @@ Two more things the gate checks, so that a decision's standing can be read mecha
 
 ## Amendments
 
-A merged ADR's decision, rationale, and status never change — retconning a decision is what
-supersession exists to prevent, and git preserves every prior version regardless. But an ADR
+A merged ADR's decision and rationale never change — retconning a decision is what
+supersession exists to prevent, and git preserves every prior version regardless. Its status
+changes in one case only: when a later ADR supersedes it, the superseding ADR's PR sets the old
+ADR's Status line to `superseded by NNNN` and adds the matching index annotation, and touches
+nothing else in the old file (owner decision 2026-10-20, #114). But an ADR
 also states facts — parameter values, sizes, counts — that code legitimately moves later, and
 a stale number in an authoritative document misleads every reader who takes it as current;
 planners here are _instructed_ to read ADRs before code, so wrong numbers propagate into plans
