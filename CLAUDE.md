@@ -29,6 +29,7 @@ Policy:
 - Confirmation reviews and `browser-smoke` run on **Sonnet**, inheriting cumulo's pilot (cumulo#607); the first sideways ticket here re-prices that.
 - Planning and hard-problem consulting run on **Fable** (`model: 'fable'` in Agent calls).
 - An implementer returning `STATUS: STRUGGLING` triggers the `consultant` agent (Fable) for _guidance only_ — implementation stays with the original agent.
+- Each agent's reasoning effort is set explicitly by the `effort:` key in its `.claude/agents/*.md` frontmatter, which owns the level; the top-level session's effort is held constant rather than varied per skill (pilot and reasoning: #140).
 - Before any Fable dispatch, read `~/.local/state/claude-budget/mode` — a machine-local budget ledger shared by every session and worktree on this machine. Contents are exactly `normal` or `conserve`; a missing file means `normal`. If `conserve`, downgrade to Opus and note the downgrade in the issue. To record fresh `/usage` numbers or refresh the mode, use the `budget-sync` skill.
 
 ## Standards index — read the linked doc BEFORE acting when a trigger matches

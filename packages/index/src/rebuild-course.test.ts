@@ -175,6 +175,24 @@ describe('rebuildCourse', () => {
     course.close();
   });
 
+  it('reports confirmations of derived text as discarded', async () => {
+    const seeded = openOrFail(temp.spec);
+    const record = slide({ kind: 'image-only', body: 'osmosis', derived: true });
+    seeded.replaceLecture(
+      deck({ content: encode('osmosis') }),
+      [],
+      [indexed(record, vector(1, 0, 0, 0))],
+    );
+    seeded.confirmDerived(record, new Date('2026-10-20T12:00:00.000Z'));
+    seeded.close();
+    const db = new Database(temp.spec.path);
+    db.pragma(`user_version = ${String(OLDER)}`);
+    db.close();
+    const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
+    course.close();
+    expect(discarded).toEqual([{ table: 'confirmations', rows: 1 }]);
+  });
+
   it('opens a file that is not older without parsing anything', async () => {
     openOrFail(temp.spec).close();
     const result = await rebuildCourse(temp.spec, deps);

@@ -103,3 +103,18 @@ Entry format:
 
 - Phase: process
 - Observed: the merge-time verdict fill on PR #156 was refused by the auto-mode permission classifier in the lane ("CI Bypass"), as were the fills on PRs #106 ("Self-Approval", four times) and #143 ("Merge Without Review"), while the identical command ran cleanly in the #132 and #120 lanes. The owner's `fill-verdict.sh` allow rule matched only the bare command form, and the refused lanes had wrapped it in a `cd &&` or a path export. The owner ran the three fills by hand; on #156 the hand-run fill and the lane's REBASE bounce acted on one worktree at once, which the lane noticed and waited out. The bounce text now names the bare form with `--worktree`; whether that is enough is the next fill's measurement.
+
+## 2026-10-21 — PR #106
+
+- Phase: process
+- Observed: the #56 lane's verdict fill was refused by the auto-mode classifier four times under three labels (self-approval three times, then an auto-mode bypass on a bare `pwd`), the owner ran the fill by hand, and the branch then needed two rebases because three other fills rewrote `docs/review-feedback.md` entries on main in the meantime. The owner's allow rule for `fill-verdict.sh` did not reach the lane, whose commands were wrapped in a `cd &&` or a path export. One PR cost the owner a terminal step and the lane four refused rounds; the bounce text now names the bare form with `--worktree`, and the next humanAlways fill measures whether that is enough.
+
+## 2026-10-21 — PR #167
+
+- Phase: implementation
+- Observed: the #20 lane's first live `models:pull` run and its mutant run both preceded the last review edits to the script and harness, so both were redone after review (one cold-path reinstall of a 2.5 GB download, one mutant run). The lane's order was build, measure, review, fix; the fix invalidated the measurement. One ticket so far on measuring before review on a script whose review changes its behaviour.
+
+## 2026-10-21 — PR #177
+
+- Phase: process
+- Observed: the rule PR #177 adds was written and merged within two hours of the #159 lane raising an unsanctioned macOS automation prompt (`.claude/agents/ticket-agent.md` § 5 (g)), and the #159 lane itself stopped cleanly on a HOLD, deleted what it had created and reported its probe findings with provenance. No new signal; recorded so the rule's first catch, if any, has its origin dated.
