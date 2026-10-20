@@ -1,0 +1,10 @@
+/* The one stylesheet an app imports from the design system. */
+@import './tokens/tokens.css';
+
+/* The focus ring every app inherits, at zero specificity so a component rule can replace it. */
+:where(a, button, input, select, textarea, summary, dialog, [tabindex]):focus-visible {
+  outline-width: calc(var(--space-1) / 2);
+  outline-style: solid;
+  outline-color: var(--color-focus-ring);
+  outline-offset: calc(var(--space-1) / 4);
+}
