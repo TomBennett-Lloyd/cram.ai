@@ -4,6 +4,10 @@ claim: why a unit is withheld — dangling-citation, or any verdict but supporte
 sweep: dangling-citation|`WithheldReason`|\.claude/ledgers/withheld-reasons\.ledger
 carrier: packages/shared/src/verification.test.ts
 carrier: packages/shared/src/unit.ts
+carrier: packages/shared/src/withheld.ts
+carrier: packages/grounding/src/resolve-citations.ts
+carrier: packages/grounding/src/resolve-citations.test.ts
+carrier: packages/grounding/src/ground.test.ts
 carrier: docs/standards/grounding.md
 carrier: docs/adr/0005-evaluation-as-gate.md
 excluded: docs/tech-debt.md
