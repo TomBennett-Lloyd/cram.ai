@@ -83,3 +83,8 @@ Entry format:
 
 - Phase: planning
 - Observed: the #79 plan chose `@napi-rs/canvas` as a devDependency of `eval/` on the reasoning that devDependencies are outside `check:no-network-egress`'s scan. Adding it anywhere in the workspace satisfied `unpdf`'s optional peer, so pnpm re-resolved `@cram/ingest`'s production `unpdf` against it and the gate flagged the Skia binary in ingest's production tree. The lane switched to `jimp` (pure JS, no peer coupling) and re-planned once. A devDependency can change another importer's production tree through optional-peer resolution; only the gate saw it. One ticket so far.
+
+## 2026-10-20 — PR #128
+
+- Phase: review
+- Observed: the #10 lane's mutation pass recorded the `sizeOf` `0` floor as an equivalent mutant, and the reviewer killed it with a second input shape: a paragraph with no `a:rPr` and one whose `a:rPr` has no `sz` read differently once the floor is gone. `.claude/agents/ticket-agent.md` § 4 asks for one mutant per guard edge; it does not say what earns the label "equivalent", and this one was earned by one input shape. One ticket so far.
