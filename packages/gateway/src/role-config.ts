@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 import { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
 
@@ -18,10 +19,25 @@ export const HttpGeneratorConfig = z.strictObject({
 });
 export type HttpGeneratorConfig = z.infer<typeof HttpGeneratorConfig>;
 
-/** Each encoder adapter (#66) adds its own settings here. */
-export const VerifierConfig = z.strictObject({ pin: VerifierPin });
-export const EmbedderConfig = z.strictObject({ pin: EmbedderPin });
-export const RerankerConfig = z.strictObject({ pin: RerankerPin });
+/** A local snapshot of the pin's `artefact.repository`; weights are never fetched (`docs/adr/0003-model-roles-and-backends.md` § Decision (i)). */
+export const ArtefactDirectory = z.string().refine(isAbsolute, 'an absolute path');
+
+export const VerifierConfig = z.strictObject({ pin: VerifierPin, directory: ArtefactDirectory });
+export type VerifierConfig = z.infer<typeof VerifierConfig>;
+
+/** How token states become one vector; a property of the pinned model, not a tuning knob. */
+export const Pooling = z.enum(['cls', 'mean']);
+export type Pooling = z.infer<typeof Pooling>;
+
+export const EmbedderConfig = z.strictObject({
+  pin: EmbedderPin,
+  directory: ArtefactDirectory,
+  pooling: Pooling,
+});
+export type EmbedderConfig = z.infer<typeof EmbedderConfig>;
+
+export const RerankerConfig = z.strictObject({ pin: RerankerPin, directory: ArtefactDirectory });
+export type RerankerConfig = z.infer<typeof RerankerConfig>;
 
 /** Role config, `docs/adr/0003-model-roles-and-backends.md` § Decision (f); an absent `reranker` means no rerank. */
 export const GatewayConfig = z.strictObject({
