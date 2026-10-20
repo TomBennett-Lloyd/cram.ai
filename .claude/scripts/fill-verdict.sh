@@ -2,7 +2,9 @@
 #
 # The branch half of the humanAlways merge ritual, once the owner has decided: fill the PR's
 # docs/review-feedback.md entry (Category and Verdict — both placeholders, never one), flip every
-# ADR the PR adds or modifies from `proposed` to `accepted`, run `pnpm verify`, commit, push.
+# `proposed` ADR the PR adds or modifies to `accepted`, run `pnpm verify`, commit, push. A modified
+# ADR already `accepted` or `superseded by NNNN` — an amendment or a supersession, both
+# docs/adr/README.md shapes — is left as it is; an added one must be `proposed` (#57).
 # merge-pr.sh refuses an unfilled entry and never fills one (its header says why); this script
 # is the fill, and it writes only what the caller passes — the verdict is the caller's.
 #
@@ -191,12 +193,12 @@ out=$(git -C "$wt" fetch --quiet origin "$base_ref" 2>&1) || fail 'fill' "could 
 merge_base=$(git -C "$wt" merge-base FETCH_HEAD HEAD 2>&1) || fail 'fill' "no merge base with '$base_ref': $merge_base"
 
 # docs/adr/README.md exempts the template from the Status rule; --no-renames keeps a renamed ADR
-# visible as added.
-adrs=()
-while IFS= read -r path; do
-  [ -n "$path" ] && [ "$path" != "docs/adr/0000-template.md" ] && adrs+=("$path")
+# visible as added. adr_status holds each path's A or M, in adrs' order.
+adrs=() adr_status=()
+while IFS=$'\t' read -r status path; do
+  [ -n "$path" ] && [ "$path" != "docs/adr/0000-template.md" ] && adrs+=("$path") adr_status+=("$status:$path")
 done <<EOF
-$(git -C "$wt" diff --name-only --no-renames --diff-filter=AM "$merge_base" HEAD -- 'docs/adr/[0-9]*.md')
+$(git -C "$wt" diff --name-status --no-renames --diff-filter=AM "$merge_base" HEAD -- 'docs/adr/[0-9]*.md')
 EOF
 
 feedback_log=$(node -e '
@@ -214,8 +216,9 @@ try {
 # rule as merge-pr.sh's feedback step).
 added_headings=$(git -C "$wt" diff "$merge_base" HEAD -- "$feedback_log" | sed -n 's/^+\(## .*\)$/\1/p')
 
-# Validates every edit before making any: the entry, the category, each ADR's Status. Prints the
-# flipped ADR numbers, one per line.
+# Validates every edit before making any: the entry, the category, each ADR's Status. Prints one
+# TAB-separated record per touched ADR: `accepted <number>` for a flip, `kept <number> <status>`
+# for a modified ADR left as it is.
 fill_err=$(mktemp "${TMPDIR:-/tmp}/fill-verdict-$pr_number.XXXXXX") || fail 'fill' "mktemp failed"
 flipped=$(cd "$wt" && node -e '
 const fs = require("fs");
@@ -261,24 +264,38 @@ if (both.length !== 1)
   refuse(both.length + " entries this branch added headed issue #" + issue + " or PR #" + pr + " carry both placeholders in " + log + "; exactly one must. Already filled? Check git log -1 and push it");
 
 const flips = [];
-for (const path of adrs) {
+const kept = [];
+for (const arg of adrs) {
+  const added = arg.startsWith("A:");
+  const path = arg.slice(2);
+  if (!/^docs\/adr\/\d{4}-[^/]+\.md$/.test(path)) refuse(path + " is not named docs/adr/NNNN-<slug>.md, so it has no number to record");
   const text = fs.readFileSync(path, "utf8").split("\n");
   const header = text.findIndex((l) => /^## /.test(l));
   const status = text.slice(0, header < 0 ? text.length : header).map((l, i) => [l, i]).filter(([l]) => /^- \*\*Status:\*\* /.test(l));
   if (status.length !== 1) refuse(path + " has " + status.length + " Status lines in its header; expected one");
-  if (status[0][0] !== "- **Status:** proposed") refuse(path + " reads \"" + status[0][0] + "\"; only a proposed ADR is flipped");
-  text[status[0][1]] = "- **Status:** accepted";
-  flips.push([path, text.join("\n")]);
+  const value = status[0][0].slice("- **Status:** ".length);
+  const num = path.slice("docs/adr/".length, "docs/adr/".length + 4);
+  if (value === "proposed") {
+    text[status[0][1]] = "- **Status:** accepted";
+    flips.push([path, num, text.join("\n")]);
+  } else if (added) {
+    refuse(path + " is added by this PR and reads \"" + status[0][0] + "\"; an added ADR is proposed until this fill accepts it");
+  } else if (value === "accepted" || /^superseded by \d{4}$/.test(value)) {
+    kept.push([num, value]);
+  } else {
+    refuse(path + " reads \"" + status[0][0] + "\"; a modified ADR is proposed, accepted, or superseded by NNNN");
+  }
 }
 
 lines[both[0].cat] = "- **Category**: " + category;
 lines[both[0].ver] = "- **Verdict**: " + verdict;
 fs.writeFileSync(log, lines.join("\n"));
-for (const [path, text] of flips) {
+for (const [path, num, text] of flips) {
   fs.writeFileSync(path, text);
-  console.log(/^docs\/adr\/(\d+)-/.exec(path)[1]);
+  console.log("accepted\t" + num);
 }
-' "$feedback_log" "$added_headings" "$issue" "$pr_number" "$category" "$verdict" "$PLACEHOLDER" ${adrs[@]+"${adrs[@]}"} 2>"$fill_err")
+for (const [num, value] of kept) console.log("kept\t" + num + "\t" + value);
+' "$feedback_log" "$added_headings" "$issue" "$pr_number" "$category" "$verdict" "$PLACEHOLDER" ${adr_status[@]+"${adr_status[@]}"} 2>"$fill_err")
 fill_rc=$?
 fill_msg=$(cat "$fill_err")
 rm -f "$fill_err"
@@ -290,16 +307,25 @@ restore() { # restore <step> <why> — undo the fill, or exit 1 saying the tree 
   out=$(git -C "$wt" restore --staged --worktree -- "${changed[@]}" 2>&1) ||
     fail "$1" "$2; and restoring the tree FAILED, so $wt still holds the fill: $out"
 }
-adr_clause=""
-for n in $flipped; do
-  case "$n" in '' | *[!0-9]*)
-    restore 'fill' "node printed '$n' where an ADR number belongs"
-    fail 'fill' "node printed '$n' where an ADR number belongs; tree restored"
+adr_clause="" kept_clause=""
+while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  IFS=$'\t' read -r verb n value <<<"$record"
+  case "$n" in '' | *[!0-9]*) verb="" ;; esac
+  case "$verb" in accepted | kept) ;; *)
+    restore 'fill' "node printed '$record' where an ADR record belongs"
+    fail 'fill' "node printed '$record' where an ADR record belongs; tree restored"
     ;;
   esac
-  adr_clause="$adr_clause; ADR $n accepted"
-done
-step 'fill' "$feedback_log entry filled${adr_clause:+, ${adr_clause#; }}"
+  if [ "$verb" = accepted ]; then
+    adr_clause="$adr_clause; ADR $n accepted"
+  else
+    kept_clause="$kept_clause; ADR $n left $value"
+  fi
+done <<EOF
+$flipped
+EOF
+step 'fill' "$feedback_log entry filled${adr_clause:+, ${adr_clause#; }}${kept_clause:+; ${kept_clause#; }}"
 
 # --- step: verify ---------------------------------------------------------------------------
 
