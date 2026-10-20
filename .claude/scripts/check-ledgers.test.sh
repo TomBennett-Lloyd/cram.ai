@@ -16,10 +16,9 @@
 #   - The gate does not red when it should not. The green fixture (16), an ignored
 #     file (19), an excluded path that stopped matching (22), and the shipped
 #     default root (25).
-#   - The sweep runs as PCRE (26). `\b` alone pins it only on macOS — glibc's
-#     regex lists `\b` among its GNU operators, so swapping `-P` for `-E` would
-#     stay green in CI — so the case's sweep also carries `\d`, which macOS's ERE
-#     reads as the letter `d` and glibc's operator list does not include.
+#   - The sweep runs as PCRE (26). Its sweep carries `\d` beside `\b` because
+#     `\b` alone reds an `-E` engine only on macOS (docs/standards/evidence.md
+#     member 10); #40 holds the reasoning for the Linux side.
 #   - Refusals are refusals, not passes: every malformed ledger and every broken
 #     sweep is exit 2, and blockers outrank drift (24). Only absence passes: no
 #     ledger directory, or an empty one, declares nothing to sweep.
@@ -322,25 +321,25 @@ expect_stderr "BLOCKED zzz-second"
 expect_not_stderr "ERROR"
 end
 
-begin "the sweep is PCRE: \\b is a word boundary and \\d a digit, so a word-bounded decoy is not a hit (exit 0)"
+begin "the shipped default root: no argument runs against this repository and passes (exit 0)"
+capture bash "$CHECK"
+expect_rc 0
+expect_stdout "check-ledgers: OK"
+end
+
+begin "the sweep is PCRE: \\b is a word boundary and \\d a digit, so neither one-sided decoy is a hit (exit 0)"
 fixture c26
 pcre_sweep='\b'"$NEEDLE"'\d\b'
 must perl -pi -e "s/$NEEDLE/${NEEDLE}7/" "$ROOT/docs/owner.md" "$ROOT/src/carrier.ts" "$ROOT/docs/snapshot.md"
 must perl -ni -e 'print unless /^sweep: /' "$LEDGER"
 must printf 'sweep: %s\n' "$pcre_sweep" >>"$LEDGER"
-must printf '%s\n' "b${NEEDLE}7b" >"$ROOT/docs/decoy.md"
+must printf '%s\n' "b${NEEDLE}7" "${NEEDLE}7b" >"$ROOT/docs/decoy.md"
 commit_all
 fixture_has "$LEDGER" "sweep: $pcre_sweep"
 run
 expect_rc 0
 expect_stdout "1 carrier(s) returned, 0 unlisted hit(s)"
 expect_not_stderr "docs/decoy.md"
-end
-
-begin "the shipped default root: no argument runs against this repository and passes (exit 0)"
-capture bash "$CHECK"
-expect_rc 0
-expect_stdout "check-ledgers: OK"
 end
 
 finish
