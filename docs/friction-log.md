@@ -113,3 +113,13 @@ Entry format:
 
 - Phase: process
 - Observed: `verify-tier.sh` labelled the #129 change, an interface deleted and a return type renamed across two `.ts` files, "source-prose, 2 file(s) proven comment-only"; typecheck ran on every package regardless, so nothing went unchecked, but the tier's name misdescribes a type-only change and a reader of the verify log would believe only prose moved. One ticket so far.
+
+## 2026-10-20 — PR #120
+
+- Phase: process
+- Observed: ADR 0006 waited for the owner's review while three PRs merged under it (#137, #128, #116), and those made stated facts in its § Context, one assumption check and its ledger false; nothing flagged that until the FILL bounce read the ADR against the new main, which cost a REBASE round with Context true-ups. The decisions were untouched, but an ADR under review has no gate that re-checks its Context claims against main. One ticket so far; `merge.approvedAtPlanRule` (#150) names such a true-up as an extra, which surfaces it without preventing it.
+
+## 2026-10-20 — PR #160
+
+- Phase: implementation
+- Observed: the #126 lane's mutant pass covered the operand-versus-argument sites it had listed (nary, func, rad), and review found seven more operand sites it had not; the lane's own words were that listing edges by construct rather than by the sites already reasoned about would have caught them. Fourth entry today on the mutation pass's coverage being bounded by its author's list (PR #83, PR #128, PR #154). The lane also decided the issue's two "To decide" items itself, the second instance of PR #118's shape; both were ingest-internal, with no prompt or resolver change, and the merge owner merged on that basis.
