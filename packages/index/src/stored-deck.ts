@@ -48,6 +48,25 @@ const imageFromRow = (row: unknown): SlideImage => {
   });
 };
 
+/**
+ * Refuses a slide number twice in one batch, before anything is written: a duplicate key is the
+ * caller's bug, not a storage error (`docs/standards/error-handling.md`, worked example 2).
+ */
+export const requireDistinctSlideImages = (
+  operation: string,
+  lectureId: LectureId,
+  images: readonly SlideImage[],
+): void => {
+  const seen = new Set<SlideNo>();
+  for (const { slideNo } of images) {
+    if (seen.has(slideNo))
+      throw new Error(
+        `${operation}: slide image ${lectureId}/${String(slideNo)} appears twice in one batch`,
+      );
+    seen.add(slideNo);
+  }
+};
+
 /** Replaces the lecture's deck and every one of its slide images, in one transaction. */
 export const writeDeck = (db: Database, deck: Deck, images: readonly SlideImage[]): void => {
   const insertImage = db.prepare(

@@ -21,7 +21,13 @@ import {
   sourceIdOf,
   type StoredSlide,
 } from './slide-row';
-import { deleteDeck, readDeck, readSlideImage, writeDeck } from './stored-deck';
+import {
+  deleteDeck,
+  readDeck,
+  readSlideImage,
+  requireDistinctSlideImages,
+  writeDeck,
+} from './stored-deck';
 
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
@@ -162,6 +168,7 @@ export class CourseIndex {
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
     this.#checkBatch('replaceLecture', slides);
+    requireDistinctSlideImages('replaceLecture', deck.lectureId, images);
     for (const { record } of slides) {
       if (record.lectureId !== deck.lectureId)
         throw new Error(
@@ -279,6 +286,7 @@ export class CourseIndex {
 
   /** Stores the lecture's uploaded deck and its rendered slide images, replacing any it had. */
   storeDeck(deck: Deck, images: readonly SlideImage[]): void {
+    requireDistinctSlideImages('storeDeck', deck.lectureId, images);
     writeDeck(this.#db, deck, images);
   }
 
