@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   AskRequest,
   type CourseId,
+  type CourseList,
   DeckMediaType,
   type IngestStatus,
   LectureId,
@@ -9,7 +10,7 @@ import {
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
-import { courseExists, RouteCourseId } from './course-file';
+import { courseExists, RouteCourseId, storedCourses } from './course-file';
 import { readBody, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 
@@ -74,6 +75,12 @@ export const uploadDeck = async (route: RouteRequest, context: HandlerContext): 
     bytes: body.bytes,
   });
   sendJson(response, 202, upload);
+};
+
+export const listCourses = (response: ServerResponse, context: HandlerContext): void => {
+  const ids = new Set([...storedCourses(context.files), ...context.queue.courseIds()]);
+  const list: CourseList = { courses: [...ids].sort() };
+  sendJson(response, 200, list);
 };
 
 export const ingestStatus = (route: RouteRequest, context: HandlerContext): void => {

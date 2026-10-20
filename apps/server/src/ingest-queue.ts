@@ -51,6 +51,11 @@ export class IngestQueue {
     return upload;
   }
 
+  /** Every course with an upload since the server started. */
+  courseIds(): readonly CourseId[] {
+    return [...this.#uploads.keys()];
+  }
+
   uploads(courseId: CourseId): readonly Upload[] {
     return [...(this.#uploads.get(courseId)?.values() ?? [])];
   }
