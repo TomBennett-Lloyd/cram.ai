@@ -270,3 +270,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/models-pull.sh` (Modelfile `num_ctx`); the installed app's generator backend (#7)
 - What: developer mode serves the artefact's trained context length, and Ollama sizes the KV cache to it when the model loads. The installed app's context will be chosen under A3's memory budget (#7). Nothing owns the value both modes should share, and the prompt budget (#13) has to fit the smaller of the two.
 - Source: #20 review cycle 1
+
+## 2026-10-20 — an eval report's sampling is what the caller says, never what the generator ran
+
+- Where: `eval/src/run-eval.ts` (`EvalRunFacts.sampling`), `eval/src/recording-gateway.ts` (`RecordingGatewaySpec.sampling`), `packages/gateway/src/fake-gateway.ts` (`FakeGatewaySpec.sampling`)
+- What: the generator's sampling settings are passed in three times by the caller and never read from the generator that ran. Pins are read from the gateway, so they are the ones that ran (ADR 0003 § Decision (e)). Sampling is not, so a report can record determinism settings that never ran. Suspected root cause: `Generator` does not expose its sampling, which is the gateway's surface (#12, #66); the eval CLI that builds the live gateway is #134.
+- Source: PR for #133 (review pass 1)
+
+## 2026-10-20 — nothing owns which text a slide is embedded as
+
+- Where: `eval/src/index-retriever.ts` (`IndexRetriever.open`), `packages/index/src/open-course.ts` (`EmbedSlides`, `embedSlides`)
+- What: `IndexRetriever` embeds each slide as `@cram/grounding`'s `slideText`. `@cram/index` takes an `EmbedSlides` callback and has no production caller yet, so the server's ingest path chooses again. If the two choices differ, recall@k measures a retrieval the app does not run. `IndexRetriever` also restates `embedSlides`'s vector-count check, which `@cram/index` does not export.
+- Source: PR for #133 (review pass 1)

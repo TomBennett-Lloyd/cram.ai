@@ -14,7 +14,7 @@ import {
   RERANKER_PIN,
   SAMPLING,
   ScriptedGateway,
-} from './scripted-gateway';
+} from './scripted-gateway-fixture';
 
 const Answer = z.strictObject({ text: z.string() });
 const ask = (content: string): ChatRequest<z.infer<typeof Answer>> => ({

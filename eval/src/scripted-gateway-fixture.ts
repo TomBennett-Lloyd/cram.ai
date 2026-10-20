@@ -19,7 +19,7 @@ import type { RecordableGateway, RecordableGenerator } from './recording-gateway
 
 const pins = PROVISIONAL_DEFAULT_PINS;
 
-/** A stand-in for a live backend in tests: replies are computed from the request, never recorded. */
+/** A stand-in for a live backend in tests: replies are computed from the request. */
 export type Respond = (wire: ChatWireRequest) => GeneratorReply;
 
 class ScriptedGenerator implements RecordableGenerator {

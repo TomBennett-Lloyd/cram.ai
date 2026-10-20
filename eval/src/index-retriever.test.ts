@@ -3,7 +3,7 @@ import { CourseId, Deck, type SlideRecord } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { IndexRetriever, type IndexRetrieverSpec } from './index-retriever';
 import { record } from './run-fixture';
-import { ScriptedGateway } from './scripted-gateway';
+import { ScriptedGateway } from './scripted-gateway-fixture';
 
 const deck = Deck.parse({
   lectureId: 'l1',

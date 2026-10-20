@@ -41,7 +41,7 @@ export interface EvalRunSpec {
   readonly clock: Clock;
 }
 
-/** Ask runs under the strategy that ships and under both arms `verifierArmDecisions` compares. */
+/** Ask runs under the strategy that ships and under each arm whose `ArmsEvidence` entry holds a `contradictionSet`. */
 const ASK_STRATEGIES: readonly VerifierStrategy[] = [
   ...new Set<VerifierStrategy>([PROVISIONAL_VERIFIER_STRATEGY, 'nli', 'nli-then-llm']),
 ];
@@ -50,6 +50,11 @@ const LABEL_STRATEGIES: readonly VerifierStrategy[] = ['nli', 'llm', 'nli-then-l
 interface Retrieved {
   readonly question: GoldenQuestion;
   readonly retrieved: readonly RetrievedSlide[];
+}
+
+interface AskTiming {
+  readonly clock: Clock;
+  readonly durationsMs: number[];
 }
 
 interface Judged {
@@ -61,7 +66,7 @@ const askAll = async (
   retrievals: readonly Retrieved[],
   gateway: ModelGateway,
   strategy: VerifierStrategy,
-  timing: { readonly clock: Clock; readonly durationsMs: number[] },
+  timing: AskTiming,
 ): Promise<readonly AskedQuestion[]> => {
   const deps = { gateway, strategy, thresholds: PROVISIONAL_NLI_THRESHOLDS };
   const asked: AskedQuestion[] = [];
@@ -134,7 +139,7 @@ const pick = <T>(map: ReadonlyMap<VerifierStrategy, T>, strategy: VerifierStrate
 };
 
 const NOT_YET = {
-  exams: 'no exam generator exists until M3/M4 (docs/plan.md §8), so no generated question',
+  exams: 'no exam generator exists until M4 (docs/plan.md §8), so no generated question',
   marks:
     'no synthetic student answer carries hand marks (docs/tech-debt.md, the grading-agreement hand-marks entry)',
   derived: 'no OCR adapter derives text from imageOnly slides until #108',

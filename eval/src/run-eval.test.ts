@@ -14,7 +14,7 @@ import type { IndexedLecture } from './index-retriever';
 import { RecordingGateway } from './recording-gateway';
 import { runEval, type EvalRunSpec } from './run-eval';
 import { record } from './run-fixture';
-import { type Respond, SAMPLING, ScriptedGateway } from './scripted-gateway';
+import { type Respond, SAMPLING, ScriptedGateway } from './scripted-gateway-fixture';
 
 const COURSE = CourseId.parse('hollowmere');
 

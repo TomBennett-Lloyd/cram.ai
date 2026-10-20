@@ -1,7 +1,7 @@
 import { type ChatRequest, OutputName } from '@cram/gateway';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { LENGTH_RERANKER, ScriptedGateway } from './scripted-gateway';
+import { LENGTH_RERANKER, ScriptedGateway } from './scripted-gateway-fixture';
 import { TimedGateway } from './timed-gateway';
 
 const request: ChatRequest<unknown> = {
