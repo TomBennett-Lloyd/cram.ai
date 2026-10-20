@@ -240,11 +240,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #66 — gateway-egress-entries-onnxruntime-node-global-agent
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide:
   - grant `.claude/network-egress.allowlist` entries for `onnxruntime-node` (MIT), which `check:no-network-egress` flags on its builtin arm for `script/install-utils.js` (run by its postinstall `script/install.js` to fetch the linux-x64 CUDA provider) and `script/build.js` (its from-source build driver, which nothing runs), and which also ships native `bin/napi-v6/<platform>/onnxruntime_binding.node` binaries — the encoder runtime `docs/adr/0003-model-roles-and-backends.md` § Decision (c) names, loading weights from local paths only (§ Decision (i)) — and for `global-agent`, its proxy bootstrap, flagged on the builtin arm and required only by `script/install.js`;
   - accept `allowBuilds: onnxruntime-node: false` in `pnpm-workspace.yaml`: the CPU binaries ship inside the tarball for win32-x64 and darwin-arm64 (A8 checked against 1.30.0), and the postinstall would fetch only the linux-x64 CUDA execution provider from NuGet;
   - accept the plan comment's divergences from the issue: `Embedder.embed` and `Reranker.rerank` return per-item results with an `over-length` arm, changing #12's interface, `Recording` and `FakeGateway`; the tokenizer and config sidecars are read from the snapshot but not digest-verified, because the pin shape is ADR 0003 (e)'s (#124); no real-artefact run ships here (#47's tier-2 run).
 - **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path — each entry is an exception to `CLAUDE.md` § Hard constraints that only the owner grants (#18).
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved, no changes — owner approved in chat on 2026-10-20 ("nice approve all those PRs")
