@@ -18,7 +18,7 @@ export {
 export { rewriteRequest, RewriteReply } from './prompts/rewrite-prompt';
 export { VerdictReply, verifierRequest } from './prompts/verifier-prompt';
 export { type Resolution, type ResolvedUnit, resolveCitations } from './resolve-citations';
-export { type RetrievedSlide, slideText } from './slide-text';
+export { slideText } from './slide-text';
 export {
   PROVISIONAL_VERIFIER_STRATEGY,
   type VerifyDeps,

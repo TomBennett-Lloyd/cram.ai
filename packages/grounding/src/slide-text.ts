@@ -1,9 +1,4 @@
-import type { SlideRecord, SourceId } from '@cram/shared';
-
-export interface RetrievedSlide {
-  readonly sourceId: SourceId;
-  readonly record: SlideRecord;
-}
+import type { SlideRecord } from '@cram/shared';
 
 /** What the generator is shown and what a quote must come from: one function, so the two cannot differ. */
 export const slideText = (record: SlideRecord): string =>

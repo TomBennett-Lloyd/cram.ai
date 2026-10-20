@@ -94,6 +94,17 @@ describe('ground', () => {
     });
   });
 
+  it('verifies a unit against the union of all its quotes', async () => {
+    const both = { text: 'Workers are male and build square cells.', citations: [male, square] };
+    await expect(run([generated(both), nli(both.text, both.citations, ENTAILED)])).resolves.toEqual(
+      {
+        status: 'grounded',
+        shown: [answer(both.text, both.citations)],
+        withheld: [],
+      },
+    );
+  });
+
   it('withholds a partial unit under drop, naming the policy', async () => {
     const partial = { text: PARTIAL_TEXT, citations: [male] };
     await expect(

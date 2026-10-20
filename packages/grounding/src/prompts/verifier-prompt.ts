@@ -15,7 +15,7 @@ Give one verdict:
 - partial: the quotes say some of what the statement says, and not the rest.
 - unsupported: the quotes say none of it, or they say the opposite of any part of it.
 
-The quotes come first, each inside a <quote> tag, then the statement inside a <statement> tag.`;
+The input is a JSON object: "quotes" is the list of quotes, and "statement" is the statement.`;
 
 const VERDICT = OutputName.parse('verdict');
 

@@ -1,5 +1,5 @@
-import type { Citation, SourceId, Unit, WithheldUnit } from '@cram/shared';
-import { type RetrievedSlide, slideText } from './slide-text';
+import type { Citation, RetrievedSlide, SourceId, Unit, WithheldUnit } from '@cram/shared';
+import { slideText } from './slide-text';
 import type { Quotes } from './verifier-input';
 
 export interface ResolvedUnit {

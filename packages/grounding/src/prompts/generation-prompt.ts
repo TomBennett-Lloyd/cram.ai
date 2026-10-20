@@ -1,7 +1,7 @@
 import { type ChatRequest, OutputName } from '@cram/gateway';
-import { Unit } from '@cram/shared';
+import { type RetrievedSlide, Unit } from '@cram/shared';
 import { z } from 'zod';
-import { type RetrievedSlide, slideText } from '../slide-text';
+import { slideText } from '../slide-text';
 
 export const GeneratedUnits = z.strictObject({
   units: z.array(z.strictObject({ text: Unit.shape.text, citations: Unit.shape.citations })),

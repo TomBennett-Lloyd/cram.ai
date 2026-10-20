@@ -1,8 +1,7 @@
 import type { Generator } from '@cram/gateway';
-import type { Unit } from '@cram/shared';
+import type { RetrievedSlide, Unit } from '@cram/shared';
 import type { ModelFailure } from './model-failure';
 import { type GenerationTask, generationRequest } from './prompts/generation-prompt';
-import type { RetrievedSlide } from './slide-text';
 
 export type GenerationOutcome =
   | { readonly status: 'generated'; readonly units: readonly Unit[] }

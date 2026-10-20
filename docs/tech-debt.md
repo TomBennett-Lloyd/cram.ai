@@ -195,6 +195,13 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: a blank or untrimmed tag is accepted. A `TopicTag` schema belongs in `@cram/shared` (`docs/standards/architecture.md` rule 2), for the ticket that builds the tag pass (`docs/plan.md` §3.2).
 - Source: #11 review cycle 1
 
+## 2026-10-20 — no owner says whether an in-text slide attribution is a claim the verifier judges
+
+- Where: `docs/adr/0001-grounding-architecture.md` § Decision (d); `eval/labels/verifier.jsonl` (its first label, reworded to "Your slides say worker bees are male." to avoid the question)
+- What: a unit reading "lecture 4, slide 12 says …" (the reporter phrasing `CLAUDE.md` § Hard constraints uses) names a lecture its quotes cannot show, and resolution checks only `sourceId` and quote. Whether the verifier treats the attribution as a claim or ignores it as framing is unowned; #13's claim split, or an ADR 0001 amendment, decides, and the hand labels follow.
+- Source: #14 review cycle 1
+- Update 2026-10-20 (#13): the generation and rewrite prompts (`packages/grounding/src/prompts/generation-prompt.ts`, `packages/grounding/src/prompts/rewrite-prompt.ts`) ask for no lecture or slide name in a unit's text, and `splitClaims` (`packages/grounding/src/claims.ts`) strips nothing. Whether the verifier credits a frame the model writes anyway is still unowned.
+
 ## 2026-10-20 — mustNotContain and resolution normalise whitespace but not typographic apostrophes
 
 - Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (c); `docs/standards/grounding.md` rule 3; `eval/src/golden-question.ts` `firstForbiddenEntry`

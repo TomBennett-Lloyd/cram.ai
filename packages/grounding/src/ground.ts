@@ -1,10 +1,9 @@
-import type { PartialPolicy, Unit, Verdict, WithheldUnit } from '@cram/shared';
+import type { PartialPolicy, RetrievedSlide, Unit, Verdict, WithheldUnit } from '@cram/shared';
 import { generateUnits } from './generate-units';
 import type { ModelFailure } from './model-failure';
 import type { GenerationTask } from './prompts/generation-prompt';
 import { rewriteRequest } from './prompts/rewrite-prompt';
 import { type ResolvedUnit, resolveCitations } from './resolve-citations';
-import type { RetrievedSlide } from './slide-text';
 import { type VerifyDeps, verifyStatement } from './verify';
 
 export interface GroundingDeps extends VerifyDeps {

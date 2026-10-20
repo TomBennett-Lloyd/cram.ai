@@ -10,7 +10,7 @@ export type RewriteReply = z.infer<typeof RewriteReply>;
 const INSTRUCTIONS = `You rewrite one statement from a student's study material so that it says only what its quotes from the student's lecture slides say.
 Keep every part of the statement the quotes say. Remove or narrow every part they do not. Add nothing the quotes do not say, and do not name a lecture or a slide.
 
-The quotes come first, each inside a <quote> tag, then the statement inside a <statement> tag. Reply with the rewritten statement.`;
+The input is a JSON object: "quotes" is the list of quotes, and "statement" is the statement. Reply with the rewritten statement.`;
 
 const REWRITE = OutputName.parse('rewrite');
 

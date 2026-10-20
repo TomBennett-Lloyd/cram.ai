@@ -54,7 +54,7 @@ const llmVerdict = async (input: VerifierInput, deps: VerifyDeps): Promise<Verif
     : { status: 'model-failed', failure: result };
 };
 
-/** An over-length input is never truncated: the second opinion judges it, or it fails closed (§ Decision (d), as above). */
+/** An over-length input is never truncated: the second opinion judges it, or it fails closed (`docs/adr/0003-model-roles-and-backends.md` § Decision (d)). */
 export const verifyStatement = async (
   input: VerifierInput,
   deps: VerifyDeps,

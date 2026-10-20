@@ -8,9 +8,8 @@ import {
   PROVISIONAL_DEFAULT_PINS,
   type Recording,
 } from '@cram/gateway';
-import { type Citation, SlideRecord, SourceId, type Unit } from '@cram/shared';
+import { type Citation, type RetrievedSlide, SlideRecord, SourceId, type Unit } from '@cram/shared';
 import type { EntailmentScores } from './nli-verdict';
-import type { RetrievedSlide } from './slide-text';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
 const sampling = { temperature: 0, seed: 0 };
