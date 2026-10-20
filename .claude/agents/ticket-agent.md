@@ -2,6 +2,7 @@
 name: ticket-agent
 description: Owns one GitHub issue end to end in its own worktree — plan comment, inline implementation, one targeted review, PR, one durable report. Dispatched by /run-issue for every single issue. Never merges.
 model: opus
+effort: high
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
