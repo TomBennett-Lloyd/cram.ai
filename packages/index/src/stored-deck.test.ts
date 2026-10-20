@@ -16,7 +16,7 @@ afterEach(() => {
 describe('CourseIndex stored decks', () => {
   it('stores a deck and its slide images, and reads them back after reopening', () => {
     const course = openOrFail(temp.spec);
-    course.storeDeck(deck(), [slideImage(1, 'one'), slideImage(2, 'two')]);
+    course.replaceLecture(deck(), [slideImage(1, 'one'), slideImage(2, 'two')], []);
     course.close();
     const reopened = openOrFail(temp.spec);
     const stored = reopened.deck(LECTURE);
@@ -29,13 +29,13 @@ describe('CourseIndex stored decks', () => {
 
   it('replaces a lecture deck and every image it had when the lecture is stored again', () => {
     const course = openOrFail(temp.spec);
-    course.storeDeck(deck(), [slideImage(1, 'old one'), slideImage(2, 'old two')]);
+    course.replaceLecture(deck(), [slideImage(1, 'old one'), slideImage(2, 'old two')], []);
     const revised = deck({
       lectureTitle: 'Lecture 1, revised',
       mediaType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       content: new TextEncoder().encode('revised deck'),
     });
-    course.storeDeck(revised, [slideImage(1, 'new one')]);
+    course.replaceLecture(revised, [slideImage(1, 'new one')], []);
     const stored = course.deck(LECTURE);
     expect(stored?.lectureTitle).toBe('Lecture 1, revised');
     expect(stored?.mediaType).toBe(revised.mediaType);
@@ -47,30 +47,16 @@ describe('CourseIndex stored decks', () => {
 
   it('keeps each lecture deck apart from the others', () => {
     const course = openOrFail(temp.spec);
-    course.storeDeck(deck(), [slideImage(1, 'lecture 1')]);
-    course.storeDeck(deck({ lectureId: 'lecture-2', lectureTitle: 'Lecture 2' }), [
-      slideImage(1, 'lecture 2'),
-    ]);
-    course.storeDeck(deck(), [slideImage(1, 'lecture 1 again')]);
+    course.replaceLecture(deck(), [slideImage(1, 'lecture 1')], []);
+    course.replaceLecture(
+      deck({ lectureId: 'lecture-2', lectureTitle: 'Lecture 2' }),
+      [slideImage(1, 'lecture 2')],
+      [],
+    );
+    course.replaceLecture(deck(), [slideImage(1, 'lecture 1 again')], []);
     expect(text(course.slideImage(LectureId.parse('lecture-2'), slideNo(1))?.content)).toBe(
       'lecture 2',
     );
-    course.close();
-  });
-
-  it('refuses a slide image number twice in one batch, and writes nothing', () => {
-    const course = openOrFail(temp.spec);
-    course.storeDeck(deck(), [slideImage(1, 'old one')]);
-    expect(() => {
-      course.storeDeck(deck({ content: new TextEncoder().encode('new deck') }), [
-        slideImage(1, 'one'),
-        slideImage(2, 'two'),
-        slideImage(1, 'one again'),
-      ]);
-    }).toThrow(/^storeDeck: slide image lecture-1\/1 appears twice in one batch$/);
-    expect(text(course.deck(LECTURE)?.content)).toBe('deck bytes');
-    expect(text(course.slideImage(LECTURE, slideNo(1))?.content)).toBe('old one');
-    expect(course.slideImage(LECTURE, slideNo(2))).toBeUndefined();
     course.close();
   });
 

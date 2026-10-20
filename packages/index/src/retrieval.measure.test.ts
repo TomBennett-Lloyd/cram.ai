@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { indexed, openOrFail, slide, storeDecks, tempCourse } from './course-fixture';
+import { indexed, indexLectures, openOrFail, slide, tempCourse } from './course-fixture';
 import { EmbedderIdentity } from './embedder-identity';
 
 // docs/adr/0004-storage.md § Decision (f) asks for latency and size at course scale.
@@ -34,10 +34,6 @@ describe.runIf(process.env.CRAM_MEASURE === '1')('retrieval at course scale', ()
     const temp = tempCourse(embedder);
     try {
       const course = openOrFail(temp.spec);
-      storeDecks(
-        course,
-        Array.from({ length: LECTURES }, (_, index) => `lecture-${String(index)}`),
-      );
       const slides = Array.from({ length: SLIDES }, (_, index) =>
         indexed(
           slide({
@@ -49,7 +45,7 @@ describe.runIf(process.env.CRAM_MEASURE === '1')('retrieval at course scale', ()
         ),
       );
       const started = performance.now();
-      course.upsertSlides(slides);
+      indexLectures(course, slides);
       const indexedMs = performance.now() - started;
       course.close();
       const sizeMiB = statSync(temp.spec.path).size / 2 ** 20;
