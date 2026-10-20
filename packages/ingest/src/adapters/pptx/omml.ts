@@ -13,7 +13,7 @@ const childNamed = (element: Element | undefined, name: string): Element | undef
 const childrenNamed = (element: Element, name: string): Element[] =>
   childrenOf(element).filter((child) => child.localName === name);
 
-/** A character property's `m:val`; an absent property takes ECMA-376 Part 1 § 22.1.2's default, while an empty value means no character. */
+/** A property's `m:val`; an absent property takes ECMA-376 Part 1 § 22.1.2's default, while an empty value means no character. */
 const propertyOf = (element: Element, properties: string, name: string, fallback: string): string =>
   childNamed(childNamed(element, properties), name)?.getAttributeNS(NS.m, 'val') ?? fallback;
 
@@ -23,6 +23,9 @@ const argument = (element: Element, name: string, read: Read): string => {
   const child = childNamed(element, name);
   return child === undefined ? '' : read(child);
 };
+
+/** `ST_OnOff`'s false values (ECMA-376 Part 1 § 22.9.2.7). */
+const OFF: ReadonlySet<string> = new Set(['off', 'false', '0']);
 
 /** A run of letters and digits, or one character. */
 const ATOM = /^(?:[\p{L}\p{N}]+|.)$/u;
@@ -44,10 +47,9 @@ const script = (element: Element, name: string, operator: string, read: Read): s
   argument(element, name, read) === '' ? '' : `${operator}${operand(element, name, read)}`;
 
 /**
- * Each construct's linear form, borrowed from UnicodeMath (Unicode Technical Note #28) but spaced
- * after an n-ary operator or a function name where it writes `▒` or U+2061, since students read quotes.
- * An element absent here reads as its children in order: arguments (`m:e`, `m:num`, …), runs, the
- * wrappers `m:box`, `m:borderBox` and `m:phant`, and properties, which hold no `m:t`.
+ * Each construct's linear form, borrowed from UnicodeMath (Unicode Technical Note #28). An element
+ * absent here reads as its children in order: arguments (`m:e`, `m:num`, …), runs, the wrappers
+ * `m:box` and `m:borderBox`, and properties, which hold no `m:t`.
  */
 const CONSTRUCTS: ReadonlyMap<string, Construct> = new Map<string, Construct>([
   ['t', (element) => element.textContent ?? ''],
@@ -127,6 +129,12 @@ const CONSTRUCTS: ReadonlyMap<string, Construct> = new Map<string, Construct>([
         .join('; '),
   ],
   ['eqArr', (element, read) => childrenNamed(element, 'e').map(read).join('; ')],
+  /** A phantom shown off takes space on the slide but shows nothing, so it reads as nothing. */
+  [
+    'phant',
+    (element, read) =>
+      OFF.has(propertyOf(element, 'phantPr', 'show', 'on')) ? '' : argument(element, 'e', read),
+  ],
 ]);
 
 /** An `a14:m` equation as one line of text, so a quote can cite it verbatim (#126). */

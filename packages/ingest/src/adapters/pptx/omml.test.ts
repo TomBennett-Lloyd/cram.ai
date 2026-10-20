@@ -47,7 +47,8 @@ describe('linearOmml', () => {
   });
 
   describe('operand brackets', () => {
-    it('leaves a run of letters or of digits, and a single character, unbracketed', () => {
+    it('leaves a run of letters and digits, and a single character, unbracketed', () => {
+      expect(linear(oMath(sup(r('x'), r('2n'))))).toBe('x^2n');
       expect(linear(oMath(construct('sSub', [], e(r('x')), arg('sub', r('ij')))))).toBe('x_ij');
       expect(linear(oMath(sup(r('10'), r('23'))))).toBe('10^23');
       expect(linear(oMath(sup(r('x'), r('∞'))))).toBe('x^∞');
@@ -58,6 +59,26 @@ describe('linearOmml', () => {
       expect(linear(oMath(sup(r('x'), r('-n'))))).toBe('x^(-n)');
       expect(linear(oMath(sup(r('x'), r('n-'))))).toBe('x^(n-)');
       expect(linear(oMath(sup(r('e'), sup(r('x'), r('2')))))).toBe('e^(x^2)');
+    });
+
+    it('brackets an empty base, so the script keeps a base to attach to', () => {
+      expect(linear(oMath(sup('', r('2'))))).toBe('()^2');
+    });
+
+    it('brackets a compound base, denominator or accented operand', () => {
+      const xy = r('x+y');
+      expect(linear(oMath(construct('f', [], arg('num', r('a')), arg('den', xy))))).toBe('a/(x+y)');
+      expect(linear(oMath(sup(xy, r('2'))))).toBe('(x+y)^2');
+      expect(linear(oMath(construct('sSub', [], e(xy), arg('sub', r('i')))))).toBe('(x+y)_i');
+      expect(
+        linear(oMath(construct('sSubSup', [], e(xy), arg('sub', r('i')), arg('sup', r('2'))))),
+      ).toBe('(x+y)_i^2');
+      expect(
+        linear(oMath(construct('sPre', [], arg('sub', r('1')), arg('sup', r('2')), e(xy)))),
+      ).toBe('_1^2 (x+y)');
+      expect(linear(oMath(construct('limLow', [], e(xy), arg('lim', r('n')))))).toBe('(x+y)_n');
+      expect(linear(oMath(construct('limUpp', [], e(xy), arg('lim', r('n')))))).toBe('(x+y)^n');
+      expect(linear(oMath(construct('acc', [], e(xy))))).toBe('(x+y)\u0302');
     });
 
     it('does not bracket a delimiter group again, beside properties that show nothing', () => {
@@ -91,7 +112,7 @@ describe('linearOmml', () => {
     expect(linear(oMath(construct('rad', [], arg('deg', r('3')), e(r('x+1')))))).toBe('√(3&x+1)');
   });
 
-  it('reads an n-ary operator, an integral by default, with its limits and then its operand', () => {
+  it('reads an n-ary operator, an integral by default, with its limits and then its argument', () => {
     expect(
       linear(
         oMath(
@@ -177,8 +198,16 @@ describe('linearOmml', () => {
     expect(
       linear(oMath(construct('box', [], e(r('x'))), construct('borderBox', [], e(r('y'))))),
     ).toBe('xy');
-    expect(linear(oMath(construct('phant', [], e(r('z')))))).toBe('z');
     expect(linear(oMath(arg('unlisted', r('a'), sup(r('b'), r('2')))))).toBe('ab^2');
+  });
+
+  it('reads a phantom as its contents unless it is shown off', () => {
+    expect(linear(oMath(construct('phant', [], e(r('z')))))).toBe('z');
+    expect(linear(oMath(construct('phant', [['show', 'on']], e(r('z')))))).toBe('z');
+    for (const off of ['off', 'false', '0'])
+      expect(linear(oMath(r('a'), construct('phant', [['show', off]], e(r('z'))), r('b')))).toBe(
+        'ab',
+      );
   });
 
   it('reads each equation of a display paragraph, spaced', () => {
