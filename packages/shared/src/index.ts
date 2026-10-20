@@ -10,4 +10,5 @@ export { WithheldUnit } from './withheld';
 export { ApiRefusal } from './api-refusal';
 export { AskReply, AskRequest } from './ask';
 export { CourseList } from './course-list';
+export { RouteCourseId } from './route-course-id';
 export { IngestStatus, Upload, UploadId, UploadProgress } from './ingest-status';

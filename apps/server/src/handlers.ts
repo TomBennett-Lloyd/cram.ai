@@ -7,10 +7,11 @@ import {
   type IngestStatus,
   LectureId,
   NonBlankText,
+  RouteCourseId,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
-import { courseExists, RouteCourseId, storedCourses } from './course-file';
+import { courseExists, storedCourses } from './course-file';
 import { readBody, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 

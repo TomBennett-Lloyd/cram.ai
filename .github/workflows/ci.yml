@@ -137,6 +137,57 @@ jobs:
       # step never runs.
       - run: pnpm verify:full
 
+  # The two jobs that build apps/web, and the two exceptions to the rule above that CI calls the
+  # composite and never a hand-picked gate (#19, ported from cumulo). `verify` builds nothing and
+  # stays browser-free, so a developer who has never run `playwright install` can still run it;
+  # these run in parallel with `checks`, so wall time is unchanged, and a red one names its
+  # surface. The bundle budget lives only in .claude/scripts/check-web-bundle.sh, whose harness
+  # is already in `verify` (run-script-tests.sh discovers it).
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: build web (production)
+        run: pnpm --filter @cram/web build
+      - name: assert bundle properties
+        run: bash .claude/scripts/check-web-bundle.sh
+
+  # The browser lane: Playwright drives the production build in a real Chromium, against the
+  # webServer apps/web/e2e/playwright.config.ts owns, with the server's API stubbed at the network
+  # boundary (apps/web/e2e/hermetic-api.ts), so no service is needed. Locally:
+  # `pnpm --filter @cram/web exec playwright install chromium`, once, then
+  # `pnpm --filter @cram/web test:e2e`. Its specs' typecheck is in `verify` already (the web
+  # package's `typecheck` runs `tsc -p e2e`).
+  web-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Chromium only, the one engine both projects launch; --with-deps installs the system
+      # libraries a bare runner lacks.
+      - name: install chromium (+ system deps)
+        run: pnpm --filter @cram/web exec playwright install --with-deps chromium
+      - name: e2e (playwright)
+        run: pnpm --filter @cram/web test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          if-no-files-found: error
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

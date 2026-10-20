@@ -1,0 +1,329 @@
+/*
+ * The app's styles, on @cram/ui's tokens only (stylelint.config.mjs). A hairline is a quarter of
+ * the smallest space step, since no border-width token exists.
+ */
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+/* A reading measure for prose, not a layout breakpoint. */
+.app-header,
+.screen {
+  box-sizing: border-box;
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-6);
+  padding-block: var(--space-4);
+}
+
+.app-name {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+  text-decoration-line: none;
+}
+
+.course-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.course-name {
+  color: var(--color-text-muted);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+.course-nav a[aria-current='page'] {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  text-decoration-line: none;
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block-end: var(--space-12);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+input:not([type='file']) {
+  flex: 1;
+  min-inline-size: 0;
+  padding: var(--space-2) var(--space-3);
+  border-width: calc(var(--space-1) / 4);
+  border-style: solid;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.field-row,
+.ask-form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.new-course,
+.file-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pending,
+.empty,
+.failed,
+.not-covered {
+  margin: 0;
+}
+
+.pending,
+.empty {
+  color: var(--color-text-muted);
+}
+
+.pending p {
+  margin: 0;
+}
+
+.failed {
+  padding-inline-start: var(--space-3);
+  border-inline-start-width: var(--space-1);
+  border-inline-start-style: solid;
+  border-inline-start-color: var(--color-danger);
+}
+
+.course-list,
+.upload-list,
+.answer,
+.citations,
+.withheld ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.course-list,
+.upload-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.upload {
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-file {
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.upload-progress {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.reply {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.unit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.unit-text {
+  margin: 0;
+}
+
+.citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.citation-missing {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.closest-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.slide-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* A card names a slide; a long title wraps rather than stretching the row. */
+  max-inline-size: 16rem;
+  padding: var(--space-2) var(--space-3);
+  border-width: calc(var(--space-1) / 4);
+  border-style: solid;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: start;
+}
+
+.slide-card-lecture,
+.slide-card-number {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.slide-card-title {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.withheld summary {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.withheld ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+}
+
+.withheld-text,
+.withheld-reason {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.withheld-reason {
+  font-size: var(--text-sm);
+}
+
+.slide-dialog {
+  box-sizing: border-box;
+  inline-size: calc(100% - 2 * var(--space-4));
+  /* The slide reads as a page of prose; e2e/layout.spec.ts holds that it fits a phone. */
+  max-inline-size: 40rem;
+  max-block-size: calc(100% - 2 * var(--space-8));
+  padding: var(--space-6);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.slide-dialog::backdrop {
+  background: var(--color-shadow);
+}
+
+.slide-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.slide-dialog h2 {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.icon-button {
+  padding: 0 var(--space-2);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+
+.slide-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+
+.slide-body,
+.slide-aside p {
+  margin: var(--space-3) 0 0;
+  white-space: pre-line;
+}
+
+.slide-aside h4 {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+mark {
+  background: transparent;
+  color: inherit;
+  font-weight: var(--font-weight-semibold);
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: calc(var(--space-1) / 2);
+}
