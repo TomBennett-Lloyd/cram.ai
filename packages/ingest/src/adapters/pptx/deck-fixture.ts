@@ -7,7 +7,7 @@ export const SLIDE_RELATIONSHIP =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide';
 const IMAGE_RELATIONSHIP =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
-const NAMESPACES = `xmlns:a="${NS.a}" xmlns:p="${NS.p}" xmlns:r="${NS.r}" xmlns:mc="${NS.mc}"`;
+const NAMESPACES = `xmlns:a="${NS.a}" xmlns:p="${NS.p}" xmlns:r="${NS.r}" xmlns:mc="${NS.mc}" xmlns:a14="${NS.a14}" xmlns:m="${NS.m}"`;
 /** APPNOTE.txt 4.4.5's method number for LZMA, which fflate does not inflate. */
 const LZMA = 14;
 
@@ -22,6 +22,9 @@ export const run = (text: string, size?: string): string =>
 export const lineBreak = '<a:br/>';
 export const slideNumberField = (text: string): string =>
   `<a:fld id="{0}" type="slidenum"><a:t>${escape(text)}</a:t></a:fld>`;
+
+/** An inline equation: `omml` is the `m:oMath` or `m:oMathPara` PowerPoint writes inside `a14:m`. */
+export const equation = (omml: string): string => `<a14:m>${omml}</a14:m>`;
 
 export const paragraphOf = (...runs: readonly string[]): string =>
   `<a:p>${runs.join('')}<a:endParaRPr/></a:p>`;
