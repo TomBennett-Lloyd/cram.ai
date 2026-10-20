@@ -34,6 +34,19 @@ afterEach(async () => {
 const status = (path: string, headers: Record<string, string> = {}, method = 'GET') =>
   send(test.server.port, { method, path, headers }).then((received) => received.status);
 
+/** The status line of a request written by hand, so it can omit what `node:http` always sends. */
+const rawStatusLine = (port: number, request: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const socket = connect({ host: '127.0.0.1', port });
+    let received = '';
+    socket.on('data', (chunk: Buffer) => (received += chunk.toString('latin1')));
+    socket.on('end', () => {
+      resolve(received.split('\r\n')[0] ?? '');
+    });
+    socket.on('error', reject);
+    socket.end(request);
+  });
+
 describe('startServer', () => {
   it('listens on the loopback interface only', async () => {
     expect(test.server.boundAddress()).toBe('127.0.0.1');
@@ -51,6 +64,9 @@ describe('startServer', () => {
     expect(await status(path, { host: `evil.example:${String(port)}` })).toBe(403);
     expect(await status(path, { host: `127.0.0.1:${String(port + 1)}` })).toBe(403);
     expect(await status(path, { host: '127.0.0.1' })).toBe(403);
+    expect(await rawStatusLine(port, `GET ${path} HTTP/1.0\r\n\r\n`)).toBe(
+      'HTTP/1.1 403 Forbidden',
+    );
   });
 
   it('refuses a request a browser sent from another origin', async () => {
@@ -65,17 +81,52 @@ describe('startServer', () => {
   });
 
   it('answers an unknown path with 404 and a known one with the wrong method with 405', async () => {
-    expect(await status('/courses/bio/toString')).toBe(404);
-    expect(await status('/courses/bio/ingest/extra')).toBe(404);
-    expect(await status('/')).toBe(404);
-    expect(await status('/x/courses/bio/ingest')).toBe(404);
-    expect(await status('/courses/a/b/ingest')).toBe(404);
+    for (const path of [
+      '/courses/bio/toString',
+      '/courses/bio/ingest/extra',
+      '/',
+      '/x/courses/bio/ingest',
+      '/courses/a/b/ingest',
+    ]) {
+      const unknown = await send(test.server.port, { method: 'GET', path });
+      expect(unknown.status, path).toBe(404);
+      expect(unknown.json, path).toEqual({ status: 'not-found' });
+    }
     const wrong = await send(test.server.port, { method: 'POST', path: '/courses/bio/ingest' });
     expect(wrong.status).toBe(405);
     expect(wrong.headers.allow).toBe('GET');
     expect(wrong.json).toEqual({ status: 'method-not-allowed' });
     expect(await status('/courses/bio/ask', {}, 'GET')).toBe(405);
     expect(await status('/courses/bio/decks', {}, 'GET')).toBe(405);
+  });
+
+  it('marks every response uncacheable and unsniffable, and grants no other origin a read', async () => {
+    const { headers } = await send(test.server.port, {
+      method: 'GET',
+      path: '/courses/bio/ingest',
+    });
+    expect(headers['cache-control']).toBe('no-store');
+    expect(headers['x-content-type-options']).toBe('nosniff');
+    expect(Object.keys(headers).filter((name) => name.startsWith('access-control-'))).toEqual([]);
+  });
+
+  it('closes with a request still sending its body', async () => {
+    const own = await startTestServer();
+    const { port } = own.server;
+    const socket = connect({ host: '127.0.0.1', port });
+    socket.on('error', () => undefined);
+    await new Promise<void>((resolve) => socket.once('connect', resolve));
+    const head = [
+      'POST /courses/bio/decks?lectureId=l1&fileName=a.pdf HTTP/1.1',
+      `Host: 127.0.0.1:${String(port)}`,
+      'Content-Type: application/pdf',
+      'Content-Length: 1000',
+    ];
+    socket.write(`${head.join('\r\n')}\r\n\r\n%PDF`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const dropped = new Promise((resolve) => socket.once('close', resolve));
+    await stopTestServer(own);
+    await dropped;
   });
 });
 
@@ -101,5 +152,17 @@ describe('startServer, before it listens', () => {
         log: () => undefined,
       }),
     ).rejects.toThrow('returned 0 vectors for 1 texts');
+    const extra: Embedder = {
+      pin: new WordEmbedder().pin,
+      embed: () => Promise.resolve([new Float32Array(8), new Float32Array(8)]),
+    };
+    await expect(
+      startServer({
+        gateway: gatewayOf([], extra),
+        dataDir: '/nonexistent',
+        port: 0,
+        log: () => undefined,
+      }),
+    ).rejects.toThrow('returned 2 vectors for 1 texts');
   });
 });

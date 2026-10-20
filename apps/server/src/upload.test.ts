@@ -182,6 +182,7 @@ describe('GET /courses/:id/ingest', () => {
       expect(await statusOf(accepted), accepted).toBe(404);
     for (const refused of [
       'Bio',
+      '.bio',
       '-bio',
       'bio-',
       'bio_1',

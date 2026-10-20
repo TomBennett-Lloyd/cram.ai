@@ -157,12 +157,15 @@ describe('POST /courses/:id/ask', () => {
     expect((await askBio(test, JSON.stringify({ question: QUESTION }), 'text/plain')).status).toBe(
       415,
     );
-    const large = await askBio(test, JSON.stringify({ question: 'q'.repeat(MAX_ASK_BYTES) }));
+    const bodyOf = (bytes: number) => {
+      const body = JSON.stringify({ question: 'q'.repeat(bytes - '{"question":""}'.length) });
+      expect(body).toHaveLength(bytes);
+      return body;
+    };
+    const large = await askBio(test, bodyOf(MAX_ASK_BYTES + 1));
     expect(large.status).toBe(413);
     expect(large.json).toEqual({ status: 'payload-too-large' });
-    expect(
-      (await askBio(test, JSON.stringify({ question: 'q'.repeat(MAX_ASK_BYTES - 20) }))).status,
-    ).toBe(404);
+    expect((await askBio(test, bodyOf(MAX_ASK_BYTES))).status).toBe(404);
   });
 
   it('answers 500 when retrieval throws, logging the error by name alone', async () => {
