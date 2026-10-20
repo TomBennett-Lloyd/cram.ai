@@ -31,7 +31,7 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 ### 3.1 Ingest
 
 - Inputs: PDF and PPTX lecture decks; a text/PDF file of sample exam questions (and, ideally, a full sample paper so the exam _format_ can be mirrored — see §3.5).
-- Output: one **slide record** per slide, shaped by `SlideRecord` (`packages/shared/src/slide-record.ts`). The slide is the natural chunk; long slides split by heading, never mid-bullet.
+- Output: one **slide record** per slide, shaped by `SlideRecord` (`packages/shared/src/slide-record.ts`). The slide is the chunk. `body` holds one bullet or line per `\n` (`slideText`, `packages/ingest/src/slide-text.ts`), so a later split cuts between lines, never mid-bullet. Splitting a slide by heading waits for a content slide too long to embed whole, which the embedder reports as `over-length` (#66); the owner's sample deck has none (#77).
 - Image-only slides (diagrams, scanned tables) go through local OCR, and optionally a local vision model for a caption. **Derived text is flagged `derived: true`**; the UI shows it as such, and a citation to derived text displays the original image so the student checks it. This is the single largest quality risk (§9).
 - Sample exam questions are parsed into **style exemplars**: `{type: mcq | short | essay | case, stem, options?, marks?, sectionOf?}`. They are never used as a source of facts.
 
