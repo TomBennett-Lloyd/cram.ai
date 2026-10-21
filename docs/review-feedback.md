@@ -392,11 +392,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #115 — adr-status-one-parser-and-ledger
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide whether `docs/adr/README.md`'s **Status** bullet now states the rule both scripts enforce:
   - accept "exactly one `Status:` line" in the header. `check-adr-index.sh` used to read the first of several and now fails a second, because `fill-verdict.sh` already refused one at merge. No ADR on main carries two;
   - accept the bullet as the vocabulary's owner, naming `.claude/ledgers/adr-status-vocabulary.ledger`, with the template listed as a carrier rather than made the owner. A template carrying the ledger path would copy it into every new ADR;
   - accept the bullet's sentence naming `.claude/scripts/adr-status-lib.sh` as the one parser of the line, used by the gate and by the accept flip.
 - **Why**: `docs/adr/**` is a `humanAlways` path, and this bullet is the convention every ADR's header is held to, so the wording is the owner's to approve.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: Owner, chat, 2026-10-21: "approve 269, 175, 199, 204, 259". Approved, no changes.
