@@ -168,3 +168,8 @@ Entry format:
 
 - Phase: planning
 - Observed: the #254 lane pasted its restatement sweep's output into the plan comment from memory before running the command, and dropped a line; it noticed and fixed the comment before the first edit. `.claude/agents/ticket-agent.md` § 2 asks for the command and its output, and the output it got was a recollection. One ticket so far.
+
+## 2026-10-21 — PR #270
+
+- Phase: planning
+- Observed: the #247 plan's restatement sweep missed `docs/friction-log.md:120`, a dated and still-true carrier of #228's mechanism, because its claim family was the test's wording and not the behaviour ("pressed Tab before the answer rendered"); no edit turned out to be owed. Second sweep-shape miss today after PR #267's (an output pasted before its command ran); both were caught inside the lane.
