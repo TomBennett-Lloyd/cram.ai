@@ -9,5 +9,4 @@ carrier: .claude/agents/task-orchestrator.md
 carrier: .claude/skills/retro/SKILL.md
 carrier: .claude/skills/review-loop/SKILL.md
 carrier: .claude/skills/triage/SKILL.md
-carrier: .claude/workflow.json
 carrier: CLAUDE.md
