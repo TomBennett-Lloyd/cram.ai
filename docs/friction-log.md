@@ -93,3 +93,8 @@ Entry format:
 
 - Phase: implementation
 - Observed: the frontend-gate probe harness compares sets of `line:rule` pairs and merges duplicates, so it cannot see a rule reporting one fault twice; the #280 lane added a counting case for its own rule only. The lane also spent one fix round after removing comment handling on the measurement that postcss strips comments, which holds except for a comment with no whitespace on either side. One ticket so far on each.
+
+## 2026-10-21 — PR #310
+
+- Phase: planning
+- Observed: issue #295, written by the merge owner from the triage pass, placed the `run-issue` skill's DIRTY arm at "step 4"; on disk it is step 5, and the lane found that out by reading the file. An unchecked merge-owner claim reaching a lane in an issue body, the shape #295 itself captures (PRs #86, #246, #266/#269 were in a dispatch note and two bounces). Counts toward #295's measurement, which stays open until three bounces and ten reports have run under PR #310's text.
