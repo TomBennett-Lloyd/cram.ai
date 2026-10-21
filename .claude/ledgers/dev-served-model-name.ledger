@@ -16,3 +16,5 @@ excluded: docs/tech-debt.md
 excluded: package.json
 excluded: pnpm-workspace.yaml
 excluded: .claude/scripts/generator-pin.mjs
+excluded: eval/src/live-config.test.ts
+excluded: eval/src/live-gateway.test.ts

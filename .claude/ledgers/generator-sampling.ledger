@@ -5,7 +5,7 @@ owner: packages/gateway/src/model-gateway.ts
 claim: an eval report's determinism settings are the sampling its generator reports, never a value a caller passes beside it
 cite: packages/gateway/src/model-gateway.ts
 sweep: model-gateway\.ts|\.claude/ledgers/generator-sampling\.ledger|(?i:determinism)|generator\.sampling\b
-scope: :!pnpm-lock.yaml
+scope: :!pnpm-lock.yaml :!eval/reports/
 carrier: docs/adr/0005-evaluation-as-gate.md
 carrier: eval/src/report.ts
 carrier: eval/src/run-eval.ts
