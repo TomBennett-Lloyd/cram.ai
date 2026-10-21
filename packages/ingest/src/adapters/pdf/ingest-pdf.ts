@@ -56,11 +56,12 @@ const linesOf = (items: readonly unknown[]): TextLine[] => {
 
 type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
 
+/** Each page's text with pdf.js's own Unicode fold off, so `storedText`'s is the only one (#256). */
 const pagesOf = async (pdf: PdfDocument): Promise<PageText[]> => {
   const pages: PageText[] = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
-    const { items } = await page.getTextContent();
+    const { items } = await page.getTextContent({ disableNormalization: true });
     const annotations = z.array(Annotation).parse(await page.getAnnotations());
     const notes = annotations
       .filter((annotation) => annotation.subtype === 'Text')
