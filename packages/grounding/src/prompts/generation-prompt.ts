@@ -3,9 +3,12 @@ import { type RetrievedSlide, SourceId, Unit } from '@cram/shared';
 import { z } from 'zod';
 import { slideLines } from '../slide-text';
 
+export const SlideLineNo = z.number().int().brand<'SlideLineNo'>();
+export type SlideLineNo = z.infer<typeof SlideLineNo>;
+
 export const LineCitation = z.strictObject({
   sourceId: SourceId,
-  line: z.number().int(),
+  line: SlideLineNo,
 });
 export type LineCitation = z.infer<typeof LineCitation>;
 

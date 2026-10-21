@@ -15,6 +15,7 @@ export {
   type GenerationTask,
   generationRequest,
   LineCitation,
+  SlideLineNo,
 } from './prompts/generation-prompt';
 export { rewriteRequest, RewriteReply } from './prompts/rewrite-prompt';
 export { VerdictReply, verifierRequest } from './prompts/verifier-prompt';

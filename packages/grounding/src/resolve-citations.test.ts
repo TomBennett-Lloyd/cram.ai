@@ -74,6 +74,14 @@ describe('resolveCitations', () => {
     ]);
   });
 
+  it('looks a line up in, and checks it against, the same record when a source id repeats', () => {
+    const { resolved } = resolveCitations(
+      [draft('x', [line('l1/1', 1)])],
+      [slide('l1/1', 'foo'), slide('l1/1', 'bar')],
+    );
+    expect(resolved.map(({ quotes }) => quotes)).toEqual([['bar']]);
+  });
+
   it('keeps passing units in order and withholds the rest in order', () => {
     const units = [
       draft('a', [line('l1/1', 1)]),

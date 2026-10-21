@@ -2,6 +2,7 @@ import {
   type Citation,
   quoteSpan,
   type RetrievedSlide,
+  type SlideRecord,
   type SourceId,
   type Unit,
   type WithheldUnit,
@@ -21,19 +22,25 @@ export interface Resolution {
   readonly withheld: readonly WithheldUnit[];
 }
 
-const resolves = (citation: Citation, retrieved: readonly RetrievedSlide[]): boolean => {
-  const slide = retrieved.find(({ sourceId }) => sourceId === citation.sourceId);
-  return slide !== undefined && quoteSpan(slideText(slide.record), citation.quote) !== undefined;
+type Records = ReadonlyMap<SourceId, SlideRecord>;
+
+const recordsOf = (retrieved: readonly RetrievedSlide[]): Records =>
+  new Map(retrieved.map((slide) => [slide.sourceId, slide.record]));
+
+const resolves = (citation: Citation, records: Records): boolean => {
+  const record = records.get(citation.sourceId);
+  return record !== undefined && quoteSpan(slideText(record), citation.quote) !== undefined;
 };
 
-export const quotesResolve = (unit: Unit, retrieved: readonly RetrievedSlide[]): boolean =>
-  unit.citations.length > 0 && unit.citations.every((citation) => resolves(citation, retrieved));
+const quotesResolveIn = (unit: Unit, records: Records): boolean =>
+  unit.citations.length > 0 && unit.citations.every((citation) => resolves(citation, records));
 
-const quoted = (
-  citation: LineCitation,
-  linesById: ReadonlyMap<SourceId, readonly string[]>,
-): Citation | undefined => {
-  const quote = linesById.get(citation.sourceId)?.[citation.line - 1];
+export const quotesResolve = (unit: Unit, retrieved: readonly RetrievedSlide[]): boolean =>
+  quotesResolveIn(unit, recordsOf(retrieved));
+
+const quoted = (citation: LineCitation, records: Records): Citation | undefined => {
+  const record = records.get(citation.sourceId);
+  const quote = record === undefined ? undefined : slideLines(record)[citation.line - 1];
   return quote === undefined ? undefined : { sourceId: citation.sourceId, quote };
 };
 
@@ -42,15 +49,15 @@ export const resolveCitations = (
   units: readonly DraftUnit[],
   retrieved: readonly RetrievedSlide[],
 ): Resolution => {
-  const linesById = new Map(retrieved.map((slide) => [slide.sourceId, slideLines(slide.record)]));
+  const records = recordsOf(retrieved);
   const resolved: ResolvedUnit[] = [];
   const withheld: WithheldUnit[] = [];
   for (const draft of units) {
-    const looked = draft.citations.map((citation) => quoted(citation, linesById));
+    const looked = draft.citations.map((citation) => quoted(citation, records));
     const citations = looked.filter((citation) => citation !== undefined);
     const unit: Unit = { text: draft.text, citations, kind: draft.kind };
     const [first, ...rest] = citations;
-    if (first !== undefined && citations.length === looked.length && quotesResolve(unit, retrieved))
+    if (first !== undefined && citations.length === looked.length && quotesResolveIn(unit, records))
       resolved.push({ unit, quotes: [first.quote, ...rest.map((citation) => citation.quote)] });
     else withheld.push({ reason: 'dangling-citation', unit });
   }

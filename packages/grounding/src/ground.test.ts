@@ -39,16 +39,24 @@ const PARTIAL_TEXT = 'Workers are male. They forage at night.';
 const lineOf = (citation: Citation, slides: readonly RetrievedSlide[]) => {
   const slide = slides.find(({ sourceId }) => sourceId === citation.sourceId);
   const index = slide === undefined ? -1 : slideLines(slide.record).indexOf(citation.quote);
-  return { sourceId: citation.sourceId, line: index === -1 ? NO_SUCH_LINE : index + 1 };
+  if (index === -1)
+    throw new Error(`fixture: "${citation.quote}" is no line of ${citation.sourceId}`);
+  return { sourceId: citation.sourceId, line: index + 1 };
 };
+interface Reply {
+  text: string;
+  citations: (Citation | { sourceId: string; line: number })[];
+}
 /** The model's reply, each quoted citation written as the line number the model would emit. */
 const generatedFrom =
   (slides: readonly RetrievedSlide[]) =>
-  (...units: { text: string; citations: Citation[] }[]): Recording =>
+  (...units: Reply[]): Recording =>
     generatorReplies(generationRequest(task, slides), {
       units: units.map(({ text, citations }) => ({
         text,
-        citations: citations.map((citation) => lineOf(citation, slides)),
+        citations: citations.map((citation) =>
+          'quote' in citation ? lineOf(citation, slides) : citation,
+        ),
       })),
     });
 const generated = generatedFrom(retrieved);
@@ -94,10 +102,10 @@ describe('ground', () => {
     });
   });
 
-  it('drops a sentence citing a slide that does not say it, whether the quote is absent or merely unsupportive', async () => {
+  it('drops a sentence citing a slide that does not say it, whether by a line the slide does not have or a line that does not support it', async () => {
     const absent = {
       text: 'Workers forage at night.',
-      citations: [cite('l1/2', 'forage at night')],
+      citations: [{ sourceId: 'l1/2', line: NO_SUCH_LINE }],
     };
     const unsupportive = { text: 'Workers forage at night.', citations: [square] };
     await expect(

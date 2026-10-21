@@ -18,6 +18,14 @@ describe('slideLines', () => {
     ]);
   });
 
+  it('splits a title and a caption that hold a newline into a line each', () => {
+    const { record } = slide('l1/1', 'Body', {
+      title: 'Castes\nof the hive',
+      imageCaptions: ['A\nB'],
+    });
+    expect(slideLines(record)).toEqual(['Castes', 'of the hive', 'Body', 'A', 'B']);
+  });
+
   it('has no title line for a slide without a title', () => {
     expect(slideLines(slide('l1/1', 'Only a body').record)).toEqual(['Only a body']);
   });
