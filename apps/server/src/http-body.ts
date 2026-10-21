@@ -33,6 +33,21 @@ export const sendJson = (
   response.end(JSON.stringify(body));
 };
 
+/**
+ * A stored file, readable only by this origin's own pages: an `<img>` from another site sends no
+ * `Origin`, so `isOwnOriginRequest` alone would let it embed course content (#368).
+ */
+export const sendBytes = (response: ServerResponse, mediaType: string, bytes: Uint8Array): void => {
+  response.writeHead(200, {
+    'content-type': mediaType,
+    'content-length': String(bytes.length),
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'cross-origin-resource-policy': 'same-origin',
+  });
+  response.end(bytes);
+};
+
 export const sendRefusal = (
   response: ServerResponse,
   statusCode: number,
