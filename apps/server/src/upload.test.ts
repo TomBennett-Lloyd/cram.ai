@@ -18,14 +18,15 @@ import {
   type TestServer,
   uploadPath,
   WordEmbedder,
-  ShortEmbedder,
 } from './server-fixture';
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 const HIVE_STORED = {
   state: 'read',
-  lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
+  lectures: [
+    { lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2], unembedded: [] },
+  ],
   report: { state: 'none' },
 };
 
@@ -114,7 +115,7 @@ describe('POST /courses/:id/decks', () => {
           uploadId: (accepted.json as { uploadId: string }).uploadId,
           lectureId: 'l1',
           fileName: 'hive.pdf',
-          progress: { state: 'indexed', slideCount: 2, imageOnly: [2] },
+          progress: { state: 'indexed', slideCount: 2, imageOnly: [2], unembedded: [] },
         },
       ],
     });
@@ -167,16 +168,6 @@ describe('POST /courses/:id/decks', () => {
     const empty = await upload(server, '');
     expect(empty.status).toBe(400);
     expect(empty.json).toEqual({ status: 'bad-request', issue: 'the deck is empty' });
-  });
-
-  it('indexes nothing of a deck with a slide longer than the embedder takes, naming that slide', async () => {
-    const server = await started(startTestServer(gatewayOf([], new ShortEmbedder(6))));
-    const deck = [['Bees'], ['Bees', 'one two three four five six seven eight nine ten']];
-    await upload(server, await pdfDeck(deck));
-    expect(await progressOf(server)).toEqual([
-      { state: 'over-length', slides: [2], maxInputTokens: 6 },
-    ]);
-    expect(existsSync(courseFilePath(server.dataDir, CourseId.parse('bio')))).toBe(false);
   });
 
   it('refuses a deck one byte over its cap, and accepts one longer than a question may be', async () => {
@@ -251,9 +242,8 @@ describe('GET /courses/:id/ingest', () => {
   });
 
   it('reports a course with an upload but no file yet as holding no lectures', async () => {
-    const server = await started(startTestServer(gatewayOf([], new ShortEmbedder(6))));
-    const deck = [['Bees', 'one two three four five six seven eight nine ten']];
-    await upload(server, await pdfDeck(deck));
+    const server = await started();
+    await upload(server, 'not a deck');
     expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
       stored: { state: 'read', lectures: [] },
     });
