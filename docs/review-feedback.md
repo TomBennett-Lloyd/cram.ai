@@ -368,7 +368,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-21 — issue #165 — egress-gate-first-party-census
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide:
   - accept `check:no-network-egress`'s first-party census: every `.ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs` source under each workspace importer but the root, except `.test.` and `.spec.` files, scanned with the third-party census's builtin and global arms after type-only `import type` / `export type` clauses are blanked. A first-party file that imports a socket or process-spawn builtin or uses a network global fails the build until the allow-list names it;
   - accept the allow-list's second key kind, a first-party source's repo-relative path, held to the same both-directions rule as a package name;
@@ -377,4 +377,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept two changes the issue did not name, both needed for the gate to be right: `GLOBAL_RE` no longer reads `this.#fetch(` as the global, and `pnpm verify`'s source-prose tier runs the gate when the change set holds a JS/TS file, since a comment can now change its verdict.
 - **Why**: `.claude/network-egress.allowlist` and `CLAUDE.md` are `humanAlways` paths, and #165 is a gate change the owner decides.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: Owner, chat, 2026-10-21: "approve 252, 266, 296". Approved, no changes.
