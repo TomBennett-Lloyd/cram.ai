@@ -94,7 +94,7 @@ export default {
         /*
          * Colour-bearing shorthands. Without these, `border: 1px solid red`
          * lints clean — the named colour is a sub-value of a property nothing
-         * on this list matches, and the property-agnostic rule below only
+         * on this list matches, and the property-agnostic rule below
          * catches hex literals and colour functions, not named colours. Listed
          * individually rather than as `/^border-/`, which would also demand a
          * token for `border-style: solid` — a keyword, not a design value.
@@ -147,10 +147,10 @@ export default {
     /*
      * The property list above is an allow-list of the properties we thought of,
      * so anything it does not name is unguarded. This rule closes the colour
-     * half of that gap and only that half: it is property-agnostic, so whatever
+     * half of that gap: it is property-agnostic, so whatever
      * the property, a hex literal or a colour-function call in its value is
-     * refused, by the two patterns colour-patterns.mjs beside the gate's probes
-     * owns. Token references survive because `var(--color-…)` names a colour
+     * refused, by `HEX_COLOUR` and `COLOUR_FUNCTION` from
+     * packages/ui/src/frontend-gate/colour-patterns.mjs. Token references survive because `var(--color-…)` names a colour
      * rather than spelling one. Named colours (`red`) are not caught here —
      * they are ordinary keywords, indistinguishable from `solid` or `auto` by
      * pattern — which is why every colour-bearing shorthand is on the list
@@ -185,7 +185,9 @@ export default {
      * syntax everywhere.
      */
     'declaration-property-value-disallowed-list': [
-      { '/.*/': [HEX_COLOUR, COLOUR_FUNCTION, '/var\\([^,)]*,(?!\\s*(?:var\\(|\\)))/i'] },
+      {
+        '/.*/': [HEX_COLOUR, COLOUR_FUNCTION, '/(?<![\\w-])var\\([^,)]*,(?!\\s*(?:var\\(|\\)))/i'],
+      },
       { reportDisables: true },
     ],
 

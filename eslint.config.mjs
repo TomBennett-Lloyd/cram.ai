@@ -88,8 +88,7 @@ export default tseslint.config(
      *
      * The hex and colour-function patterns are
      * packages/ui/src/frontend-gate/colour-patterns.mjs's, which stylelint's
-     * `declaration-property-value-disallowed-list` imports too, so a value
-     * banned in a stylesheet is banned in a string literal (#273).
+     * `declaration-property-value-disallowed-list` imports too (#273).
      * packages/ui/src/frontend-gate/frontend-gate.test.ts lints each selector
      * here against a probe (#258).
      */

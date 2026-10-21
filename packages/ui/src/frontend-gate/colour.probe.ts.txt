@@ -32,6 +32,7 @@ export const literals = [
   'hwb(0 0% 0%)', // refused-by: no-restricted-syntax
   'oklab(0.5 0 0)', // refused-by: no-restricted-syntax
   'color(srgb 1 0 0)', // refused-by: no-restricted-syntax
+  'alpha(from var(--color-ink) / 50%)', // refused-by: no-restricted-syntax
   'color-mix(in srgb, red, blue)', // refused-by: no-restricted-syntax
   'contrast-color(var(--color-ink))', // refused-by: no-restricted-syntax
   'device-cmyk(0 0 0 1)', // refused-by: no-restricted-syntax
@@ -70,6 +71,7 @@ export const templates = [
   `${n} hwb(0 0% 0%)`, // refused-by: no-restricted-syntax
   `${n} oklab(0.5 0 0)`, // refused-by: no-restricted-syntax
   `${n} color(srgb 1 0 0)`, // refused-by: no-restricted-syntax
+  `${n} alpha(from var(--color-ink) / 50%)`, // refused-by: no-restricted-syntax
   `${n} color-mix(in srgb, red, blue)`, // refused-by: no-restricted-syntax
   `${n} contrast-color(var(--color-ink))`, // refused-by: no-restricted-syntax
   `${n} device-cmyk(0 0 0 1)`, // refused-by: no-restricted-syntax
