@@ -17,7 +17,13 @@ import { notesText, slideContent } from './slide-xml';
 
 export type PptxIngestResult = IngestResult<PptxUnreadableReason>;
 
-const PRESENTATION = 'ppt/presentation.xml';
+/** The package itself, whose relationships part is `_rels/.rels` (ECMA-376 Part 2 §9.3). */
+const PACKAGE = '';
+/** The package relationship to the main part, in Transitional and in Strict, so a Strict deck reaches its own reason. */
+const OFFICE_DOCUMENT_RELATIONSHIPS: ReadonlySet<string> = new Set([
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
+  'http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument',
+]);
 /** ISO/IEC 29500 Strict's PresentationML namespace: a conforming deck this reader does not read, unlike any other root. */
 const STRICT_PRESENTATIONML = 'http://purl.oclc.org/ooxml/presentationml/main';
 
@@ -58,24 +64,35 @@ const pageOf = (parts: Parts, slidePart: string): PageText => {
   };
 };
 
+const presentationPartOf = (parts: Parts): string => {
+  const main = [...relationshipsOf(parts, PACKAGE).values()].find(({ type }) =>
+    OFFICE_DOCUMENT_RELATIONSHIPS.has(type),
+  );
+  if (main === undefined)
+    throw new UnreadablePptx('no-presentation', 'no officeDocument relationship in _rels/.rels');
+  return main.target;
+};
+
 /** One page per `p:sldId`, in the presentation's order (ingest-pptx.test.ts). */
 const pagesOf = (parts: Parts): PageText[] => {
-  if (parts[PRESENTATION] === undefined)
-    throw new UnreadablePptx('no-presentation', `no ${PRESENTATION}`);
-  const presentation = readXml(parts, PRESENTATION);
+  const presentationPart = presentationPartOf(parts);
+  const presentation = readXml(parts, presentationPart);
   const namespace = presentation.documentElement?.namespaceURI;
   if (namespace === STRICT_PRESENTATIONML)
-    throw new UnreadablePptx('strict-presentationml', `${PRESENTATION} is Strict PresentationML`);
+    throw new UnreadablePptx(
+      'strict-presentationml',
+      `${presentationPart} is Strict PresentationML`,
+    );
   if (namespace !== NS.p)
-    throw new UnreadablePptx('not-presentationml', `${PRESENTATION} is not PresentationML`);
-  const slides = relationshipsOf(parts, PRESENTATION);
+    throw new UnreadablePptx('not-presentationml', `${presentationPart} is not PresentationML`);
+  const slides = relationshipsOf(parts, presentationPart);
   return [...presentation.getElementsByTagNameNS(NS.p, 'sldId')].map((sldId) => {
     const id = sldId.getAttributeNS(NS.r, 'id') ?? '';
     const slide = slides.get(id);
     if (slide === undefined)
       throw new UnreadablePptx(
         'unresolved-slide',
-        `${PRESENTATION} lists slide ${id} with no relationship`,
+        `${presentationPart} lists slide ${id} with no relationship`,
       );
     return pageOf(parts, slide.target);
   });
