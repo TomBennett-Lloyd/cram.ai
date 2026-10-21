@@ -130,6 +130,18 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: every path under `.claude/ledgers/` is exempt from the unlisted-hit check, so another ledger's `claim:` or `#` line restating a value is never returned. Only the lines the gate itself checks (`owner:`, `cite:`, `carrier:`, `excluded:`) need the exemption. No hidden restatement exists today (#179's review sweep).
 - Source: #179 review
 
+## 2026-10-21 — `describeError` is copied in each gateway adapter
+
+- Where: `describeError` in `packages/gateway/src/adapters/onnx/encoder-artefact.ts` and in `packages/gateway/src/adapters/openai-http/http-failure.ts`
+- What: two adapters each write their own copy of the one-line description of a caught error. #171 merged the two copies inside the HTTP adapter into `http-failure.ts`. Merging across adapters belongs to the adapters root (`docs/standards/structure.md` rule 5), which is a change of its own.
+- Source: #171 review cycle 1
+
+## 2026-10-21 — `LoopbackEndpoint` is unbranded, so every generator entry point re-parses its config
+
+- Where: `LoopbackEndpoint` and `HttpGeneratorConfig` in `packages/gateway/src/role-config.ts`; `OpenAiHttpGenerator`'s constructor and `loadOpenAiHttpGenerator` in `packages/gateway/src/adapters/openai-http/openai-http-generator.ts`
+- What: a value of type `HttpGeneratorConfig` does not prove its endpoint is on loopback, so each entry point must parse it again before any request, and throw if it is not. #171's loader needed its own parse before `/api/show`, and a test now guards that parse. Branding the schema would move the proof into the type (`docs/standards/typing.md` rules 1 and 3), but it touches every consumer of the config.
+- Source: #171 review cycle 1
+
 ## 2026-10-21 — the trim-batch trigger does not say whether a `+`-joined tier counts
 
 - Where: `docs/standards/prose.md` § Trim batches (first paragraph); `.claude/skills/review-loop/SKILL.md` **Trim-batch lane**

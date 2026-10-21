@@ -1,4 +1,11 @@
-import { EmbedderPin, GeneratorPin, RerankerPin, Sampling, VerifierPin } from '@cram/gateway';
+import {
+  EmbedderPin,
+  GeneratorPin,
+  RerankerPin,
+  Sampling,
+  ServedArtefact,
+  VerifierPin,
+} from '@cram/gateway';
 import { VerifierStrategy } from '@cram/grounding';
 import { z } from 'zod';
 import { CitationValidityRow } from './citation-validity';
@@ -37,6 +44,8 @@ export const EvalReport = z.strictObject({
     embedder: EmbedderPin,
     reranker: RerankerPin.nullable(),
   }),
+  /** Whether the generator's server was seen serving `pins.generator`'s weights (#171). */
+  servedGenerator: ServedArtefact,
   determinism: z.strictObject({ generator: Sampling }),
   nliThresholds: z.strictObject({ entailedAt: Probability, contradictedAt: Probability }),
   retrievalK: z.number().int().positive(),

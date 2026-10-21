@@ -22,6 +22,7 @@ import {
   RerankRequest,
   type RerankResult,
   type Sampling,
+  type ServedArtefact,
   type Verifier,
   type VerifierPin,
 } from '@cram/gateway';
@@ -67,12 +68,14 @@ class RecordingLog {
 class RecordingGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly served: ServedArtefact;
   readonly #inner: RecordableGenerator;
   readonly #log: RecordingLog;
 
   constructor(inner: RecordableGenerator, log: RecordingLog) {
     this.pin = inner.pin;
     this.sampling = inner.sampling;
+    this.served = inner.served;
     this.#inner = inner;
     this.#log = log;
   }
