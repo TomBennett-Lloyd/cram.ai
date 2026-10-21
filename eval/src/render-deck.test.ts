@@ -203,7 +203,6 @@ describe('the raster of an imageOnly slide', () => {
   };
   type Span = readonly [number, number];
   const RASTER_MARGIN = 2 * PAGE.margin;
-  // The grow cases overflow the minimum raster only just: a raster's cost is its pixel count (#200).
 
   it.each([
     ['its title alone', { title: 'Comb', body: [] }],
@@ -242,6 +241,7 @@ describe('the raster of an imageOnly slide', () => {
     expect([image.width, image.height]).toEqual([2 * PAGE.width, 2 * PAGE.height]);
   });
 
+  // The grow cases overflow RASTER_MIN only just: a raster's cost is its pixel count (#200).
   it('widens to hold its widest line, keeping the right margin blank', async () => {
     const image = await rasterOf({ body: ['w'.repeat(90)] });
     expect(image.width).toBeGreaterThan(2 * PAGE.width);
