@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { CourseId, LectureId } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ingestedSlides as ingestedPptx, shape } from '../pptx/deck-fixture';
 import { buildDeck, type FixtureDeck, type FixtureLine } from './deck-fixture';
 import { ingestPdf, type PdfIngestResult } from './ingest-pdf';
 
@@ -97,6 +98,24 @@ describe('ingestPdf', () => {
     expect(items.map((item) => ('str' in item ? item.str : ''))).toContain('𝐸=𝑚𝑐');
     const [slide] = await ingested(deck);
     expect(slide?.body).toBe('The rest energy of a body is\nE=mc');
+  });
+
+  it('stores the characters pdf.js folds as a PPTX of the same text stores them, ﬅ as st (#256)', async () => {
+    const text = 'Cells are 5 \u00B5m across, \uFB01ne, and \uFB05 is long';
+    const [pdf] = await ingested({
+      pages: [
+        {
+          lines: [line('Units', TITLE), { text, size: BODY, toUnicode: true }],
+          annotations: [{ subtype: 'Text', contents: text }],
+        },
+      ],
+    });
+    const [pptx] = ingestedPptx({
+      slides: [{ shapes: [shape(['Units'], 'title'), shape([text])], notes: [text] }],
+    });
+    const stored = 'Cells are 5 \u03BCm across, fine, and st is long';
+    expect(pdf).toMatchObject({ body: stored, speakerNotes: stored });
+    expect(pptx).toMatchObject({ body: stored, speakerNotes: stored });
   });
 
   it('flags a page with no text layer as image-only', async () => {

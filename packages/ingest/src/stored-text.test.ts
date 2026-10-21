@@ -1,5 +1,17 @@
+import { normalizeUnicode } from 'unpdf/pdfjs';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { storedPage, storedText } from './stored-text';
+
+const EVERY_CHARACTER = Array.from({ length: 0x110000 }, (_, codePoint) => codePoint)
+  .filter((codePoint) => codePoint < 0xd800 || codePoint > 0xdfff)
+  .map((codePoint) => String.fromCodePoint(codePoint));
+
+const pdfjsFolds = (character: string): boolean =>
+  z.string().parse(normalizeUnicode(character)) !== character;
+
+/** The blocks math alphanumerics live in: Mathematical Alphanumeric Symbols, and the Letterlike Symbols filling its holes. */
+const MATH_BLOCKS = /^[\u{1D400}-\u{1D7FF}\u2100-\u214F]$/u;
 
 describe('storedText', () => {
   it("reads PowerPoint's styled characters in their NFKC form (#159)", () => {
@@ -26,8 +38,24 @@ describe('storedText', () => {
     expect(storedText('ℂℊℋℌℍℎℐℑℒℕℙℚℛℜℝℤℨℬℭℯℰℱℳℴ')).toBe('CgHHHhIILNPQRRRZZBCeEFMo');
   });
 
+  it("reads every character pdf.js's normalizeUnicode folds in its NFKC form, ﬅ as st (#256)", () => {
+    expect(
+      storedText('5 \u00B5m, \uFB01ne \uFB02ow, \uFB05 \uFB06, 10 k\u2126,\u00A0a\u2009b'),
+    ).toBe('5 \u03BCm, fine flow, st st, 10 k\u03A9, a b');
+    const unfolded = EVERY_CHARACTER.filter(pdfjsFolds).filter(
+      (character) => storedText(character) !== character.normalize('NFKC'),
+    );
+    expect(unfolded).toEqual([]);
+  });
+
   it('leaves every other compatibility character as written', () => {
-    expect(storedText('ℓⅆ…²′∬ﬁµ')).toBe('ℓⅆ…²′∬ﬁµ');
+    expect(storedText('ℓⅆ…²′∬')).toBe('ℓⅆ…²′∬');
+    const folded = EVERY_CHARACTER.filter(
+      (character) => storedText(character) !== character.normalize('NFC'),
+    );
+    expect(
+      folded.filter((character) => !pdfjsFolds(character) && !MATH_BLOCKS.test(character)),
+    ).toEqual([]);
   });
 
   it('composes an accent with its base, a folded one included, where Unicode has the composite', () => {
