@@ -1,6 +1,6 @@
 # 0008 — Slide chunking: a slide is indexed as one or more chunks; citations stay on the slide
 
-- **Status:** accepted
+- **Status:** proposed
 - **Date:** 2026-10-21
 - **Issue:** #339
 

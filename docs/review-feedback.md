@@ -443,8 +443,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-21 — issue #339 — adr-0008-slide-chunking
 
-- **Category**: approved-at-plan
-- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/339#issuecomment-6315418361 in chat on 2026-10-21, verbatim: "approve with both reccomendations for 339". After the rule 5(b) stop the owner gave a REVISE then PROCEED: "339 new adr (as long as it wont introduce a contradiction?)". `docs/adr/0008-slide-chunking.md` § Decision (a)–(j) maps one to one onto that plan's Decision outline and its ledger, and the PR body pastes the mapping. The plan comment's S0 sweep found no existing ADR sentence that the decision makes false. The PR carries nothing beyond the plan.
-- **Why**: `docs/adr/**` is a `humanAlways` path. Under `.claude/workflow.json` → `merge.approvedAtPlanRule`, an ADR PR that carries nothing beyond its approved plan merges on the owner's plan-time approval.
-- **How applied**: ADR 0008 added, its `docs/adr/README.md` index row, `docs/plan.md` § 3.1's shipped rule, and the code and eval slide the plan names. `docs/adr/0004-storage.md` is untouched.
-- **Verdict**: approved at plan 2026-10-21 — "approve with both reccomendations for 339"; REVISE then PROCEED: "339 new adr (as long as it wont introduce a contradiction?)"
+- **Category**: pending — filled at merge
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/339#issuecomment-6315418361 in chat on 2026-10-21 ("approve with both reccomendations for 339"; then REVISE and PROCEED: "339 new adr (as long as it wont introduce a contradiction?)"). The PR asks the owner to decide only the one extra beyond that plan: accept `excluded: docs/adr/0008-slide-chunking.md` in the topics-table ledger (`topics-table.ledger` under `.claude/ledgers/`). The exclusion was added when the branch was rebased onto #179, after the PROCEED. That ledger's sweep matches ADR 0008 because the ADR names the index's schema module by path, but only where it cites the course file's version counter. The ADR is therefore not a carrier of the topics table's name.
+- **Why**: `docs/adr/**` is a `humanAlways` path, and `.claude/workflow.json` → `merge.approvedAtPlanRule` counts a ledger carrier change from a rebase after the PROCEED as an extra, which sends the PR to the owner limited to that extra.
+- **How applied**: the PR as proposed, with ADR 0008 at `proposed`. It is revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
