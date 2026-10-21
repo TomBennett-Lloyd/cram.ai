@@ -5,6 +5,18 @@ import { embedSlideChunks, type EmbedTextResult, type EmbedTexts } from './embed
 
 const words = (text: string): number => text.split(/\s+/).filter(Boolean).length;
 
+/** A vector that differs for any two texts this file embeds. */
+const textVector = (text: string): Float32Array =>
+  vector(
+    words(text),
+    Array.from({ length: text.length }, (_, at) => text.charCodeAt(at) * (at + 1)).reduce(
+      (sum, term) => sum + term,
+      0,
+    ),
+    0,
+    0,
+  );
+
 /** An embedder that takes at most `maxWords` words, counting each as a token, and records every call. */
 const wordLimited = (maxWords: number) => {
   const calls: string[][] = [];
@@ -14,7 +26,7 @@ const wordLimited = (maxWords: number) => {
       texts.map((text): EmbedTextResult =>
         words(text) > maxWords
           ? { status: 'over-length', inputTokens: words(text), maxInputTokens: maxWords }
-          : { status: 'embedded', vector: vector(words(text), 1, 0, 0) },
+          : { status: 'embedded', vector: textVector(text) },
       ),
     );
   };
@@ -43,9 +55,10 @@ describe('embedSlideChunks', () => {
     expect(calls).toHaveLength(2);
     expect(chunks.map(({ chunk }) => chunk.chunkNo)).toEqual([1, 2, 3]);
     expect(chunks.flatMap(({ chunk }) => chunkLines(chunk))).toEqual(chunkLines(LONG));
-    expect(
-      chunks.every(({ chunk, embedding }) => chunk.title === 'Honey' && embedding),
-    ).toBeTruthy();
+    expect(chunks.every(({ chunk }) => chunk.title === 'Honey')).toBe(true);
+    expect(chunks.map(({ embedding }) => embedding)).toEqual(
+      chunks.map(({ chunk }) => textVector(embedText(chunk))),
+    );
   });
 
   it('splits a piece that is still over-length again, in a later round', async () => {

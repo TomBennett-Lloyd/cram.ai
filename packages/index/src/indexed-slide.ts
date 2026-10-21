@@ -47,8 +47,9 @@ export const requireDimension = (
 const lineKey = ({ field, text }: { field: string; text: string }): string => `${field}\n${text}`;
 
 /**
- * Refuses chunks that are not numbered 1..n in order, that hold a line or a title their slide does
- * not, or that leave a split slide partly outside the vector list.
+ * Refuses chunks that are not numbered 1..n in order, that carry a title other than their slide's,
+ * that leave a split slide partly outside the vector list, or that do not hold exactly their slide's
+ * lines in order: the indexes cover every line of every slide (`docs/adr/0008-slide-chunking.md` § Context).
  */
 export const requireSlideChunks = (
   operation: string,
@@ -56,16 +57,19 @@ export const requireSlideChunks = (
   chunks: readonly IndexedChunk[],
   embedder: EmbedderIdentity,
 ): void => {
-  const lines = new Set(chunkLines(record).map(lineKey));
   chunks.forEach(({ chunk, embedding }, index) => {
     const at = `${operation}(${record.lectureId}/${String(record.slideNo)} chunk ${String(chunk.chunkNo)})`;
     if (chunk.chunkNo !== index + 1)
       throw new Error(`${at}: chunks must be numbered 1..n in order`);
     if (chunk.title !== record.title) throw new Error(`${at}: the title is not its slide's`);
-    const foreign = chunkLines(chunk).find((line) => !lines.has(lineKey(line)));
-    if (foreign !== undefined) throw new Error(`${at}: holds a line its slide does not`);
     if (embedding === undefined && chunks.length > 1)
       throw new Error(`${at}: a split slide's every chunk needs a vector`);
     if (embedding !== undefined) requireDimension(at, embedding, embedder);
   });
+  const held = chunks.flatMap(({ chunk }) => chunkLines(chunk).map(lineKey));
+  const lines = chunkLines(record).map(lineKey);
+  if (held.length !== lines.length || held.some((line, index) => line !== lines[index]))
+    throw new Error(
+      `${operation}(${record.lectureId}/${String(record.slideNo)}): its chunks do not hold exactly its slide's lines in order`,
+    );
 };

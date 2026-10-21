@@ -58,7 +58,7 @@ export const vector = (...values: number[]): Float32Array => new Float32Array(va
 export const indexed = (record: SlideRecord, embedding: Float32Array | undefined): IndexedSlide =>
   wholeSlide(record, embedding);
 
-/** The slide indexed as one chunk per embedding, its body lines dealt out in order and as evenly as they go. */
+/** The slide indexed as one chunk per embedding: its body lines dealt out in order as evenly as they go, its notes and captions in the last chunk. */
 export const chunked = (
   record: SlideRecord,
   first: Float32Array,
@@ -72,8 +72,8 @@ export const chunked = (
       chunkNo: ChunkNo.parse(index + 1),
       title: record.title,
       body: lines.slice(index * per, (index + 1) * per).join('\n'),
-      speakerNotes: index === 0 ? record.speakerNotes : '',
-      imageCaptions: index === 0 ? record.imageCaptions : [],
+      speakerNotes: index === embeddings.length - 1 ? record.speakerNotes : '',
+      imageCaptions: index === embeddings.length - 1 ? record.imageCaptions : [],
     },
     embedding,
   }));

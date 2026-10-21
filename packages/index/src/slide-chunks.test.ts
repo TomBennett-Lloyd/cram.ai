@@ -45,6 +45,19 @@ describe('a slide indexed as several chunks', () => {
     ]);
   });
 
+  it('reads each chunk back with its notes and captions', () => {
+    const noted = slide({
+      slideNo: 3,
+      title: 'Comb',
+      body: 'square cells\ntilted cells',
+      speakerNotes: 'ask about wax',
+      imageCaptions: ['a comb', 'a frame'],
+    });
+    const stored = chunked(noted, NEAR, AWAY);
+    indexLectures(course, [stored, chunked(SPLIT, AWAY, NEAR, AWAY)]);
+    expect(course.chunks(sourceIdOf(noted))).toEqual(stored.chunks.map(({ chunk }) => chunk));
+  });
+
   it('stores its chunks in order and lists the slide once, whole', () => {
     expect(course.chunks(sourceIdOf(SPLIT)).map(({ chunkNo, body }) => [chunkNo, body])).toEqual([
       [1, 'osmosis'],
@@ -154,30 +167,43 @@ describe('the chunks a batch may hold', () => {
     refused(batch(chunk(2, 'osmosis')), /numbered 1\.\.n/);
   });
 
+  it('refuses chunks that leave some of their slide’s lines out, or hold them out of order', () => {
+    refused(batch(chunk(1, 'osmosis')), /exactly its slide's lines in order/);
+    refused(
+      batch(chunk(1, 'diffusion'), chunk(2, 'osmosis\nactive transport')),
+      /exactly its slide's lines in order/,
+    );
+  });
+
   it('refuses a chunk holding a line or a title its slide does not', () => {
     refused(
       batch(chunk(1, 'osmosis'), chunk(2, 'diffusion\nnot on the slide')),
-      /line its slide does not/,
+      /exactly its slide's lines in order/,
     );
-    refused(batch(chunk(1, 'osmo')), /line its slide does not/);
+    refused(batch(chunk(1, 'osmo')), /exactly its slide's lines in order/);
     refused(batch(chunk(1, 'osmosis', NEAR, 'Other')), /title is not its slide's/);
   });
 
-  it('refuses a caption or a note line its slide does not hold, field by field', () => {
-    const noted: SlideRecord = { ...SPLIT, speakerNotes: 'osmosis' };
-    const asNote: IndexedChunk = {
+  it('refuses a chunk that holds its slide’s lines under the wrong fields', () => {
+    const noted: SlideRecord = {
+      ...SPLIT,
+      body: 'osmosis',
+      speakerNotes: 'diffusion',
+      imageCaptions: ['a comb'],
+    };
+    const asBody: IndexedChunk = {
       chunk: {
         chunkNo: ChunkNo.parse(1),
         title: 'Hive',
-        body: '',
-        speakerNotes: 'diffusion',
-        imageCaptions: [],
+        body: 'osmosis\ndiffusion',
+        speakerNotes: '',
+        imageCaptions: ['a comb'],
       },
       embedding: NEAR,
     };
     expect(() => {
-      course.replaceLecture(deck(), [], [{ record: noted, chunks: [asNote] }]);
-    }).toThrow(/line its slide does not/);
+      course.replaceLecture(deck(), [], [{ record: noted, chunks: [asBody] }]);
+    }).toThrow(/exactly its slide's lines in order/);
   });
 
   it('refuses a split slide with a chunk outside the vector list, and a vector of the wrong dimension', () => {
@@ -213,7 +239,7 @@ describe('CourseIndex.replaceEmbedder over chunks', () => {
         indexed(edited, vector(1, 0)),
         indexed(slide({ slideNo: 2, body: 'wax' }), vector(0, 1)),
       ]);
-    }).toThrow(/line its slide does not/);
+    }).toThrow(/exactly its slide's lines in order/);
   });
 
   it('rewrites each slide’s chunks, so a new embedder re-chunks the course', () => {

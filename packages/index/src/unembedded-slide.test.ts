@@ -87,7 +87,7 @@ describe('re-embedding a slide to no vector', () => {
 
   it('keeps a slide `replaceEmbedder` names as undefined, and still refuses one it does not name', () => {
     expect(() => {
-      course.replaceEmbedder(NEW, [indexed(slide({ slideNo: 1 }), undefined)]);
+      course.replaceEmbedder(NEW, [indexed(slide({ slideNo: 1, body: 'osmosis' }), undefined)]);
     }).toThrow(/no embedding for lecture-1\/2/);
     course.replaceEmbedder(NEW, [
       indexed(slide({ slideNo: 1, body: 'osmosis' }), vector(1, 0)),

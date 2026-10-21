@@ -192,7 +192,7 @@ export const embedSlides = async (
   const indexed = await embed(slides);
   if (indexed.length !== slides.length) {
     throw new Error(
-      `${operation}: embed returned ${String(indexed.length)} vectors for ${String(slides.length)} slides`,
+      `${operation}: embed returned ${String(indexed.length)} indexed slides for ${String(slides.length)} slides`,
     );
   }
   slides.forEach((record, index) => {

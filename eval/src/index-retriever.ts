@@ -53,7 +53,7 @@ export class IndexRetriever {
 
   /**
    * Slides are indexed one lecture at a time through `embedSlideChunks`, as ingest indexes them. A
-   * slide left without a vector rejects the run, since recall@k would not see it (#184).
+   * slide left without a vector rejects the run (#184).
    */
   static async open(spec: IndexRetrieverSpec): Promise<IndexRetriever> {
     const embedded: {

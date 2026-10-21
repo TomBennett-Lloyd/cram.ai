@@ -81,7 +81,7 @@ describe('reembedCourse', () => {
         other(),
         embedWhole(() => Promise.resolve([vector(1, 0, 0)])),
       ),
-    ).rejects.toThrow(/1 vectors for 2 slides/);
+    ).rejects.toThrow(/1 indexed slides for 2 slides/);
     expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
     openOrFail(temp.spec).close();
   });

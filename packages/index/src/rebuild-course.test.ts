@@ -263,7 +263,7 @@ describe('rebuildCourse', () => {
       rebuildCourse(temp.spec, { ...deps, embed: () => Promise.resolve([]) }),
     ).rejects.toMatchObject({
       message: 'rebuildCourse: lecture lecture-1 did not rebuild',
-      cause: new Error('rebuildCourse: embed returned 0 vectors for 2 slides'),
+      cause: new Error('rebuildCourse: embed returned 0 indexed slides for 2 slides'),
     });
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);

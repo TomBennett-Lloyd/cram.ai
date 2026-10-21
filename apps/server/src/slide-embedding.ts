@@ -29,8 +29,8 @@ export const embedderIdentity = async (embedder: Embedder): Promise<EmbedderIden
 };
 
 /**
- * Every record indexed as its chunks: a `references` slide with no vector (#338), every other one
- * split until each piece fits the embedder, never truncated (`docs/adr/0008-slide-chunking.md` § Decision (c)).
+ * Every record indexed as its chunks (`embedSlideChunks`), never truncated: a `references` slide
+ * is not sent to the embedder and keeps no vector (#338); `docs/adr/0008-slide-chunking.md` § Decision (c)–(e).
  */
 export const embedSlides = async (
   embedder: Embedder,
