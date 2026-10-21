@@ -95,7 +95,7 @@ while IFS= read -r name; do
   [ -z "$name" ] || transitive+=("$name")
 done <<<"$listed"
 [ ${#transitive[@]} -gt 0 ] ||
-  bad "the allow-list names no transitive-only package, so nothing pins --depth Infinity"
+  bad "the allow-list names no transitive-only package, so nothing pins the walk past depth 0"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   capture "$interpreter" "$CHECK"
