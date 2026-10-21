@@ -133,3 +133,18 @@ Entry format:
 
 - Phase: planning
 - Observed: issue #279's body placed the `run-issue` rebase hand-off at "step 4"; PR #310 had renumbered it to step 5 before the lane read it, and the dispatch's overlap note caught it first. Second issue body in one afternoon written by the merge owner with a stale step number (PR #310's lane found the first, in #295); a step number in an issue is a figure that goes stale the moment the skill is edited, so the issue should name the step by its heading or its first words. Counts toward #295's measurement.
+
+## 2026-10-21 — PR #175
+
+- Phase: merge
+- Observed: the #7 lane rebased five times before its ADR merged, and one fill commit (d4526f4) was undone and redone because a neighbour amended an ADR this one cites (PR #174 → ADR 0003 (e)) between the owner's approval and the merge, which only `check:ledgers` on the rebased tree could see. A humanAlways PR waiting on the owner collects every log and ADR merge in the meantime; counts toward #297 (the cascade) and #330 (the ADR 0007 (e) true-up it left behind).
+
+## 2026-10-21 — PR #327
+
+- Phase: rebase
+- Observed: the #301 lane took two log-only DIRTY bounces in one hour (#320, then #324), each a `docs/tech-debt.md` table or append collision, and lost one CI round to the second; PR #331 (#279) landed after, moving a report-time log-only DIRTY to the lane, and #297 is in flight for the merge-time half. Third lane today with two log-only rounds (#302's PR #329 took the same two); counts toward #297.
+
+## 2026-10-21 — PR #336
+
+- Phase: dispatch
+- Observed: the #296 lane reported no friction of its own, but its merge made PR #337 (#294) DIRTY on the same `.claude/agents/ticket-agent.md` § 4 paragraph, costing that lane a source-conflict rebase round; a third lane (#293, PR #334) edits § 2 of the same file. The merge owner admitted all three in parallel with the overlap named in each dispatch, pricing it as rebase cost; a same-paragraph edit on an agent definition is same-file SOURCE overlap by `run-issue` step 1's own rule and should have been sequenced or batched at dispatch. One ticket so far on agent-definition edits colliding.
