@@ -192,9 +192,67 @@ refuses "echo \"\$(echo \$(true); git checkout -- dirty.txt)\"" dirty.txt
 refuses "echo \"\$(cat <(true); git checkout -- dirty.txt)\"" dirty.txt
 refuses "echo \"\$(tee >(true); git checkout -- dirty.txt)\"" dirty.txt
 refuses "echo \"\$(echo \${b%(*})\" && git checkout -- dirty.txt" dirty.txt
-refuses "echo \"\$(ls [(]*)\"; git restore dirty.txt" dirty.txt
 passes "echo \"\$(echo \${x%(*}) git checkout -- dirty.txt\""
 passes $'git commit -F - <<\'EOF\'\ngit checkout -- dirty.txt\nEOF'
+
+# --- units inside "$(...)" (#268) -------------------------------------------------------
+# Each refuses row hides its revert behind a construct whose parens, read loosely, end the
+# body early or late; each passes row puts literal text after a body that must close. The
+# rows are a quoted heredoc so that shellcheck does not read their `$` as unexpanded
+# (SC2016): one `refuses|passes <command>` per line, `\n` standing for a newline, and every
+# refusal names dirty.txt.
+while read -r verdict row; do
+  row=${row//\\n/$'\n'}
+  if [ "$verdict" = refuses ]; then refuses "$row" dirty.txt; else passes "$row"; fi
+done <<'ROWS'
+refuses echo "$(echo ${x//(/)}; git checkout -- dirty.txt)"
+refuses echo "$(echo ${x%)}; git checkout -- dirty.txt)"
+refuses echo "$(echo ${x:-"}"}; git checkout -- dirty.txt)"
+refuses echo "$(echo ${x:-'}'}; git checkout -- dirty.txt)"
+refuses echo "$(echo ${x:-${y%)}}; git checkout -- dirty.txt)"
+refuses echo "$(echo ${x:-\}}; git checkout -- dirty.txt)"
+refuses echo ${x:-$(git checkout -- dirty.txt)}
+refuses echo "${x:-$(git checkout -- dirty.txt)}"
+refuses echo "$(echo ${x:-$(git checkout -- dirty.txt)})"
+refuses echo "${x:-"$(git checkout -- dirty.txt)"}"
+passes echo "$(echo ${x//(/)}) git checkout -- dirty.txt"
+passes echo "${x:-'}"; echo '; git checkout -- dirty.txt'
+passes echo "\$(git checkout -- dirty.txt)"
+passes echo "\${x:-$(true)}" git checkout -- dirty.txt
+refuses echo "$(echo @(a|b); git checkout -- dirty.txt)"
+refuses echo "$(a=(1 2); git checkout -- dirty.txt)"
+refuses echo "$(a+=(1); git checkout -- dirty.txt)"
+refuses echo "$([[ x =~ ^(a)$ ]]; git checkout -- dirty.txt)"
+refuses echo "$(ls [(]*); git checkout -- dirty.txt)"
+passes echo "$(echo [)]*) git checkout -- dirty.txt"
+refuses echo "$(case x in a) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) true;; esac)" && git checkout -- dirty.txt
+refuses echo "$(case x in (a) true;; esac)" && git checkout -- dirty.txt
+refuses echo "$(case x in a|b) true;; c) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in esac)" && git checkout -- dirty.txt
+refuses echo "$(case x in a) true\nesac; git checkout -- dirty.txt)"
+refuses echo "$(case x\nin a) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) true;& b) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) true;;& b) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) true;| b) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) echo $(true);; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in @(a|b)) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case $(true) in a) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) case y in b) true;; esac;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a) (case y in b) true;; esac);; esac; git checkout -- dirty.txt)"
+refuses echo "$(! case x in a) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$({ case x in a) true;; esac; }; git checkout -- dirty.txt)"
+refuses echo "$(if case x in a) true;; esac; then true; fi; git checkout -- dirty.txt)"
+refuses echo "$(if true; then case x in a) true;; esac; fi; git checkout -- dirty.txt)"
+refuses echo "$(if false; then true; elif case x in a) true;; esac; then true; fi; git checkout -- dirty.txt)"
+refuses echo "$(if false; then true; else case x in a) true;; esac; fi; git checkout -- dirty.txt)"
+refuses echo "$(while false; do case x in a) true;; esac; done; git checkout -- dirty.txt)"
+refuses echo "$(while case x in a) false;; esac; do true; done; git checkout -- dirty.txt)"
+refuses echo "$(until case x in a) true;; esac; do true; done; git checkout -- dirty.txt)"
+refuses echo "$(time case x in a) true;; esac; git checkout -- dirty.txt)"
+passes echo "$(case x in a) true;; esac) git checkout -- dirty.txt"
+passes echo "$(echo case x in a) git checkout -- dirty.txt"
+ROWS
 passes '# git checkout -- dirty.txt'
 passes 'true # ; git checkout -- dirty.txt'
 passes 'echo checkout -- dirty.txt'

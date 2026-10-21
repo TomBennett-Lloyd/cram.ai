@@ -63,18 +63,36 @@ const command = event?.tool_input?.command;
 if (typeof command !== 'string') process.exit(0);
 let dir = typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallbackDir;
 
-// Appends each simple command's words to `commands`; a nested scan is a `"$(...)"`
-// body and returns the index past the `)` that closes it, the first at paren depth 0 (#241).
-// Only a `(` that opens something counts: one at command position, or after `$`, `<` or
-// `>`. A `(` inside `${...}` or `[...]` opens nothing and has no `)` to close it.
+// Words after which a `case` or `esac` still stands at command position.
+const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 'until', 'time']);
+
+// Appends each simple command's words to `commands`; a nested scan is a `"$(...)"` body
+// and returns the index past the `)` that closes it: the first at paren depth 0 (#241)
+// that does not end a `case` pattern (#268). Every unquoted `(` counts, one inside `[…]`
+// included, because the shells' own `$(` readers count it: zsh (the Bash tool's shell
+// here) counts the `(` of `[(]`, and both bash and zsh close at the `)` of `[)]`.
 function scan(src, i, commands, nested) {
   const heredocs = [];
+  // Open `case` frames, innermost last. `state` runs subject → in → pattern → body, and
+  // back to pattern at each `;;`. Only the `)` that ends a pattern is not a paren.
+  const cases = [];
   let depth = 0;
   let current = [];
   let word = null;
   commands.push(current);
   const end = () => {
-    if (word !== null) current.push(word);
+    if (word === null) return;
+    const atCommand = current.every((w) => LEADERS.has(w));
+    current.push(word);
+    const frame = cases.at(-1);
+    if (frame?.depth === depth && frame.state === 'subject') frame.state = 'in';
+    else if (frame?.depth === depth && frame.state === 'in') {
+      if (word === 'in') Object.assign(frame, { state: 'pattern', fresh: true });
+    } else if (frame?.depth === depth && frame.state === 'pattern') {
+      if (frame.fresh && word === 'esac') cases.pop();
+      else frame.fresh = false;
+    } else if (atCommand && word === 'esac' && frame?.depth === depth) cases.pop();
+    else if (atCommand && word === 'case') cases.push({ depth, state: 'subject', fresh: false });
     word = null;
   };
   const split = () => {
@@ -84,6 +102,8 @@ function scan(src, i, commands, nested) {
   };
   while (i < src.length) {
     const c = src[i];
+    const frame = cases.at(-1)?.depth === depth ? cases.at(-1) : undefined;
+    const terminator = frame?.state === 'body' ? /^;(?:;&?|[&|])/.exec(src.slice(i, i + 3)) : null;
     if (c === '\n') {
       split();
       i++;
@@ -102,12 +122,22 @@ function scan(src, i, commands, nested) {
       i++;
     } else if (c === '#' && word === null) {
       while (i < src.length && src[i] !== '\n') i++;
-    } else if (c === ')' && nested && depth === 0) {
+    } else if (terminator) {
+      split();
+      Object.assign(frame, { state: 'pattern', fresh: true });
+      i += terminator[0].length;
+    } else if (c === '(' || c === ')') {
       end();
-      return i + 1;
-    } else if (';&|()'.includes(c)) {
-      if (c === '(' && (word === null || /[$<>]$/.test(word))) depth++;
-      else if (c === ')') depth--;
+      const pattern = cases.at(-1)?.depth === depth && cases.at(-1).state === 'pattern' ? cases.at(-1) : undefined;
+      if (c === '(' && pattern?.fresh) pattern.fresh = false;
+      else if (c === '(') depth++;
+      else if (pattern) pattern.state = 'body';
+      else if (nested && depth === 0) return i + 1;
+      else depth--;
+      while (cases.at(-1)?.depth > depth) cases.pop();
+      split();
+      i++;
+    } else if (';&|'.includes(c)) {
       split();
       i++;
     } else if (src.startsWith('<<<', i)) {
@@ -134,17 +164,13 @@ function scan(src, i, commands, nested) {
       while (i < src.length && src[i] !== "'") word += src[i++];
       i++;
     } else if (c === '"') {
-      word ??= '';
-      i++;
-      while (i < src.length && src[i] !== '"') {
-        if (src.startsWith('$(', i)) {
-          i = scan(src, i + 2, commands, true);
-          continue;
-        }
-        if (src[i] === '\\' && '"\\'.includes(src[i + 1] ?? '')) i++;
-        word += src[i++];
-      }
-      i++;
+      const quoted = dquote(src, i, commands);
+      word = (word ?? '') + quoted.text;
+      i = quoted.end;
+    } else if (src.startsWith('${', i)) {
+      const j = param(src, i, commands, false);
+      word = (word ?? '') + src.slice(i, j);
+      i = j;
     } else if (c === '\\') {
       if (src[i + 1] !== '\n') word = (word ?? '') + (src[i + 1] ?? '');
       i += 2;
@@ -155,6 +181,44 @@ function scan(src, i, commands, nested) {
   }
   end();
   return i;
+}
+
+// Reads the `"…"` at `i`: returns its text and the index past the closing quote. A `$(`
+// inside is scanned as a body; `\$` and `\``, like `\"` and `\\`, are escapes there.
+function dquote(src, i, commands) {
+  let text = '';
+  i++;
+  while (i < src.length && src[i] !== '"') {
+    if (src.startsWith('$(', i)) {
+      i = scan(src, i + 2, commands, true);
+      continue;
+    }
+    if (src.startsWith('${', i)) {
+      const j = param(src, i, commands, true);
+      text += src.slice(i, j);
+      i = j;
+      continue;
+    }
+    if (src[i] === '\\' && '"\\$`'.includes(src[i + 1] ?? '')) i++;
+    text += src[i++];
+  }
+  return { text, end: i + 1 };
+}
+
+// Reads the `${…}` at `i` as one unit and returns the index past its first unquoted `}`.
+// Its parens never reach the counter, but a `$(` inside is still scanned, so
+// `${x:-$(git checkout …)}` is seen (#268). `'…'` quotes only outside `"…"` (`dq`), as zsh
+// reads `"${x:-'}"`; a bare `{` does not nest, which is bash's reading and the shorter unit.
+function param(src, i, commands, dq) {
+  i += 2;
+  while (i < src.length && src[i] !== '}') {
+    if (src.startsWith('${', i)) i = param(src, i, commands, dq);
+    else if (src.startsWith('$(', i)) i = scan(src, i + 2, commands, true);
+    else if (src[i] === '"') i = dquote(src, i, commands).end;
+    else if (src[i] === "'" && !dq) i = src.indexOf("'", i + 1) + 1 || src.length;
+    else i += src[i] === '\\' ? 2 : 1;
+  }
+  return i + 1;
 }
 
 function checkoutOperands(args) {
