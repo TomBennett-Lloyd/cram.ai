@@ -1,6 +1,12 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { type EmbedderIdentity, openCourse, type OpenCourseResult } from '@cram/index';
+import {
+  type EmbedderIdentity,
+  openCourse,
+  openCourseReadOnly,
+  type OpenCourseResult,
+  type ReadCourseResult,
+} from '@cram/index';
 import {
   CourseId,
   type CourseUnavailableProblem,
@@ -45,19 +51,21 @@ export const openForWrite = (files: CourseFiles, courseId: CourseId): OpenCourse
   return openCourse({ path, courseId, embedder: files.embedder });
 };
 
-/** Opens an existing course file; the caller has checked `courseExists`. */
-export const openExisting = (files: CourseFiles, courseId: CourseId): OpenCourseResult =>
-  openCourse({
+/** Opens an existing course file through `openCourseReadOnly`; the caller has checked `courseExists`. */
+export const openToRead = (files: CourseFiles, courseId: CourseId): ReadCourseResult =>
+  openCourseReadOnly({
     path: courseFilePath(files.dataDir, courseId),
     courseId,
     embedder: files.embedder,
   });
 
-/** What the course file holds; a course with no file yet holds no lectures. */
+const NO_LECTURES: StoredLectures = { state: 'read', lectures: [], report: { state: 'none' } };
+
+/** What the course file holds; a course with no file yet, or a blank one, holds no lectures. */
 export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLectures => {
-  if (!courseExists(files, courseId))
-    return { state: 'read', lectures: [], report: { state: 'none' } };
-  const opened = openExisting(files, courseId);
+  if (!courseExists(files, courseId)) return NO_LECTURES;
+  const opened = openToRead(files, courseId);
+  if (opened.status === 'blank') return NO_LECTURES;
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
     const { course } = opened;
@@ -86,7 +94,7 @@ export const dismissRebuildReport = (
   revision: RebuildReportRevision,
 ): RebuildReportDismissal => {
   if (!courseExists(files, courseId)) return { status: 'no-such-course' };
-  const opened = openExisting(files, courseId);
+  const opened = openForWrite(files, courseId);
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   try {
     return { status: opened.course.dismissRebuildReport(revision) };

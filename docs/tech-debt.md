@@ -31,27 +31,18 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 **Resolving a conflict here after a pruning pass**: take `main`'s pruned file as the base and re-apply only your branch's own additions — a union of **changes**, never a union of lines, because a line-union silently resurrects everything just deleted. A deletion on either side is authoritative and is never reinstated. Capture the heading and redirect-row sets of base, main and branch **before** rebasing and the resolution becomes arithmetic rather than judgement; `review-loop` step 5 states the full procedure.
 
-| Captured entry                                                                                     | Now owned by |
-| -------------------------------------------------------------------------------------------------- | ------------ |
-| architecture.md § Why paraphrases ADR 0002's count without citing it                               | #181         |
-| plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14                               | #181         |
-| ADR 0005 (g) lists the trigger path set its script will own                                        | #181         |
-| grading agreement's hand-marked inputs have no delivering ticket                                   | #181         |
-| ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed       | #181         |
-| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                        | #292         |
-| ADR 0003's restatement ledger does not list #20's new carriers                                     | #298         |
-| ADR 0006's carrier ledger names the old home of the quotable field list                            | #298         |
-| ADR 0005 cites `citation.ts` for a minting split it no longer states                               | #298         |
-| ledger sweeps with only literal arms cannot see a paraphrase                                       | #298         |
-| opening a course file to read it can write to it                                                   | #300         |
-| a course file whose stored `course_id` fails `CourseId` throws instead of being refused            | #300         |
-| a PDF that pdf.js cannot read is reported as damaged, whoever is at fault                          | #301         |
-| the PPTX reader finds the presentation part by fixed name, not by relationship                     | #301         |
-| pdf.js refuses a `Buffer` that `DeckFile` accepts by type                                          | #301         |
-| an eval report's sampling is what the caller says, never what the generator ran                    | #302         |
-| nothing owns which text a slide is embedded as                                                     | #302         |
-| the generator's context length differs between developer mode and the installed app, with no owner | #302         |
-| the quotable fields of a SlideRecord are listed in two packages                                    | #302         |
+| Captured entry                                                                               | Now owned by |
+| -------------------------------------------------------------------------------------------- | ------------ |
+| architecture.md § Why paraphrases ADR 0002's count without citing it                         | #181         |
+| plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14                         | #181         |
+| ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
+| grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
+| ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
+| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                  | #292         |
+| ADR 0003's restatement ledger does not list #20's new carriers                               | #298         |
+| ADR 0006's carrier ledger names the old home of the quotable field list                      | #298         |
+| ADR 0005 cites `citation.ts` for a minting split it no longer states                         | #298         |
+| ledger sweeps with only literal arms cannot see a paraphrase                                 | #298         |
 
 ---
 
@@ -97,3 +88,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/shared/src/ingest-status.ts` `DiscardableTable`; `packages/index/src/schema.test.ts`; `packages/index/src/rebuild-report.ts` `readRebuildReport`
 - What: the schema test holds `DiscardableTable` equal to the current schema's discardable tables, so renaming `topics` drops the old name from the vocabulary. An undismissed report a rebuild wrote under that old name is then counted as `OTHER_ROW` (`apps/web/src/copy.ts` `discardedMessage`). `readRebuildReport` also reads an older file's `rebuild_report` with the current reader. Root cause: the report's table names are persisted across app versions, and the vocabulary only knows the current one.
 - Source: #299 review cycle 1
+
+## 2026-10-21 — a course file's `course` table with no row throws instead of being refused
+
+- Where: `packages/index/src/open-course.ts` `handOver` (the `CourseRow` parse); `packages/index/src/rebuild-course.ts` `rebuildCourse` (the older file's `course_id` read)
+- What: a `course` table holding no row makes the row read return `undefined`, so both parses throw a `ZodError`. An older file whose schema was not `strict` can also hold a non-text `course_id`, which throws the same way. This is the same class as #300's: a course file is external input, and the module that reads it should refuse a malformed file as a value (`docs/standards/error-handling.md` rule 1). It predates #300, which only touched those lines.
+- Source: #300 review cycle 1
+
+## 2026-10-21 — the PPTX reader finds parts only by lowercase extension and exact name
+
+- Where: `unzipParts` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`; `readXml` and `resolveTarget` in `packages/ingest/src/adapters/pptx/ooxml.ts`
+- What: only names ending in lowercase `.xml` or `.rels` are inflated, parts are looked up by exact case, and relationship targets are not percent-decoded, though OPC part names compare case-insensitively and may be escaped. A conforming package whose main, slide or notes part is named another way reads as `missing-part`, so `damaged`: a reader limit in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). Predates #301, which made the main part's name come from a relationship and so more reachable.
+- Source: #301 review cycle 1

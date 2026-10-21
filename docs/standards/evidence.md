@@ -2,7 +2,7 @@
 
 _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
 
-**Trigger:** offering command output — a grep, an exit status, a diff — as evidence that something worked, that something matches, or that nothing remains.
+**Trigger:** offering command output — a grep, an exit status, a diff — as evidence that something worked, that something matches, or that nothing remains; writing a harness or a scripted edit whose result you will report; or writing a figure, a verdict or a claim about how a tool behaves into a plan comment, PR body, lane report, commit message or comment.
 
 Every idiom catalogued below printed something that read as proof and was not. Use the sanctioned forms; when you recognise a member of the catalogue, replace it rather than annotate it.
 
@@ -17,6 +17,12 @@ Every idiom catalogued below printed something that read as proof and was not. U
 4. **Verify a write by reading it back.** A write made through an API is unproven until the resource is fetched again and inspected. A returned URL and a zero exit prove the request was accepted, not that the intended content landed.
 
 5. **Every emptiness claim ships with a positive control** — the same pattern, run in the same report against a case known to contain a match. Without it, "no occurrences remain" and "my pattern is broken" produce identical output.
+
+6. **A harness you write decides by exit code.** A mutant loop, a check script or a retry wrapper takes each verdict from the exit status of the command under test, captured as in form 1, and never from that command's output searched for a word such as `failed` or `passed`.
+
+7. **A figure, a claim about behaviour, and a summary line are written after, and from, what establishes them.** A count, a reading, a pass rate, a "none", or a statement of what a tool or parser does — in a plan comment, PR body, lane report, commit message or comment — is pasted from a captured run, the command beside its output. A summary line ("Divergence: none", "both formats") is written last, from the paragraph or diff it summarises. A claim with no run behind it is run now or deleted; in standing prose the run becomes a test (`docs/standards/prose.md` rule 2).
+
+8. **A scripted edit asserts its own match count and fails on zero.** A `sed`, `perl` or script rewrite counts the substitutions the edit itself made, reports the number, and exits non-zero when it is zero or not the number expected: `OLD=<old> NEW=<new> perl -i -pe 'BEGIN { $o = $ENV{OLD} } $n += s/\Q$o\E/$ENV{NEW}/g; END { print STDERR "replaced $n\n"; exit($n ? 0 : 1) }' <file>`. A count taken beforehand by a different tool does not stand in for it — the two can disagree about the same bytes (member 13's fixture).
 
 ## Member catalogue
 
@@ -39,6 +45,12 @@ Every idiom catalogued below printed something that read as proof and was not. U
 9. **`gh api -X PATCH … -f body=@file` does not expand `@file`.** It writes the literal path string as the body and exits 0, so an `||` fallback never fires (owner, cumulo#412 comment 2). Replacement: `-F body=@file` is the expanding form — and confirm it by readback, sanctioned form 4, which is how the failure was caught.
 
 10. **`git grep -E` on macOS reads `\b` as the letter `b`.** In a `git grep -E` pattern on this Mac each of `\b`, `\<`, `\w`, `\s` and `\d` matches its own character: no error, and an exit status like any other search. An arm written with them matches the wrong lines, not merely none. `-G`, git's default engine, honours all five here, so adding `-E` to a working recipe for its `|` is what breaks it. Fixture (#40, Apple Git-157), one file holding `one app` and `bone appb`: `git grep -E '\bone app\b'` returns only `bone appb`, `git grep -P` and `command grep -E` only `one app`. The lane that measured it lost four hits of its own engine sweep to a `P\b` arm under `-E`. CI's Ubuntu git uses glibc's regex, whose GNU operators include `\b` (not reproduced here), so one recorded sweep can return different files on the owner's Mac and in CI with neither run looking broken. Replacement: a recorded sweep needing a word boundary or a class escape runs under `git grep -P` or, under `-E`, spells the boundary out as `(^|[^a-z])…([^a-z]|$)`.
+
+11. **A harness verdict read from output text.** The #109 lane's mutant harness decided "survived" by reading vitest's last lines for the word `failed` and reported two false survivors; rerun on the exit code, both mutants were dead (PR #193). Replacement: sanctioned form 6.
+
+12. **A figure or claim written before the run that would establish it.** It reads exactly as a captured result does, in three shapes. A summary written ahead of its paragraph: #92's plan comment said "Divergence: none" above a paragraph describing one (PR #102). A figure carried over from another run: #243's lane quoted an earlier run's figure as the 10/10 control because its own loop had not printed values (PR #272). A behaviour claim from memory: #290's config comment stated the parser's behaviour backwards at five sites, where one stylelint run would have settled it (PR #315). Replacement: sanctioned form 7.
+
+13. **A scripted edit that asserts nothing about what it matched.** A substitution that matches nothing exits 0 and leaves the file as it was, so a no-op prints what success prints. #256's exact-string edit of the PPTX corpus keyed on a decomposed "Café" the file did not hold and passed silently, and the commit subject claimed "both formats" for a change that reached one (PR #284). A pre-count by another tool is not the edit's count. Fixture (#294, perl 5.34.1), a file holding `Café au lait`: `command grep -cF 'Café'` counts `1`, then `perl -CSD -pi -e 's/\QCafé\E/Tea/g'` exits `0` and leaves the file unchanged, because `-CSD` decodes the file while the program text stays bytes. Replacement: sanctioned form 8.
 
 ## Adding a member
 

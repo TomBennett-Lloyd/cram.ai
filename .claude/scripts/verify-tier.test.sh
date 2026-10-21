@@ -362,7 +362,7 @@ if begin_with_esbuild "a comment-only .ts edit is the source-prose tier, and run
     expect_rc 0 "$rc"
     expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only; observing tests: none"
     expect_stdout "  src/app.ts"
-    expect_stdout "would run: pnpm exec eslint --no-warn-ignored --max-warnings 0 -- src/app.ts && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm exec prettier --check --ignore-unknown -- src/app.ts"
+    expect_stdout "would run: pnpm exec eslint --no-warn-ignored --max-warnings 0 -- src/app.ts && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm check:no-network-egress && pnpm exec prettier --check --ignore-unknown -- src/app.ts"
     expect_not_out "verify:full"
     expect_not_out "unbound variable"
   done
@@ -397,6 +397,7 @@ if begin_with_esbuild "a comment-only .css edit is the source-prose tier, and st
   expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only; observing tests: none"
   expect_stdout "would run: pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck"
   expect_not_stdout "eslint"
+  expect_not_stdout "no-network-egress"
   expect_not_out "verify:full"
   end
 fi

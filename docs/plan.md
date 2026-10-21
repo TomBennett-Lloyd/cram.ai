@@ -62,8 +62,8 @@ Owned by `docs/standards/grounding.md` (the rule) and `docs/adr/0001-grounding-a
 ### 3.6 UI and packaging
 
 - Single-page app, same stack family as cumulo (React + TypeScript, design tokens, stylelint/eslint gates). Screens: courses, upload/ingest status, slide browser with topic tags, ask, notes, exam (sit / review / history), settings (model, data folder).
-- **Desktop app for a non-technical Windows user (owner decision 2026-10-13).** An Electron shell runs the Node server in its main process and loads the SPA; `node-llama-cpp` runs the model in-process; an NSIS installer is produced by `electron-builder` on a GitHub Actions Windows runner. First launch downloads the model files from Hugging Face with checksum verification into the app's data folder (the only outbound connection the app ever makes, and it carries no user data); everything after that is offline. Code signing is deferred: an unsigned installer shows a SmartScreen warning the user clicks through, and a signing certificate is a cost decision for the owner (§9).
-- Developer mode is the same server started with `pnpm dev` against Ollama. Electron is chosen over Tauri because the server is already Node and `node-llama-cpp` is a Node binding; one runtime, one installer.
+- **Desktop app for a non-technical Windows user (owner decision 2026-10-13).** Owned by `docs/adr/0007-desktop-packaging.md` (the shell and its network surface, the installer and release shape, the native binaries, the first-launch weight download by digest, the OCR data inside the installer, the signing deferral, the data folder, and the testing surfaces and release gate); this bullet carries no restatement.
+- Developer mode is the same server started with `pnpm dev`, the generator over HTTP per `docs/adr/0003-model-roles-and-backends.md` § Decision (c); the shell choice and its alternatives are `docs/adr/0007-desktop-packaging.md` § Options considered.
 
 ## 4. Evaluation is a gate, not a dashboard
 
@@ -102,7 +102,7 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 4. **0004 Storage** — one SQLite file per course; FTS5 + sqlite-vec; no shared store; at-rest encryption deferred with the trigger that un-defers it. Written — `docs/adr/0004-storage.md` (#4); §3.2's first bullet above now points at it.
 5. **0005 Evaluation as a merge gate** — the synthetic deck, the contradiction set, the two tiers, the 100% metrics. Written — `docs/adr/0005-evaluation-as-gate.md` (#5); §4 above now points at it.
 6. **0006 Image-only slides** — OCR + caption with the `derived` flag; what the UI must show; who may cite derived text. Written — `docs/adr/0006-image-only-slides.md` (#6); §3.1's image-only bullet above now points at it.
-7. **0007 Desktop packaging** — Electron + node-llama-cpp + NSIS; model download on first launch; signing deferred.
+7. **0007 Desktop packaging** — Electron + node-llama-cpp + NSIS; model download on first launch; signing deferred. Written — `docs/adr/0007-desktop-packaging.md` (#7); §3.6's desktop bullets above now point at it.
 
 ## 8. Milestones → issues
 
@@ -118,8 +118,8 @@ Ported from cumulo at its current graduated state in the bootstrap commits; `CLA
 
 1. **The target Windows machine**: answered by the owner on #3 (2026-10-13); the sizing it decides is `docs/adr/0003-model-roles-and-backends.md`'s.
 2. **A sample deck** (not committed) to size the image-only-slide problem on during M1: answered by #9's sizing comment (2026-10-13); what it decided is `docs/adr/0006-image-only-slides.md`'s.
-3. **Windows testing**: development is on a Mac. CI can build the installer on a Windows runner, but someone has to run it. Options: a Windows VM on the Mac, or the first user's machine as the smoke test with a short checklist.
-4. **Code signing**: pay for a certificate (removes the SmartScreen warning) or accept the warning for a single known user.
+3. **Windows testing**: answered by the owner on #7 (2026-10-13); what it decided is `docs/adr/0007-desktop-packaging.md` § Decision (k)'s.
+4. **Code signing**: answered by the owner on #7 (2026-10-13); what it decided is `docs/adr/0007-desktop-packaging.md` § Decision (h)'s.
 5. **Licence**: "same as cumulo" was the decision — and cumulo has **no licence file**, which makes it public source with all rights reserved rather than open source. This repo mirrors that for now; adding a licence file is its own decision.
 
 ## 10. Bootstrap record

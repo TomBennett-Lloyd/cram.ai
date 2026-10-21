@@ -1,22 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { quoteSpan, slideFields } from './quotable-text';
-import { SlideRecord } from './slide-record';
-
-const slide = (fields: Partial<SlideRecord> = {}): SlideRecord =>
-  SlideRecord.parse({
-    courseId: 'bio',
-    lectureId: 'l1',
-    lectureTitle: 'Lecture 1',
-    slideNo: 1,
-    kind: 'content',
-    title: 'The Hive',
-    body: 'Worker bees are female.',
-    speakerNotes: '',
-    imageCaptions: [],
-    derived: false,
-    sourceHash: 'h',
-    ...fields,
-  });
+import { slide } from './slide-record-fixture';
 
 /** The text `quote` spans in `text`, so one string states where it was found. */
 const spanned = (text: string, quote: string): string | undefined => {

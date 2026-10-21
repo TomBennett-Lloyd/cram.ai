@@ -15,4 +15,5 @@ carrier: packages/gateway/src/adapters/onnx/onnx-reranker.test.ts
 carrier: apps/server/src/slide-embedding.ts
 carrier: docs/adr/0006-image-only-slides.md
 carrier: eval/src/report.ts
+carrier: docs/adr/0007-desktop-packaging.md
 excluded: docs/review-feedback.md

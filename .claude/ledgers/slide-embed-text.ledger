@@ -1,0 +1,18 @@
+# The text a slide is embedded as, owned by `embedText` in packages/shared/src/embed-text.ts
+# (docs/standards/architecture.md rule 9; #302). The server's ingest and repair paths and eval's
+# IndexRetriever both embed it, so recall@k measures the retrieval the app runs; each one's test
+# checks that its embedder receives exactly it. The `.embed({ texts` arm finds a new embedding site.
+owner: packages/shared/src/embed-text.ts
+claim: every slide is embedded as embedText(record), by the app's ingest and by the eval retriever alike
+sweep: \.claude/ledgers/slide-embed-text\.ledger|\bembedText\b|\.embed\(\{ ?texts|(?i:\bembedded as\b|text a slide is embedded)
+scope: :!pnpm-lock.yaml
+carrier: packages/shared/src/index.ts
+carrier: packages/shared/src/embed-text.test.ts
+carrier: apps/server/src/slide-embedding.ts
+carrier: apps/server/src/slide-embedding.test.ts
+carrier: eval/src/index-retriever.ts
+carrier: eval/src/index-retriever.test.ts
+excluded: eval/src/recording-gateway.test.ts
+excluded: eval/src/timed-gateway.test.ts
+excluded: packages/gateway/src/adapters/onnx/onnx-embedder.test.ts
+excluded: packages/gateway/src/fake-gateway.test.ts

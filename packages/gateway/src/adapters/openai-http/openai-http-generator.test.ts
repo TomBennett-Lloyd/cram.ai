@@ -117,6 +117,18 @@ describe('OpenAiHttpGenerator', () => {
     });
   });
 
+  it('reports the sampling it sends, so an eval report records what ran', async () => {
+    let sent: unknown;
+    fixture.handler = (incoming, body, response) => {
+      sent = JSON.parse(body);
+      reply(200, completion('{"text":"x"}'))(incoming, body, response);
+    };
+    const generator = new OpenAiHttpGenerator(config);
+    await generator.chat(request);
+    expect(generator.sampling).toEqual(config.sampling);
+    expect(sent).toMatchObject(generator.sampling);
+  });
+
   it('resolves the path the same way with no trailing slash on the endpoint', async () => {
     let url: string | undefined;
     fixture.handler = (incoming, body, response) => {

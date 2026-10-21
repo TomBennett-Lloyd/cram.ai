@@ -9,7 +9,7 @@ import {
 import type { TimedReply } from '../../generator-timing';
 import type { Generator } from '../../model-gateway';
 import type { GeneratorPin } from '../../pin';
-import { HttpGeneratorConfig } from '../../role-config';
+import { HttpGeneratorConfig, type Sampling } from '../../role-config';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
 import { readChatCompletionStream } from './chat-completion-stream';
 
@@ -30,6 +30,7 @@ const describeError = (error: unknown): string =>
  */
 export class OpenAiHttpGenerator implements Generator {
   readonly pin: GeneratorPin;
+  readonly sampling: Sampling;
   readonly #config: HttpGeneratorConfig;
   readonly #url: URL;
   readonly #now: () => number;
@@ -37,6 +38,7 @@ export class OpenAiHttpGenerator implements Generator {
   constructor(config: HttpGeneratorConfig, now: () => number = () => performance.now()) {
     this.#config = HttpGeneratorConfig.parse(config);
     this.pin = this.#config.pin;
+    this.sampling = this.#config.sampling;
     this.#url = chatCompletionsUrl(this.#config.endpoint);
     this.#now = now;
   }

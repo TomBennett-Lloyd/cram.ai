@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CourseId, LectureId, SlideNo, SlideRecord, type Deck, TopicTag } from '@cram/shared';
+import { type CourseId, LectureId, SlideNo, SlideRecord, type Deck, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   COURSE,
@@ -224,16 +224,16 @@ describe('rebuildCourse', () => {
     expect(parse).not.toHaveBeenCalled();
   });
 
-  it('never rebuilds a file that records another course, and leaves it untouched', async () => {
-    writeOlderFile(temp.spec.path, { courseId: 'course-b' });
-    const before = readFileSync(temp.spec.path);
-    expect(await rebuildCourse(temp.spec, deps)).toEqual({
-      status: 'course-mismatch',
-      recorded: CourseId.parse('course-b'),
-    });
-    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
-    expect(parse).not.toHaveBeenCalled();
-  });
+  it.each(['course-b', 'Bio', 'course_b'])(
+    'never rebuilds a file that records another course, %s, and leaves it untouched',
+    async (recorded) => {
+      writeOlderFile(temp.spec.path, { courseId: recorded });
+      const before = readFileSync(temp.spec.path);
+      expect(await rebuildCourse(temp.spec, deps)).toEqual({ status: 'course-mismatch', recorded });
+      expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+      expect(parse).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports an older file with no stored decks, and leaves it untouched', async () => {
     writeOlderFile(temp.spec.path, { decks: false });

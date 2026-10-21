@@ -62,18 +62,18 @@ class Replies<R> {
 
 class FakeGenerator implements Generator {
   readonly pin: GeneratorPin;
-  readonly #sampling: Sampling;
+  readonly sampling: Sampling;
   readonly #replies: Replies<GeneratorReply>;
 
   constructor(pin: GeneratorPin, sampling: Sampling, replies: Replies<GeneratorReply>) {
     this.pin = pin;
-    this.#sampling = sampling;
+    this.sampling = sampling;
     this.#replies = replies;
   }
 
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
     return replayed(() => {
-      const sent = { pin: this.pin, sampling: this.#sampling, request: chatWireRequest(request) };
+      const sent = { pin: this.pin, sampling: this.sampling, request: chatWireRequest(request) };
       return chatResult(this.#replies.replay(recordingKey(sent)), request.output.schema);
     });
   }

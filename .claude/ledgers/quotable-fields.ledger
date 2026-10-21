@@ -1,0 +1,18 @@
+# Which fields of a SlideRecord a quote resolves against, owned by `slideFields` in
+# packages/shared/src/quotable-text.ts (docs/standards/architecture.md rule 9; #202, #302).
+# textHashOf reads it, so a confirmation of derived text is voided by an edit to exactly the text a
+# quote could come from (docs/adr/0006-image-only-slides.md § Decision (g)). The `.imageCaptions`
+# arm finds a reader that lists the fields by hand; slide-row.ts's ftsValues still does (#325).
+owner: packages/shared/src/quotable-text.ts
+claim: the fields a quote resolves against are the ones slideFields returns
+sweep: \.claude/ledgers/quotable-fields\.ledger|\bslideFields\b|\.imageCaptions\b|(?i:fields a quote resolves|quotable fields)
+scope: :!pnpm-lock.yaml
+carrier: packages/shared/src/index.ts
+carrier: packages/shared/src/quotable-text.test.ts
+carrier: packages/shared/src/embed-text.ts
+carrier: packages/grounding/src/slide-text.ts
+carrier: packages/index/src/confirmation.ts
+carrier: packages/index/src/confirmation.test.ts
+carrier: packages/index/src/slide-row.ts
+carrier: apps/web/src/ask/quote-marks.ts
+carrier: apps/web/src/ask/quote-marks.test.ts
