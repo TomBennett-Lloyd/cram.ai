@@ -113,3 +113,8 @@ Entry format:
 
 - Phase: process
 - Observed: main moved four times during the #133 lane's single REBASE bounce, and each move cost it either a tech-debt union or a stale citation: ADR 0006 went from proposed to accepted under it, and the triage pass (#191) deleted two tech-debt entries its code cited by title, one with no redirect row, because the pass grepped for citations of `tech-debt.md` as a path and not for each deleted entry's title. The triage skill says the redirect table is where a dangling pointer lands; it does not say the deleting pass greps every title it deletes. One pass so far.
+
+## 2026-10-21 — PR #215
+
+- Phase: implementation
+- Observed: the #16 lane ran `pnpm verify` eleven times, each taking 9 to 15 minutes, while fourteen to sixteen lanes shared the machine at a load average of 90 to 100; one run was a re-run after #152's time-box signature (fixed since by PR #197). The lane's work (86 files, four review passes, a browser-smoke pass) was not the cost; the verify runs were, and most of that was waiting on the other lanes' runs. The parallelism bought wall-clock across tickets and paid it back inside each. One lane's figures so far; the effort pilot (#140) records tokens and duration per lane and is where the trade-off becomes visible.
