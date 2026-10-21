@@ -109,6 +109,9 @@ const EVERY_CONSTRUCT = equation(
   ),
 );
 
+/** Characters from pdf.js's `normalizeUnicode` set, as a deck writes them: micro sign, ligatures, ohm sign (#256). */
+const PDFJS_FOLDED_LINE = 'Cells are 5 \u00B5m across, \uFB01ne \uFB02ow, \uFB05 and 10 k\u2126';
+
 /** Each slide and page reaches one edge of how ingest reads a deck (#257's PR names them). */
 const PPTX = buildPptx({
   reversePartNames: true,
@@ -238,7 +241,9 @@ const PDF = await buildPdf({
         line('Mass and energy', TITLE),
         { text: 'Emc', size: BODY, mathItalic: true },
         line('is the rest energy of a body'),
+        { text: PDFJS_FOLDED_LINE, size: BODY, toUnicode: true },
       ],
+      annotations: [{ subtype: 'Text', contents: PDFJS_FOLDED_LINE }],
     },
     titled('References'),
     titled('Reference list'),
