@@ -75,8 +75,8 @@ function scan(src, i, commands, nested) {
   const heredocs = [];
   // Open parens, innermost last. Each holds the word and command it opened in (`$(`, `<(`,
   // `@(`, `a=(`, a subshell's empty one), which resume at its `)` without the group's text,
-  // so zsh's `dirty.txt(N)` names dirty.txt. A `pattern` group is a zsh case pattern's, whose
-  // words are never commands (#287).
+  // so zsh's `dirty.txt(N)` names dirty.txt. A `pattern` group is a zsh case pattern's (#287);
+  // only a `command` group's words stand at command position (#288).
   const groups = [];
   // Open `case` frames, innermost last, each at the paren depth it opened at. `state` runs
   // head (`case WORD in`) → pattern → body, and back to pattern at each `;;`.
@@ -85,10 +85,13 @@ function scan(src, i, commands, nested) {
   let word = null;
   commands.push(current);
   const frame = () => (cases.at(-1)?.depth === groups.length ? cases.at(-1) : undefined);
+  // `sure` asks whether zsh surely runs the group as a command list, not only may (#288).
+  const atCommand = (sure = false) =>
+    (groups.at(-1)?.[sure ? 'sure' : 'command'] ?? true) &&
+    current.every((w, k) => LEADERS.has(w) || current[k - 1] === 'function');
   const end = () => {
     if (word === null) return;
-    const atCommand =
-      !groups.at(-1)?.pattern && current.every((w, k) => LEADERS.has(w) || current[k - 1] === 'function');
+    const leading = atCommand();
     current.push(word);
     const f = frame();
     if (f?.state === 'head') {
@@ -96,8 +99,8 @@ function scan(src, i, commands, nested) {
     } else if (f?.state === 'pattern') {
       if (f.fresh && word === 'esac') cases.pop();
       else f.fresh = false;
-    } else if (atCommand && word === 'esac' && f) cases.pop();
-    else if (atCommand && word === 'case') cases.push({ depth: groups.length, state: 'head', words: 0 });
+    } else if (leading && word === 'esac' && f) cases.pop();
+    else if (leading && word === 'case') cases.push({ depth: groups.length, state: 'head', words: 0 });
     word = null;
   };
   const split = () => {
@@ -133,13 +136,35 @@ function scan(src, i, commands, nested) {
       const f = frame();
       // Only a `$(` opens a command group mid-pattern; `x(`, `@(` and `(` are glob groups (#287).
       const pattern = !word?.endsWith('$') && (f?.state === 'pattern' || groups.at(-1)?.pattern === true);
+      // `((` is arithmetic only at command position; in an argument it is a glob group (#288).
+      const leading = word === null && atCommand(true);
+      // Where zsh may run a command, `((` may be arithmetic: read it so unless a quote in it would
+      // end it elsewhere as a glob group, and scan its text as an argument too, for the `<(` a
+      // glob group runs (#288).
+      const ambiguous = word === null && !leading && (groups.at(-1)?.command ?? true);
+      let unit = (leading || ambiguous) && !pattern && src[i + 1] === '(' ? arith(src, i + 2, commands) : -1;
+      if (ambiguous && unit !== -1 && /['"]/.test(src.slice(i, unit))) unit = -1;
+      else if (ambiguous && unit !== -1) {
+        commands.push(ENTER_SUBSHELL);
+        scan(`: ${src.slice(i + 2, unit - 2)}`, 0, commands, false);
+        commands.push(LEAVE_SUBSHELL);
+      }
       // The pattern is under way, so an `esac` after the group is part of it (#287).
       if (pattern && f) f.fresh = false;
-      groups.push({ current, word, open: i, pattern });
-      word = null;
-      current = [];
-      commands.push(current);
-      i++;
+      if (unit === -1) {
+        // `$(`, `<(`, `>(`, `=(`, `{(` and a word-initial `(` open a command list, even in an
+        // argument, where scanning one only refuses more (#288); any other `(` a glob group.
+        const sure = !pattern && (leading || word === '=' || /[$<>]$/.test(word ?? ''));
+        const command = !pattern && (word === null || word === '{' || word === '=' || /[$<>]$/.test(word));
+        groups.push({ current, word, open: i, pattern, command, sure });
+        word = null;
+        current = [];
+        commands.push(current);
+        i++;
+      } else {
+        word = src.slice(i, unit);
+        i = unit;
+      }
     } else if (c === ')') {
       end();
       const f = frame();
@@ -195,6 +220,10 @@ function scan(src, i, commands, nested) {
       const quoted = dquote(src, i, commands);
       word = (word ?? '') + quoted.text;
       i = quoted.end;
+    } else if (src.startsWith('$((', i)) {
+      const unit = arith(src, i + 3, commands);
+      word = (word ?? '') + (unit === -1 ? c : src.slice(i, unit));
+      i = unit === -1 ? i + 1 : unit;
     } else if (src.startsWith('${', i)) {
       const j = param(src, i, commands, false);
       word = (word ?? '') + src.slice(i, j);
@@ -232,7 +261,7 @@ function dquote(src, i, commands) {
   i++;
   while (i < src.length && src[i] !== '"') {
     if (src.startsWith('$(', i)) {
-      i = scan(src, i + 2, commands, true);
+      i = dollarParen(src, i, commands);
       continue;
     }
     if (src[i] === '`') {
@@ -259,7 +288,7 @@ function param(src, i, commands, dq) {
   i += 2;
   while (i < src.length && src[i] !== '}') {
     if (src.startsWith('${', i)) i = param(src, i, commands, dq);
-    else if (src.startsWith('$(', i)) i = scan(src, i + 2, commands, true);
+    else if (src.startsWith('$(', i)) i = dollarParen(src, i, commands);
     else if (src[i] === '`') i = backtick(src, i, commands);
     else if (src.startsWith("$'", i) && !dq) i = ansi(src, i).end;
     else if (src[i] === '"') i = dquote(src, i, commands).end;
@@ -267,6 +296,33 @@ function param(src, i, commands, dq) {
     else i += src[i] === '\\' ? 2 : 1;
   }
   return i + 1;
+}
+
+// Reads the `$(` at `i` as an arithmetic `$((…))` when it closes as one, else as a command body.
+function dollarParen(src, i, commands) {
+  const unit = src[i + 2] === '(' ? arith(src, i + 3, commands) : -1;
+  return unit === -1 ? scan(src, i + 2, commands, true) : unit;
+}
+
+// Reads the arithmetic body at `i`, just past `$((` or `((`, as one unit: returns the index past
+// its `))`, or `-1` when the `)` matching the inner `(` is not followed by `)`, which both shells
+// then read as a command substitution or subshell. Its body quotes as `"…"` does, as zsh reads
+// it (#288).
+function arith(src, i, commands) {
+  const before = commands.length;
+  let depth = 1;
+  let k = i;
+  while (k < src.length) {
+    if (src.startsWith('$(', k)) k = dollarParen(src, k, commands);
+    else if (src.startsWith('${', k)) k = param(src, k, commands, true);
+    else if (src[k] === '`') k = backtick(src, k, commands);
+    else if (src[k] === '\\') k += 2;
+    else if (src[k] === ')' && depth === 1) break;
+    else depth += { '(': 1, ')': -1 }[src[k++]] ?? 0;
+  }
+  if (src[k + 1] === ')') return k + 2;
+  commands.length = before;
+  return -1;
 }
 
 const ANSI_ESCAPES = {
@@ -297,7 +353,7 @@ function ansi(src, i) {
 
 // Bracket, in `commands`, the commands of a body the shell runs in a subshell, so a `cd` among
 // them ends with the body. Markers rather than index ranges, so a rescan's truncation drops
-// them with the commands they bracket. Backtick bodies only (#282); `$(…)` and `(…)` are #357.
+// them with the commands they bracket (#282). `$(…)` and `(…)` bodies are not bracketed yet (#357).
 const ENTER_SUBSHELL = Symbol('enter subshell');
 const LEAVE_SUBSHELL = Symbol('leave subshell');
 
@@ -370,9 +426,9 @@ for (const simple of commands) {
     dir = outerDirs.pop();
     continue;
   }
-  // `NAME=value` words lead a command without being it.
+  // `NAME=value` words, `NAME[sub]=value` among them (#288), lead a command without being it.
   let a = 0;
-  while (a < simple.length && /^[A-Za-z_]\w*\+?=/.test(simple[a])) a++;
+  while (a < simple.length && /^[A-Za-z_]\w*(\[.*\])?\+?=/.test(simple[a])) a++;
   const words = simple.slice(a);
   if (words[0] === 'cd') {
     dir = path.resolve(dir, words[1] ?? os.homedir());

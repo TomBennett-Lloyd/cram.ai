@@ -382,6 +382,151 @@ passes echo "$(case x in (a)esac) true;; esac) git checkout -- dirty.txt"
 refuses echo "$(case x in (a)	true;; esac; git checkout -- dirty.txt)"
 passes echo "$(case x in (a)	true;; esac) git checkout -- dirty.txt"
 refuses echo "$(case xa in x$(case y in y) echo a;; esac)) git checkout -- dirty.txt;; esac)"
+refuses echo $((1<<2))\ngit checkout -- dirty.txt
+refuses echo $(( 1 << 2 ))\ngit checkout -- dirty.txt
+refuses echo $((1<<(2)))\ngit checkout -- dirty.txt
+refuses echo "$(echo $((1<<(2)))\ngit checkout -- dirty.txt)"
+refuses echo "$((1<<2))"\ngit checkout -- dirty.txt
+refuses echo ${x:-$((1<<2))}\ngit checkout -- dirty.txt
+refuses echo "$(echo $((1<<2))\ngit checkout -- dirty.txt)"
+refuses x=$((1<<2))\ngit checkout -- dirty.txt
+refuses echo "$((true); git checkout -- dirty.txt)"
+refuses echo $((true); git checkout -- dirty.txt)
+refuses echo "$(( $(git checkout -- dirty.txt) ))"
+refuses echo $(( `git checkout -- dirty.txt` ))
+refuses (( 1<<2 ))\ngit checkout -- dirty.txt
+refuses ((1<<2)); git checkout -- dirty.txt
+refuses ((true); git checkout -- dirty.txt)
+refuses echo "$(case a in ((a|b)) git checkout -- dirty.txt;; esac)"
+passes echo $((1<<2))
+passes echo $((1<<2)) git checkout -- dirty.txt
+passes ((git checkout -- dirty.txt))
+refuses a[1]=x git checkout -- dirty.txt
+refuses a[1+1]=x git checkout -- dirty.txt
+refuses a[1]+=x git checkout -- dirty.txt
+refuses a[1]=x b[2]=y git checkout -- dirty.txt
+refuses a[$(echo 1)]=x git checkout -- dirty.txt
+refuses a[1,2]=x git checkout -- dirty.txt
+refuses a[1]=(x) git checkout -- dirty.txt
+refuses a[$(git checkout -- dirty.txt)]=x true
+refuses echo "$(a[1]=x git checkout -- dirty.txt)"
+passes echo a[1]=x git checkout -- dirty.txt
+passes a[1]x=y git checkout -- dirty.txt
+refuses echo $(($((1<<2))<<1))\ngit checkout -- dirty.txt
+refuses echo $(( ${x:-$(git checkout -- dirty.txt)} ))
+refuses echo $(( $(echo 1) << 2 ))\ngit checkout -- dirty.txt
+refuses echo $(( ')' ))\ngit checkout -- dirty.txt
+refuses echo "$(( ))"\ngit checkout -- dirty.txt
+refuses echo ${x:-"$((1<<2))"}\ngit checkout -- dirty.txt
+refuses echo `echo $((1<<2))\ngit checkout -- dirty.txt`
+refuses x=$((1<<2)) git checkout -- dirty.txt
+refuses echo $((true) ); git checkout -- dirty.txt
+refuses true; (( 1<<2 ))\ngit checkout -- dirty.txt
+refuses ((1)) && git checkout -- dirty.txt
+refuses echo "$(((1<<2))\ngit checkout -- dirty.txt)"
+refuses echo "$( (true))"; git checkout -- dirty.txt
+refuses echo "$( ((1<<2)))"; git checkout -- dirty.txt
+refuses echo "$(case a in a) ((1<<2))\ngit checkout -- dirty.txt;; esac)"
+refuses echo "$(case a in ((a)) git checkout -- dirty.txt;; esac)"
+passes a=((1<<2))\ngit checkout -- dirty.txt
+refuses a[1]=x a+=y git checkout -- dirty.txt
+refuses a[1]=x\ngit checkout -- dirty.txt
+passes 1a[1]=x git checkout -- dirty.txt
+passes a]=x git checkout -- dirty.txt
+passes a[=x git checkout -- dirty.txt
+refuses echo $(( ${x:-'$(git checkout -- dirty.txt)'} ))
+refuses echo $(( '$(git checkout -- dirty.txt)' ))
+passes echo $(( ${x:-\$(git checkout -- dirty.txt)} ))
+passes echo $(( \$(git checkout -- dirty.txt) ))
+passes ((1)) git checkout -- dirty.txt
+refuses echo $(( `true '))'` )); git checkout -- dirty.txt; echo 'x'
+refuses echo "$(( `true '))'` ))"; git checkout -- dirty.txt; echo 'x'
+refuses echo ${y:-$(( `true '))'` ))}; git checkout -- dirty.txt; echo 'x'
+refuses x=1; echo $(( ${x:-'))'} )); git checkout -- dirty.txt; echo 'x'
+refuses x=1; echo $(( ${x:-'))'} ))\ngit checkout -- dirty.txt; echo 'x'
+refuses echo $(( $(true ')))') )); git checkout -- dirty.txt; echo 'x'
+refuses x=1; (( ${x:-'))'} )); git checkout -- dirty.txt; echo 'x'
+refuses (( `true '))'` )); git checkout -- dirty.txt; echo 'x'
+refuses echo ((a'))')); git checkout -- dirty.txt; echo 'x'
+refuses true && echo ((a'))')); git checkout -- dirty.txt; echo 'x'
+passes g$((echo x) )it checkout -- dirty.txt
+passes g$((1))it checkout -- dirty.txt
+passes ((1))git checkout -- dirty.txt
+passes echo $(( "))'" )); git checkout -- dirty.txt; echo 'x'
+passes x=1; echo $(( ${x:-'}))'} )); git checkout -- dirty.txt; echo 'x'
+refuses x=1; echo "$(( ${x:-'))'} ))"; git checkout -- dirty.txt; echo 'x'
+refuses case a in b) true;; ((a)) git checkout -- dirty.txt;; esac
+refuses echo ((a)); git checkout -- dirty.txt
+refuses echo "$(git checkout -- dirty.txt))"
+refuses echo ${x:-$(git checkout -- dirty.txt))}
+refuses echo x(((a'))')))\ngit checkout -- dirty.txt
+refuses echo x(((a'))'))); git checkout -- dirty.txt
+refuses echo @(((a'))'))); git checkout -- dirty.txt
+refuses a=(((a'))'))); git checkout -- dirty.txt
+refuses echo ((((a'))')))); git checkout -- dirty.txt
+refuses echo x(y|((a'))'))); git checkout -- dirty.txt
+refuses echo "$(echo x(((a'))'))); git checkout -- dirty.txt)"
+passes echo x(((1<<2)))\ngit checkout -- dirty.txt
+passes a=(((1<<2)))\ngit checkout -- dirty.txt
+refuses ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses cat <( ((1<<2))\ngit checkout -- dirty.txt )
+refuses echo "$( ((1<<2))\ngit checkout -- dirty.txt )"
+refuses { ((1<<2)) }\ngit checkout -- dirty.txt
+passes echo $(( '$(git checkout -- dirty.txt)' ); true)
+passes echo $(( '`git checkout -- dirty.txt`' ); true)
+passes echo "$(( '$(git checkout -- dirty.txt)' ); true)"
+passes (( '$(git checkout -- dirty.txt)' ); true)
+passes echo $(( # $(git checkout -- dirty.txt)\n); true)
+refuses echo x(case|y); echo $(echo x\n((1<<2))\ngit checkout -- dirty.txt)
+refuses echo x(case) $(true x\n((1<<2))\ngit checkout -- dirty.txt)
+refuses a=(case) $(true x\n((1<<2))\ngit checkout -- dirty.txt)
+refuses echo x(y|case) $(true x\n((1<<2))\ngit checkout -- dirty.txt)
+passes echo x(case|y) $(true a\n((a)) git checkout -- dirty.txt)
+refuses >/dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses >/dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses > /dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses > /dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses >>/dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses >>/dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses </dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses </dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses >|/dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses >|/dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses 2>&1 (case x in x) git checkout -- dirty.txt;; esac)
+refuses 2>&1 ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses !>/dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses !>/dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses time >/dev/null (case x in x) git checkout -- dirty.txt;; esac)
+refuses time >/dev/null ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses { >/dev/null (case x in x) git checkout -- dirty.txt;; esac) }
+refuses { >/dev/null ( ((1<<2))\ngit checkout -- dirty.txt ) }
+refuses repeat 1 (case x in x) git checkout -- dirty.txt;; esac)
+refuses repeat 1 ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses for x (1) (case x in x) git checkout -- dirty.txt;; esac)
+refuses for x (1) ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses for ((i=0;i<1;i++)) (case x in x) git checkout -- dirty.txt;; esac)
+refuses for ((i=0;i<1;i++)) ( ((1<<2))\ngit checkout -- dirty.txt )
+refuses {(case x in x) git checkout -- dirty.txt;; esac)}
+refuses {( ((1<<2))\ngit checkout -- dirty.txt )}
+refuses if >/dev/null (case x in x) git checkout -- dirty.txt;; esac); then :; fi
+refuses if >/dev/null ( ((1<<2))\ngit checkout -- dirty.txt ); then :; fi
+refuses cat =( ((1<<2))\ngit checkout -- dirty.txt )
+refuses cat >( ((1<<2))\ngit checkout -- dirty.txt )
+refuses >/dev/null ((1<<2))\ngit checkout -- dirty.txt
+refuses echo ((<(git checkout -- dirty.txt)))
+refuses echo ( ((>(git checkout -- dirty.txt))) )
+refuses cat =(case x in x) git checkout -- dirty.txt;; esac)
+refuses cat >(case x in x) git checkout -- dirty.txt;; esac)
+refuses cat =( ((1<<2+'1'))\ngit checkout -- dirty.txt )
+refuses cat >( ((1<<2+'1'))\ngit checkout -- dirty.txt )
+refuses ( ((1<<2+'1'))\ngit checkout -- dirty.txt )
+refuses ((1<<2+'1'))\ngit checkout -- dirty.txt
+refuses echo ((a"))")); git checkout -- dirty.txt
+refuses echo ((#x)); git checkout -- dirty.txt
+refuses >/dev/null ( (( #x )); git checkout -- dirty.txt )
+refuses >/dev/null ( ((1<(2<<1)))\ngit checkout -- dirty.txt )
+refuses >/dev/null ((a=(1<<2)))\ngit checkout -- dirty.txt
+refuses echo ((a|cd)); git checkout -- dirty.txt
 ROWS
 passes '# git checkout -- dirty.txt'
 passes 'true # ; git checkout -- dirty.txt'
