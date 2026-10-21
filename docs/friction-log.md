@@ -205,3 +205,28 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #211 lane's first ledger sweep had no claim arm, which rule 9 requires, and the reviewer caught it: mutating the arms you wrote cannot surface an arm you never wrote, the same blind spot ticket-agent § 4's grammar list exists for, now in a sweep rather than a guard. Main then moved during the bounce round (#204), forcing a second log-only rebase before CI would run; fourth lane today to pay a round purely to a neighbour's log append.
+
+## 2026-10-21 — PR #252
+
+- Phase: merge
+- Observed: the #187 census PR went stale four times while it waited (every merge of a member source file invalidates the baseline it banks), and its last round was blocked by the permission classifier refusing two `excluded:` ledger lines as "Logging/Audit Tampering"; the owner appended them by hand. The baseline lists every source path, so every path-sweeping ledger collides with it (#363). A census PR should merge within the hour it is cut, ahead of source PRs, or re-census as its very last step with nothing queued ahead of it.
+
+## 2026-10-21 — PR #214
+
+- Phase: rebase
+- Observed: an eval-report PR carries a measured commit that ADR 0005 (f) requires reachable, so every rebase and every merged change to the report schema (#355's `servedGenerator`) invalidated its report and cost a five-minute re-run; three extra runs in one lane. Such a PR updates by merge, never rebase, and a report-schema change on `main` should name the open eval-report PRs it re-measures.
+
+## 2026-10-21 — PR #199
+
+- Phase: bounce
+- Observed: the #107 lane's round went `DIRTY` on docs/review-feedback.md three times, because each local full verify (about ten minutes under load) gave `main` time to append another humanAlways entry; and the merge owner's bounce prescribed a rise of the course-file version counter that the stored-output pin gate did not require, which the lane correctly declined with evidence. A bounce states what moved on `main` and what the gates say; it does not guess the fix.
+
+## 2026-10-21 — PR #378
+
+- Phase: review
+- Observed: the #370 trim batch's reviewer found a clause whose deletion removed the only statement of a claim, and the plan's 23-arm restatement sweep carried one positive control, so it proved one arm (#377). The inbound-reference check of `prose.md` § Trim batches rule 3(a) ran after the ledger was written rather than before each deletion was decided.
+
+## 2026-10-21 — PR #381
+
+- Phase: review
+- Observed: the #371 trim batch restored three deletions under review because each was a claim's sole carrier (the `Embedder` order, the ADR 0003 (b) cite, the native-length sentence), and its first draft lowered rows by collapsing docblocks past printWidth, which the density gate counts as fewer physical lines (#379). Second trim batch today re-planned under review for sole-carrier deletions; the ledger's disposition column needs the inbound check filled in before the deletion, which is what rule 3(a) says and what both lanes did after.
