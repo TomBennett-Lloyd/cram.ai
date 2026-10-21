@@ -81,6 +81,16 @@ describe('a slide indexed as several chunks', () => {
   });
 });
 
+describe('CourseIndex.lectures beside a chunked slide', () => {
+  it('reports a slide unembedded by its own chunks, not by row ids its neighbour’s chunks share', () => {
+    indexLectures(course, [
+      chunked(SPLIT, NEAR, NEAR, NEAR),
+      indexed(slide({ slideNo: 2, body: 'wax' }), undefined),
+    ]);
+    expect(course.lectures()[0]?.unembedded).toEqual([2]);
+  });
+});
+
 describe('search over chunked slides', () => {
   it('dedupes each ranked list to slides before fusing them', () => {
     // A's three chunks lead the words list and push B to its 4th row; C trails D and E in the vector
@@ -183,8 +193,30 @@ describe('the chunks a batch may hold', () => {
 });
 
 describe('CourseIndex.replaceEmbedder over chunks', () => {
+  const NEW = EmbedderIdentity.parse({ model: 'new', dimension: 2 });
+
+  it('refuses a slide named twice, and chunks that fit a record other than the stored one', () => {
+    indexLectures(course, [
+      indexed(SPLIT, AWAY),
+      indexed(slide({ slideNo: 2, body: 'wax' }), AWAY),
+    ]);
+    expect(() => {
+      course.replaceEmbedder(NEW, [
+        indexed(SPLIT, vector(1, 0)),
+        indexed(SPLIT, vector(0, 1)),
+        indexed(slide({ slideNo: 2, body: 'wax' }), vector(0, 1)),
+      ]);
+    }).toThrow(/twice or one the course lacks/);
+    const edited = { ...SPLIT, body: 'not what is stored' };
+    expect(() => {
+      course.replaceEmbedder(NEW, [
+        indexed(edited, vector(1, 0)),
+        indexed(slide({ slideNo: 2, body: 'wax' }), vector(0, 1)),
+      ]);
+    }).toThrow(/line its slide does not/);
+  });
+
   it('rewrites each slide’s chunks, so a new embedder re-chunks the course', () => {
-    const NEW = EmbedderIdentity.parse({ model: 'new', dimension: 2 });
     indexLectures(course, [indexed(SPLIT, AWAY)]);
     course.replaceEmbedder(NEW, [chunked(SPLIT, vector(0, 1), vector(1, 0))]);
     expect(course.chunks(sourceIdOf(SPLIT))).toHaveLength(2);

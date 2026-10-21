@@ -327,7 +327,7 @@ export class CourseIndex {
       return { slide, chunks };
     });
     if (bySource.size !== stored.length || slides.length !== stored.length)
-      throw new Error('replaceEmbedder: embeddings name slides the course lacks');
+      throw new Error('replaceEmbedder: embeddings name a slide twice or one the course lacks');
     this.#db.transaction(() => {
       for (const { slide } of rewritten) this.#dropIndexRows(slide.id);
       this.#db.exec('drop table slide_vec');
