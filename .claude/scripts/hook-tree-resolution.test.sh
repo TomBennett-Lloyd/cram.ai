@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Test harness for the one question both hooks in .claude/hooks/ have to answer
+# Test harness for the one question post-edit-check.sh and ensure-deps.sh have to answer
 # correctly: WHICH git working tree is this event about? (cumulo#74)
 #
 # The answer used to be $CLAUDE_PROJECT_DIR, which is pinned to the directory
