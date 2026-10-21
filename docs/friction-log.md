@@ -208,3 +208,8 @@ Entry format:
 
 - Phase: planning
 - Observed: the #273 lane's restatement sweep searched for the two colour-pattern lists it was merging and not for the rule whose scope the `var()` change widened, so three comments describing that rule went stale until review; the reviewer also found a ledger owed under `docs/standards/architecture.md` rule 9 that the plan had declared unnecessary. Third sweep-shape miss today (PRs #267 and #270 were the others), each a different shape: output before command, claim family too narrow, and now the list swept but not the rule.
+
+## 2026-10-21 — PR #289
+
+- Phase: implementation
+- Observed: the #268 lane found that diffing the old hook's verdicts against the new one's over a corpus shows which verdicts changed and not whether each change is a fix or a regression; it settled each by running the command under `zsh -fc` with a stub `git` and reading whether the revert ran, which also established that the Bash tool's shell on this machine is zsh. The same lane spent one serial mutant run (about 15 min) before parallelising the loop. Two instances today of a hook change needing ground truth from the shell rather than from the previous hook (PR #271's reviewer probe was the first).
