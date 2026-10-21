@@ -1,4 +1,4 @@
-import { ROUTE_COURSE_ID_MAX_LENGTH as MAX } from '@cram/shared';
+import { COURSE_ID_MAX_LENGTH as MAX } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { courseIdFromName } from './course-name';
 

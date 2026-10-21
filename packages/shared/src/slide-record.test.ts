@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import { SlideRecord } from './slide-record';
+import { COURSE_ID_MAX_LENGTH as MAX, CourseId, SlideRecord } from './slide-record';
 
 type SlideInput = z.input<typeof SlideRecord>;
 
@@ -49,5 +49,32 @@ describe('SlideRecord', () => {
 
   it('refuses an empty lecture id', () => {
     expect(SlideRecord.safeParse(slide({ lectureId: '' })).success).toBe(false);
+  });
+});
+
+describe('CourseId', () => {
+  it('accepts lowercase letters and digits with inner hyphens, up to the maximum length', () => {
+    for (const id of ['a', '7', 'bio-101', 'a-b-c', 'x'.repeat(MAX), 'com0', 'lpt10', 'console'])
+      expect(CourseId.safeParse(id).success, id).toBe(true);
+  });
+
+  it('refuses anything else, a Windows device name included', () => {
+    for (const id of [
+      '',
+      'Bio',
+      '-bio',
+      'bio-',
+      'bio_101',
+      'bio 101',
+      'bio%20',
+      'x'.repeat(MAX + 1),
+      'con',
+      'prn',
+      'aux',
+      'nul',
+      'com1',
+      'lpt9',
+    ])
+      expect(CourseId.safeParse(id).success, id).toBe(false);
   });
 });

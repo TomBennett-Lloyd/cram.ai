@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { type EmbedderIdentity, openCourse, type OpenCourseResult } from '@cram/index';
-import { type CourseId, RouteCourseId, type StoredLectures } from '@cram/shared';
+import { CourseId, type StoredLectures } from '@cram/shared';
 import { COURSE_FILE_EXTENSION, courseFilePath, coursesDirectory } from './data-directory';
 
 export interface CourseFiles {
@@ -24,11 +24,11 @@ const directoryEntries = (path: string): readonly string[] => {
   }
 };
 
-/** The courses with a course file; a file whose name is not a route course id is not one. */
+/** The courses with a course file; a file whose name is not a course id is not one. */
 export const storedCourses = (files: CourseFiles): readonly CourseId[] =>
   directoryEntries(coursesDirectory(files.dataDir)).flatMap((name) => {
     if (!name.endsWith(COURSE_FILE_EXTENSION)) return [];
-    const parsed = RouteCourseId.safeParse(name.slice(0, -COURSE_FILE_EXTENSION.length));
+    const parsed = CourseId.safeParse(name.slice(0, -COURSE_FILE_EXTENSION.length));
     return parsed.success ? [parsed.data] : [];
   });
 

@@ -1,4 +1,4 @@
-import { type CourseId, RouteCourseId } from '@cram/shared';
+import { CourseId } from '@cram/shared';
 
 /** Hash routes, so no screen's path can collide with the server's `/courses` API on one origin. */
 export type Route =
@@ -14,7 +14,7 @@ const COURSE_HASH = /^#\/courses\/([^/]+)(\/decks)?$/;
 export const routeOf = (hash: string): Route => {
   if (hash === '' || hash === '#' || hash === '#/') return { screen: 'courses' };
   const [, segment, decks] = COURSE_HASH.exec(hash) ?? [];
-  const courseId = RouteCourseId.safeParse(segment);
+  const courseId = CourseId.safeParse(segment);
   if (!courseId.success) return { screen: 'not-found' };
   return decks === undefined
     ? { screen: 'ask', courseId: courseId.data }
