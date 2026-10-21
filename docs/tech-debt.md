@@ -90,12 +90,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Source: #159 review cycle 1
 - Update 2026-10-21 (#194): the fold moved to `packages/ingest/src/stored-text.ts` `storedText`, which every adapter's text passes through, so the merge now holds for PDF text and PPTX prose as well as equations; the Where line names the site it left.
 
-## 2026-10-21 — line widths and layout measures have no token category
-
-- Where: `apps/web/src/app.css` (the `calc(var(--space-1) / 4)` border widths, the `text-decoration-thickness` of `mark`, and the raw `rem` measures on `.app-header, .screen`, `.slide-card` and `.slide-dialog`); `packages/ui/src/styles.css` (the ring's `outline-width` and `outline-offset`)
-- What: `@cram/ui`'s tokens have spacing, type and radius scales only, so line weights borrow fractions of `--space-1` (retuning spacing re-weights every border) and layout measures are raw lengths the gate cannot see — the residual `stylelint.config.mjs` already documents. Root cause: no line-width or measure category in `packages/ui/src/tokens/tokens.css`.
-- Source: #16 review cycle 1; #209
-
 ## 2026-10-21 — no test holds a decks-screen retry keeping the batch's refusals
 
 - Where: `apps/web/src/decks/DecksScreen.tsx` `reread`; `apps/web/src/decks/DecksScreen.test.tsx`

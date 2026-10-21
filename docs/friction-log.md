@@ -143,3 +143,23 @@ Entry format:
 
 - Phase: implementation
 - Observed: every `pnpm verify` in the #183 lane ran the full tier because a `.ledger` file in the change set is a type `verify-tier.sh` cannot classify, and one run was re-run whole after the gateway timing flake #243 owns. A ledger line is the cheapest edit in the repo and buys the most expensive tier. One ticket so far; the classifier's docblock owns which extensions resolve to which rungs.
+
+## 2026-10-21 — PR #260
+
+- Phase: implementation
+- Observed: the #194 lane could not bank one file's comment-density drop inside its ticket, because `check-comment-density.sh --ratchet` writes a row for every unbanked file in the repo on the same run (151 here), and the lane reverted the run rather than carry 151 unrelated rows in a feature PR. Second instance of the baseline shaping a lane's choices (PR #73's entry was the first, captured into #187); PR #252 banks every file's row, which removes the unbanked rows a later `--ratchet` would sweep in. Nothing to change while that PR waits for the owner.
+
+## 2026-10-21 — PR #262
+
+- Phase: verify
+- Observed: every `.sh` edit in the #180 lane sent `pnpm verify` to the full tier (about 10 min under load), and the lane ran its mutants through a scratch case-trimmer because `merge-pr.test.sh` has no case filter and a whole run takes about 2.5 min. Second instance of a cheap edit buying the most expensive tier (PR #255's `.ledger` line was the first); `verify-tier.sh`'s docblock owns which extensions resolve to which rungs.
+
+## 2026-10-21 — PR #263
+
+- Phase: implementation
+- Observed: the #233 plan split the shared `IngestStatus` shape change (step 2) from the web consumer that answers it (step 3), and the lane had to land both in one commit because `pnpm verify` is whole-repo and the web package is red between them. A plan step that changes a shared type is not committable on its own; nothing in `.claude/agents/planner.md` asks whether a step's `Verify:` can pass before its consumers move. One ticket so far.
+
+## 2026-10-21 — PR #264
+
+- Phase: verify
+- Observed: `pnpm verify` in the #209 lane went red twice on the gateway clock assertion #243 owns, with a rerun green each time, on a diff that cannot reach `packages/gateway`. Third rerun that flake has cost today (PR #255 took one), about ten minutes each under load; #243 is dispatched.
