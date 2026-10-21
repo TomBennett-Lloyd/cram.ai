@@ -356,7 +356,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-20 — issue #7 — adr-0007-desktop-packaging
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/7#issuecomment-6301117966 on 2026-10-20, verbatim: "approve 143, 156, proceed 7". `docs/adr/0007-desktop-packaging.md` § Decision (a)–(n) maps one to one onto that plan (the mapping is pasted in the PR body). The PR asks the owner to decide only the extras beyond it, all true-ups to #15 and ADR 0006 merging while the lane ran:
   - (j) and A14: the data folder's location is left to `resolveDataDir` in `apps/server/src/data-directory.ts`, and the shell passes nothing, where the plan had the shell pass Electron's app-data path. Course files sit where `courseFilePath` puts them, with `models/` beside that folder;
   - (g) and A13: "the pinned OCR engine's files" ship inside the installer, rather than `tesseract.js`'s language data alone, since `docs/adr/0006-image-only-slides.md` § Decision (d) measures other engines;
@@ -364,4 +364,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - after the owner's approval of 2026-10-21 ("approve 175 and 190"), a fourth true-up. #174 amended `docs/adr/0003-model-roles-and-backends.md` § Decision (e): an encoder pin now carries a `manifest` of per-file digests, and its `sha256` is the manifest's digest. So D5 and (e) now verify every file a pin names against that file's digest, not one `sha256` per pin, and `.claude/ledgers/model-pin-shape.ledger` lists this ADR as a carrier. This returns the verdict and the ADR's Status to pending for the owner, limited to this true-up.
 - **Why**: `docs/adr/**` is a `humanAlways` path, and `.claude/workflow.json` → `merge.approvedAtPlanRule` sends an ADR PR with any extra beyond its approved plan to the owner, limited to the extras.
 - **How applied**: the PR as proposed: ADR 0007 at `proposed`, plus the pointers. It is revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approve 175 — owner 2026-10-21, re-approval after the post-approval true-up of the pin-manifest shape (#174); no changes requested

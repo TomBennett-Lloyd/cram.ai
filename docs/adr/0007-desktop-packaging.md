@@ -1,6 +1,6 @@
 # 0007 — Desktop packaging: an Electron shell around the one server; an unsigned NSIS installer from CI; weights downloaded at first launch by digest; OCR data inside
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-20
 - **Issue:** #7
 
