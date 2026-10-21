@@ -170,3 +170,23 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #268 lane left two background wait loops of the form `until ! pgrep -f 268-mut/mutate.py; do sleep 15; done` running for 4 h 44 min after the PR merged: `pgrep -f` matched the loop's own command line, so the loop could never see the script finish. The lane read its result file directly and never noticed. The merge owner's `kill` was refused by the permission classifier and the owner killed them by hand. One ticket so far on a self-matching `pgrep -f` wait.
+
+## 2026-10-21 — PR #350
+
+- Phase: implementation
+- Observed: the #338 lane's per-package tests were green before `pnpm verify` refused `course-index.ts` and `upload.test.ts` on `max-lines` at 300, forcing a module extraction and two test-file splits mid-step. Third instance today of the composite gate's size rules arriving after a package's own tests pass (PR #313's corpus split, PR #320's test split, now this); the pattern has reached `/triage`'s threshold and a workflow issue is owed on where the size rules run in a lane's loop.
+
+## 2026-10-21 — PR #351
+
+- Phase: review
+- Observed: the #276 lane argued away the plan's untracked-file arm during implementation by reasoning about module resolution, and the reviewer refuted the argument with a shadowing counterexample. An argument for deleting a planned guard needs a mutant shape drawn from the grammar list, not reasoning alone; one ticket so far, and ticket-agent § 4's hostile-corpus rule (PR #336) is the nearest home if it recurs.
+
+## 2026-10-21 — PR #355
+
+- Phase: implementation
+- Observed: two gates tightened on `main` while the #171 lane ran — #165's first-party egress census (PR #266) and #269's ledger citation arms — and each surfaced only at `pnpm verify` or CI: a shared HTTP test fixture was extracted to meet `max-lines` and then reverted because the census counts any non-test module that opens a server, and a docblock's mention of a script became an unlisted ledger hit on the unioned head. Nothing at plan time names which gates a ticket's new files will meet. Second instance today of a gate landing mid-flight costing an open lane a round (PR #353 took one from #351's new verify leg).
+
+## 2026-10-21 — PR #269
+
+- Phase: merge
+- Observed: the #179 lane rebased three times as `main` moved under an approved humanAlways PR, and every ledger merged on `main` meanwhile needed a `cite:` line on the branch because the branch itself was landing the rule that requires one. Once merged, its gate then cost PR #355 a fix round for an unlisted hit and PR #204 a pre-warned cite line. A gate that tightens what every open branch must carry lands cheapest when the merge owner names it in the next bounce to each open lane, which this merge owner did for #204 only after #355 had paid. Counts toward #297.
