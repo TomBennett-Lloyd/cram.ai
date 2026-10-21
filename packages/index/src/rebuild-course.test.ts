@@ -193,6 +193,30 @@ describe('rebuildCourse', () => {
     expect(discarded).toEqual([{ table: 'confirmations', rows: 1 }]);
   });
 
+  it('refuses, on request, to rebuild a file with rows it would discard, and leaves it untouched', async () => {
+    writeOlderFile(temp.spec.path);
+    const before = readFileSync(temp.spec.path);
+    const result = await rebuildCourse(temp.spec, deps, 'refuse');
+    expect(result).toMatchObject({ status: 'would-discard', fileVersion: OLDER });
+    expect('discarded' in result && result.discarded.map(({ table }) => table).sort()).toEqual([
+      'exam "marks"',
+      'notes',
+    ]);
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+    expect(filesInDir()).toEqual(['course-a.sqlite']);
+    expect(parse).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds under the refuse policy when every row carries over', async () => {
+    writeOlderFile(temp.spec.path);
+    const db = new Database(temp.spec.path);
+    db.exec('delete from notes; delete from "exam ""marks""";');
+    db.close();
+    const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps, 'refuse'));
+    course.close();
+    expect(discarded).toEqual([]);
+  });
+
   it('opens a file that is not older without parsing anything', async () => {
     openOrFail(temp.spec).close();
     const result = await rebuildCourse(temp.spec, deps);
