@@ -55,3 +55,10 @@ export const PROVISIONAL_DEFAULT_PINS = {
     licence: 'MIT',
   }),
 } as const;
+
+/**
+ * The generator's context length in tokens: developer mode's `num_ctx`, and what the installed app's
+ * backend is to apply (#7). Qwen3-4B's native length per its model card, until #7 sizes it under
+ * `docs/adr/0003-model-roles-and-backends.md` § Decision (k) A3. Carriers: `.claude/ledgers/generator-context-length.ledger`.
+ */
+export const PROVISIONAL_GENERATOR_CONTEXT_LENGTH = 32768;

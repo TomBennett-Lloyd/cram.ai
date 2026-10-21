@@ -14,21 +14,26 @@ import {
   type Reranker,
   RerankerPin,
   type RerankRequest,
+  type Sampling,
   type Verifier,
 } from '@cram/gateway';
 import type { RecordableGateway, RecordableGenerator } from './recording-gateway';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
 
+export const SAMPLING: Sampling = { temperature: 0, seed: 0 };
+
 /** A stand-in for a live backend in tests: replies are computed from the request. */
 export type Respond = (wire: ChatWireRequest) => GeneratorReply;
 
 class ScriptedGenerator implements RecordableGenerator {
   readonly pin = pins.generator;
+  readonly sampling: Sampling;
   readonly #respond: Respond;
 
-  constructor(respond: Respond) {
+  constructor(respond: Respond, sampling: Sampling) {
     this.#respond = respond;
+    this.sampling = sampling;
   }
 
   reply(wire: ChatWireRequest): Promise<GeneratorReply> {
@@ -97,16 +102,14 @@ export const LENGTH_RERANKER: Reranker = {
     ),
 };
 
-export const SAMPLING = { temperature: 0, seed: 0 };
-
 export class ScriptedGateway implements RecordableGateway {
   readonly generator: ScriptedGenerator;
   readonly verifier = new ScriptedVerifier();
   readonly embedder = new ScriptedEmbedder();
   readonly reranker: Reranker | null;
 
-  constructor(respond: Respond, reranker: Reranker | null = null) {
-    this.generator = new ScriptedGenerator(respond);
+  constructor(respond: Respond, reranker: Reranker | null = null, sampling: Sampling = SAMPLING) {
+    this.generator = new ScriptedGenerator(respond, sampling);
     this.reranker = reranker;
   }
 }

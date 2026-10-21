@@ -31,6 +31,13 @@ const reversedKeys = (value: Record<string, unknown>): Record<string, unknown> =
   Object.fromEntries(Object.entries(value).reverse());
 
 describe('FakeGateway generator', () => {
+  it('reports the sampling its recordings are keyed under', () => {
+    const reseeded = { temperature: 0.5, seed: 3 };
+    expect(
+      new FakeGateway({ pins, sampling: reseeded, recordings: [] }).generator.sampling,
+    ).toEqual(reseeded);
+  });
+
   it('replays recorded content through the schema', async () => {
     const fake = gateway([generatorRecording('q', { status: 'content', content: '{"text":"a"}' })]);
     await expect(fake.generator.chat(ask('q'))).resolves.toEqual({

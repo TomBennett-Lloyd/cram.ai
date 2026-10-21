@@ -1,0 +1,16 @@
+# The sampling an eval report records, owned by `Generator.sampling` in
+# packages/gateway/src/model-gateway.ts (docs/standards/architecture.md rule 9; #302): each
+# generator reports what it samples with, and no caller passes a copy.
+owner: packages/gateway/src/model-gateway.ts
+claim: an eval report's determinism settings are the sampling its generator reports, never a value a caller passes beside it
+sweep: \.claude/ledgers/generator-sampling\.ledger|(?i:determinism)|generator\.sampling\b
+scope: :!pnpm-lock.yaml
+carrier: docs/adr/0005-evaluation-as-gate.md
+carrier: eval/src/report.ts
+carrier: eval/src/run-eval.ts
+carrier: eval/src/run-eval.test.ts
+carrier: eval/src/recording-gateway.test.ts
+carrier: eval/src/timed-gateway.test.ts
+carrier: packages/gateway/src/adapters/openai-http/openai-http-generator.test.ts
+carrier: packages/gateway/src/fake-gateway.test.ts
+excluded: apps/server/src/gateway-config.test.ts
