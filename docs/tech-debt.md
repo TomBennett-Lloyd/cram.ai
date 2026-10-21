@@ -101,5 +101,5 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-21 — no test holds a decks-screen retry keeping the batch's refusals
 
 - Where: `apps/web/src/decks/DecksScreen.tsx` `reread`; `apps/web/src/decks/DecksScreen.test.tsx`
-- What: a retry after a failed status read keeps the last upload batch's refusals in the panel's alert (63dcb39), but the tests cover refusals and a failed read separately, so reverting `reread` to clear them passes every test.
+- What: a retry after a failed status read keeps the last upload batch's refusals in the panel's alert, but the tests cover refusals and a failed read separately, so reverting `reread` to clear them passes every test.
 - Source: #16 confirmation pass 2
