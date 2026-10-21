@@ -88,8 +88,9 @@
 # documented to the author as "you changed code by accident", so it must not fire
 # on prose.
 #
-# esbuild is a root devDependency declared for this rung and for models-pull.sh's
-# pin read (#30, #20; carriers in .claude/ledgers/esbuild-provenance.ledger), and is
+# esbuild is a root devDependency declared for this rung, models-pull.sh's pin read
+# and check-stored-output-pin.sh's import graphs (#30, #20, #276; carriers in
+# .claude/ledgers/esbuild-provenance.ledger), and is
 # RESOLVED here, never installed —
 # $ROOT's node_modules first, then the repository holding this script, which is
 # the same directory in production and is what lets verify-tier.test.sh classify

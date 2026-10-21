@@ -11,5 +11,8 @@ carrier: packages/ingest/src/stored-output-pin.test.ts
 carrier: apps/server/src/repair-fixture.ts
 carrier: apps/server/src/repair-outcome.test.ts
 carrier: docs/adr/0004-storage.md
+carrier: docs/standards/testing.md
+carrier: .claude/scripts/check-stored-output-pin.sh
 excluded: packages/index/src/stored-deck.ts
 excluded: docs/tech-debt.md
+excluded: .claude/scripts/check-stored-output-pin.test.sh
