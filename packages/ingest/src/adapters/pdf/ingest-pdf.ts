@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
 import type { PageText, TextLine } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
+import { logicalOrder } from './logical-order';
 
 const TextItem = z.object({
   str: z.string(),
@@ -42,7 +43,7 @@ const linesOf = (items: readonly unknown[]): TextLine[] => {
   let text = '';
   let size = 0;
   for (const item of z.array(TextItem).parse(items)) {
-    text += item.str;
+    text += logicalOrder(item.str);
     if (item.str.trim() !== '') size = Math.max(size, glyphSize(item.transform));
     if (item.hasEOL) {
       lines.push({ text, size });
