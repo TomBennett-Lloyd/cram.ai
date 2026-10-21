@@ -1,0 +1,12 @@
+# The generator's context length, owned by PROVISIONAL_GENERATOR_CONTEXT_LENGTH in
+# packages/gateway/src/provisional-pins.ts (docs/standards/architecture.md rule 9; #302): developer
+# mode's Modelfile num_ctx is read from it, and the installed app's backend (#7) applies it too.
+owner: packages/gateway/src/provisional-pins.ts
+claim: every backend serves the generator with one context length, PROVISIONAL_GENERATOR_CONTEXT_LENGTH, never above the artefact's trained length
+sweep: \.claude/ledgers/generator-context-length\.ledger|PROVISIONAL_GENERATOR_CONTEXT_LENGTH|num_ctx|(?i:context[ _]length)
+scope: :!pnpm-lock.yaml
+carrier: .claude/scripts/models-pull.sh
+carrier: .claude/scripts/models-pull.test.sh
+carrier: packages/gateway/src/index.ts
+carrier: docs/adr/0003-model-roles-and-backends.md
+excluded: docs/tech-debt.md

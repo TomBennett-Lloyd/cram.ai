@@ -5,8 +5,8 @@
 # and prints the gateway config. Only the generator: the encoder roles run in-process on ONNX
 # Runtime in every mode (docs/adr/0003-model-roles-and-backends.md § Decision (c), (l)).
 #
-# The generator pin is read from PROVISIONAL_DEFAULT_PINS in packages/gateway, never restated
-# here; the Ollama pin is .claude/scripts/ollama-pin.sh, resolved beside this script so the
+# The generator pin and its context length are read from PROVISIONAL_DEFAULT_PINS and
+# PROVISIONAL_GENERATOR_CONTEXT_LENGTH in packages/gateway, never restated here; the Ollama pin is .claude/scripts/ollama-pin.sh, resolved beside this script so the
 # harness can supply its own (the install-shellcheck.sh precedent).
 #
 # Usage: bash .claude/scripts/models-pull.sh   (or `pnpm models:pull`)
@@ -113,13 +113,14 @@ fi
 pin=$(cd "$root" && node --input-type=module -e '
 import { build } from "esbuild";
 const out = await build({ entryPoints: [process.argv[1]], bundle: true, platform: "node", format: "esm", write: false, logLevel: "error" });
-const { PROVISIONAL_DEFAULT_PINS: { generator: g } } = await import("data:text/javascript," + encodeURIComponent(out.outputFiles[0].text));
-console.log([g.artefact.repository, g.artefact.file, g.sha256].join("\n"));
+const { PROVISIONAL_DEFAULT_PINS: { generator: g }, PROVISIONAL_GENERATOR_CONTEXT_LENGTH: c } = await import("data:text/javascript," + encodeURIComponent(out.outputFiles[0].text));
+console.log([g.artefact.repository, g.artefact.file, g.sha256, c].join("\n"));
 ' "$root/packages/gateway/src/provisional-pins.ts") || die 'cannot read the generator pin from packages/gateway'
 repository=$(sed -n 1p <<<"$pin")
 file=$(sed -n 2p <<<"$pin")
 sha256=$(sed -n 3p <<<"$pin")
-[[ $sha256 =~ ^[0-9a-f]{64}$ ]] && [ -n "$repository" ] && [ -n "$file" ] ||
+num_ctx=$(sed -n 4p <<<"$pin")
+[[ $sha256 =~ ^[0-9a-f]{64}$ ]] && [[ $num_ctx =~ ^[1-9][0-9]*$ ]] && [ -n "$repository" ] && [ -n "$file" ] ||
   die 'the generator pin read back incomplete' "$pin"
 
 gguf=$models/$repository/$file
@@ -161,17 +162,20 @@ create() { # create [num_ctx]
 }
 
 from_pin || create
-# The OpenAI-compatible API cannot set the context, so the Modelfile's is what the gateway
-# gets; the artefact's own trained length means the server never trims below the model.
-ctx=$(curl -fsS "$api/show" -d "{\"model\":\"$name\"}" | grep -oE '"[a-z0-9_]+\.context_length": *[0-9]+' |
+# The OpenAI-compatible API cannot set the context, so the Modelfile carries the length the
+# installed app serves too (.claude/ledgers/generator-context-length.ledger); a length the
+# artefact was not trained to is refused rather than served.
+trained=$(curl -fsS "$api/show" -d "{\"model\":\"$name\"}" | grep -oE '"[a-z0-9_]+\.context_length": *[0-9]+' |
   grep -oE '[0-9]+$' | head -n 1) || true
-[ -n "$ctx" ] || die "cannot read the context length of $name from $api/show"
-[ "$(served_ctx)" = "$ctx" ] || create "$ctx"
+[ -n "$trained" ] || die "cannot read the context length of $name from $api/show"
+[ "$num_ctx" -le "$trained" ] || die "the pinned context length $num_ctx is above the $trained $file was trained to" \
+  '  Lower PROVISIONAL_GENERATOR_CONTEXT_LENGTH in packages/gateway, or re-pin the generator.'
+[ "$(served_ctx)" = "$num_ctx" ] || create "$num_ctx"
 
 from_pin || die "$name is not served from blob sha256-$sha256" "  FROM: $(served_from)"
-[ "$(served_ctx)" = "$ctx" ] || die "$name serves num_ctx '$(served_ctx)', not the artefact's $ctx"
+[ "$(served_ctx)" = "$num_ctx" ] || die "$name serves num_ctx '$(served_ctx)', not the pinned $num_ctx"
 
-say "serving $file (sha256 $sha256, num_ctx $ctx) as $name"
+say "serving $file (sha256 $sha256, num_ctx $num_ctx) as $name"
 cat <<EOF
 
 HttpGeneratorConfig: endpoint http://$host/v1/  servedModel $name

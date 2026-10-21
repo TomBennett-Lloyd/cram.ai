@@ -107,6 +107,10 @@ TGZ_SUM=$(sha_of "$STUBS/ollama-darwin.tgz")
 printf 'synthetic weights\n' >"$STUBS/weights.gguf"
 GGUF_SUM=$(sha_of "$STUBS/weights.gguf")
 SERVED=fixture-q4_k_m-${GGUF_SUM:0:12}
+# What the stub `node` reports as PROVISIONAL_GENERATOR_CONTEXT_LENGTH, equal to the stub
+# artefact's trained length (STUB_CTX) unless a case says otherwise.
+PIN_CTX=4096
+pin_of() { printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "$1" "${2-$PIN_CTX}"; } # pin_of <sha256> [ctx]
 
 # --- fixtures ----------------------------------------------------------------------------
 
@@ -124,7 +128,7 @@ fixture() {
 run() { # run [VAR=value]... — the pin lines default to the fixture GGUF's
   capture env PATH="$STUBS/bin:$PATH" HOME="$DIR/home" STUB_STATE="$DIR/state" \
     STUB_TGZ="$STUBS/ollama-darwin.tgz" STUB_GGUF="$STUBS/weights.gguf" STUB_CTX=4096 \
-    STUB_PIN_VERSION="$FIXTURE_VERSION" STUB_PIN="$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "$GGUF_SUM")" \
+    STUB_PIN_VERSION="$FIXTURE_VERSION" STUB_PIN="$(pin_of "$GGUF_SUM")" \
     "$@" bash "$DIR/.claude/scripts/models-pull.sh"
 }
 
@@ -338,7 +342,7 @@ end
 
 begin "a GGUF that is not the pinned artefact is removed and never imported"
 fixture bad_gguf
-run STUB_PIN="$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "$ZEROES")"
+run STUB_PIN="$(pin_of "$ZEROES")"
 expect_rc 2
 expect_stderr "CHECKSUM MISMATCH: Fixture-Q4_K_M.gguf"
 [ ! -e "$GGUF" ] && [ ! -e "$GGUF.part" ] || bad "a mismatched GGUF was kept"
@@ -348,12 +352,13 @@ end
 begin "a generator pin that reads back incomplete is refused"
 fixture short_pin
 upper=$(printf '%s' "$GGUF_SUM" | tr 'a-f' 'A-F')
-for pin in "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf)" \
-  "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "${GGUF_SUM:1}")" \
-  "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "${GGUF_SUM}0")" \
-  "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "X$GGUF_SUM")" \
-  "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "$upper")" \
-  "$(printf '%s\n' '' Fixture-Q4_K_M.gguf "$GGUF_SUM")" "$(printf '%s\n' Org/Fixture-GGUF '' "$GGUF_SUM")"; do
+for pin in "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf '' "$PIN_CTX")" \
+  "$(pin_of "${GGUF_SUM:1}")" "$(pin_of "${GGUF_SUM}0")" "$(pin_of "X$GGUF_SUM")" "$(pin_of "$upper")" \
+  "$(printf '%s\n' '' Fixture-Q4_K_M.gguf "$GGUF_SUM" "$PIN_CTX")" \
+  "$(printf '%s\n' Org/Fixture-GGUF '' "$GGUF_SUM" "$PIN_CTX")" \
+  "$(pin_of "$GGUF_SUM" '')" "$(pin_of "$GGUF_SUM" 0)" "$(pin_of "$GGUF_SUM" 04096)" \
+  "$(pin_of "$GGUF_SUM" 4096x)" "$(pin_of "$GGUF_SUM" x4096)" "$(pin_of "$GGUF_SUM" -4096)" \
+  "$(printf '%s\n' Org/Fixture-GGUF Fixture-Q4_K_M.gguf "$GGUF_SUM")"; do
   case_ctx="pin $(printf '%s' "$pin" | tr '\n' '|')"
   run STUB_PIN="$pin"
   expect_rc 2
@@ -424,7 +429,34 @@ begin "a num_ctx that did not land is refused"
 fixture dropped_ctx
 run STUB_DROP_CTX=1
 expect_rc 2
-expect_stderr "serves num_ctx '', not the artefact's 4096"
+expect_stderr "serves num_ctx '', not the pinned 4096"
+end
+
+begin "the context length served is the pin's, not the artefact's trained one"
+fixture short_ctx
+run STUB_PIN="$(pin_of "$GGUF_SUM" 2048)"
+expect_rc 0
+expect_stdout "num_ctx 2048"
+holds "$DIR/state/model-$SERVED" "PARAMETER num_ctx 2048"
+end
+
+begin "a pinned context length the artefact was not trained to is refused, never served"
+fixture long_ctx
+run STUB_PIN="$(pin_of "$GGUF_SUM" 4097)"
+expect_rc 2
+expect_stderr "the pinned context length 4097 is above the 4096 Fixture-Q4_K_M.gguf was trained to"
+! grep -q 'num_ctx' "$DIR/state/model-$SERVED" 2>/dev/null || bad "a num_ctx was served anyway"
+end
+
+begin "a changed pinned context length re-creates the served model"
+fixture moved_ctx
+run
+expect_rc 0
+creates=$(count "$DIR/state/create.log" .)
+run STUB_LSOF=127.0.0.1:11434 STUB_PIN="$(pin_of "$GGUF_SUM" 2048)"
+expect_rc 0
+[ "$(count "$DIR/state/create.log" .)" -gt "$creates" ] || bad "the model was not re-created"
+holds "$DIR/state/model-$SERVED" "PARAMETER num_ctx 2048"
 end
 
 finish

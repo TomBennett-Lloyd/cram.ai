@@ -53,7 +53,7 @@ export {
   RerankerPin,
   VerifierPin,
 } from './pin';
-export { PROVISIONAL_DEFAULT_PINS } from './provisional-pins';
+export { PROVISIONAL_DEFAULT_PINS, PROVISIONAL_GENERATOR_CONTEXT_LENGTH } from './provisional-pins';
 export { type RecordedCall, Recording, recordingKey } from './recording';
 export { EncoderRole, Role } from './role';
 export {
