@@ -4,9 +4,9 @@
  * map-marker and veil tokens were not ported, because no cram.ai surface draws
  * one, and their contrast records stay in cumulo.
  *
- * This is the one file the frontend gate exempts from its ban on raw values
- * (stylelint.config.mjs, eslint.config.mjs). Everything else references these
- * properties by name, and `tokens.test.ts` pins `tokens.ts` to this file.
+ * The frontend gate's exemptions for this directory are the tokens overrides
+ * in stylelint.config.mjs and eslint.config.mjs. Everything else references
+ * these properties by name, and `tokens.test.ts` pins `tokens.ts` to this file.
  *
  * Inter v4 (SIL OFL 1.1, `fonts/OFL.txt`) is self-hosted so that glyph widths
  * belong to the artefact rather than to the reader's machine (cumulo#463). The

@@ -113,3 +113,13 @@ Entry format:
 
 - Phase: review
 - Observed: the #290 lane's config comment restated the issue's mechanism backwards ("descriptor, not a declaration") at five sites, a claim about parser behaviour written from memory that one stylelint run would have settled; review caught it and the fix touched all five. Counts toward #294 (a claim written before the run that would establish it), as its fifth instance.
+
+## 2026-10-21 — PR #320
+
+- Phase: implementation
+- Observed: the #299 lane's per-package test runs were green before `pnpm verify` refused the tree on `max-lines` and the comment-density ratchet, which forced a test-file split and docblock trims after the work was otherwise done; the lane's footprint grew by two test files and a ledger carrier moved with them. Second instance today of the composite gate's size rules arriving after a package's own tests pass (PR #313's lane split its corpus file for the same reason). One ticket so far on the ordering.
+
+## 2026-10-21 — PR #323
+
+- Phase: planning
+- Observed: the #311 lane's restatement sweep covered what the gate refuses and not what it exempts, so adding a tokens-directory exemption falsified "`tokens.css` is the one file this gate exempts" at three sites that review found. A fourth sweep shape after the three #293 captured (a change that adds an exemption needs an exemption-claim arm); counts toward #293.
