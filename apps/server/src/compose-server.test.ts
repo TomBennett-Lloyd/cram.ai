@@ -6,17 +6,19 @@ import type {
   EncoderLoadFailure,
   EncoderRole,
   GatewayConfig,
+  GeneratorLoadFailure,
   Reranker,
 } from '@cram/gateway';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildGateway,
   type Composition,
-  type EncoderLoaders,
   type CompositionSpec,
   composeServer,
   type GatewayBuild,
   refusalMessage,
+  ROLE_LOADERS,
+  type RoleLoaders,
 } from './compose-server';
 import { developerDefaults, GATEWAY_CONFIG_FILE } from './gateway-config';
 import { gatewayOf, WordEmbedder } from './server-fixture';
@@ -104,6 +106,12 @@ const failed = (role: EncoderRole): EncoderLoadFailure => ({
   reason: 'unreadable-file',
   detail: role,
 });
+const mismatched: GeneratorLoadFailure = {
+  status: 'load-failed',
+  role: 'generator',
+  reason: 'served-mismatch',
+  detail: 'serves blob sha256-a',
+};
 const loaded = <T>(encoder: T): Promise<EncoderLoad<T>> =>
   Promise.resolve({ status: 'loaded', encoder });
 
@@ -119,7 +127,9 @@ describe('buildGateway', () => {
     pin: { ...fake.verifier.pin, role: 'reranker' },
     rerank: () => Promise.resolve([]),
   };
-  const loaders: EncoderLoaders = {
+  const generator = fake.generator;
+  const loaders: RoleLoaders = {
+    generator: () => Promise.resolve({ status: 'loaded', generator }),
     verifier: () => loaded(fake.verifier),
     embedder: () => loaded(new WordEmbedder()),
     reranker: () => loaded(reranker),
@@ -131,14 +141,15 @@ describe('buildGateway', () => {
     const built = await buildGateway(withReranker(), loaders);
     expect(built.status === 'built' && built.gateway.reranker).toBe(reranker);
     expect(built.status === 'built' && built.gateway.verifier).toBe(fake.verifier);
-    expect(built.status === 'built' && built.gateway.generator.pin).toEqual(config().generator.pin);
+    expect(built.status === 'built' && built.gateway.generator).toBe(generator);
   });
 
-  it('names only the encoders that failed, whichever they are', async () => {
-    const roles = async (overrides: Partial<EncoderLoaders>, gateway = withReranker()) => {
+  it('names only the roles that failed, whichever they are', async () => {
+    const roles = async (overrides: Partial<RoleLoaders>, gateway = withReranker()) => {
       const build = await buildGateway(gateway, { ...loaders, ...overrides });
       return build.status === 'load-failed' ? build.failures.map(({ role }) => role) : build.status;
     };
+    expect(await roles({ generator: () => Promise.resolve(mismatched) })).toEqual(['generator']);
     expect(await roles({ embedder: () => Promise.resolve(failed('embedder')) })).toEqual([
       'embedder',
     ]);
@@ -154,13 +165,14 @@ describe('buildGateway', () => {
   });
 
   it('names every ONNX snapshot that did not load, the optional reranker included', async () => {
-    const build = await buildGateway(withReranker());
+    const onnx = { ...ROLE_LOADERS, generator: loaders.generator };
+    const build = await buildGateway(withReranker(), onnx);
     expect(build.status === 'load-failed' && build.failures.map(({ role }) => role)).toEqual([
       'verifier',
       'embedder',
       'reranker',
     ]);
-    const without = await buildGateway(config());
+    const without = await buildGateway(config(), onnx);
     expect(without.status === 'load-failed' && without.failures.map(({ role }) => role)).toEqual([
       'verifier',
       'embedder',
@@ -178,5 +190,8 @@ describe('refusalMessage', () => {
     expect(
       refusalMessage({ status: 'load-failed', failures: [{ ...failure, detail: '/m/a.onnx' }] }),
     ).toBe('the embedder did not load (digest-mismatch): /m/a.onnx');
+    expect(refusalMessage({ status: 'load-failed', failures: [mismatched] })).toBe(
+      'the generator did not load (served-mismatch): serves blob sha256-a',
+    );
   });
 });

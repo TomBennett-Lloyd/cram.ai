@@ -10,8 +10,10 @@ import type { TimedReply } from '../../generator-timing';
 import type { Generator } from '../../model-gateway';
 import type { GeneratorPin } from '../../pin';
 import { HttpGeneratorConfig, type Sampling } from '../../role-config';
+import type { ServedArtefact } from '../../served-artefact';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
 import { readChatCompletionStream } from './chat-completion-stream';
+import { checkServedModel } from './served-model';
 
 const BODY_EXCERPT_CHARS = 500;
 
@@ -31,14 +33,20 @@ const describeError = (error: unknown): string =>
 export class OpenAiHttpGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly served: ServedArtefact;
   readonly #config: HttpGeneratorConfig;
   readonly #url: URL;
   readonly #now: () => number;
 
-  constructor(config: HttpGeneratorConfig, now: () => number = () => performance.now()) {
+  constructor(
+    config: HttpGeneratorConfig,
+    served: ServedArtefact,
+    now: () => number = () => performance.now(),
+  ) {
     this.#config = HttpGeneratorConfig.parse(config);
     this.pin = this.#config.pin;
     this.sampling = this.#config.sampling;
+    this.served = served;
     this.#url = chatCompletionsUrl(this.#config.endpoint);
     this.#now = now;
   }
@@ -76,3 +84,24 @@ export class OpenAiHttpGenerator implements Generator {
     return chatResult(await this.reply(chatWireRequest(request)), request.output.schema);
   }
 }
+
+/** The server named weights the pin does not: the operator's to fix in the server or the pin. */
+export interface GeneratorLoadFailure {
+  readonly status: 'load-failed';
+  readonly role: 'generator';
+  readonly reason: 'served-mismatch';
+  readonly detail: string;
+}
+
+export type GeneratorLoad<T extends Generator = Generator> =
+  { readonly status: 'loaded'; readonly generator: T } | GeneratorLoadFailure;
+
+/** Checks the served weights before the generator exists; only a mismatch refuses (#171). */
+export const loadOpenAiHttpGenerator = async (
+  config: HttpGeneratorConfig,
+): Promise<GeneratorLoad<OpenAiHttpGenerator>> => {
+  const check = await checkServedModel(HttpGeneratorConfig.parse(config));
+  return check.status === 'mismatch'
+    ? { status: 'load-failed', role: 'generator', reason: 'served-mismatch', detail: check.detail }
+    : { status: 'loaded', generator: new OpenAiHttpGenerator(config, check) };
+};

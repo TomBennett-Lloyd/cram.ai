@@ -190,6 +190,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       embedder: inner.embedder.pin,
       reranker: inner.reranker?.pin ?? null,
     },
+    servedGenerator: inner.generator.served,
     determinism: { generator: inner.generator.sampling },
     nliThresholds: PROVISIONAL_NLI_THRESHOLDS,
     retrievalK: RETRIEVAL_K,

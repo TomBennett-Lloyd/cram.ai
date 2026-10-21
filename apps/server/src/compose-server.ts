@@ -4,11 +4,14 @@ import {
   type EncoderLoad,
   type EncoderLoadFailure,
   type GatewayConfig,
+  type GeneratorLoad,
+  type GeneratorLoadFailure,
+  type HttpGeneratorConfig,
   loadOnnxEmbedder,
   loadOnnxReranker,
   loadOnnxVerifier,
+  loadOpenAiHttpGenerator,
   type ModelGateway,
-  OpenAiHttpGenerator,
   type Reranker,
   type RerankerConfig,
   type Verifier,
@@ -19,33 +22,39 @@ import { readGatewayConfig } from './gateway-config';
 import { type CramServer, startServer } from './server';
 import type { ServerLog } from './server-log';
 
+export type LoadFailure = EncoderLoadFailure | GeneratorLoadFailure;
+
 export type GatewayBuild =
   | { readonly status: 'built'; readonly gateway: ModelGateway }
-  | { readonly status: 'load-failed'; readonly failures: readonly EncoderLoadFailure[] };
+  | { readonly status: 'load-failed'; readonly failures: readonly LoadFailure[] };
 
-export interface EncoderLoaders {
+export interface RoleLoaders {
+  readonly generator: (config: HttpGeneratorConfig) => Promise<GeneratorLoad>;
   readonly verifier: (config: VerifierConfig) => Promise<EncoderLoad<Verifier>>;
   readonly embedder: (config: EmbedderConfig) => Promise<EncoderLoad<Embedder>>;
   readonly reranker: (config: RerankerConfig) => Promise<EncoderLoad<Reranker>>;
 }
 
-export const ONNX_LOADERS: EncoderLoaders = {
+export const ROLE_LOADERS: RoleLoaders = {
+  generator: loadOpenAiHttpGenerator,
   verifier: loadOnnxVerifier,
   embedder: loadOnnxEmbedder,
   reranker: loadOnnxReranker,
 };
 
-/** Every encoder is loaded before any refusal, so one start names every snapshot to fix. */
+/** Every role is loaded before any refusal, so one start names everything to fix. */
 export const buildGateway = async (
   config: GatewayConfig,
-  loaders: EncoderLoaders = ONNX_LOADERS,
+  loaders: RoleLoaders = ROLE_LOADERS,
 ): Promise<GatewayBuild> => {
-  const [verifier, embedder, reranker] = await Promise.all([
+  const [generator, verifier, embedder, reranker] = await Promise.all([
+    loaders.generator(config.generator),
     loaders.verifier(config.verifier),
     loaders.embedder(config.embedder),
     config.reranker === undefined ? null : loaders.reranker(config.reranker),
   ]);
   if (
+    generator.status === 'loaded' &&
     verifier.status === 'loaded' &&
     embedder.status === 'loaded' &&
     (reranker === null || reranker.status === 'loaded')
@@ -53,14 +62,14 @@ export const buildGateway = async (
     return {
       status: 'built',
       gateway: {
-        generator: new OpenAiHttpGenerator(config.generator),
+        generator: generator.generator,
         verifier: verifier.encoder,
         embedder: embedder.encoder,
         reranker: reranker === null ? null : reranker.encoder,
       },
     };
   }
-  const failures = [verifier, embedder, reranker].flatMap((load) =>
+  const failures = [generator, verifier, embedder, reranker].flatMap((load) =>
     load !== null && load.status === 'load-failed' ? [load] : [],
   );
   return { status: 'load-failed', failures };
@@ -85,7 +94,7 @@ export type Composition =
     }
   | { readonly status: 'relative-data-dir'; readonly value: string }
   | { readonly status: 'config-invalid'; readonly source: string; readonly issues: string }
-  | { readonly status: 'load-failed'; readonly failures: readonly EncoderLoadFailure[] };
+  | { readonly status: 'load-failed'; readonly failures: readonly LoadFailure[] };
 
 export type CompositionRefusal = Exclude<Composition, { readonly status: 'started' }>;
 

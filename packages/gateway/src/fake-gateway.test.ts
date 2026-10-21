@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { chatWireRequest, type GeneratorReply, OutputName } from './chat';
-import { FakeGateway, RecordingMissError } from './fake-gateway';
+import { FakeGateway, RecordingMissError, REPLAYED } from './fake-gateway';
 import { RerankerPin } from './pin';
 import { PROVISIONAL_DEFAULT_PINS } from './provisional-pins';
 import type { Recording } from './recording';
@@ -36,6 +36,14 @@ describe('FakeGateway generator', () => {
     expect(
       new FakeGateway({ pins, sampling: reseeded, recordings: [] }).generator.sampling,
     ).toEqual(reseeded);
+  });
+
+  it('reports its weights unverified unless the spec says what the recorded run saw', () => {
+    expect(gateway([]).generator.served).toBe(REPLAYED);
+    const served = { status: 'verified' } as const;
+    expect(new FakeGateway({ pins, sampling, served, recordings: [] }).generator.served).toBe(
+      served,
+    );
   });
 
   it('replays recorded content through the schema', async () => {

@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { chatWireRequest, OutputName } from '../../chat';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
 import type { HttpGeneratorConfig } from '../../role-config';
-import { OpenAiHttpGenerator } from './openai-http-generator';
+import { loadOpenAiHttpGenerator, OpenAiHttpGenerator } from './openai-http-generator';
+
+const SERVED = { status: 'verified' } as const;
 
 type Handler = (request: IncomingMessage, body: string, response: ServerResponse) => void;
 
@@ -95,7 +97,7 @@ describe('OpenAiHttpGenerator', () => {
       Object.assign(seen, { url: incoming.url, method: incoming.method, body: parsed });
       reply(200, completion('{"text":"slide 2 says x"}'))(incoming, body, response);
     };
-    const result = await new OpenAiHttpGenerator(config).chat(request);
+    const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
     expect(result).toEqual({ status: 'completed', value: { text: 'slide 2 says x' } });
     expect(seen).toMatchObject({ url: '/v1/chat/completions', method: 'POST' });
     expect(seen.body).toEqual({
@@ -123,7 +125,7 @@ describe('OpenAiHttpGenerator', () => {
       sent = JSON.parse(body);
       reply(200, completion('{"text":"x"}'))(incoming, body, response);
     };
-    const generator = new OpenAiHttpGenerator(config);
+    const generator = new OpenAiHttpGenerator(config, SERVED);
     await generator.chat(request);
     expect(generator.sampling).toEqual(config.sampling);
     expect(sent).toMatchObject(generator.sampling);
@@ -135,13 +137,14 @@ describe('OpenAiHttpGenerator', () => {
       url = incoming.url;
       reply(200, completion('{"text":"a"}'))(incoming, body, response);
     };
-    await new OpenAiHttpGenerator({ ...config, endpoint: `${fixture.origin}/v1` }).chat(request);
+    const endpoint = `${fixture.origin}/v1`;
+    await new OpenAiHttpGenerator({ ...config, endpoint }, SERVED).chat(request);
     expect(url).toBe('/v1/chat/completions');
   });
 
   it('reports output that fails the schema as invalid output', async () => {
     fixture.handler = reply(200, completion('{"answer":"a"}'));
-    await expect(new OpenAiHttpGenerator(config).chat(request)).resolves.toMatchObject({
+    await expect(new OpenAiHttpGenerator(config, SERVED).chat(request)).resolves.toMatchObject({
       status: 'invalid-output',
       content: '{"answer":"a"}',
     });
@@ -149,7 +152,7 @@ describe('OpenAiHttpGenerator', () => {
 
   it('reports output cut off at the token limit as invalid output, even when it parses', async () => {
     fixture.handler = reply(200, completion('{"text":"a"}', 'length'));
-    const generator = new OpenAiHttpGenerator(config);
+    const generator = new OpenAiHttpGenerator(config, SERVED);
     await expect(generator.reply(chatWireRequest(request))).resolves.toEqual({
       status: 'truncated',
       content: '{"text":"a"}',
@@ -166,13 +169,13 @@ describe('OpenAiHttpGenerator', () => {
       '{"error":{"message":"model \'qwen3-4b-q4km\' not found"}}',
       'application/json',
     );
-    const result = await new OpenAiHttpGenerator(config).chat(request);
+    const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(/HTTP 404: .*not found/);
   });
 
   it('carries the protocol issue in the failure reason', async () => {
     fixture.handler = reply(200, sse([{ choices: 'none' }]));
-    const result = await new OpenAiHttpGenerator(config).chat(request);
+    const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(
       /POST .*: not a chat completion chunk: .*choices/s,
     );
@@ -180,7 +183,7 @@ describe('OpenAiHttpGenerator', () => {
 
   it('names a server that answered with a whole completion instead of a stream', async () => {
     fixture.handler = reply(200, '{"choices":[]}', 'application/json');
-    const result = await new OpenAiHttpGenerator(config).chat(request);
+    const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(
       /POST .*: the body held no event-stream data line: \{"choices":\[\]\}/,
     );
@@ -192,7 +195,7 @@ describe('OpenAiHttpGenerator', () => {
       clock = 1003;
       reply(200, completion('{"text":"a"}'))(incoming, body, response);
     };
-    const generator = new OpenAiHttpGenerator(config, () => clock);
+    const generator = new OpenAiHttpGenerator(config, SERVED, () => clock);
     await expect(generator.timedReply(chatWireRequest(request))).resolves.toEqual({
       reply: { status: 'content', content: '{"text":"a"}' },
       timing: { firstTokenMs: 3, lastTokenMs: 3, usage: { promptTokens: 21, completionTokens: 6 } },
@@ -217,7 +220,9 @@ describe('OpenAiHttpGenerator', () => {
         blockEventLoop(heldMs);
       };
       const before = performance.now();
-      const result = await new OpenAiHttpGenerator(config).timedReply(chatWireRequest(request));
+      const result = await new OpenAiHttpGenerator(config, SERVED).timedReply(
+        chatWireRequest(request),
+      );
       const callMs = performance.now() - before;
       expect(result.reply).toEqual({ status: 'content', content: '{"text":"a"}' });
       const { firstTokenMs = -1, lastTokenMs = -1 } = result.timing ?? {};
@@ -229,13 +234,15 @@ describe('OpenAiHttpGenerator', () => {
 
   it('has no timing for a backend failure', async () => {
     fixture.handler = reply(500, completion('{"text":"a"}'));
-    const result = await new OpenAiHttpGenerator(config).timedReply(chatWireRequest(request));
+    const result = await new OpenAiHttpGenerator(config, SERVED).timedReply(
+      chatWireRequest(request),
+    );
     expect(result).toMatchObject({ reply: { status: 'backend-failed' }, timing: null });
   });
 
   it('reports a success with no body as a backend failure', async () => {
     fixture.handler = reply(204, '');
-    const result = await new OpenAiHttpGenerator(config).chat(request);
+    const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
     expect(result.status === 'backend-failed' && result.reason).toMatch(/no response body/);
   });
 
@@ -249,7 +256,7 @@ describe('OpenAiHttpGenerator', () => {
     ],
   ])('reports %s as a backend failure', async (_name, handler) => {
     fixture.handler = handler;
-    await expect(new OpenAiHttpGenerator(config).chat(request)).resolves.toMatchObject({
+    await expect(new OpenAiHttpGenerator(config, SERVED).chat(request)).resolves.toMatchObject({
       status: 'backend-failed',
     });
   });
@@ -262,14 +269,16 @@ describe('OpenAiHttpGenerator', () => {
       }
       response.writeHead(307, { location: `${fixture.origin}/elsewhere` }).end();
     };
-    await expect(new OpenAiHttpGenerator(config).chat(request)).resolves.toMatchObject({
+    await expect(new OpenAiHttpGenerator(config, SERVED).chat(request)).resolves.toMatchObject({
       status: 'backend-failed',
     });
   });
 
   it('reports a server that does not answer within timeoutMs as a backend failure', async () => {
     fixture.handler = () => undefined;
-    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }).chat(request);
+    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED).chat(
+      request,
+    );
     expect(result).toMatchObject({ status: 'backend-failed' });
     expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
   });
@@ -279,7 +288,9 @@ describe('OpenAiHttpGenerator', () => {
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       response.write(`data: ${JSON.stringify(chunk('{"text":'))}\n\n`);
     };
-    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }).chat(request);
+    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED).chat(
+      request,
+    );
     expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
   });
 
@@ -288,7 +299,7 @@ describe('OpenAiHttpGenerator', () => {
     await stopServer(closed);
     const endpoint = `${closed.origin}/v1/`;
     await expect(
-      new OpenAiHttpGenerator({ ...config, endpoint }).chat(request),
+      new OpenAiHttpGenerator({ ...config, endpoint }, SERVED).chat(request),
     ).resolves.toMatchObject({
       status: 'backend-failed',
     });
@@ -296,7 +307,37 @@ describe('OpenAiHttpGenerator', () => {
 
   it('throws at construction on an endpoint off loopback', () => {
     expect(
-      () => new OpenAiHttpGenerator({ ...config, endpoint: 'http://192.168.1.10:11434/v1/' }),
+      () =>
+        new OpenAiHttpGenerator({ ...config, endpoint: 'http://192.168.1.10:11434/v1/' }, SERVED),
     ).toThrow();
+  });
+});
+
+describe('loadOpenAiHttpGenerator', () => {
+  const modelfile = (sha256: string) => `FROM /Users/ann/.ollama/models/blobs/sha256-${sha256}\n`;
+  const show = (status: number, value: unknown): Handler =>
+    reply(status, JSON.stringify(value), 'application/json');
+
+  it('loads a generator that carries the verified weights', async () => {
+    fixture.handler = show(200, { modelfile: modelfile(config.pin.sha256) });
+    const load = await loadOpenAiHttpGenerator(config);
+    expect(load.status === 'loaded' && load.generator.served).toEqual({ status: 'verified' });
+  });
+
+  it('loads a generator on a server it cannot ask, recording why', async () => {
+    fixture.handler = reply(404, '404 page not found', 'text/plain');
+    const load = await loadOpenAiHttpGenerator(config);
+    const served = load.status === 'loaded' ? load.generator.served : null;
+    expect(served?.status === 'unverified' && served.reason).toMatch(/HTTP 404/);
+  });
+
+  it('refuses a server that serves weights the pin does not name', async () => {
+    fixture.handler = show(200, { modelfile: modelfile('a'.repeat(64)) });
+    await expect(loadOpenAiHttpGenerator(config)).resolves.toEqual({
+      status: 'load-failed',
+      role: 'generator',
+      reason: 'served-mismatch',
+      detail: `serves blob sha256-${'a'.repeat(64)}, not the pin's sha256-${config.pin.sha256}`,
+    });
   });
 });

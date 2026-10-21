@@ -16,6 +16,7 @@ import type {
   RerankResult,
   Role,
   Sampling,
+  ServedArtefact,
   Verifier,
   VerifierPin,
 } from '@cram/gateway';
@@ -52,12 +53,14 @@ const timedCall = <T>(timing: Timing, role: Role, call: () => Promise<T>): Promi
 class TimedGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly served: ServedArtefact;
   readonly #inner: Generator;
   readonly #timing: Timing;
 
   constructor(inner: Generator, timing: Timing) {
     this.pin = inner.pin;
     this.sampling = inner.sampling;
+    this.served = inner.served;
     this.#inner = inner;
     this.#timing = timing;
   }

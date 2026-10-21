@@ -9,11 +9,14 @@ import type {
 } from './encoder-requests';
 import type { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
 import type { Sampling } from './role-config';
+import type { ServedArtefact } from './served-artefact';
 
 export interface Generator {
   readonly pin: GeneratorPin;
   /** What this generator samples with: what an eval report records, never a caller's copy (`.claude/ledgers/generator-sampling.ledger`). */
   readonly sampling: Sampling;
+  /** What an eval report records beside the pin (#171). */
+  readonly served: ServedArtefact;
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>>;
 }
 
