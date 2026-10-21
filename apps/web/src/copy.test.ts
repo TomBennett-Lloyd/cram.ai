@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { answerUnit } from './api/api-fixture';
-import { discardedMessage, withheldMessage } from './copy';
+import { CourseUnavailableProblem } from '@cram/shared';
+import { discardedMessage, storedUnavailableMessage, withheldMessage } from './copy';
 
 const unit = answerUnit('Drones forage.', []);
 
@@ -38,5 +39,15 @@ describe('discardedMessage', () => {
     expect(lost({ table: 'topics', rows: 2 }, { table: 'constructor', rows: 1 })).toBe(
       '2 topic tags, 1 other saved item.',
     );
+  });
+});
+
+describe('storedUnavailableMessage', () => {
+  it('gives each reason a course file cannot be opened its own words, never its code', () => {
+    const sentences = CourseUnavailableProblem.options.map(storedUnavailableMessage);
+    expect(new Set(sentences).size).toBe(sentences.length);
+    CourseUnavailableProblem.options.forEach((problem, index) => {
+      expect(sentences[index]).not.toContain(problem);
+    });
   });
 });

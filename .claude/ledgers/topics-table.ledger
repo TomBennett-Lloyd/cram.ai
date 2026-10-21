@@ -1,8 +1,9 @@
 # The topic-tags table's name, which a rebuild reports when it discards it (docs/standards/architecture.md rule 9; #225).
 owner: packages/index/src/schema.ts
 claim: the course file's topic tags live in a table named topics, the name a rebuild's DiscardedTable carries
-sweep: create table topics\b|'topics'|\.claude/ledgers/topics-table\.ledger
+sweep: create table topics\b|'topics'|\btopics: \[|\.claude/ledgers/topics-table\.ledger
 carrier: apps/web/src/copy.ts
+carrier: packages/shared/src/ingest-status.ts
 carrier: apps/web/src/copy.test.ts
 carrier: apps/web/src/decks/DecksRepair.test.tsx
 carrier: apps/web/e2e/hermetic-api.ts

@@ -1,7 +1,13 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { type EmbedderIdentity, openCourse, type OpenCourseResult } from '@cram/index';
-import { CourseId, type RebuildReportDismissed, type StoredLectures } from '@cram/shared';
+import {
+  CourseId,
+  type CourseUnavailableProblem,
+  type RebuildReportDismissed,
+  type RebuildReportRevision,
+  type StoredLectures,
+} from '@cram/shared';
 import { COURSE_FILE_EXTENSION, courseFilePath, coursesDirectory } from './data-directory';
 
 export interface CourseFiles {
@@ -49,7 +55,8 @@ export const openExisting = (files: CourseFiles, courseId: CourseId): OpenCourse
 
 /** What the course file holds; a course with no file yet holds no lectures. */
 export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLectures => {
-  if (!courseExists(files, courseId)) return { state: 'read', lectures: [], discarded: [] };
+  if (!courseExists(files, courseId))
+    return { state: 'read', lectures: [], report: { state: 'none' } };
   const opened = openExisting(files, courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
@@ -57,7 +64,7 @@ export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLe
     return {
       state: 'read',
       lectures: [...course.lectures()],
-      discarded: [...course.rebuildReport()],
+      report: course.rebuildReport(),
     };
   } finally {
     opened.course.close();
@@ -66,20 +73,23 @@ export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLe
 
 export type RebuildReportDismissal =
   | RebuildReportDismissed
-  | { readonly status: 'no-such-course' }
-  | { readonly status: 'course-unavailable'; readonly problem: string };
+  | { readonly status: 'no-such-course' | 'report-changed' }
+  | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
-/** The student has been told what a rebuild discarded (`docs/adr/0004-storage.md` § Decision (d)). */
+/**
+ * The student has been told what a rebuild discarded (`docs/adr/0004-storage.md` § Decision (d)),
+ * in the report `revision` names; `report-changed` leaves a later one for them to read (#299).
+ */
 export const dismissRebuildReport = (
   files: CourseFiles,
   courseId: CourseId,
+  revision: RebuildReportRevision,
 ): RebuildReportDismissal => {
   if (!courseExists(files, courseId)) return { status: 'no-such-course' };
   const opened = openExisting(files, courseId);
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   try {
-    opened.course.dismissRebuildReport();
-    return { status: 'dismissed' };
+    return { status: opened.course.dismissRebuildReport(revision) };
   } finally {
     opened.course.close();
   }

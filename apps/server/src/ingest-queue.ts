@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   type CourseId,
   type CourseRepair,
+  type RebuildReportRevision,
   type Upload,
   UploadId,
   type UploadProgress,
@@ -11,11 +12,19 @@ import { repairCourse, type RepairOutcome } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { errorName, type ServerLog } from './server-log';
 
-/** The outcomes after which the course file opens under the running schema and embedder. */
-const OPENS: ReadonlySet<RepairOutcome> = new Set(['open', 'rebuilt', 'reembedded']);
-
-const repairState = (outcome: RepairOutcome): CourseRepair =>
-  OPENS.has(outcome) ? { state: 'done' } : { state: 'failed' };
+/** `done` for each outcome after which the course file opens under the running schema and embedder. */
+const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
+  open: 'done',
+  rebuilt: 'done',
+  reembedded: 'done',
+  'newer-schema': 'failed',
+  'older-schema': 'failed',
+  'not-a-course-file': 'failed',
+  'course-mismatch': 'failed',
+  'embedder-mismatch': 'failed',
+  'no-stored-decks': 'failed',
+  'deck-unreadable': 'failed',
+};
 
 /**
  * Runs every course-file write, uploads, the repairs `startServer` queues and dismissals, one at a
@@ -80,7 +89,7 @@ export class IngestQueue {
     try {
       const repaired = await repairCourse(courseId, this.#deps);
       outcome = repaired;
-      this.#repairs.set(courseId, repairState(repaired));
+      this.#repairs.set(courseId, { state: REPAIR_STATE[repaired] });
     } catch (error) {
       outcome = errorName(error);
       this.#repairs.set(courseId, { state: 'failed' });
@@ -89,8 +98,13 @@ export class IngestQueue {
   }
 
   /** Queued behind every write so far; a rejection reaches the caller and never stalls the queue. */
-  dismissRebuildReport(courseId: CourseId): Promise<RebuildReportDismissal> {
-    const dismissed = this.#tail.then(() => dismissRebuildReport(this.#deps.files, courseId));
+  dismissRebuildReport(
+    courseId: CourseId,
+    revision: RebuildReportRevision,
+  ): Promise<RebuildReportDismissal> {
+    const dismissed = this.#tail.then(() =>
+      dismissRebuildReport(this.#deps.files, courseId, revision),
+    );
     this.#tail = dismissed.then(
       () => undefined,
       () => undefined,

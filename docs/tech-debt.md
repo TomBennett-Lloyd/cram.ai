@@ -43,12 +43,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0006's carrier ledger names the old home of the quotable field list                            | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                               | #298         |
 | ledger sweeps with only literal arms cannot see a paraphrase                                       | #298         |
-| every start-up repair failure is logged as `Error`                                                 | #299         |
-| a rebuilt lecture's fallback title comes from its stored title, not its file name                  | #299         |
-| a new discardable table reaches the student as "other saved items"                                 | #299         |
-| a dismissal clears the rebuild report the file holds, not the one the student saw                  | #299         |
-| the web shows `@cram/index` status codes to the student                                            | #299         |
-| no test holds a decks-screen retry keeping the batch's refusals                                    | #299         |
 | opening a course file to read it can write to it                                                   | #300         |
 | a course file whose stored `course_id` fails `CourseId` throws instead of being refused            | #300         |
 | a PDF that pdf.js cannot read is reported as damaged, whoever is at fault                          | #301         |

@@ -4,6 +4,7 @@ import {
   type Deck,
   type DiscardedTable,
   type LectureId,
+  type RebuildReportRevision,
   type RetrievedSlide,
   type SlideImage,
   type SlideNo,
@@ -26,7 +27,7 @@ import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
 import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
-import { clearRebuildReport, readRebuildReport, recordRebuildReport } from './rebuild-report';
+import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
 import {
   ftsValues,
@@ -340,8 +341,8 @@ export class CourseIndex {
   }
 
   /** What a rebuild discarded that the student has not dismissed (#233). */
-  rebuildReport(): readonly DiscardedTable[] {
-    return readRebuildReport(this.#db);
+  rebuildReport() {
+    return rebuildReportOf(this.#db);
   }
 
   /** Written by `rebuildCourse` into the file it rebuilt. */
@@ -349,8 +350,8 @@ export class CourseIndex {
     recordRebuildReport(this.#db, discarded);
   }
 
-  dismissRebuildReport(): void {
-    clearRebuildReport(this.#db);
+  dismissRebuildReport(revision: RebuildReportRevision) {
+    return dismissRebuildReport(this.#db, revision);
   }
 
   deck(lectureId: LectureId): Deck | undefined {

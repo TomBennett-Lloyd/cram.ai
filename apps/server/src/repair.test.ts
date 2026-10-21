@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { openCourse, SCHEMA_VERSION, sourceIdOf } from '@cram/index';
-import { CourseId, TopicTag } from '@cram/shared';
+import { CourseId, Deck, StoredLectures, TopicTag } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
@@ -25,7 +25,7 @@ const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 const HIVE_STORED = {
   state: 'read',
   lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
-  discarded: [],
+  report: { state: 'none' },
 };
 
 /** `WordEmbedder`'s vectors under another pin, so a file it wrote records another embedder. */
@@ -80,6 +80,28 @@ const markOlder = (dataDir: string): void => {
   const file = readFileSync(path);
   file.writeUInt32BE(SCHEMA_VERSION - 1, 60);
   writeFileSync(path, file);
+};
+
+/** An older-schema `bio` course file holding one stored PDF deck as lecture `l1`, and no slides. */
+const olderDataDir = async (lectureTitle: string, content: Uint8Array): Promise<string> => {
+  const seeding = await startTestServer();
+  await seeding.server.close();
+  const path = courseFilePath(seeding.dataDir, BIO);
+  mkdirSync(dirname(path), { recursive: true });
+  const opened = openCourse({
+    path,
+    courseId: BIO,
+    embedder: await embedderIdentity(new WordEmbedder()),
+  });
+  if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
+  opened.course.replaceLecture(
+    Deck.parse({ lectureId: 'l1', lectureTitle, mediaType: PDF, content }),
+    [],
+    [],
+  );
+  opened.course.close();
+  markOlder(seeding.dataDir);
+  return seeding.dataDir;
 };
 
 const restarted = async (dataDir: string, embedder = new WordEmbedder()): Promise<TestServer> => {
@@ -176,7 +198,7 @@ describe('start-up repair', () => {
       stored: {
         state: 'read',
         lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
-        discarded: [],
+        report: { state: 'none' },
       },
       repair: { state: 'done' },
     });
@@ -202,15 +224,32 @@ describe('start-up repair', () => {
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
     ]);
-    const reported = { stored: { ...HIVE_STORED, discarded: [{ table: 'topics', rows: 1 }] } };
-    expect(await repairedStatus(server)).toEqual({ ...reported, repair: { state: 'done' } });
+    const reported = await repairedStatus(server);
+    expect(reported).toMatchObject({
+      stored: {
+        ...HIVE_STORED,
+        report: { state: 'undismissed', discarded: [{ table: 'topics', rows: 1 }] },
+      },
+      repair: { state: 'done' },
+    });
     await server.server.close();
     const current = await restarted(dataDir);
-    expect(await repairedStatus(current)).toEqual({ ...reported, repair: { state: 'done' } });
+    const shown = await repairedStatus(current);
+    expect(shown).toEqual(reported);
     expect(current.logs).toEqual([]);
+    const stored = StoredLectures.parse(shown.stored);
+    if (stored.state !== 'read' || stored.report.state !== 'undismissed')
+      throw new Error('expected an undismissed report');
+    const { revision } = stored.report;
+    const stale = await send(current.server.port, {
+      method: 'DELETE',
+      path: `/courses/bio/rebuild-report?revision=${'0'.repeat(64)}`,
+    });
+    expect(stale).toMatchObject({ status: 409, json: { status: 'report-changed' } });
+    expect(await repairedStatus(current)).toEqual(shown);
     const dismissed = await send(current.server.port, {
       method: 'DELETE',
-      path: '/courses/bio/rebuild-report',
+      path: `/courses/bio/rebuild-report?revision=${revision}`,
     });
     expect(dismissed).toMatchObject({ status: 200, json: { status: 'dismissed' } });
     expect(await repairedStatus(current)).toEqual({
@@ -219,6 +258,32 @@ describe('start-up repair', () => {
     });
     await current.server.close();
     expect(await repairedStatus(await restarted(dataDir))).toMatchObject({ stored: HIVE_STORED });
+  });
+
+  it('titles a rebuilt lecture whose first slide reads no title by its stored title, verbatim', async () => {
+    const dataDir = await olderDataDir('Cells/Tissues_1-2', await pdfDeck([[], ['Osmosis']]));
+    const server = await restarted(dataDir);
+    expect(await repairLog(server)).toEqual([
+      { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
+    ]);
+    expect(await repairedStatus(server)).toMatchObject({
+      stored: { lectures: [{ lectureId: 'l1', lectureTitle: 'Cells/Tissues_1-2' }] },
+      repair: { state: 'done' },
+    });
+  });
+
+  it('logs a stored deck that no longer reads by that outcome, and leaves the file as it was', async () => {
+    const dataDir = await olderDataDir('The Hive', new TextEncoder().encode('not a PDF at all'));
+    const before = readFileSync(courseFilePath(dataDir, BIO));
+    const server = await restarted(dataDir);
+    expect(await repairLog(server)).toEqual([
+      { operation: 'repair', courseId: 'bio', outcome: 'deck-unreadable' },
+    ]);
+    expect(await repairedStatus(server)).toEqual({
+      stored: { state: 'course-unavailable', problem: 'older-schema' },
+      repair: { state: 'failed' },
+    });
+    expect(readFileSync(courseFilePath(dataDir, BIO)).equals(before)).toBe(true);
   });
 
   it('logs a repair that throws, and leaves the course unavailable', async () => {

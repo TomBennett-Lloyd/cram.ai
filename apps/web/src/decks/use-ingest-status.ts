@@ -25,7 +25,7 @@ const stateOf = (result: Awaited<ReturnType<ApiClient['ingestStatus']>>): Ingest
     return {
       status: 'ready',
       ingest: {
-        stored: { state: 'read', lectures: [], discarded: [] },
+        stored: { state: 'read', lectures: [], report: { state: 'none' } },
         repair: { state: 'none' },
         uploads: [],
       },

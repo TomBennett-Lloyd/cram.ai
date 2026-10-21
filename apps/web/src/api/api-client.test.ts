@@ -1,4 +1,4 @@
-import { CourseId, LectureId } from '@cram/shared';
+import { CourseId, LectureId, RebuildReportRevision } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiClient } from './api-client';
 import { fakeApi, GROUNDED } from './api-fixture';
@@ -46,14 +46,15 @@ describe('ApiClient', () => {
     expect(sent[0]?.body).toBe('{"question":"Are drones male?"}');
   });
 
-  it('dismisses a rebuild report with a DELETE at the course’s rebuild-report route', async () => {
+  it('dismisses a rebuild report with a DELETE naming its revision at the course’s rebuild-report route', async () => {
     const { api, sent } = fakeApi(() => ({ status: 200, body: { status: 'dismissed' } }));
-    expect(await api.dismissRebuildReport(bio)).toEqual({
+    const revision = RebuildReportRevision.parse('ab'.repeat(32));
+    expect(await api.dismissRebuildReport(bio, revision)).toEqual({
       status: 'ok',
       value: { status: 'dismissed' },
     });
     expect(sent.map(({ path, method }) => [path, method])).toEqual([
-      ['/courses/bio/rebuild-report', 'DELETE'],
+      [`/courses/bio/rebuild-report?revision=${'ab'.repeat(32)}`, 'DELETE'],
     ]);
   });
 

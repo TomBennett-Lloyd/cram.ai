@@ -1,4 +1,10 @@
-import type { CourseId, IngestStatus, StoredLecture, Upload } from '@cram/shared';
+import type {
+  CourseId,
+  IngestStatus,
+  RebuildReportRevision,
+  StoredLecture,
+  Upload,
+} from '@cram/shared';
 import { type ChangeEvent, useRef, useState } from 'react';
 import { useApi } from '../api/api-context';
 import type { ApiClient } from '../api/api-client';
@@ -20,7 +26,7 @@ import { repairing, useIngestStatus } from './use-ingest-status';
 type Dismissal =
   | { readonly status: 'idle' }
   | { readonly status: 'pending' }
-  | { readonly status: 'dismissed' }
+  | { readonly status: 'dismissed'; readonly revision: RebuildReportRevision }
   | ApiFailure;
 
 interface Refused {
@@ -108,24 +114,35 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
    * The server's report is empty once it answers, so the notice is hidden rather than re-read: a
    * re-read remounts the alert, which would announce the notice again. Its button goes with it, so
    * the focus lands on the screen's next act, the picker, unless the reader has moved it since the
-   * press (`docs/standards/design.md` rule 11). The answer waits behind every queued upload.
+   * press (`docs/standards/design.md` rule 11). The answer waits behind every queued upload. A
+   * report other than the one shown is re-read, so the student sees it before dismissing it (#299).
    */
-  const dismiss = (): void => {
+  const dismiss = (shown: RebuildReportRevision): void => {
     const pressed = document.activeElement;
     setDismissal({ status: 'pending' });
-    void api.dismissRebuildReport(courseId).then((result) => {
+    void api.dismissRebuildReport(courseId, shown).then((result) => {
       const held = document.activeElement;
       if (result.status === 'ok' && (held === pressed || held === document.body))
         picker.current?.focus();
-      setDismissal(result.status === 'ok' ? { status: 'dismissed' } : result);
+      if (result.status === 'refused' && result.refusal.status === 'report-changed') reread();
+      setDismissal(result.status === 'ok' ? { status: 'dismissed', revision: shown } : result);
     });
   };
-  const stored = state.status === 'ready' ? state.ingest.stored : undefined;
+  const report =
+    state.status === 'ready' && state.ingest.stored.state === 'read'
+      ? state.ingest.stored.report
+      : undefined;
   const lost: Dismissible | undefined =
-    dismissal.status !== 'dismissed' && stored?.state === 'read' && stored.discarded.length > 0
+    report?.state === 'undismissed' &&
+    !(dismissal.status === 'dismissed' && dismissal.revision === report.revision)
       ? {
-          message: discardedMessage(stored.discarded),
-          onDismiss: dismissal.status === 'pending' ? undefined : dismiss,
+          message: discardedMessage(report.discarded),
+          onDismiss:
+            dismissal.status === 'pending'
+              ? undefined
+              : () => {
+                  dismiss(report.revision);
+                },
         }
       : undefined;
   const onChange = (event: ChangeEvent<HTMLInputElement>): void => {
