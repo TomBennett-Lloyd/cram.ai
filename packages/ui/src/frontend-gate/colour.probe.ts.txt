@@ -11,6 +11,9 @@ export const literals = [
   '#ABCD', // refused-by: no-restricted-syntax
   '#123456', // refused-by: no-restricted-syntax
   '#12345678', // refused-by: no-restricted-syntax
+  '#1a2', // refused-by: no-restricted-syntax
+  '#1a2b3c', // refused-by: no-restricted-syntax
+  '#1a2b3c4d', // refused-by: no-restricted-syntax
   'url(#ab)',
   'url(#abcdef123)',
   'url(#decal)',
@@ -46,6 +49,9 @@ export const templates = [
   `${n} #ABCD`, // refused-by: no-restricted-syntax
   `${n} #123456`, // refused-by: no-restricted-syntax
   `${n} #12345678`, // refused-by: no-restricted-syntax
+  `${n} #1a2`, // refused-by: no-restricted-syntax
+  `${n} #1a2b3c`, // refused-by: no-restricted-syntax
+  `${n} #1a2b3c4d`, // refused-by: no-restricted-syntax
   `${n} url(#ab)`,
   `${n} url(#abcdef123)`,
   `${n} url(#decal)`,

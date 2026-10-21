@@ -114,6 +114,9 @@
   filter: drop-shadow(0 0 0 #ABCD); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 #123456); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 #12345678); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #1a2); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #1a2b3c); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #1a2b3c4d); /* refused-by: declaration-property-value-disallowed-list */
   filter: url(#ab);
   filter: url(#abcdef123);
   filter: url(#decal);
