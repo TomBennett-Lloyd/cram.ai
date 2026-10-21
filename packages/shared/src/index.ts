@@ -9,4 +9,6 @@ export { PartialPolicy, Verdict, WithheldReason } from './verification';
 export { WithheldUnit } from './withheld';
 export { ApiRefusal } from './api-refusal';
 export { AskReply, AskRequest } from './ask';
+export { CourseList } from './course-list';
+export { ROUTE_COURSE_ID_MAX_LENGTH, RouteCourseId } from './route-course-id';
 export { IngestStatus, Upload, UploadId, UploadProgress } from './ingest-status';

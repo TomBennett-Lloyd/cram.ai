@@ -1,0 +1,21 @@
+import { ROUTE_COURSE_ID_MAX_LENGTH as MAX } from '@cram/shared';
+import { describe, expect, it } from 'vitest';
+import { courseIdFromName } from './course-name';
+
+describe('courseIdFromName', () => {
+  it('lowercases a name and joins its words with single hyphens', () => {
+    expect(courseIdFromName('Biology 101')).toBe('biology-101');
+    expect(courseIdFromName('  Cell   Bio: Part II!  ')).toBe('cell-bio-part-ii');
+    expect(courseIdFromName('a')).toBe('a');
+  });
+
+  it('cuts a long name to what the server files, with no trailing hyphen', () => {
+    expect(courseIdFromName(`${'a'.repeat(MAX - 1)} b`)).toBe('a'.repeat(MAX - 1));
+    expect(courseIdFromName('b'.repeat(MAX + 6))).toBe('b'.repeat(MAX));
+  });
+
+  it('refuses a name with no letter or digit, and a reserved device name', () => {
+    for (const name of ['', '   ', '---', '!!', 'CON', 'lpt1'])
+      expect(courseIdFromName(name)).toBeUndefined();
+  });
+});

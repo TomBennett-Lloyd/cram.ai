@@ -1,6 +1,12 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { ModelGateway } from '@cram/gateway';
-import { askQuestion, type HandlerContext, ingestStatus, uploadDeck } from './handlers';
+import {
+  askQuestion,
+  type HandlerContext,
+  ingestStatus,
+  listCourses,
+  uploadDeck,
+} from './handlers';
 import { sendRefusal } from './http-body';
 import { IngestQueue } from './ingest-queue';
 import { isOwnOriginRequest, LOOPBACK_ADDRESS } from './loopback';
@@ -38,6 +44,10 @@ const handleRequest = async (
     }
     if (match.status === 'method-not-allowed') {
       sendRefusal(response, 405, { status: 'method-not-allowed' }, { allow: match.allow });
+      return;
+    }
+    if (match.route === 'list-courses') {
+      listCourses(response, context);
       return;
     }
     const route = { request, response, url, courseSegment: match.courseSegment };

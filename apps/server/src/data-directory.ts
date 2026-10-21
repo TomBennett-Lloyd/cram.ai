@@ -47,6 +47,11 @@ export const resolveDataDir = (host: DataDirectoryHost): DataDirectory => {
     : { status: 'relative-override', value: override };
 };
 
-/** The course's file; its extension is one `.claude/scripts/check-no-course-content.sh` refuses. */
+/** The directory holding every course file. */
+export const coursesDirectory = (dataDir: string): string => join(dataDir, 'courses');
+
+/** Its extension is one `.claude/scripts/check-no-course-content.sh` refuses. */
+export const COURSE_FILE_EXTENSION = '.sqlite';
+
 export const courseFilePath = (dataDir: string, courseId: CourseId): string =>
-  join(dataDir, 'courses', `${courseId}.sqlite`);
+  join(coursesDirectory(dataDir), `${courseId}${COURSE_FILE_EXTENSION}`);
