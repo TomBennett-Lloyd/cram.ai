@@ -20,7 +20,7 @@ Slides are parsed into one record per slide and indexed in a local SQLite file (
 
 `pnpm models:pull` sets up developer mode's generator on a Mac (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)): the pinned Ollama, serving on loopback only, with the pinned generator GGUF imported as it is. It prints the endpoint and model name for the gateway config. Re-running it changes nothing that already matches the pins.
 
-`pnpm dev` then runs developer mode (`docs/adr/0002-deployables.md` § Decision (b)): the server on loopback, with Vite serving the app in front of it at the URL it prints. Its role config is `developerDefaults` in `apps/server/src/gateway-config.ts`, overridden role by role by the data directory's `GATEWAY_CONFIG_FILE`. The encoder snapshots are read from the models directory and are not fetched by any script yet (#218).
+`pnpm dev` then runs developer mode (`docs/adr/0002-deployables.md` § Decision (b)): the server on loopback, with Vite serving the app in front of it at the URL it prints. Its role config is `developerDefaults` in `apps/server/src/gateway-config.ts`, overridden role by role by the data directory's `GATEWAY_CONFIG_FILE`. The encoder snapshots are read from `developerModelsDirectory`, one directory per pinned repository, and no script fetches them yet (#218).
 
 ## How this repo is built
 

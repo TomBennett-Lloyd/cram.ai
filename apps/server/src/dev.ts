@@ -1,12 +1,8 @@
 import { homedir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import { buildGateway, composeServer, refusalMessage } from './compose-server';
-import { apiProxy } from './dev-proxy';
+import { devServerConfig } from './dev-proxy';
 import { developerDefaults } from './gateway-config';
-
-/** Read by Vite as a directory, so `apps/web` stays out of this app's import graph (`docs/standards/architecture.md` rule 1). */
-const WEB_ROOT = fileURLToPath(new URL('../../web', import.meta.url));
 
 const say = (line: string): void => {
   process.stdout.write(`cram dev: ${line}\n`);
@@ -32,7 +28,7 @@ const main = async (): Promise<number> => {
   say(`data directory ${dataDir}; gateway config ${overridden ? 'overridden' : 'defaults'}`);
   say(`API on ${server.origin}`);
   try {
-    const vite = await createServer({ root: WEB_ROOT, server: { proxy: apiProxy(server.origin) } });
+    const vite = await createServer(devServerConfig(server.origin));
     await vite.listen();
     vite.printUrls();
     const stop = (): void => {

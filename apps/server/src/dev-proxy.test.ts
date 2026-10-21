@@ -1,9 +1,11 @@
 import { mkdtempSync, rmSync } from 'node:fs';
+import { type IncomingHttpHeaders, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createServer, type ViteDevServer } from 'vite';
+import { createServer, resolveConfig, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { apiProxy, forwardedOrigin } from './dev-proxy';
+import { devServerConfig, forwardedOrigin } from './dev-proxy';
+import { LOOPBACK_ADDRESS } from './loopback';
 import { send, startTestServer, stopTestServer, type TestServer } from './server-fixture';
 
 const API = 'http://127.0.0.1:4000';
@@ -33,7 +35,37 @@ describe('forwardedOrigin', () => {
   });
 });
 
-describe('apiProxy, between a real dev server and the API', () => {
+/** Status and headers only: Vite's own refusals are not JSON. */
+const head = (
+  port: number,
+  method: string,
+  headers: Readonly<Record<string, string>>,
+): Promise<{ readonly status: number; readonly headers: IncomingHttpHeaders }> =>
+  new Promise((resolve, reject) => {
+    const request = httpRequest(
+      { host: '127.0.0.1', port, method, path: '/courses', headers },
+      (response) => {
+        response.resume();
+        response.on('end', () => {
+          resolve({ status: response.statusCode ?? 0, headers: response.headers });
+        });
+      },
+    );
+    request.on('error', reject);
+    request.end();
+  });
+
+describe('devServerConfig over apps/web/vite.config.ts, as `pnpm dev` resolves it', () => {
+  it('binds loopback, validates Host, serves plain HTTP and sends no CORS headers', async () => {
+    const { server } = await resolveConfig(devServerConfig(API), 'serve');
+    expect(server.host).toBe(LOOPBACK_ADDRESS);
+    expect(server.allowedHosts).not.toBe(true);
+    expect(server.https).toBeUndefined();
+    expect(server.cors).toBe(false);
+  });
+});
+
+describe('devServerConfig, between a real dev server and the API', () => {
   let api: TestServer;
   let vite: ViteDevServer;
   let root: string;
@@ -43,11 +75,12 @@ describe('apiProxy, between a real dev server and the API', () => {
   beforeAll(async () => {
     api = await startTestServer();
     root = mkdtempSync(join(tmpdir(), 'dev-proxy-'));
+    const config = devServerConfig(api.server.origin, root);
     vite = await createServer({
+      ...config,
       configFile: false,
-      root,
       logLevel: 'silent',
-      server: { host: '127.0.0.1', port: 0, proxy: apiProxy(api.server.origin) },
+      server: { ...config.server, host: LOOPBACK_ADDRESS, port: 0 },
     });
     await vite.listen();
     const address = vite.httpServer?.address();
@@ -81,6 +114,22 @@ describe('apiProxy, between a real dev server and the API', () => {
     const reply = await ask(devOrigin);
     expect(reply.status).not.toBe(403);
     expect(reply.json).toMatchObject({ status: 'no-such-course' });
+  });
+
+  it('answers no localhost origin with a CORS grant, so a preflight reaches the Origin rule', async () => {
+    const origin = 'http://localhost:9999';
+    const preflight = await head(port, 'OPTIONS', {
+      origin,
+      'access-control-request-method': 'POST',
+    });
+    expect(preflight.status).toBe(403);
+    expect(preflight.headers['access-control-allow-origin']).toBeUndefined();
+    const read = await head(port, 'GET', { origin });
+    expect(read.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('refuses a foreign Host before the proxy', async () => {
+    expect((await head(port, 'GET', { host: 'rebound.example' })).status).toBe(403);
   });
 
   it('leaves a cross-site write to the Origin rule, which refuses it', async () => {

@@ -1,11 +1,12 @@
 import type { IncomingHttpHeaders } from 'node:http';
-import type { ProxyOptions } from 'vite';
+import { fileURLToPath } from 'node:url';
+import type { InlineConfig, ProxyOptions } from 'vite';
 import { COURSES_PATH } from './routes';
 
-/**
- * Its own origin for a page the dev server served, any other untouched for `isOwnOriginRequest`
- * to refuse; Vite's `server.allowedHosts` has already refused a foreign `Host`.
- */
+/** Read by Vite as a directory, so `apps/web` stays out of this app's import graph (`docs/standards/architecture.md` rule 1). */
+export const WEB_ROOT = fileURLToPath(new URL('../../web', import.meta.url));
+
+/** The API's own origin for a page Vite served, else untouched; Vite has refused a foreign `Host` first. */
 export const forwardedOrigin = (
   headers: IncomingHttpHeaders,
   apiOrigin: string,
@@ -14,7 +15,6 @@ export const forwardedOrigin = (
   return host !== undefined && origin === `http://${host}` ? apiOrigin : origin;
 };
 
-/** `pnpm dev`'s proxy to the API (`docs/adr/0002-deployables.md` § Decision (b)). */
 export const apiProxy = (apiOrigin: string): Record<string, ProxyOptions> => ({
   [COURSES_PATH]: {
     target: apiOrigin,
@@ -26,4 +26,10 @@ export const apiProxy = (apiOrigin: string): Record<string, ProxyOptions> => ({
       });
     },
   },
+});
+
+/** `pnpm dev`'s Vite (`docs/adr/0002-deployables.md` § Decision (b)); `cors: false` keeps `loopback.ts`'s no-CORS rule. */
+export const devServerConfig = (apiOrigin: string, root: string = WEB_ROOT): InlineConfig => ({
+  root,
+  server: { cors: false, proxy: apiProxy(apiOrigin) },
 });
