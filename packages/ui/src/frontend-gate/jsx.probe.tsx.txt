@@ -1,0 +1,10 @@
+/*
+ * Probe for eslint.config.mjs's frontend gate, linted by frontend-gate.test.ts
+ * as a .tsx file: the colour selectors through JSX, and the inline-style ban.
+ */
+declare const n: number;
+
+export const Fill = () => <path fill="#abc" />; // refused-by: no-restricted-syntax
+export const Title = () => <div title={`${n} #abc`} />; // refused-by: no-restricted-syntax
+export const Styled = () => <div style={{}} />; // refused-by: no-restricted-syntax
+export const Classed = () => <div className="probe" />;

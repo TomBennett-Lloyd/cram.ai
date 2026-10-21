@@ -1,0 +1,34 @@
+/*
+ * Probe for stylelint.config.mjs's suppression table, linted by
+ * frontend-gate.test.ts. Each disable comment is a shape the table names, and
+ * each is followed by a line it would otherwise hide.
+ */
+.s {
+  /* A disable scoped to a rule this config defines. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- probe */ /* refused-by: comment-word-disallowed-list */
+  color: red;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
+  filter: drop-shadow(0 0 0 #abc);
+  /* stylelint-disable-next-line declaration-property-value-allowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
+  --probe-raw: 4px;
+
+  /* A disable scoped to comment-word-disallowed-list, hiding the next disable. */
+  /* stylelint-disable-next-line comment-word-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- probe */
+  color: red;
+
+  /* A disable scoped to a rule this config does not enable. */
+  /* stylelint-disable-next-line block-no-empty -- probe */ /* refused-by: comment-word-disallowed-list --report-invalid-scope-disables --report-needless-disables */
+  color: var(--color-ink);
+
+  /* A disable with no description. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value */ /* refused-by: comment-word-disallowed-list --report-descriptionless-disables */
+  color: red;
+}
+
+/* stylelint-disable-next-line selector-pseudo-class-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
+.s:focus { color: var(--color-ink); }
+
+/* A disable with no scope at all. */
+/* stylelint-disable -- probe */ /* refused-by: --report-unscoped-disables reportDisables */
+.u { color: red; }
