@@ -148,3 +148,13 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #194 lane could not bank one file's comment-density drop inside its ticket, because `check-comment-density.sh --ratchet` writes a row for every unbanked file in the repo on the same run (151 here), and the lane reverted the run rather than carry 151 unrelated rows in a feature PR. Second instance of the baseline shaping a lane's choices (PR #73's entry was the first, captured into #187); PR #252 banks every file's row, which removes the unbanked rows a later `--ratchet` would sweep in. Nothing to change while that PR waits for the owner.
+
+## 2026-10-21 — PR #262
+
+- Phase: verify
+- Observed: every `.sh` edit in the #180 lane sent `pnpm verify` to the full tier (about 10 min under load), and the lane ran its mutants through a scratch case-trimmer because `merge-pr.test.sh` has no case filter and a whole run takes about 2.5 min. Second instance of a cheap edit buying the most expensive tier (PR #255's `.ledger` line was the first); `verify-tier.sh`'s docblock owns which extensions resolve to which rungs.
+
+## 2026-10-21 — PR #263
+
+- Phase: implementation
+- Observed: the #233 plan split the shared `IngestStatus` shape change (step 2) from the web consumer that answers it (step 3), and the lane had to land both in one commit because `pnpm verify` is whole-repo and the web package is red between them. A plan step that changes a shared type is not committable on its own; nothing in `.claude/agents/planner.md` asks whether a step's `Verify:` can pass before its consumers move. One ticket so far.
