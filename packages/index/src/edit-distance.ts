@@ -14,7 +14,7 @@ export const editDistance = (from: string, to: string): number => {
     for (let j = 1; j <= b.length; j += 1) {
       const substitution = a[i - 1] === b[j - 1] ? 0 : 1;
       let best = Math.min(at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + substitution);
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+      if (a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
         best = Math.min(best, at(i - 2, j - 2) + 1);
       row[j] = best;
     }

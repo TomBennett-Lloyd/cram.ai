@@ -65,7 +65,10 @@ describe('CourseIndex.correctSpelling', () => {
   });
 
   it('leaves as typed every near-miss FTS5 folds onto a course term, or has no term within reach of', () => {
-    holding('Istanbul café naïve straße ﬁne well-known foragers');
+    holding(
+      'Istanbul café naïve straße ﬁne well-known foragers',
+      'tree\u20dehouse treeshouse abcd\u0903efgh abcdxefgh',
+    );
     const corpus = [
       'İstanbul',
       'ISTANBUL',
@@ -80,10 +83,21 @@ describe('CourseIndex.correctSpelling', () => {
       'well-known',
       'forager',
       'FORAGERS',
+      'tree\u20dehouse',
+      'abcd\u0903efgh',
     ];
     expect(corpus.filter((token) => course.correctSpelling(token).status !== 'as-typed')).toEqual(
       [],
     );
+  });
+
+  it('never corrects into a term only a references slide holds, which neither list searches', () => {
+    indexLectures(course, [
+      indexed(slide({ slideNo: 1, body: 'Bees forage' }), HERE),
+      indexed(slide({ slideNo: 2, kind: 'references', body: 'Smithson 2019 propolis' }), HERE),
+    ]);
+    expect(searched('What is propolsi?')).toBe('as typed: What is propolsi?');
+    expect(searched('Smithson')).toBe('as typed: Smithson');
   });
 
   it('never corrects into the terms of a lecture that was replaced', () => {
@@ -154,11 +168,13 @@ describe('CourseIndex.correctSpelling', () => {
     const oracle = db.prepare('select term, doc as documents from oracle').all();
     const lexicon = new CourseLexicon(db);
     const read = lexicon.termsOfLength(0, 1000);
+    const again = lexicon.termsOfLength(0, 1000);
     lexicon.close();
     db.close();
     course = openOrFail(temp.spec);
     expect(oracle.length).toBeGreaterThan(10);
     const byTerm = (a: { term: string }, b: { term: string }) => (a.term < b.term ? -1 : 1);
     expect([...read].sort(byTerm)).toEqual(z.array(VocabularyRow).parse(oracle).sort(byTerm));
+    expect(again).toEqual(read);
   });
 });

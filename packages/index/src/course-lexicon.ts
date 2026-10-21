@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { SlideKind } from '@cram/shared';
 import { z } from 'zod';
 import { chunkFromRow, ftsValues } from './chunk-row';
 import { COMMON_WORDS } from './common-words';
@@ -24,9 +25,9 @@ const SIDE_TABLES = `
 
 const CHUNK_TEXT = `select slides.lecture_title, chunks.chunk_no, chunks.title, chunks.body,
     chunks.speaker_notes, chunks.image_captions
-  from chunks join slides on slides.id = chunks.slide_id`;
+  from chunks join slides on slides.id = chunks.slide_id where slides.kind != '${SlideKind.enum.references}'`;
 
-/** Answered by FTS5, so the index's own tokenizer and its `porter` stemmer decide (#393). */
+/** Answered by FTS5: the index's own tokenizer, and FTS5's `porter` over it for word forms (#393). */
 export class CourseLexicon implements Lexicon {
   readonly #course: Database.Database;
   readonly #side: Database.Database;

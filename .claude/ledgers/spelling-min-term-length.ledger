@@ -2,5 +2,5 @@
 owner: packages/index/src/spelling-correction.ts
 claim: a token is corrected only from MIN_TERM_LENGTH letters, and earns one edit for each MIN_TERM_LENGTH letters
 cite: MIN_TERM_LENGTH
-sweep: \bMIN_TERM_LENGTH\b|\.claude/ledgers/spelling-min-term-length\.ledger
+sweep: \bMIN_TERM_LENGTH\b|\.claude/ledgers/spelling-min-term-length\.ledger|(?i:minimum term length|shortest token corrected)
 carrier: packages/index/src/spelling-correction.test.ts

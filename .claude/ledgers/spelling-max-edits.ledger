@@ -2,5 +2,5 @@
 owner: packages/index/src/spelling-correction.ts
 claim: a correction makes at most MAX_EDITS edits, however long the typed token
 cite: MAX_EDITS
-sweep: \bMAX_EDITS\b|\.claude/ledgers/spelling-max-edits\.ledger
+sweep: \bMAX_EDITS\b|\.claude/ledgers/spelling-max-edits\.ledger|(?i:edits? (per|for each) .{0,20}letters|edit bound)
 carrier: packages/index/src/spelling-correction.test.ts
