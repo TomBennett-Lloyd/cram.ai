@@ -405,7 +405,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 - **Category**: pending — filled at merge
 - **Feedback**: the PR asks the owner to decide:
-  - accept the rewrite of `.claude/workflow.json` → `orchestration.routeRule`'s "so a HUMAN batch is refused at merge by construction" clause: the curated-history count stays as the rule's reason, and the refusal is credited to `.claude/scripts/merge-pr.sh`'s classify step, which refuses a `--rebase` PR that classifies HUMAN ahead of that count, because a verdict folded into a member's commit by hand passes it (#105);
+  - accept the rewrite of `.claude/workflow.json` → `orchestration.routeRule`'s "so a HUMAN batch is refused at merge by construction" clause: the curated-history count stays as the rule's reason, and the refusal is credited to `.claude/scripts/merge-pr.sh`'s classify step, which refuses a `--rebase` PR that classifies HUMAN, because a verdict folded into a member's commit by hand passes it (#105);
   - accept the new `.claude/ledgers/human-batch-refusal.ledger`, owned by `merge-pr.sh`, listing the sites that state where that refusal happens.
 - **Why**: #105 showed the count does not refuse a HUMAN batch by construction; the classify guard PR #213 added does. `.claude/workflow.json` is a `humanAlways` path, so the owner decides.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
