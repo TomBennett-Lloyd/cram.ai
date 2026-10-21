@@ -35,7 +35,6 @@ const ENCRYPTED_PACKAGE = Buffer.from('EncryptedPackage', 'utf16le');
 /** fflate's own errors carry a numeric `code`: the archive's fault, not ours. */
 const FlateError = z.object({ code: z.number(), message: z.string() });
 
-/** Bytes that are not a zip: an encrypted package, or not a PPTX at all. */
 const notZip = (bytes: Uint8Array): UnreadablePptx => {
   if (!startsWith(bytes, OLE_MAGIC)) return new UnreadablePptx('not-zip', 'not a zip archive');
   return Buffer.from(bytes).includes(ENCRYPTED_PACKAGE)

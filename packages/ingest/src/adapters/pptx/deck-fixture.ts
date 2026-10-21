@@ -67,20 +67,17 @@ export interface FixtureSlide {
   /** Paragraphs of the notes slide's body placeholder; omitted, the slide has no notes slide. */
   readonly notes?: readonly string[];
   readonly hidden?: true;
-  /** Write the notes relationship's target as an absolute part name. */
   readonly absoluteNotesTarget?: true;
 }
 
 export interface FixtureDeck {
   readonly slides: readonly FixtureSlide[];
-  /** Number the slide parts in reverse of the presentation order. */
   readonly reversePartNames?: true;
   readonly presentationNamespace?: string;
   /** The main part's name; omitted, `ppt/presentation.xml`. */
   readonly presentationPart?: string;
   /** The type `_rels/.rels` gives its relationship to the main part; omitted, Transitional's. */
   readonly officeDocumentRelationship?: string;
-  /** List one more `p:sldId` than the relationships resolve. */
   readonly danglingSlideId?: true;
   /** Part names to replace (a `Uint8Array` or text) or drop (`null`) after the deck is built. */
   readonly parts?: Readonly<Record<string, Uint8Array | string | null>>;
@@ -145,7 +142,6 @@ const encode = (text: string, utf16: FixtureDeck['utf16']): Uint8Array => {
   return utf16 === 'le' ? bytes : bytes.swap16();
 };
 
-/** Each slide with its part number, in presentation order. */
 const numbered = (deck: FixtureDeck): { slide: FixtureSlide; n: string }[] =>
   deck.slides.map((slide, index) => ({
     slide,
@@ -216,7 +212,6 @@ export const buildDeck = (deck: FixtureDeck): Uint8Array => {
   return zip;
 };
 
-/** The slides of a fixture deck that must ingest. */
 export const ingestedSlides = (deck: FixtureDeck): readonly SlideRecord[] => {
   const result = ingestPptx(deckFile(buildDeck(deck)));
   if (result.status !== 'ingested')

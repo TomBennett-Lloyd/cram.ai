@@ -19,10 +19,7 @@ const fileStem = (fileName: string): string =>
     .replace(/[_\s-]+/g, ' ')
     .trim();
 
-/**
- * One record per page, in page order. The lecture title is the first page's, else the stored title
- * verbatim, else the file name's stem; never deck metadata, which goes stale (#9).
- */
+/** The lecture title is never deck metadata, which goes stale (#9). */
 export const slidesFromPages = (
   pages: readonly PageText[],
   source: DeckSource,

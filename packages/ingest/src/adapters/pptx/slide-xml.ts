@@ -10,7 +10,6 @@ const SKIPPED_PLACEHOLDERS: ReadonlySet<string> = new Set(['sldNum', 'ftr', 'dt'
 const SZ_PER_POINT = 100;
 
 interface Paragraph {
-  /** The `p:ph` type of the shape holding it. */
   readonly placeholder: string | undefined;
   readonly element: Element;
 }
@@ -33,7 +32,6 @@ const isTitle = (placeholder: string | undefined): boolean =>
 const placeholderOf = (shape: Element): string | undefined =>
   shape.getElementsByTagNameNS(NS.p, 'ph')[0]?.getAttribute('type') ?? undefined;
 
-/** Each shape outside `mc:Fallback`, with its placeholder type. */
 const shapesOf = (doc: Document): ReadonlyMap<Node, string | undefined> => {
   const placeholders = new Map<Node, string | undefined>();
   for (const shape of doc.getElementsByTagNameNS(NS.p, 'sp')) {
@@ -60,7 +58,6 @@ const paragraphsOf = (
   return paragraphs;
 };
 
-/** Text runs, line breaks as spaces, and each `a14:m` equation linearised where it stands in the sentence. */
 const textOf = (element: Element): string =>
   [...element.children]
     .map((child) => {

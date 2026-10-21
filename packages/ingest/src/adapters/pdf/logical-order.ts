@@ -1,4 +1,3 @@
-/** A code unit's direction as pdf.js's `bidi` resolves it: strong left, strong right, or taken from its neighbours. */
 type Direction = 'L' | 'R' | 'N';
 
 interface CodeUnit {
@@ -28,7 +27,6 @@ const codeUnitsOf = (text: string): CodeUnit[] | undefined => {
   });
 };
 
-/** A neutral takes the direction of the strong units either side when they agree, the paragraph's otherwise. */
 const resolved = (directions: readonly Direction[], paragraph: Direction): Direction[] =>
   directions.map((direction, index) => {
     if (direction !== 'N') return direction;
@@ -51,7 +49,6 @@ const reversedRuns = <T>(items: readonly T[], levels: readonly number[], floor: 
   return [...out, ...run];
 };
 
-/** `bidi`'s reorder of one text item, with `directionOf` typing each unit. */
 const reorder = (units: readonly CodeUnit[], directionOf: (unit: CodeUnit) => Direction) => {
   const directions = units.map(directionOf);
   const right = directions.filter((direction) => direction === 'R').length;
@@ -67,8 +64,7 @@ const reorder = (units: readonly CodeUnit[], directionOf: (unit: CodeUnit) => Di
 /**
  * A pdf.js text item in logical order: `bidi` orders Hebrew presentation forms left to right (#283). On the units
  * `codeUnitsOf` admits its reorder is its own inverse, so applying it again gives the drawn order (unless pdf.js
- * deleted a `<` or `>`, #305), which is then ordered with those letters right to left; an item holding any other unit
- * keeps pdf.js's order (logical-order.test.ts).
+ * deleted a `<` or `>`, #305), which is then ordered with those letters right to left (logical-order.test.ts).
  */
 export const logicalOrder = (text: string): string => {
   const units = codeUnitsOf(text);

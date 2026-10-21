@@ -39,7 +39,6 @@ const ClassifierManifest = z.strictObject({ files: ManifestFiles });
 const EmbedderManifest = z.strictObject({ files: ManifestFiles, pooling: Pooling });
 export type EncoderManifest = z.infer<typeof ClassifierManifest | typeof EmbedderManifest>;
 
-/** An encoder pin's `sha256`: the digest of its manifest's canonical JSON. */
 export const manifestDigest = (manifest: EncoderManifest): string =>
   createHash('sha256').update(canonicalJson(manifest)).digest('hex');
 
