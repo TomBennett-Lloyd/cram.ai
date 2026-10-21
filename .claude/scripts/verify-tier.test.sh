@@ -671,15 +671,17 @@ if begin_with_esbuild "a rung 2 set holding every kind of path emits its legs in
   must fixture leg_order
   write_in pkg/package.json '{ "name": "@fixture/pkg", "private": true }'
   write_in pkg/src/reader.test.ts "it('reads', () => readFileSync('x'));"
+  write_in pkg2/package.json '{ "name": "@fixture/pkg2", "private": true }'
+  write_in pkg2/src/reader.test.ts "it('reads', () => readFileSync('x'));"
   write_in src/app.css '.a { color: red; }'
-  seed_origin 'test: a reading test and a stylesheet'
+  seed_origin 'test: reading tests in two packages, and a stylesheet'
   write_in docs/tier-fixture-guide.md '# Guide, revised'
   write_in src/app.ts 'export const a = 1; // now with a note'
   write_in src/app.css '.a { color: red; } /* now with a note */'
   run_tier
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-prose — 2 file(s) proven comment-only; observing tests: pkg/src/reader.test.ts"
-  expect_stdout "would run: pnpm lint:js && pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck && pnpm check:comment-density && pnpm --filter ./pkg --fail-if-no-match exec vitest run src/reader.test.ts && pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.css src/app.ts"
+  expect_stdout "verify tier: source-prose — 2 file(s) proven comment-only; observing tests: pkg/src/reader.test.ts, pkg2/src/reader.test.ts"
+  expect_stdout "would run: pnpm lint:js && pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck && pnpm check:comment-density && pnpm --filter ./pkg --fail-if-no-match exec vitest run src/reader.test.ts && pnpm --filter ./pkg2 --fail-if-no-match exec vitest run src/reader.test.ts && pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.css src/app.ts"
   end
 fi
 
@@ -952,6 +954,26 @@ expect_stdout "verify tier: full"
 expect_stdout "neither markdown nor a source type the emit proof handles — .claude/hooks/tier-hook.sh"
 end
 
+# lint:sh is the leg a deleted script still needs: whatever sourced it now names a missing file.
+begin "a deleted script still runs lint:sh, and check:markdown-links"
+script_fixture script_deleted
+must gitc "$WT" rm --quiet .claude/scripts/tier-lib.sh
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 shell script(s)"
+expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:markdown-links"
+end
+
+if begin_with_esbuild "a comment-only source edit beside a script is one source-prose+scripts tier"; then
+  script_fixture script_and_source
+  write_in src/app.ts 'export const a = 1; // now with a note'
+  write_in .claude/scripts/tier-other.test.sh 'echo unrelated, revised'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: source-prose+scripts — 1 file(s) proven comment-only, 1 shell script(s)"
+  end
+fi
+
 begin "a script and a ledger together are one scripts+ledgers tier"
 script_fixture script_and_ledger
 write_in .claude/ledgers/tier-fixture.ledger 'owner: .claude/scripts/tier-tool.sh'
@@ -1171,6 +1193,23 @@ expect_rc 0 "$rc"
 expect_stdout "verify tier: docs — 1 file(s)"
 expect_stdout "would run: $DOCS_LEGS"
 expect_not_stdout "narrow"
+end
+
+# The banked tree must hold what is on disk. This edit is the racy shape made deterministic:
+# same size, the old mtime restored, and ctime not trusted, so only a content hash sees it —
+# which a scratch index seeded from the real one's stat cache would not do.
+begin "the banked tree holds a same-size edit whose stat matches the index"
+must fixture bank_racy
+must gitc "$WT" config core.trustctime false
+must cp -p "$WT/src/app.ts" "$ROOT/app.ts.ref"
+must printf 'export const a = 2;\n' >"$WT/src/app.ts"
+must touch -r "$ROOT/app.ts.ref" "$WT/src/app.ts"
+shim_pnpm 0
+run_tier_for_real
+expect_stdout "verify tier: banked tree "
+banked=$(sed -n 's/^tree //p' "$WT/.git/verify-tier-green")
+capture git -C "$WT" show "$banked:src/app.ts"
+expect_stdout "export const a = 2;"
 end
 
 # Narrowing classifies the delta with every class, not only the package one: a markdown edit
