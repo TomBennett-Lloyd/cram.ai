@@ -1,6 +1,6 @@
 import { CourseId, LectureId, type SlideRecord, SlideNo, SourceHash } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { markedFields } from './quote-marks';
+import { markedFields, markedLines } from './quote-marks';
 
 const slide = (fields: Partial<SlideRecord> = {}): SlideRecord => ({
   courseId: CourseId.parse('bio'),
@@ -85,5 +85,60 @@ describe('markedFields', () => {
       ['title', '[The] Hive'],
       ['body', '[x]'],
     ]);
+  });
+});
+
+/** The body's lines with their marked runs bracketed. */
+const bracketedLines = (body: string, quotes: readonly string[]) =>
+  markedLines(
+    markedFields(slide({ title: '', body }), quotes).find(({ field }) => field === 'body')
+      ?.segments ?? [],
+  ).map((line) => line.map(({ text, marked }) => (marked ? `[${text}]` : text)).join(''));
+
+describe('markedLines', () => {
+  it('gives one entry per line ingest separated (`bodyOf` in packages/ingest/src/slide-text.ts), a quote marked at a line’s start, middle or end', () => {
+    expect(bracketedLines('ab cd ef\ngh ij kl', ['ab', 'ij', 'ef'])).toEqual([
+      '[ab] cd [ef]',
+      'gh [ij] kl',
+    ]);
+  });
+
+  it('marks both parts of a quote that runs across a line break, and not the break', () => {
+    expect(bracketedLines('ab cd\nef gh\nij', ['cd ef gh ij'])).toEqual([
+      'ab [cd]',
+      '[ef gh]',
+      '[ij]',
+    ]);
+  });
+
+  it('leaves out blank and whitespace-only lines, wherever they sit', () => {
+    expect(bracketedLines('\nab\n\n \t\ncd\n', ['cd'])).toEqual(['ab', '[cd]']);
+  });
+
+  it('keeps a line that is only a marked run', () => {
+    expect(bracketedLines('ab\ncd', ['cd'])).toEqual(['ab', '[cd]']);
+  });
+
+  /** The oracle is `String.prototype.split`, never the code under test. */
+  const BODIES = [
+    'one',
+    'one\ntwo',
+    '\none',
+    'one\n',
+    'one\n\ntwo',
+    'one\n \ntwo',
+    'one\n\t\ntwo',
+    '  one  \n  two',
+    'one\r\ntwo',
+    '• one\n• two wraps on',
+    '\n\n\n',
+  ];
+
+  it('separates every body exactly as a split on line breaks does', () => {
+    for (const body of BODIES) {
+      expect(bracketedLines(body, []), JSON.stringify(body)).toEqual(
+        body.split('\n').filter((line) => /\S/.test(line)),
+      );
+    }
   });
 });

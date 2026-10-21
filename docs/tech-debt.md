@@ -159,3 +159,21 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/chunk-row.ts` (`CHUNK_TABLE`'s text columns); `packages/index/src/course-index.ts` `chunks()`
 - What: every slide's quotable text is stored a second time, split across its chunks, and that copy is read only by `CourseIndex.chunks()`, which only tests call. A rebuild re-parses the stored deck, and a re-embed runs `embedSlideChunks` from the slides again. Neither reads the chunk text. `slides_fts` is contentless (`content = ''`), so it does not need the copy either. Suspected root cause: the plan argued for storing the text as a way to avoid re-running the split, and the code never needed that. Decide whether to drop the columns, keeping a line range or nothing, or to keep them for a reader that will need them, such as a chunk-level highlight.
 - Source: PR for #339 (review)
+
+## 2026-10-21 — three copies of the read-only course-file sequence in apps/server
+
+- Where: `storedSlideImage` and `storedLectures` in `apps/server/src/course-file.ts`; `askCourse` in `apps/server/src/ask-course.ts`
+- What: each runs the same steps: check the file exists, `openToRead`, treat `blank` as empty, map any other non-`open` status to `course-unavailable`, then read inside `try`/`finally close`. A change to how one copy handles a status leaves the other two wrong (`docs/standards/structure.md` rule 7). Extracting the shared part touches all three call sites.
+- Source: #368 review cycle 1
+
+## 2026-10-21 — only the slide-image route sends Cross-Origin-Resource-Policy
+
+- Where: `sendJson` and `sendBytes` in `apps/server/src/http-body.ts`
+- What: `sendBytes` sends `cross-origin-resource-policy: same-origin`, so another site cannot embed a slide image. `sendJson` sends no CORP. A cross-site `<script>` or `<img>` aimed at `GET /courses/<id>/ingest` can still tell a 200 from a 404 through `load` and `error`, which reveals whether a course id exists. The body does not leak, because ORB and `nosniff` block it. The fix is CORP on every response, which reaches beyond one route.
+- Source: #368 review cycle 1
+
+## 2026-10-21 — the slide panel's 16:9 frame letterboxes a portrait page
+
+- Where: `.slide-figure` in `apps/web/src/app.css`; `SlideImage` in `packages/shared/src/deck.ts`
+- What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
+- Source: #368 review cycle 1

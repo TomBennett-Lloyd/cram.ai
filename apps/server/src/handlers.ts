@@ -8,11 +8,12 @@ import {
   LectureId,
   NonBlankText,
   RebuildReportRevision,
+  SlideNo,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
-import { courseExists, storedCourses, storedLectures } from './course-file';
-import { readBody, sendJson, sendRefusal } from './http-body';
+import { courseExists, storedCourses, storedLectures, storedSlideImage } from './course-file';
+import { readBody, sendBytes, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 
 /** Ceilings on what one request may send; a deck is a whole lecture, a question is a sentence or two. */
@@ -127,6 +128,39 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
     uploads: [...uploads],
   };
   sendJson(route.response, 200, status);
+};
+
+const SlideNoParam = z
+  .string()
+  .regex(/^[1-9][0-9]*$/, 'a page number counted from 1')
+  .transform(Number)
+  .pipe(SlideNo);
+
+const SlideImageParams = z.object({ lectureId: LectureId, slideNo: SlideNoParam });
+
+export const sendSlideImage = (route: RouteRequest, context: HandlerContext): void => {
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  const params = SlideImageParams.safeParse(Object.fromEntries(route.url.searchParams));
+  if (!params.success) {
+    badRequest(route.response, z.prettifyError(params.error));
+    return;
+  }
+  const { lectureId, slideNo } = params.data;
+  const stored = storedSlideImage(context.files, courseId, lectureId, slideNo);
+  switch (stored.status) {
+    case 'found':
+      sendBytes(route.response, stored.image.mediaType, stored.image.content);
+      return;
+    case 'no-such-course':
+      sendRefusal(route.response, 404, stored);
+      return;
+    case 'no-such-image':
+      sendRefusal(route.response, 404, { status: 'not-found' });
+      return;
+    case 'course-unavailable':
+      sendRefusal(route.response, 409, stored);
+  }
 };
 
 const parsedJson = (bytes: Uint8Array): unknown => {

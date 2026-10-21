@@ -65,6 +65,9 @@ const askReply = (question: string) =>
         slides: [HIVE, COMB],
       };
 
+/** A stand-in for a stored slide rendering: an SVG, since what is measured is its box, not its pixels. */
+const SLIDE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="100%" height="100%" fill="white"/><text x="80" y="160" font-size="96">Castes</text></svg>`;
+
 const json = (route: Route, status: number, body: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
@@ -96,6 +99,9 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
   let ingestReads = 0;
   let report = rebuildReport ? REBUILD_REPORT : NO_REPORT;
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
+  await page.route('**/courses/*/slide-image?*', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: SLIDE_IMAGE }),
+  );
   await page.route('**/courses/*/ask', async (route) => {
     await options.askReplyAfter;
     await json(route, 200, askReply(questionOf(route.request().postData())));

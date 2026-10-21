@@ -1,34 +1,50 @@
 import { useEffect, useId, useRef } from 'react';
-import { SLIDE_HAS_NO_TEXT } from '../copy';
+import { DERIVED_TEXT, SLIDE_HAS_NO_TEXT, SLIDE_LINES } from '../copy';
 import { Empty } from '../shell/async-states';
 import type { CitedSlide } from './cited-slide';
-import { type MarkedField, markedFields } from './quote-marks';
+import { type MarkedField, markedFields, markedLines, type Segment } from './quote-marks';
+import { SlideFigure } from './SlideFigure';
 
 const FIELD_LABEL = { speakerNotes: 'Speaker notes', imageCaption: 'Image caption' } as const;
 
+const Runs = ({ segments }: { readonly segments: readonly Segment[] }) =>
+  segments.map(({ text, marked }, index) => (marked ? <mark key={index}>{text}</mark> : text));
+
 const FieldText = ({ field, segments }: MarkedField) => {
-  const text = segments.map(({ text: run, marked }, index) =>
-    marked ? <mark key={index}>{run}</mark> : run,
-  );
   switch (field) {
     case 'title':
-      return <h3 className="slide-title">{text}</h3>;
+      return (
+        <h3 className="slide-title">
+          <Runs segments={segments} />
+        </h3>
+      );
     case 'body':
-      return <p className="slide-body">{text}</p>;
+      return (
+        <ul className="slide-lines" aria-label={SLIDE_LINES}>
+          {markedLines(segments).map((line, index) => (
+            <li key={index}>
+              <Runs segments={line} />
+            </li>
+          ))}
+        </ul>
+      );
     case 'speakerNotes':
     case 'imageCaption':
       return (
         <div className="slide-aside">
           <h4>{FIELD_LABEL[field]}</h4>
-          <p>{text}</p>
+          <p>
+            <Runs segments={segments} />
+          </p>
         </div>
       );
   }
 };
 
 /**
- * The cited slide's whole text with the unit's quotes marked, as a modal. Focus lands on the heading
- * and returns to the opener from the effect cleanup (`docs/standards/react.md`, the modal paragraph).
+ * The cited slide's rendering and lines, quotes marked, as a modal opened by a `CitedSlide` alone.
+ * Focus lands on the heading and returns to the opener from the effect cleanup
+ * (`docs/standards/react.md`, the modal paragraph).
  */
 export const SlideDialog = ({
   cited: { slide, quotes },
@@ -71,10 +87,16 @@ export const SlideDialog = ({
           ×
         </button>
       </header>
+      <SlideFigure record={record} />
       {fields.length === 0 ? (
         <Empty>{SLIDE_HAS_NO_TEXT}</Empty>
       ) : (
-        fields.map((field, index) => <FieldText key={index} {...field} />)
+        <>
+          {record.derived && <p className="slide-derived">{DERIVED_TEXT}</p>}
+          {fields.map((field, index) => (
+            <FieldText key={index} {...field} />
+          ))}
+        </>
       )}
     </dialog>
   );

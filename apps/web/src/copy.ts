@@ -4,6 +4,7 @@ import {
   DiscardableTable,
   type DiscardedTable,
   type PartialPolicy,
+  type SlideRecord,
   type StoredLecture,
   type UploadProgress,
   type WithheldUnit,
@@ -24,6 +25,16 @@ export const NOT_COVERED = 'Your slides don’t cover this.';
 export const CLOSEST_SLIDES = 'Closest slides';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
+export const SLIDE_LINES = 'Lines found on this slide';
+export const SLIDE_IMAGE_MISSING = 'The picture of this slide can’t be shown.';
+export const DERIVED_TEXT =
+  'This text was read from the slide’s picture. Check it against the image.';
+
+export const slideImageAlt = ({
+  slideNo,
+  lectureTitle,
+}: Pick<SlideRecord, 'slideNo' | 'lectureTitle'>): string =>
+  `Slide ${String(slideNo)} of ${lectureTitle}, as rendered from its deck`;
 
 /** What each reason a course file cannot be opened means to the student, never its code (#299). */
 const UNOPENED: Readonly<Record<CourseUnavailableProblem, string>> = {

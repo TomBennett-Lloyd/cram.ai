@@ -40,6 +40,14 @@ test('a card opens its slide as a modal with the quote marked, and Escape return
     };
   });
   expect(emphasis).toEqual({ heavier: true, line: 'underline' });
+  await expect(
+    dialog.getByRole('list', { name: 'Lines found on this slide' }).getByRole('listitem'),
+  ).toHaveText(['Worker bees are female.', 'Drones are male.']);
+  const image = dialog.getByRole('img');
+  await expect(image).toBeVisible();
+  expect(
+    await image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0),
+  ).toBe(true);
   await expect(dialog.getByRole('heading', { name: 'Speaker notes' })).toBeVisible();
   await expect(dialog.getByText('Drones do not forage.')).toBeVisible();
   await page.keyboard.press('Escape');

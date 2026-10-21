@@ -1,4 +1,5 @@
-export type CourseRouteName = 'upload-deck' | 'ingest-status' | 'ask' | 'dismiss-rebuild-report';
+export type CourseRouteName =
+  'upload-deck' | 'ingest-status' | 'ask' | 'dismiss-rebuild-report' | 'slide-image';
 
 export type RouteMatch =
   | { readonly status: 'matched'; readonly route: 'list-courses' }
@@ -11,6 +12,7 @@ const COURSE_ROUTES = {
   ingest: { route: 'ingest-status', method: 'GET' },
   ask: { route: 'ask', method: 'POST' },
   'rebuild-report': { route: 'dismiss-rebuild-report', method: 'DELETE' },
+  'slide-image': { route: 'slide-image', method: 'GET' },
 } as const;
 
 export const COURSES_PATH = '/courses';

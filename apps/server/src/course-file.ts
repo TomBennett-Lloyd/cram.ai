@@ -10,8 +10,11 @@ import {
 import {
   CourseId,
   type CourseUnavailableProblem,
+  type LectureId,
   type RebuildReportDismissed,
   type RebuildReportRevision,
+  type SlideImage,
+  type SlideNo,
   type StoredLectures,
 } from '@cram/shared';
 import { COURSE_FILE_EXTENSION, courseFilePath, coursesDirectory } from './data-directory';
@@ -74,6 +77,31 @@ export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLe
       lectures: [...course.lectures()],
       report: course.rebuildReport(),
     };
+  } finally {
+    opened.course.close();
+  }
+};
+
+export type StoredSlideImage =
+  | { readonly status: 'found'; readonly image: SlideImage }
+  | { readonly status: 'no-such-course' }
+  | { readonly status: 'no-such-image' }
+  | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
+
+/** The slide's stored rendering; a blank file holds none, and a PPTX deck stores none yet (#169). */
+export const storedSlideImage = (
+  files: CourseFiles,
+  courseId: CourseId,
+  lectureId: LectureId,
+  slideNo: SlideNo,
+): StoredSlideImage => {
+  if (!courseExists(files, courseId)) return { status: 'no-such-course' };
+  const opened = openToRead(files, courseId);
+  if (opened.status === 'blank') return { status: 'no-such-image' };
+  if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
+  try {
+    const image = opened.course.slideImage(lectureId, slideNo);
+    return image === undefined ? { status: 'no-such-image' } : { status: 'found', image };
   } finally {
     opened.course.close();
   }

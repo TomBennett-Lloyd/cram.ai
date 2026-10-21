@@ -8,6 +8,7 @@ import {
   type LectureId,
   RebuildReportDismissed,
   type RebuildReportRevision,
+  type SlideRecord,
   Upload,
 } from '@cram/shared';
 import type { z } from 'zod';
@@ -34,6 +35,13 @@ const parsedBody = async <T>(response: Response, schema: z.ZodType<T>): Promise<
   const refusal = ApiRefusal.safeParse(body);
   return refusal.success ? { status: 'refused', refusal: refusal.data } : { status: 'malformed' };
 };
+
+export const slideImagePath = ({
+  courseId,
+  lectureId,
+  slideNo,
+}: Pick<SlideRecord, 'courseId' | 'lectureId' | 'slideNo'>): string =>
+  `/courses/${courseId}/slide-image?${new URLSearchParams({ lectureId, slideNo: String(slideNo) }).toString()}`;
 
 /** The server's API, same-origin (`apps/server/src/routes.ts`). Every reply is parsed before use. */
 export class ApiClient {

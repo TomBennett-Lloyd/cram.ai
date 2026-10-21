@@ -7,6 +7,7 @@ import {
   type HandlerContext,
   ingestStatus,
   listCourses,
+  sendSlideImage,
   uploadDeck,
 } from './handlers';
 import { sendRefusal } from './http-body';
@@ -65,6 +66,9 @@ const handleRequest = async (
         return;
       case 'dismiss-rebuild-report':
         await dismissRebuildReport(route, context);
+        return;
+      case 'slide-image':
+        sendSlideImage(route, context);
     }
   } catch (error) {
     context.log({
