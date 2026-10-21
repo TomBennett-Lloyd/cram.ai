@@ -119,9 +119,10 @@ the section before you dispatch.
    cited as `.claude/skills/review-loop/SKILL.md` step 5, not restated; the lane's own
    arithmetic there is the check, and (c) is its input. A PR that opened `DIRTY` on those
    logs alone is the lane's to clear before its report (`.claude/agents/ticket-agent.md`
-   rule 7, #279), so a report arriving with one is a step 4 `FIX —`; a `DIRTY` that
-   arrives after the report is this step's, because the lane pushes nothing unprompted
-   after `DONE`.
+   rule 7, #279), so a report arriving with one is a step 4 `FIX —`. A `DIRTY` that
+   arrives after the report takes this step's arms above unchanged — logs alone wait for
+   `merge-pr.sh`'s union, any other path is the `REBASE —` bounce — because the lane
+   pushes nothing unprompted after `DONE` (`.claude/agents/ticket-agent.md` rule 5).
    A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase and
    pushes nothing more, which makes the worktree yours: finish the rebase there — git only,
    under every rule `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify,
