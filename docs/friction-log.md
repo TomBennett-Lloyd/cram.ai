@@ -198,3 +198,8 @@ Entry format:
 
 - Phase: review
 - Observed: #254 merged mid-lane and changed stored output, which falsified the #257 plan's "no bump owed"; the reviewer found it by reading `origin/main`, a base the lane may not rebase onto unprompted, so the fact reached the lane at review rather than at the plan, and the rebase round then ran twice because #275 merged during the first. The lane also flagged one message-only `git commit --amend --no-verify`, used to reword a replayed commit whose body line began `#254` and so tripped the `^[#;]` body check; the tree had already passed verify and the final verify and CI ran on it. One ticket so far on each.
+
+## 2026-10-21 — PR #284
+
+- Phase: implementation
+- Observed: the #256 lane's scripted exact-string edit of the PPTX corpus matched nothing (it keyed on a decomposed "Café" the file did not hold) and passed silently, so the commit's subject claimed "both formats" for a change that reached one; review caught it and the fix commit corrected the record. One ticket so far on a scripted edit with no asserted match count.
