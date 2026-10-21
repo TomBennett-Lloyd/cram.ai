@@ -22,14 +22,25 @@ const PdfjsException = z.object({
   message: z.string(),
 });
 
+/** `UnknownErrorException` is pdf.js's catch-all, its own limits included, so it blames this reader (docs/standards/error-handling.md rule 1). */
 const UNREADABLE = {
   InvalidPDFException: 'not-a-pdf',
   PasswordException: 'encrypted',
-  UnknownErrorException: 'damaged',
+  UnknownErrorException: 'reader-limit',
 } as const satisfies Record<z.infer<typeof PdfjsException>['name'], string>;
 
-/** Derived from `UNREADABLE`, so every reason has an exception that produces it (#185). */
-export type PdfUnreadableReason = (typeof UNREADABLE)[keyof typeof UNREADABLE];
+/** pdf.js's messages for a page tree no reader could walk; a reworded one reads as `reader-limit` (ingest-pdf.test.ts). */
+const DAMAGED_PAGE_TREE: ReadonlySet<string> = new Set([
+  'Page dictionary kid reference points to wrong type of object.',
+  'Page dictionary kids object is not an array.',
+  'Pages tree contains circular reference.',
+]);
+
+/** Derived from `UNREADABLE` and `reasonOf`, so every reason has an exception that produces it (#185). */
+export type PdfUnreadableReason = (typeof UNREADABLE)[keyof typeof UNREADABLE] | 'damaged';
+
+const reasonOf = ({ name, message }: z.infer<typeof PdfjsException>): PdfUnreadableReason =>
+  name === 'UnknownErrorException' && DAMAGED_PAGE_TREE.has(message) ? 'damaged' : UNREADABLE[name];
 
 export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 
@@ -73,12 +84,12 @@ const pagesOf = async (pdf: PdfDocument): Promise<PageText[]> => {
   return pages;
 };
 
-/** A PDF deck as one slide per page. pdf.js gets a copy of the bytes, which it detaches, and never a URL (ingest-pdf.test.ts). */
+/** A PDF deck as one slide per page. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */
 export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
   const sourceHash = sourceHashOf(deck.bytes);
   let pages: PageText[];
   try {
-    const pdf = await getDocumentProxy(deck.bytes.slice(), { verbosity: 0 });
+    const pdf = await getDocumentProxy(new Uint8Array(deck.bytes), { verbosity: 0 });
     try {
       pages = await pagesOf(pdf);
     } finally {
@@ -91,7 +102,7 @@ export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
     return {
       status: 'unreadable',
       fileName: deck.fileName,
-      reason: UNREADABLE[known.data.name],
+      reason: reasonOf(known.data),
       detail: known.data.message,
     };
   }
