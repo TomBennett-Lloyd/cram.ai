@@ -23,6 +23,10 @@ import {
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
+const HIVE_STORED = {
+  state: 'read',
+  lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
+};
 
 let test: TestServer | undefined;
 afterEach(async () => {
@@ -102,6 +106,7 @@ describe('POST /courses/:id/decks', () => {
     expect(status.status).toBe(200);
     expect(status.json).toEqual({
       courseId: 'bio',
+      stored: HIVE_STORED,
       uploads: [
         {
           uploadId: (accepted.json as { uploadId: string }).uploadId,
@@ -199,18 +204,42 @@ describe('the course file an upload writes', () => {
     rmSync(server.dataDir, { recursive: true, force: true });
   });
 
-  it('outlives the server: after a restart the course has no uploads, and is not missing', async () => {
+  it('outlives the server: after a restart its lectures are read back, with no uploads', async () => {
     const server = await started();
     await upload(server, await pdfDeck(HIVE));
     await server.server.close();
     test = await startTestServer(undefined, server.dataDir);
     const status = await send(test.server.port, { method: 'GET', path: '/courses/bio/ingest' });
     expect(status.status).toBe(200);
-    expect(status.json).toEqual({ courseId: 'bio', uploads: [] });
+    expect(status.json).toEqual({ courseId: 'bio', stored: HIVE_STORED, uploads: [] });
   });
 });
 
 describe('GET /courses/:id/ingest', () => {
+  it('reports a course file it cannot open as unavailable, and still answers', async () => {
+    const { server, dataDir } = await started();
+    const path = courseFilePath(dataDir, CourseId.parse('bio'));
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, 'not a course file');
+    const status = await send(server.port, { method: 'GET', path: '/courses/bio/ingest' });
+    expect(status.status).toBe(200);
+    expect(status.json).toEqual({
+      courseId: 'bio',
+      stored: { state: 'course-unavailable', problem: 'not-a-course-file' },
+      uploads: [],
+    });
+  });
+
+  it('reports a course with an upload but no file yet as holding no lectures', async () => {
+    const server = await started(startTestServer(gatewayOf([], new ShortEmbedder(6))));
+    const deck = [['Bees', 'one two three four five six seven eight nine ten']];
+    await upload(server, await pdfDeck(deck));
+    expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
+      stored: { state: 'read', lectures: [] },
+    });
+    expect(existsSync(courseFilePath(server.dataDir, CourseId.parse('bio')))).toBe(false);
+  });
+
   it('answers no-such-course for a course with no file and no uploads', async () => {
     const { server } = await started();
     const status = await send(server.port, { method: 'GET', path: '/courses/bio/ingest' });

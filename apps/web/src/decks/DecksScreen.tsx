@@ -1,9 +1,15 @@
-import type { CourseId, Upload } from '@cram/shared';
+import type { CourseId, IngestStatus, StoredLecture, Upload } from '@cram/shared';
 import { type ChangeEvent, useState } from 'react';
 import { useApi } from '../api/api-context';
 import type { ApiClient } from '../api/api-client';
 import { DECK_FILE_ACCEPT, deckMediaType, lectureIdOf } from '../api/deck-file';
-import { failureMessage, PENDING, progressMessage } from '../copy';
+import {
+  failureMessage,
+  indexedMessage,
+  PENDING,
+  progressMessage,
+  storedUnavailableMessage,
+} from '../copy';
 import { Empty, Failed, Pending } from '../shell/async-states';
 import { useIngestStatus } from './use-ingest-status';
 
@@ -28,11 +34,34 @@ const uploadAll = async (
   return refused;
 };
 
-const UploadList = ({ uploads }: { readonly uploads: readonly Upload[] }) =>
-  uploads.length === 0 ? (
-    <Empty>No decks yet. Add this course’s lecture slides as PDF or PowerPoint files.</Empty>
-  ) : (
+/** A stored lecture with an `indexed` upload this session is left to that upload's row, which names its file. */
+const unlistedLectures = (
+  lectures: readonly StoredLecture[],
+  uploads: readonly Upload[],
+): readonly StoredLecture[] => {
+  const indexed = new Set(
+    uploads
+      .filter(({ progress }) => progress.state === 'indexed')
+      .map(({ lectureId }) => lectureId),
+  );
+  return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
+};
+
+const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> }) => {
+  const { stored, uploads } = ingest;
+  const lectures = stored.state === 'read' ? unlistedLectures(stored.lectures, uploads) : [];
+  if (lectures.length === 0 && uploads.length === 0)
+    return stored.state === 'read' ? (
+      <Empty>No decks yet. Add this course’s lecture slides as PDF or PowerPoint files.</Empty>
+    ) : null;
+  return (
     <ul className="upload-list">
+      {lectures.map((lecture) => (
+        <li key={`lecture:${lecture.lectureId}`} className="upload" data-state="indexed">
+          <span className="upload-file">{lecture.lectureId}</span>
+          <span className="upload-progress">{indexedMessage(lecture)}</span>
+        </li>
+      ))}
       {uploads.map((upload) => (
         <li key={upload.uploadId} className="upload" data-state={upload.progress.state}>
           <span className="upload-file">{upload.fileName}</span>
@@ -41,6 +70,7 @@ const UploadList = ({ uploads }: { readonly uploads: readonly Upload[] }) =>
       ))}
     </ul>
   );
+};
 
 export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const api = useApi();
@@ -59,26 +89,30 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
       setRevision((value) => value + 1);
     });
   };
+  const messages = [
+    ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
+    ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
+    ...(state.status === 'ready' && state.ingest.stored.state === 'course-unavailable'
+      ? [storedUnavailableMessage(state.ingest.stored.problem)]
+      : []),
+  ];
   return (
     <main className="screen">
       <div className="file-picker">
         <label htmlFor="deck-files">Add decks</label>
         <input id="deck-files" type="file" accept={DECK_FILE_ACCEPT} multiple onChange={onChange} />
       </div>
-      {(refused.length > 0 || state.status === 'failed') && (
+      {messages.length > 0 && (
         <Failed
           key={revision}
-          messages={[
-            ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
-            ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
-          ]}
+          messages={messages}
           onRetry={state.status === 'failed' ? reread : undefined}
         />
       )}
       {state.status === 'pending' ? (
         <Pending label={PENDING.decks} />
       ) : (
-        state.status === 'ready' && <UploadList uploads={state.uploads} />
+        state.status === 'ready' && <DeckList ingest={state.ingest} />
       )}
     </main>
   );
