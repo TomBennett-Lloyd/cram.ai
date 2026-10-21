@@ -115,6 +115,8 @@ export default {
         '/^border-(top|right|bottom|left|block|inline)(-(start|end))?-width$/',
         'outline-width',
         'outline-offset',
+        'column-rule-width',
+        'stroke-width',
         'text-decoration-thickness',
         'max-inline-size',
         'max-width',
@@ -148,9 +150,8 @@ export default {
      * Residual, deliberately open: the *length* half of the frontend gate is
      * still allow-list-shaped, so a raw size reaches the page through any
      * property the list omits — `width`, `height`, `inline-size`, `inset`,
-     * `flex-basis`, `letter-spacing`, `stroke-width`,
-     * `grid-template-columns`, among others. The same open half
-     * covers the widths in *at-rule preludes* — media features and container
+     * `flex-basis`, `letter-spacing`, `grid-template-columns`, among others.
+     * The same open half covers the widths in *at-rule preludes* — media features and container
      * features alike — which every rule here misses for a stronger reason: a
      * query feature is not a declaration at all, so no declaration-scoped rule
      * can see one however the property list grows. Those widths are therefore
@@ -167,11 +168,7 @@ export default {
      * breakpoint its documented escalation, so a new one owes an argument for
      * why its surface cannot measure itself. There
      * is no property-agnostic mirror for lengths because a length is legal
-     * syntax everywhere. The properties still off the list hold either sizes
-     * no category in `packages/ui/src/tokens/tokens.css` names, or `calc()`
-     * gutters over spacing tokens, which `ignoreFunctions: false` above
-     * refuses. Listing them needs a category or a different rule first —
-     * design-system scope, not a config tweak.
+     * syntax everywhere.
      */
     'declaration-property-value-disallowed-list': [
       { '/.*/': ['/#[0-9a-fA-F]{3,8}\\b/', '/\\b(rgba?|hsla?|oklch|lab|lch)\\(/'] },
