@@ -15,3 +15,4 @@ carrier: eval/src/timed-gateway.test.ts
 carrier: packages/gateway/src/adapters/openai-http/openai-http-generator.test.ts
 carrier: packages/gateway/src/fake-gateway.test.ts
 excluded: apps/server/src/gateway-config.test.ts
+excluded: .claude/comment-density.baseline.tsv

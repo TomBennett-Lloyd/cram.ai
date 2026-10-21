@@ -16,6 +16,8 @@ const read = readRun(EVAL_ROOT);
 if (read.status !== 'read') throw new Error(`${read.where}: ${read.message}`);
 const { run } = read;
 
+const RENDER_AND_REPLAY_BOUND_MS = 120_000;
+
 const dir = await mkdtemp(join(tmpdir(), 'cram-eval-134-'));
 
 afterAll(async () => {
@@ -23,15 +25,19 @@ afterAll(async () => {
 });
 
 describe('the committed tier-2 run', () => {
-  it('replays to its own report, less wall-clock time', async () => {
-    const replayed = await replayRun({
-      run,
-      courseId: EVAL_COURSE_ID,
-      course: course.course,
-      lectures: await ingestedCourse(course.course.deck, EVAL_COURSE_ID, dir),
-    });
-    expect(untimed(replayed)).toEqual(untimed(run.report));
-  });
+  it(
+    'replays to its own report, less wall-clock time',
+    async () => {
+      const replayed = await replayRun({
+        run,
+        courseId: EVAL_COURSE_ID,
+        course: course.course,
+        lectures: await ingestedCourse(course.course.deck, EVAL_COURSE_ID, dir),
+      });
+      expect(untimed(replayed)).toEqual(untimed(run.report));
+    },
+    RENDER_AND_REPLAY_BOUND_MS,
+  );
 
   // The contradiction set's assertion joins this one when #216 is fixed and the run re-recorded.
   it('holds citation validity at its bar', () => {

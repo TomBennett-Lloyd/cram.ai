@@ -147,3 +147,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/standards/prose.md` § Trim batches (first paragraph); `.claude/skills/review-loop/SKILL.md` **Trim-batch lane**
 - What: both say a PR whose diff `.claude/scripts/verify-tier.sh` classifies `source-prose` or `docs` is a trim batch. #292 made composite tier names reachable, so a trim batch that writes the restatement ledger prose.md rule 1 asks for now classifies `source-prose+ledgers`, and neither text says whether that counts. Nothing regressed: before #292 a diff touching a ledger classified `full`, which was never a trim batch. The fix is a standards decision.
 - Source: #292 review cycle 1
+
+## 2026-10-21 — the comment-density median counts the small files it never judges
+
+- Where: `.claude/scripts/check-comment-density.sh` (the median block, and the `MIN_JUDGED_LINES` arm of the comparison); `.claude/comment-density.baseline.tsv`
+- What: the admission median is taken over every baseline row, including the rows of files under `MIN_JUDGED_LINES`, which are banked at any ratio. Those small files are denser, so the bar that judged files are measured against sits above their own median: on the #187 census (origin/main 1a7277a) it was 769 bp over all 170 rows against 641 over the 92 files of 40 or more non-blank lines. Each dense small file a lane banks raises the bar for later lanes, so "new dense files cannot lift the bar" holds within one PR, not across PRs. A median over judged rows only would need a line count in the baseline, which is a format change.
+- Source: #187 review cycle 1

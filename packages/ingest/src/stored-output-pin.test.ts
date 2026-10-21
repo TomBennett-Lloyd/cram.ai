@@ -16,8 +16,11 @@ const PIN = {
 const sha256 = (data: string | Uint8Array): string =>
   createHash('sha256').update(data).digest('hex');
 
+// Reading the corpus renders every one of its PDF pages (#107), which takes seconds; no run is near this.
+const SLOW = { timeout: 60_000 };
+
 describe('the records @cram/ingest stores', () => {
-  it('are the ones SCHEMA_VERSION was cut for', async () => {
+  it('are the ones SCHEMA_VERSION was cut for', SLOW, async () => {
     const records = (await corpus()).flatMap(([bytes, slides]) =>
       slides.map((slide) => ({ ...slide, sourceHash: slide.sourceHash === sha256(bytes) })),
     );

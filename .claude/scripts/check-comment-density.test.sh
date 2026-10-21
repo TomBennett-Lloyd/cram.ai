@@ -50,7 +50,8 @@ srcfile() {
 
 # fixture <name> -> DIR, a repo-shaped tree whose three files sit at 2000, 4000 and 6000
 # basis points. The median of those three rows is 4000, which is what every new-file case
-# is measured against.
+# is measured against; a new file that case means to judge has at least MIN_JUDGED_LINES
+# non-blank lines.
 fixture() {
   DIR="$TMP_ROOT/$1"
   must rm -rf "$DIR"
@@ -318,7 +319,7 @@ bootstrap
 must printf '// one more line of prose\n' >>"$DIR/packages/shared/src/b.ts"
 run_check
 expect_rc 1
-expect_stderr "1 file(s) above the committed comment density"
+expect_stderr "1 violation(s) against the committed baseline"
 expect_stderr "ERROR packages/shared/src/b.ts: 45.45% (4545) > baseline 40.00% (4000) — 5 comment / 11 non-blank line(s)"
 expect_stderr "delete, cite or move-to-test"
 expect_not_stdout "check-comment-density: OK"
@@ -360,7 +361,7 @@ fixture_lacks "$DIR/apps/web/src/c.ts" "// prose line 6"
 run_check
 expect_rc 0
 expect_stdout "check-comment-density: OK"
-expect_stdout "baseline is stale (1 lower, 0 unpinned, 0 gone)"
+expect_stdout "baseline is stale (1 lower)"
 end
 
 begin "--ratchet banks the fall, and the lowered row is what the next run holds the file to"
@@ -391,13 +392,15 @@ cmp -s "$TMP_ROOT/ratchet-noop.before" "$DIR/$BASELINE_REL" ||
   bad "a no-op --ratchet rewrote the baseline"
 end
 
-begin "a deleted file's row is dropped by --ratchet, and is harmless until then"
+# A row with no file would hold a departed file's ratio in the median (#187).
+begin "a deleted file's row fails the plain gate, and --ratchet drops it"
 fixture ratchet-drop
 bootstrap
 must rm "$DIR/packages/shared/src/b.ts"
 run_check
-expect_rc 0
-expect_stdout "baseline is stale (0 lower, 0 unpinned, 1 gone)"
+expect_rc 1
+expect_stderr "ERROR packages/shared/src/b.ts: baseline row with no measured file"
+expect_not_stdout "check-comment-density: OK"
 run_check --ratchet
 expect_rc 0
 expect_stdout "0 lowered, 0 added, 1 dropped"
@@ -409,25 +412,103 @@ end
 # 6. a file with no row — the issue's third negative control, and the median rule
 # ==========================================================================================
 
-begin "a new file above the median fails, naming the median it was measured against"
+begin "a new file above the median fails in both modes, and --ratchet writes nothing"
 fixture new-above
 bootstrap
-must srcfile "$DIR/packages/shared/src/new.ts" 6 4
-run_check
-expect_rc 1
-expect_stderr "ERROR packages/shared/src/new.ts: 60.00% (6000) > repo median 40.00% (4000)"
-expect_stderr "admitted at or below the median"
+must cp "$DIR/$BASELINE_REL" "$TMP_ROOT/new-above.before"
+must srcfile "$DIR/packages/shared/src/new.ts" 24 16
+for mode in plain --ratchet; do
+  case_ctx="$mode"
+  if [ "$mode" = "plain" ]; then run_check; else run_check --ratchet; fi
+  expect_rc 1
+  expect_stderr "ERROR packages/shared/src/new.ts: 60.00% (6000) > repo median 40.00% (4000)"
+  expect_stderr "a new file of 40 or more non-blank lines is admitted at or below the median"
+done
+case_ctx=""
+cmp -s "$TMP_ROOT/new-above.before" "$DIR/$BASELINE_REL" ||
+  bad "a red --ratchet run banked a file above the median: $(baseline_of)"
 end
 
-begin "a new file AT the median is admitted, and one below it is too"
+# The banking rule (#187): a file the median would admit still fails until its row is in
+# the baseline, so the median is always read from every file's row.
+begin "a new file with no row fails the plain gate even below the median, and names --ratchet"
+fixture new-unbanked
+bootstrap
+must srcfile "$DIR/packages/shared/src/below.ts" 4 36
+run_check
+expect_rc 1
+expect_stderr "ERROR packages/shared/src/below.ts: no baseline row"
+expect_stderr "--ratchet"
+expect_not_stdout "check-comment-density: OK"
+end
+
+begin "--ratchet banks a new file AT the median and one below it, and the plain gate then passes"
 fixture new-at
 bootstrap
-must srcfile "$DIR/packages/shared/src/at.ts" 4 6
-must srcfile "$DIR/packages/shared/src/below.ts" 1 9
+must srcfile "$DIR/packages/shared/src/at.ts" 16 24
+must srcfile "$DIR/packages/shared/src/below.ts" 4 36
+run_check --ratchet
+expect_rc 0
+expect_stdout "0 lowered, 2 added, 0 dropped"
+expect_stdout "packages/shared/src/at.ts: 40.00% (4000) (new row)"
 run_check
 expect_rc 0
 expect_stdout "check-comment-density: OK"
-expect_stdout "0 lower, 2 unpinned, 0 gone"
+end
+
+# MIN_JUDGED_LINES, both sides of the edge. A row once banked is judged against itself at
+# any size; the 10-line b.ts in section 4's "one added comment line" case is that half.
+begin "a dense new file one line under MIN_JUDGED_LINES is banked without a median check"
+fixture floor-under
+bootstrap
+must srcfile "$DIR/packages/shared/src/small.ts" 24 15
+run_check --ratchet
+expect_rc 0
+expect_stdout "packages/shared/src/small.ts: 61.53% (6153) (new row)"
+end
+
+begin "a dense new file AT MIN_JUDGED_LINES is judged against the median"
+fixture floor-at
+bootstrap
+must srcfile "$DIR/packages/shared/src/edge.ts" 24 16
+run_check --ratchet
+expect_rc 1
+expect_stderr "ERROR packages/shared/src/edge.ts: 60.00% (6000) > repo median 40.00% (4000)"
+end
+
+# The #73 shape.
+begin "a four-line file holding one docblock is banked, though its ratio is above the median"
+fixture floor-docblock
+bootstrap
+must cat >"$DIR/packages/shared/src/small.ts" <<'EOF'
+/**
+ * What the symbol is for.
+ */
+export const a = 1;
+EOF
+run_check --ratchet
+expect_rc 0
+expect_stdout "packages/shared/src/small.ts: 75.00% (7500) (new row)"
+run_check
+expect_rc 0
+end
+
+# A rename is a row with no file plus a file with no row; carrying the row across is the
+# footer's instruction, and it holds the file to its old ratio rather than the median.
+begin "a renamed file fails as both halves until its row is carried to the new path"
+fixture renamed
+bootstrap
+must mv "$DIR/apps/web/src/c.ts" "$DIR/apps/web/src/moved.ts"
+run_check
+expect_rc 1
+expect_stderr "2 violation(s) against the committed baseline"
+expect_stderr "ERROR apps/web/src/c.ts: baseline row with no measured file"
+expect_stderr "ERROR apps/web/src/moved.ts: no baseline row"
+expect_stderr "carry its row across to the new path"
+must perl -pi -e 's{^apps/web/src/c\.ts\t}{apps/web/src/moved.ts\t}' "$DIR/$BASELINE_REL"
+run_check
+expect_rc 0
+expect_stdout "check-comment-density: OK"
 end
 
 # The median is read from the BASELINE's rows, not from the current scan — so a batch of new
@@ -437,9 +518,9 @@ begin "the median comes from the committed rows, so new dense files cannot raise
 fixture new-cannot-lift
 bootstrap
 for n in 1 2 3 4 5; do
-  must srcfile "$DIR/packages/shared/src/dense$n.ts" 6 4
+  must srcfile "$DIR/packages/shared/src/dense$n.ts" 24 16
 done
-run_check
+run_check --ratchet
 expect_rc 1
 expect_stderr "repo median 40.00% (4000)"
 expect_stderr "ERROR packages/shared/src/dense5.ts"
@@ -451,8 +532,8 @@ begin "an even number of baseline rows takes the LOWER middle as the median"
 fixture median-even
 must srcfile "$DIR/packages/shared/src/d.ts" 8 2
 bootstrap
-must srcfile "$DIR/packages/shared/src/new.ts" 5 5
-run_check
+must srcfile "$DIR/packages/shared/src/new.ts" 20 20
+run_check --ratchet
 expect_rc 1
 expect_stderr "repo median 40.00% (4000)"
 end
@@ -469,8 +550,8 @@ must srcfile "$DIR/packages/shared/src/a.ts" 9 91
 must srcfile "$DIR/packages/shared/src/b.ts" 2 8
 must srcfile "$DIR/apps/web/src/c.ts" 6 4
 bootstrap
-must srcfile "$DIR/packages/shared/src/new.ts" 4 6
-run_check
+must srcfile "$DIR/packages/shared/src/new.ts" 16 24
+run_check --ratchet
 expect_rc 1
 expect_stderr "repo median 20.00% (2000)"
 end
@@ -559,10 +640,10 @@ end
 begin "a dense new file in a literal workspace member fails against the median"
 fixture scope-literal-member
 bootstrap
-must srcfile "$DIR/eval/src/e.ts" 9 1
+must srcfile "$DIR/eval/src/e.ts" 36 4
 run_check
 expect_rc 1
-expect_stderr "ERROR eval/src/e.ts"
+expect_stderr "ERROR eval/src/e.ts: 90.00% (9000) > repo median"
 end
 
 begin "a dense file in a directory pnpm-workspace.yaml does not name is out of scope"

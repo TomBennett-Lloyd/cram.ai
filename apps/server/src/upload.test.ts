@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { dirname } from 'node:path';
-import { CourseId, LectureId, COURSE_ID_MAX_LENGTH } from '@cram/shared';
-import { EmbedderIdentity, openCourse } from '@cram/index';
+import { CourseId, LectureId, COURSE_ID_MAX_LENGTH, SlideNo } from '@cram/shared';
+import { type CourseIndex, EmbedderIdentity, openCourse } from '@cram/index';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import { MAX_ASK_BYTES, MAX_DECK_BYTES } from './handlers';
@@ -48,8 +48,8 @@ const upload = async (
   path = uploadPath('bio', 'l1', 'hive.pdf'),
 ) => send(server.port, { method: 'POST', path, headers: { 'content-type': contentType }, body });
 
-/** The `l1` deck in the `bio` course file, opened under the identity `WordEmbedder`'s pin names. */
-const lectureDeckIn = (dataDir: string) => {
+/** The `bio` course file, opened under the identity `WordEmbedder`'s pin names, given to `read`. */
+const readCourse = <T>(dataDir: string, read: (course: CourseIndex) => T): T => {
   const { pin } = new WordEmbedder();
   const opened = openCourse({
     path: courseFilePath(dataDir, CourseId.parse('bio')),
@@ -58,11 +58,14 @@ const lectureDeckIn = (dataDir: string) => {
   });
   if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
   try {
-    return opened.course.deck(LectureId.parse('l1'));
+    return read(opened.course);
   } finally {
     opened.course.close();
   }
 };
+
+const lectureDeckIn = (dataDir: string) =>
+  readCourse(dataDir, (course) => course.deck(LectureId.parse('l1')));
 
 /** Streams `bytes` zero bytes as a deck, one reused mebibyte at a time; answers the status code. */
 const uploadZeros = ({ server }: TestServer, bytes: number): Promise<number> =>
@@ -186,6 +189,16 @@ describe('the course file an upload writes', () => {
     const stored = lectureDeckIn(server.dataDir);
     expect(stored?.lectureTitle).toBe('The Hive');
     expect(new Uint8Array(stored?.content ?? [])).toEqual(deck);
+  });
+
+  it('stores one rendered image per slide beside the deck', async () => {
+    const server = await started();
+    await upload(server, await pdfDeck(HIVE));
+    await settledStatus(server.server.port, 'bio');
+    const images = readCourse(server.dataDir, (course) =>
+      [1, 2, 3].map((slideNo) => course.slideImage(LectureId.parse('l1'), SlideNo.parse(slideNo))),
+    );
+    expect(images.map((image) => image?.mediaType)).toEqual(['image/png', 'image/png', undefined]);
   });
 
   it('is written before close resolves, though the upload was still queued', async () => {

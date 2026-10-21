@@ -5,10 +5,7 @@ import type { Deck } from './deck';
 import type { IndexedLecture } from './index-retriever';
 import { renderDeckPdfs } from './render-deck';
 
-/**
- * The course as ingest makes it: each lecture rendered into `dir`, which `renderDeckPdfs` requires
- * to lie outside the checkout, and read back through `ingestPdf`.
- */
+/** Each lecture rendered into `dir` (outside the checkout, as `renderDeckPdfs` requires) and read back by `ingestPdf`. */
 export const ingestedCourse = async (
   deck: Deck,
   courseId: CourseId,

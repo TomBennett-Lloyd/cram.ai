@@ -23,7 +23,6 @@ export const record = (overrides: Partial<z.input<typeof SlideRecord>> = {}): Sl
     ...overrides,
   });
 
-/** A lecture whose stored deck is a stand-in: only its records reach a model. */
 export const indexedLecture = (
   lectureId: string,
   slides: readonly SlideRecord[] = [record({ lectureId })],

@@ -10,10 +10,8 @@ import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { parseJsonLines } from './json-text';
 
-/** The course id the eval deck is ingested and indexed under, live and in replay alike. */
 export const EVAL_COURSE_ID = CourseId.parse('hollowmere');
 
-/** The `eval/` directory of this checkout. */
 export const EVAL_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 export const DECK_DIR = 'decks/hollowmere';
