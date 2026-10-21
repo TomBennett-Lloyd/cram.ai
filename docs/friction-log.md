@@ -14,11 +14,6 @@ Entry format:
 
 ---
 
-## 2026-10-19 — PR #67
-
-- Phase: implementation
-- Observed: the #3 lane mutated an uncommitted ledger to check the harness went red, then undid the mutant with `git checkout --`, which also discarded the carrier line it had just added; it re-added the line and re-checked before committing. `docs/standards/testing.md` rule 8 forbids exactly that revert, and `.claude/agents/ticket-agent.md` § 4 cites rule 8 for the mutant loop; the lane was mutating a ledger, not a test, so nothing in the standards index pointed it at the rule. One ticket so far.
-
 ## 2026-10-20 — PR #82
 
 - Phase: review
