@@ -6,6 +6,7 @@ import {
   type DeckMediaType,
   IngestStatus,
   type LectureId,
+  RebuildReportDismissed,
   Upload,
 } from '@cram/shared';
 import type { z } from 'zod';
@@ -63,6 +64,14 @@ export class ApiClient {
 
   ingestStatus(courseId: CourseId): Promise<ApiResult<IngestStatus>> {
     return this.#call(`/courses/${courseId}/ingest`, { method: 'GET' }, IngestStatus);
+  }
+
+  dismissRebuildReport(courseId: CourseId): Promise<ApiResult<RebuildReportDismissed>> {
+    return this.#call(
+      `/courses/${courseId}/rebuild-report`,
+      { method: 'DELETE' },
+      RebuildReportDismissed,
+    );
   }
 
   uploadDeck(courseId: CourseId, deck: DeckUpload): Promise<ApiResult<Upload>> {

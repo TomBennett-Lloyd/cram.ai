@@ -38,8 +38,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
 | grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
 | ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
-| check:no-network-egress's `--depth Infinity` is pinned by no test                            | #182         |
-| check:no-network-egress exempts a name absent anywhere from the stale check                  | #182         |
 
 ---
 
@@ -90,6 +88,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/ingest/src/adapters/pptx/omml.ts` `MATH_ALPHANUMERIC`, `plainLetters`
 - What: the fold stores every math alphanumeric as its NFKC form, so `R ∈ ℝ` is stored, quoted and verified as `R ∈ R`, and a bold vector `𝐯` merges with a scalar `v`. Recall was chosen over the distinction (#159's plan comment). The double-struck set letters (`ℕℤℚℝℂ`) are the obvious candidates to exempt. Revisit this when the eval deck gains equations.
 - Source: #159 review cycle 1
+- Update 2026-10-21 (#194): the fold moved to `packages/ingest/src/stored-text.ts` `storedText`, which every adapter's text passes through, so the merge now holds for PDF text and PPTX prose as well as equations; the Where line names the site it left.
 
 ## 2026-10-21 — no test holds a decks-screen retry keeping the batch's refusals
 
@@ -99,7 +98,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 ## 2026-10-21 — opening a course file to read it can write to it
 
-- Where: `apps/server/src/course-file.ts` `openForRead`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
+- Where: `apps/server/src/course-file.ts` `openExisting`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
 - What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status `useIngestStatus` polls (`apps/web/src/decks/use-ingest-status.ts`). Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
 - Source: #146 review cycle 1
 
@@ -140,9 +139,40 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/copy.ts` `DISCARDED_ROW`, `discardedMessage`; `packages/index/src/rebuild-course.ts` `discardedTables`
 - What: `docs/adr/0004-storage.md` § Decision (d) requires a rebuild to tell the user which derived data did not survive. The web names only the tables it has words for. A table added later, such as attempts or notes, is summed as `OTHER_ROW` with every test green. The `topics-table` and `confirmations-table` ledgers only notice a rename, not an addition. Root cause: nothing shared lists the tables a rebuild can discard, so no gate asks for the new table's student words.
 - Source: #225 review cycle 1
+- Update 2026-10-21 (#233): a rebuild now keeps its report in the course file until the student dismisses it, and adds an undismissed report to the next rebuild's (`packages/index/src/rebuild-report.ts`, `rebuildCourse`'s carry-over). So the table names are now persisted data that crosses app versions: a later rename of `topics` or `confirmations` leaves an undismissed report under the old name, which `DISCARDED_ROW` counts as `OTHER_ROW`. `readRebuildReport` also reads an older file's `rebuild_report` with the current reader, fixing that table's shape across versions, the coupling `readDeck` already has.
+
+## 2026-10-21 — a dismissal clears the rebuild report the file holds, not the one the student saw
+
+- Where: `apps/server/src/course-file.ts` `dismissRebuildReport`; `apps/web/src/decks/DecksScreen.tsx` `dismiss`
+- What: `DELETE /courses/:id/rebuild-report` carries nothing that identifies the report the student was shown. A decks screen left open across a restart that brings a schema bump stops polling, so it never sees the second rebuild's discards, which are summed into the file's report. A press on its stale Dismiss button then deletes discards the student was never told of, the duty `docs/adr/0004-storage.md` § Decision (d) states. Unlikely while schema bumps are rare. Root cause: the report has no revision, so the dismissal cannot be made conditional on the one shown.
+- Source: #233 review cycle 1
 
 ## 2026-10-21 — ADR 0006's carrier ledger names the old home of the quotable field list
 
 - Where: `docs/adr/0006-image-only-slides.md` § Decision (k), the "Code carriers citing by number" bullet; `packages/shared/src/quotable-text.ts` `slideFields`
 - What: the bullet lists `packages/grounding/src/slide-text.ts` as the carrier that makes `imageCaptions` part of the text a quote resolves against. Since #202 that file builds `slideText` from `slideFields`, which is now the carrier, and the ADR's recorded sweep no longer finds `packages/grounding/src/slide-text.ts` or `apps/web/src/ask/quote-marks.ts` while `packages/shared/src/quotable-text.ts` and its test are unclassified. The claim still holds through `slideFields`; only the site is stale. The ADR is humanAlways, so its next amendment should correct the entry.
 - Source: #202 review cycle 1
+
+## 2026-10-21 — ADR 0005 cites `citation.ts` for a minting split it no longer states
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (c), the `expectedCitations` sentence; `packages/shared/src/citation.ts` `SourceId`
+- What: the ADR says golden questions never name a minted `SourceId` "because `packages/shared/src/citation.ts` leaves minting to ingest and the index". Since #183 that docblock names `sourceIdOf` in `packages/index/src/slide-row.ts` as the one minter, so the ADR cites a file for a claim the file no longer makes. The decision still stands (a golden question stays independent of how the index mints); only the cited reason is stale. The ADR is humanAlways, so its next amendment should correct the sentence.
+- Source: #183 review cycle 1
+
+## 2026-10-21 — a course file whose stored `course_id` fails `CourseId` throws instead of being refused
+
+- Where: `packages/index/src/open-course.ts` (the `course_id` read), `packages/index/src/rebuild-course.ts` `rebuildCourse` (`CourseId.parse` of the old file's `course` row)
+- What: both parse a course file's stored `course_id` through `CourseId` and let the `ZodError` escape. Since #183 tightened `CourseId` to the file-safe rule, an id the old schema accepted (`Bio`, `course_b`) throws where it used to reach `course-mismatch`. No production path writes such a row, since every id was already file-safe at the server, but a course file is external input, and the module that reads it should refuse a malformed row as a value (`docs/standards/error-handling.md` rule 1), not throw.
+- Source: #183 review cycle 1
+
+## 2026-10-21 — ledger sweeps with only literal arms cannot see a paraphrase
+
+- Where: the `course-id-length`, `topics-table` and `network-egress-allowlist-path` ledgers under `.claude/ledgers/`, each one's `sweep:` line
+- What: each sweep matches the owning identifier and the ledger's own path, but has no claim arm and no numeric arm, which `docs/standards/architecture.md` rule 9 asks for. A later carrier that states the value in words or as a bare number joins the claim without joining the ledger, and `check:ledgers` stays green. The #183 review ran both arms by hand for the course-id length and found no unlisted carrier, so the gap is latent.
+- Source: #183 review cycle 1
+
+## 2026-10-21 — an `aria-disabled` button looks as live as an enabled one
+
+- Where: `apps/web/src/app.css` (`button:disabled` is the only inert-button style); `apps/web/src/shell/async-states.tsx` `Failed`'s Dismiss button
+- What: while a dismissal waits, the Dismiss button is `aria-disabled` and ignores presses, because a real `disabled` would drop the focus the reader put on it. No style matches `[aria-disabled='true']`, so it looks fully live. The "Dismissing…" pending label beside it says why. Root cause: the stylesheet has no treatment for an inert button that keeps its focus. Give it one when a second such button appears (`docs/standards/design.md` rule 9).
+- Source: #233 review cycle 1 confirmation pass

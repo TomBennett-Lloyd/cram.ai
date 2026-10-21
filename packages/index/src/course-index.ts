@@ -2,6 +2,7 @@ import type { Database } from 'better-sqlite3';
 import {
   type CourseId,
   type Deck,
+  type DiscardedTable,
   type LectureId,
   type RetrievedSlide,
   type SlideImage,
@@ -10,6 +11,7 @@ import {
   SlideKind,
   type SourceId,
   StoredLecture,
+  type TopicTag,
 } from '@cram/shared';
 import { z } from 'zod';
 import {
@@ -24,6 +26,7 @@ import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
 import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
+import { clearRebuildReport, readRebuildReport, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
 import {
   ftsValues,
@@ -260,7 +263,7 @@ export class CourseIndex {
   }
 
   /** Replaces a slide's topic tags (`docs/plan.md` §3.2): metadata, never content. */
-  setTopics(sourceId: SourceId, tags: readonly string[]): SetTopicsResult {
+  setTopics(sourceId: SourceId, tags: readonly TopicTag[]): SetTopicsResult {
     const id = RowId.optional().parse(
       this.#db.prepare('select id from slides where source_id = ?').pluck().get(sourceId),
     );
@@ -284,7 +287,7 @@ export class CourseIndex {
   }
 
   /** Every slide tagged `tag`, by lecture then slide number. */
-  slidesTagged(tag: string, listing: SlideListing = {}): readonly SlideRecord[] {
+  slidesTagged(tag: TopicTag, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
       `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
       tag,
@@ -334,6 +337,20 @@ export class CourseIndex {
       if (kind === SlideKind.enum['image-only']) lecture.imageOnly.push(slide_no);
     }
     return [...lectures.values()].map((lecture) => StoredLecture.parse(lecture));
+  }
+
+  /** What a rebuild discarded that the student has not dismissed (#233). */
+  rebuildReport(): readonly DiscardedTable[] {
+    return readRebuildReport(this.#db);
+  }
+
+  /** Written by `rebuildCourse` into the file it rebuilt. */
+  recordRebuildReport(discarded: readonly DiscardedTable[]): void {
+    recordRebuildReport(this.#db, discarded);
+  }
+
+  dismissRebuildReport(): void {
+    clearRebuildReport(this.#db);
   }
 
   deck(lectureId: LectureId): Deck | undefined {

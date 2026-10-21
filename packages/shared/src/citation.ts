@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { NonBlankText } from './non-blank-text';
 
-/** Names one source. How a slide's id is minted is ingest's and the index's (#10, #11). */
+/** Names one source. A slide's id is minted by `sourceIdOf` in `packages/index/src/slide-row.ts` alone (#11, #183). */
 export const SourceId = z.string().min(1).brand<'SourceId'>();
 export type SourceId = z.infer<typeof SourceId>;
 

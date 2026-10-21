@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { CourseId, LectureId } from '@cram/shared';
+import { getDocumentProxy } from 'unpdf';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDeck, type FixtureDeck, type FixtureLine } from './deck-fixture';
 import { ingestPdf, type PdfIngestResult } from './ingest-pdf';
@@ -75,6 +76,27 @@ describe('ingestPdf', () => {
         speakerNotes: 'Pause for questions.\nThen the demo.',
       }),
     ]);
+  });
+
+  it('stores a text layer in math italic as the plain letters a PPTX equation stores (#194)', async () => {
+    const deck: FixtureDeck = {
+      pages: [
+        {
+          lines: [
+            line('Rest energy', TITLE),
+            line('The rest energy of a body is'),
+            { text: 'E=mc', size: BODY, mathItalic: true },
+          ],
+        },
+      ],
+    };
+    const bytes = await buildDeck(deck);
+    const pdf = await getDocumentProxy(bytes.slice(), { verbosity: 0 });
+    const { items } = await (await pdf.getPage(1)).getTextContent();
+    await pdf.loadingTask.destroy();
+    expect(items.map((item) => ('str' in item ? item.str : ''))).toContain('𝐸=𝑚𝑐');
+    const [slide] = await ingested(deck);
+    expect(slide?.body).toBe('The rest energy of a body is\nE=mc');
   });
 
   it('flags a page with no text layer as image-only', async () => {

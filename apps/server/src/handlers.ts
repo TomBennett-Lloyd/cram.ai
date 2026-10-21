@@ -1,13 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   AskRequest,
-  type CourseId,
+  CourseId,
   type CourseList,
   DeckMediaType,
   type IngestStatus,
   LectureId,
   NonBlankText,
-  RouteCourseId,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
@@ -38,7 +37,7 @@ const mediaTypeOf = (request: IncomingMessage): string =>
   (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
 
 const courseIdOf = ({ response, courseSegment }: RouteRequest): CourseId | undefined => {
-  const parsed = RouteCourseId.safeParse(courseSegment);
+  const parsed = CourseId.safeParse(courseSegment);
   if (parsed.success) return parsed.data;
   badRequest(response, `course id: ${z.prettifyError(parsed.error)}`);
   return undefined;
@@ -82,6 +81,25 @@ export const listCourses = (response: ServerResponse, context: HandlerContext): 
   const ids = new Set([...storedCourses(context.files), ...context.queue.courseIds()]);
   const list: CourseList = { courses: [...ids].sort() };
   sendJson(response, 200, list);
+};
+
+export const dismissRebuildReport = async (
+  route: RouteRequest,
+  context: HandlerContext,
+): Promise<void> => {
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  const dismissal = await context.queue.dismissRebuildReport(courseId);
+  switch (dismissal.status) {
+    case 'dismissed':
+      sendJson(route.response, 200, dismissal);
+      return;
+    case 'no-such-course':
+      sendRefusal(route.response, 404, dismissal);
+      return;
+    case 'course-unavailable':
+      sendRefusal(route.response, 409, dismissal);
+  }
 };
 
 export const ingestStatus = (route: RouteRequest, context: HandlerContext): void => {

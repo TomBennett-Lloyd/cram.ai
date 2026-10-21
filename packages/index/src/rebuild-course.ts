@@ -10,6 +10,7 @@ import {
   type OpenCourseResult,
   type OpenCourseSpec,
 } from './open-course';
+import { readRebuildReport, REBUILD_REPORT_TABLE_NAME } from './rebuild-report';
 import {
   readDeck,
   readSlideImages,
@@ -34,11 +35,15 @@ export type RebuildCourseResult =
       readonly discarded: readonly DiscardedTable[];
     };
 
-/** What a rebuild reproduces: the course row from the spec, the slides from the decks, and the decks. */
+/**
+ * What a rebuild reproduces: the course row from the spec, the slides from the decks, the decks,
+ * and the report of what an earlier rebuild discarded, which the rebuilt file's report adds to.
+ */
 const REPRODUCED_TABLES: ReadonlySet<string> = new Set([
   'course',
   'slides',
   ...STORED_DECK_TABLE_NAMES,
+  REBUILD_REPORT_TABLE_NAME,
 ]);
 
 const TableList = z.array(z.object({ name: z.string(), type: z.string() }));
@@ -72,16 +77,17 @@ const discardedTables = (db: Database.Database): readonly DiscardedTable[] => {
     .filter(({ rows }) => rows > 0);
 };
 
-const hasStoredDecks = (db: Database.Database): boolean =>
+const hasTable = (db: Database.Database, name: string): boolean =>
   db
-    .prepare("select count(*) from sqlite_schema where type = 'table' and name = 'decks'")
+    .prepare("select count(*) from sqlite_schema where type = 'table' and name = ?")
     .pluck()
-    .get() === 1;
+    .get(name) === 1;
 
 const writeRebuilt = async (
   old: Database.Database,
   spec: OpenCourseSpec,
   deps: RebuildDeps,
+  discarded: readonly DiscardedTable[],
 ): Promise<void> => {
   const created = openCourse(spec);
   if (created.status !== 'open')
@@ -99,6 +105,9 @@ const writeRebuilt = async (
         throw new Error(`rebuildCourse: lecture ${lectureId} did not rebuild`, { cause: error });
       }
     }
+    if (hasTable(old, REBUILD_REPORT_TABLE_NAME))
+      course.recordRebuildReport(readRebuildReport(old));
+    course.recordRebuildReport(discarded);
   } finally {
     course.close();
   }
@@ -107,7 +116,8 @@ const writeRebuilt = async (
 /**
  * Opens a course, first rebuilding it from its stored decks if its schema is older
  * (`docs/adr/0004-storage.md` § Decision (d)). The older file is replaced only once
- * the rebuilt one is complete.
+ * the rebuilt one is complete. `discarded` is this rebuild's; the rebuilt file's
+ * `rebuildReport` also holds what an earlier one discarded and the student has not dismissed.
  */
 export const rebuildCourse = async (
   spec: OpenCourseSpec,
@@ -121,10 +131,11 @@ export const rebuildCourse = async (
   try {
     const recorded = CourseId.parse(old.prepare('select course_id from course').pluck().get());
     if (recorded !== spec.courseId) return { status: 'course-mismatch', recorded };
-    if (!hasStoredDecks(old)) return { status: 'no-stored-decks', fileVersion: opened.fileVersion };
+    if (!hasTable(old, 'decks'))
+      return { status: 'no-stored-decks', fileVersion: opened.fileVersion };
     discarded = discardedTables(old);
     rmSync(rebuilt, { force: true });
-    await writeRebuilt(old, { ...spec, path: rebuilt }, deps);
+    await writeRebuilt(old, { ...spec, path: rebuilt }, deps, discarded);
   } catch (error) {
     rmSync(rebuilt, { force: true });
     throw error;
