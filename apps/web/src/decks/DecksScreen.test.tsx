@@ -1,47 +1,19 @@
-import { CourseId, StoredLecture, StoredLectures, Upload } from '@cram/shared';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { StoredLectures } from '@cram/shared';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiClient } from '../api/api-client';
-import { ApiContext } from '../api/api-context';
-import { fakeApi, type Reply, type Sent } from '../api/api-fixture';
+import { fakeApi } from '../api/api-fixture';
 import { PENDING } from '../copy';
-import { DecksScreen } from './DecksScreen';
+import {
+  lecture,
+  reads,
+  renderDecks,
+  rows,
+  settle,
+  status,
+  storedStatus,
+  upload,
+} from './decks-fixture';
 import { POLL_INTERVAL_MS } from './use-ingest-status';
-
-/** Parsed, so a fixture the server could not send fails here rather than in the screen. */
-const upload = (fileName: string, progress: unknown): Upload =>
-  Upload.parse({ uploadId: fileName, lectureId: fileName, fileName, progress });
-
-const NOTHING_STORED = StoredLectures.parse({ state: 'read', lectures: [] });
-
-const storedStatus = (stored: StoredLectures, ...uploads: Upload[]): Reply => ({
-  status: 200,
-  body: { courseId: 'bio', stored, uploads },
-});
-
-const status = (...uploads: Upload[]): Reply => storedStatus(NOTHING_STORED, ...uploads);
-
-const lecture = (lectureId: string, slideCount: number, imageOnly: number[]): StoredLecture =>
-  StoredLecture.parse({ lectureId, lectureTitle: `Title of ${lectureId}`, slideCount, imageOnly });
-
-const rows = () =>
-  [...document.querySelectorAll('.upload')].map((row) =>
-    [...row.children].map((node) => node.textContent),
-  );
-
-const renderDecks = (api: ApiClient) =>
-  render(
-    <ApiContext value={api}>
-      <DecksScreen courseId={CourseId.parse('bio')} />
-    </ApiContext>,
-  );
-
-const settle = () =>
-  act(async () => {
-    await vi.advanceTimersByTimeAsync(0);
-  });
-
-const reads = (sent: readonly Sent[]) => sent.filter(({ method }) => method === 'GET').length;
 
 beforeEach(() => {
   vi.useFakeTimers();

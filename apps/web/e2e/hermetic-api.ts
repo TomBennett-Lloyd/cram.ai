@@ -97,6 +97,7 @@ export const stubApi = async (page: Page): Promise<void> => {
     return json(route, 200, {
       courseId: 'bio',
       stored: { state: 'read', lectures: [] },
+      repair: { state: 'none' },
       uploads: [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
     });
   });

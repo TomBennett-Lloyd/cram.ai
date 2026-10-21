@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IngestStatus, StoredLectures, UploadProgress } from './ingest-status';
+import { CourseRepair, IngestStatus, StoredLectures, UploadProgress } from './ingest-status';
 
 describe('UploadProgress', () => {
   it('reports image-only pages by slide number, counted from 1', () => {
@@ -28,8 +28,12 @@ describe('IngestStatus', () => {
 
   it('carries the course file’s lectures beside the uploads, and refuses a status without them', () => {
     const stored = { state: 'read', lectures: [lecture] };
-    expect(IngestStatus.safeParse({ courseId: 'bio', stored, uploads: [] }).success).toBe(true);
-    expect(IngestStatus.safeParse({ courseId: 'bio', uploads: [] }).success).toBe(false);
+    const repair = { state: 'none' };
+    expect(IngestStatus.safeParse({ courseId: 'bio', stored, repair, uploads: [] }).success).toBe(
+      true,
+    );
+    expect(IngestStatus.safeParse({ courseId: 'bio', repair, uploads: [] }).success).toBe(false);
+    expect(IngestStatus.safeParse({ courseId: 'bio', stored, uploads: [] }).success).toBe(false);
   });
 
   it('names why a course file cannot be read, and each lecture by a title, never blank', () => {
@@ -43,5 +47,24 @@ describe('IngestStatus', () => {
     expect(read({})).toBe(true);
     expect(read({ imageOnly: [0] })).toBe(false);
     expect(read({ lectureTitle: ' ' })).toBe(false);
+  });
+});
+
+describe('CourseRepair', () => {
+  const done = (discarded: unknown) => CourseRepair.safeParse({ state: 'done', discarded }).success;
+
+  it('names each discarded table and how many of its rows were lost, at least one', () => {
+    expect(done([])).toBe(true);
+    expect(done([{ table: 'topics', rows: 12 }])).toBe(true);
+    expect(done([{ table: 'topics', rows: 0 }])).toBe(false);
+    expect(done([{ table: 'topics', rows: 1.5 }])).toBe(false);
+    expect(done([{ table: ' ', rows: 1 }])).toBe(false);
+    expect(CourseRepair.safeParse({ state: 'done' }).success).toBe(false);
+  });
+
+  it('refuses a state that is not a repair stage', () => {
+    for (const state of ['none', 'queued', 'running', 'failed'])
+      expect(CourseRepair.safeParse({ state }).success).toBe(true);
+    expect(CourseRepair.safeParse({ state: 'rebuilt' }).success).toBe(false);
   });
 });

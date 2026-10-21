@@ -21,7 +21,6 @@ export { SCHEMA_VERSION } from './schema';
 export { sourceIdOf } from './slide-row';
 export {
   rebuildCourse,
-  type DiscardedTable,
   type DiscardPolicy,
   type ParseDeck,
   type RebuildCourseResult,

@@ -20,6 +20,8 @@ export { AskReply, AskRequest } from './ask';
 export { CourseList } from './course-list';
 export { ROUTE_COURSE_ID_MAX_LENGTH, RouteCourseId } from './route-course-id';
 export {
+  CourseRepair,
+  DiscardedTable,
   IngestStatus,
   StoredLecture,
   StoredLectures,
