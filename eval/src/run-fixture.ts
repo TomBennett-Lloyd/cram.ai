@@ -1,10 +1,11 @@
 import type { GroundingResult } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
-import { type Citation, type RetrievedSlide, SlideRecord, type Unit } from '@cram/shared';
+import { type Citation, Deck, type RetrievedSlide, SlideRecord, type Unit } from '@cram/shared';
 import type { z } from 'zod';
 import type { AskedQuestion } from './asked-question';
 import { question } from './eval-fixture';
 import type { GoldenQuestion } from './golden-question';
+import type { IndexedLecture } from './index-retriever';
 
 export const record = (overrides: Partial<z.input<typeof SlideRecord>> = {}): SlideRecord =>
   SlideRecord.parse({
@@ -21,6 +22,19 @@ export const record = (overrides: Partial<z.input<typeof SlideRecord>> = {}): Sl
     sourceHash: 'h',
     ...overrides,
   });
+
+export const indexedLecture = (
+  lectureId: string,
+  slides: readonly SlideRecord[] = [record({ lectureId })],
+): IndexedLecture => ({
+  deck: Deck.parse({
+    lectureId,
+    lectureTitle: `Lecture ${lectureId}`,
+    mediaType: 'application/pdf',
+    content: new TextEncoder().encode(`deck ${lectureId}`),
+  }),
+  slides,
+});
 
 export const retrieved = (slide: SlideRecord): RetrievedSlide => ({
   sourceId: sourceIdOf(slide),

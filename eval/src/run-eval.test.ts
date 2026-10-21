@@ -6,27 +6,16 @@ import {
   type Recording,
   RecordingMissError,
 } from '@cram/gateway';
-import { CourseId, Deck, type SlideRecord } from '@cram/shared';
+import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { label, question } from './eval-fixture';
-import type { IndexedLecture } from './index-retriever';
 import { RecordingGateway } from './recording-gateway';
 import { runEval, type EvalRunSpec } from './run-eval';
-import { record } from './run-fixture';
+import { indexedLecture as lecture, record } from './run-fixture';
 import { type Respond, SAMPLING, ScriptedGateway, SERVED } from './scripted-gateway-fixture';
 
 const COURSE = CourseId.parse('hollowmere');
-
-const lecture = (lectureId: string, slides: readonly SlideRecord[]): IndexedLecture => ({
-  deck: Deck.parse({
-    lectureId,
-    lectureTitle: `Lecture ${lectureId}`,
-    mediaType: 'application/pdf',
-    content: new TextEncoder().encode(`deck ${lectureId}`),
-  }),
-  slides,
-});
 
 const LECTURES = [
   lecture('l1', [
