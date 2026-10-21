@@ -67,7 +67,6 @@ const readState = (db: Database.Database) => {
   }
 };
 
-/** A blank or current file keeps its connection; any other is closed and refused. */
 const classify = (
   db: Database.Database,
 ):
@@ -153,7 +152,8 @@ export const openCourse = (spec: OpenCourseSpec): OpenCourseResult =>
  * Opens the course file at `spec.path`, which must exist, without changing what it holds.
  * It is not SQLite's read-only flag, because a read-only connection cannot remove the WAL files it
  * opens beside a course file, and a closed course file holds none (`rebuildCourse`;
- * `apps/server/src/repair.test.ts`).
+ * `apps/server/src/repair.test.ts`). The cost: closing the last connection checkpoints the WAL,
+ * which rewrites committed pages but not what the file holds.
  */
 export const openCourseReadOnly = (spec: OpenCourseSpec): ReadCourseResult => {
   const db = new Database(spec.path, { fileMustExist: true });

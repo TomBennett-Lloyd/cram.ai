@@ -12,7 +12,6 @@ export const CONFIRMATION_TABLE = `
   ) strict;
 `;
 
-/** Fields a quote resolves against (`slideFields`), hashed as JSON so a field boundary counts. */
 export const textHashOf = (record: SlideRecord): string =>
   createHash('sha256')
     .update(JSON.stringify(slideFields(record)))

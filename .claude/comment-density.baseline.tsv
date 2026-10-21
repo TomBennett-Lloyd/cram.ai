@@ -129,7 +129,7 @@ packages/grounding/src/slide-text.ts	1666
 packages/grounding/src/verifier-input.ts	1666
 packages/grounding/src/verify.ts	327
 packages/index/src/chunk-row.ts	555
-packages/index/src/confirmation.ts	746
+packages/index/src/confirmation.ts	606
 packages/index/src/course-fixture.ts	198
 packages/index/src/course-index.ts	745
 packages/index/src/embed-chunks.ts	588
