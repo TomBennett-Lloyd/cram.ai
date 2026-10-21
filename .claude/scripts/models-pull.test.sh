@@ -6,7 +6,8 @@
 # computed over real bytes and nothing reaches the network or loads a model.
 #
 # Usage: bash .claude/scripts/models-pull.test.sh   (or `pnpm test:scripts`)
-#        MODELS_PULL_SCRIPT=<copy> runs the cases against a mutant (docs/standards/testing.md rule 8).
+#        MODELS_PULL_SCRIPT=<copy> runs the cases against a mutant (docs/standards/testing.md rule 8),
+#        and GENERATOR_PIN_SCRIPT=<copy> does the same for generator-pin.mjs.
 # Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke.
 set -uo pipefail
 export PATH="$PATH:/opt/homebrew/bin"
@@ -15,6 +16,7 @@ SCRIPTS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # shellcheck source=./harness-lib.sh
 . "$SCRIPTS/harness-lib.sh"
 SUBJECT=${MODELS_PULL_SCRIPT:-$SCRIPTS/models-pull.sh}
+PIN_READER=${GENERATOR_PIN_SCRIPT:-$SCRIPTS/generator-pin.mjs}
 harness_init_tmp
 
 FIXTURE_VERSION=1.2.3
@@ -429,10 +431,22 @@ begin "a num_ctx that did not land is refused"
 fixture dropped_ctx
 run STUB_DROP_CTX=1
 expect_rc 2
-expect_stderr "serves num_ctx '', not the pinned 4096"
+expect_stderr "serves num_ctx '', not PROVISIONAL_GENERATOR_CONTEXT_LENGTH's 4096"
 end
 
-begin "the context length served is the pin's, not the artefact's trained one"
+begin "generator-pin.mjs reads the pin and the context length from the module's exports"
+# The real reader, with the real node and esbuild, over a module whose values no other file holds:
+# a value the reader restated would print instead of the module's.
+must mkdir -p "$TMP_ROOT/pin_module"
+printf '%s\n' \
+  "export const PROVISIONAL_DEFAULT_PINS = { generator: { artefact: { repository: 'Org/Read-GGUF', file: 'Read-Q4.gguf' }, sha256: '$GGUF_SUM' } };" \
+  'export const PROVISIONAL_GENERATOR_CONTEXT_LENGTH = 12345;' >"$TMP_ROOT/pin_module/provisional-pins.ts"
+capture node "$PIN_READER" "$TMP_ROOT/pin_module/provisional-pins.ts"
+expect_rc 0
+[ "$out" = "$(printf '%s\n' Org/Read-GGUF Read-Q4.gguf "$GGUF_SUM" 12345)" ] || bad "read back: $out"
+end
+
+begin "the context length served is PROVISIONAL_GENERATOR_CONTEXT_LENGTH, not the artefact's trained one"
 fixture short_ctx
 run STUB_PIN="$(pin_of "$GGUF_SUM" 2048)"
 expect_rc 0
@@ -440,15 +454,15 @@ expect_stdout "num_ctx 2048"
 holds "$DIR/state/model-$SERVED" "PARAMETER num_ctx 2048"
 end
 
-begin "a pinned context length the artefact was not trained to is refused, never served"
+begin "a PROVISIONAL_GENERATOR_CONTEXT_LENGTH the artefact was not trained to is refused, never served"
 fixture long_ctx
 run STUB_PIN="$(pin_of "$GGUF_SUM" 4097)"
 expect_rc 2
-expect_stderr "the pinned context length 4097 is above the 4096 Fixture-Q4_K_M.gguf was trained to"
+expect_stderr "PROVISIONAL_GENERATOR_CONTEXT_LENGTH 4097 is above the 4096 Fixture-Q4_K_M.gguf was trained to"
 ! grep -q 'num_ctx' "$DIR/state/model-$SERVED" 2>/dev/null || bad "a num_ctx was served anyway"
 end
 
-begin "a changed pinned context length re-creates the served model"
+begin "a changed PROVISIONAL_GENERATOR_CONTEXT_LENGTH re-creates the served model"
 fixture moved_ctx
 run
 expect_rc 0

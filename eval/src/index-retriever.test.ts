@@ -41,7 +41,11 @@ describe('IndexRetriever', () => {
 
   it('embeds each slide as its embedText, the text ingest embeds it as', async () => {
     const slides = [
-      record({ slideNo: 1, speakerNotes: 'Drones are male.', imageCaptions: ['A comb'] }),
+      record({
+        slideNo: 1,
+        speakerNotes: 'Drones are male.',
+        imageCaptions: ['A comb', 'A queen'],
+      }),
       record({ slideNo: 2, title: ' ', body: 'Foragers see red best.' }),
     ];
     const sent: string[][] = [];

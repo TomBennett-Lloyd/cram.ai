@@ -8,7 +8,8 @@ import { STORED_DECK_TABLES } from './stored-deck';
 /**
  * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
  * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too:
- * `packages/ingest/src/stored-output-pin.test.ts` fails on one its corpus reaches until it has (#257). Carriers:
+ * `packages/ingest/src/stored-output-pin.test.ts` (#257) and `packages/index/src/confirmation.test.ts`'s `textHashOf` pin fail
+ * until it has. Carriers:
  * `.claude/ledgers/schema-version.ledger`.
  */
 export const SCHEMA_VERSION = 9;

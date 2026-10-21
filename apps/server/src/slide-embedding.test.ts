@@ -24,7 +24,7 @@ const slide = (fields: Partial<z.input<typeof SlideRecord>>): SlideRecord =>
 describe('embedSlides', () => {
   it('embeds each slide as its embedText, the text the eval retriever embeds it as', async () => {
     const records = [
-      slide({ speakerNotes: 'Drones are male.', imageCaptions: ['A comb'] }),
+      slide({ speakerNotes: 'Drones are male.', imageCaptions: ['A comb', 'A queen'] }),
       slide({ slideNo: 2, title: ' ', body: 'Foragers see red best.' }),
     ];
     const inner = new WordEmbedder();
