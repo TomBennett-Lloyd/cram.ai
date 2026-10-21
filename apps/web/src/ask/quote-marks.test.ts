@@ -67,7 +67,7 @@ describe('markedFields', () => {
     ]);
   });
 
-  it('leaves blank fields out and reads notes and captions in slideText order', () => {
+  it('leaves blank fields out and reads notes and captions in slideFields order', () => {
     const record = slide({
       title: ' ',
       speakerNotes: 'Say: queens lay.',

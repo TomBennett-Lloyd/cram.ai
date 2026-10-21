@@ -69,8 +69,8 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 ## 2026-10-20 — the quotable fields of a SlideRecord are listed in two packages
 
-- Where: `packages/grounding/src/slide-text.ts` `slideText`; `packages/index/src/confirmation.ts` `textHashOf`
-- What: `slideText` decides which fields a quote resolves against (title, body, speaker notes, image captions), and `textHashOf` hashes those same fields to decide when a confirmation of derived text is void (`docs/adr/0006-image-only-slides.md` § Decision (g)). The two must change together. If `slideText` gained a field and `textHashOf` did not, an edit to quotable text would leave the confirmation standing. `@cram/index` cannot import `@cram/grounding`, so the field list's single owner belongs in `@cram/shared`, and both functions would read it from there.
+- Where: `packages/shared/src/quotable-text.ts` `slideFields`; `packages/index/src/confirmation.ts` `textHashOf`
+- What: `slideFields` decides which fields a quote resolves against (title, body, speaker notes, image captions), and `textHashOf` hashes those same fields to decide when a confirmation of derived text is void (`docs/adr/0006-image-only-slides.md` § Decision (g)). The two must change together. If `slideFields` gained a field and `textHashOf` did not, an edit to quotable text would leave the confirmation standing. `slideFields` is the single owner in `@cram/shared` since #202, which moved `@cram/grounding`'s `slideText` and `apps/web`'s quote marks onto it; `textHashOf` still lists the fields itself.
 - Source: #109 review
 
 ## 2026-10-20 — an eval report's sampling is what the caller says, never what the generator ran
@@ -146,3 +146,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/copy.ts` `DISCARDED_ROW`, `discardedMessage`; `packages/index/src/rebuild-course.ts` `discardedTables`
 - What: `docs/adr/0004-storage.md` § Decision (d) requires a rebuild to tell the user which derived data did not survive. The web names only the tables it has words for. A table added later, such as attempts or notes, is summed as `OTHER_ROW` with every test green. The `topics-table` and `confirmations-table` ledgers only notice a rename, not an addition. Root cause: nothing shared lists the tables a rebuild can discard, so no gate asks for the new table's student words.
 - Source: #225 review cycle 1
+
+## 2026-10-21 — ADR 0006's carrier ledger names the old home of the quotable field list
+
+- Where: `docs/adr/0006-image-only-slides.md` § Decision (k), the "Code carriers citing by number" bullet; `packages/shared/src/quotable-text.ts` `slideFields`
+- What: the bullet lists `packages/grounding/src/slide-text.ts` as the carrier that makes `imageCaptions` part of the text a quote resolves against. Since #202 that file builds `slideText` from `slideFields`, which is now the carrier, and the ADR's recorded sweep no longer finds `packages/grounding/src/slide-text.ts` or `apps/web/src/ask/quote-marks.ts` while `packages/shared/src/quotable-text.ts` and its test are unclassified. The claim still holds through `slideFields`; only the site is stale. The ADR is humanAlways, so its next amendment should correct the entry.
+- Source: #202 review cycle 1
