@@ -1,6 +1,6 @@
-import { CourseId, LectureId, RebuildReportRevision } from '@cram/shared';
+import { CourseId, LectureId, RebuildReportRevision, SlideNo } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { ApiClient } from './api-client';
+import { ApiClient, slideImagePath } from './api-client';
 import { fakeApi, GROUNDED } from './api-fixture';
 
 const bio = CourseId.parse('bio');
@@ -74,5 +74,15 @@ describe('ApiClient', () => {
     expect(sent[0]?.contentType).toBe('');
     await api.uploadDeck(bio, { ...deck, mediaType: 'application/pdf' });
     expect(sent[1]?.contentType).toBe('application/pdf');
+  });
+
+  it('names a slide’s stored rendering by its course, lecture and page number, the lecture encoded', () => {
+    expect(
+      slideImagePath({
+        courseId: bio,
+        lectureId: LectureId.parse('week 1 & 2'),
+        slideNo: SlideNo.parse(12),
+      }),
+    ).toBe('/courses/bio/slide-image?lectureId=week+1+%26+2&slideNo=12');
   });
 });

@@ -40,7 +40,15 @@ test('an answer and its open slide fit the narrowest phone width', async ({ page
   expect(await overflows(page, '.slide-card')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
   await page.locator('.slide-card').first().click();
-  const box = await page.getByRole('dialog').boundingBox();
+  const dialog = page.getByRole('dialog');
+  const box = await dialog.boundingBox();
   expect(box).not.toBeNull();
   expect((box?.x ?? -1) >= 0 && (box?.x ?? 0) + (box?.width ?? 0) <= NARROWEST.width).toBe(true);
+  const image = await dialog.getByRole('img').boundingBox();
+  expect(image).not.toBeNull();
+  expect((image?.x ?? -1) >= (box?.x ?? 0)).toBe(true);
+  expect((image?.x ?? 0) + (image?.width ?? Infinity) <= (box?.x ?? 0) + (box?.width ?? 0)).toBe(
+    true,
+  );
+  expect(await overflows(page, '.slide-lines li')).toBe(false);
 });

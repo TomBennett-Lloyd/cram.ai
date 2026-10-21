@@ -33,6 +33,27 @@ const segmentsOf = (text: string, offset: number, ranges: readonly QuoteSpan[]):
   return segments;
 };
 
+/**
+ * A field's runs cut at each `\n`, one entry per line ingest separated
+ * (`packages/ingest/src/slide-text.ts`'s `bodyOf`); a line holding only whitespace is left out.
+ */
+export const markedLines = (segments: readonly Segment[]): Segment[][] => {
+  const lines: Segment[][] = [];
+  let line: Segment[] = [];
+  for (const { text, marked } of segments) {
+    const parts = text.split('\n');
+    for (const [index, part] of parts.entries()) {
+      if (index > 0) {
+        lines.push(line);
+        line = [];
+      }
+      if (part !== '') line.push({ text: part, marked });
+    }
+  }
+  lines.push(line);
+  return lines.filter((runs) => runs.some(({ text }) => /\S/.test(text)));
+};
+
 /** Each field of the slide, with the spans its cited quotes cover marked; a quote may cross fields. */
 export const markedFields = (record: SlideRecord, quotes: readonly string[]): MarkedField[] => {
   const fields = slideFields(record);

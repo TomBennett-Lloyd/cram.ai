@@ -65,6 +65,13 @@ const askReply = (question: string) =>
         slides: [HIVE, COMB],
       };
 
+/**
+ * A stand-in for a stored slide rendering, at the size ingest renders a 16:9 page
+ * (`SLIDE_IMAGE_LONG_EDGE_PX`): an SVG, since what is measured is its box, not its pixels.
+ */
+export const SLIDE_IMAGE_SIZE = { width: 1920, height: 1080 } as const;
+const SLIDE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="${String(SLIDE_IMAGE_SIZE.width)}" height="${String(SLIDE_IMAGE_SIZE.height)}"><rect width="100%" height="100%" fill="white"/><text x="80" y="160" font-size="96">Castes</text></svg>`;
+
 const json = (route: Route, status: number, body: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
@@ -96,6 +103,9 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
   let ingestReads = 0;
   let report = rebuildReport ? REBUILD_REPORT : NO_REPORT;
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
+  await page.route('**/courses/*/slide-image?*', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: SLIDE_IMAGE }),
+  );
   await page.route('**/courses/*/ask', async (route) => {
     await options.askReplyAfter;
     await json(route, 200, askReply(questionOf(route.request().postData())));
