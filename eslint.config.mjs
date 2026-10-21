@@ -2,6 +2,8 @@ import eslintComments from '@eslint-community/eslint-plugin-eslint-comments';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
+import { COLOUR_FUNCTION, HEX_COLOUR } from './packages/ui/src/frontend-gate/colour-patterns.mjs';
+
 export default tseslint.config(
   {
     // .claude/worktrees holds agent git worktrees; their unbuilt deps make type-aware rules
@@ -84,34 +86,34 @@ export default tseslint.config(
      * comment — packages/ui/src/tokens/tokens.css is the one file this gate
      * exempts, and tokens.ts only ever references them as `var(--…)` strings.
      *
-     * The colour-function list below is the same set stylelint refuses in
-     * `declaration-property-value-disallowed-list`; the two must stay in step,
-     * or a value banned in a stylesheet becomes legal in a string literal. They
-     * part on a prefixed name such as `oklab(`, which only this regex refuses
-     * (#273). packages/ui/src/frontend-gate/frontend-gate.test.ts lints each
-     * selector here against a probe (#258).
+     * The hex and colour-function patterns are
+     * packages/ui/src/frontend-gate/colour-patterns.mjs's, which stylelint's
+     * `declaration-property-value-disallowed-list` imports too, so a value
+     * banned in a stylesheet is banned in a string literal (#273).
+     * packages/ui/src/frontend-gate/frontend-gate.test.ts lints each selector
+     * here against a probe (#258).
      */
     files: ['apps/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'error',
         {
-          selector: 'Literal[value=/#[0-9a-fA-F]{3,8}\\b/]',
+          selector: `Literal[value=${HEX_COLOUR}]`,
           message:
             'Hex colour literal. UI code references design tokens: var(--color-…) from @cram/ui.',
         },
         {
-          selector: 'TemplateElement[value.raw=/#[0-9a-fA-F]{3,8}\\b/]',
+          selector: `TemplateElement[value.raw=${HEX_COLOUR}]`,
           message:
             'Hex colour literal. UI code references design tokens: var(--color-…) from @cram/ui.',
         },
         {
-          selector: 'Literal[value=/(rgba?|hsla?|oklch|lab|lch)\\(/]',
+          selector: `Literal[value=${COLOUR_FUNCTION}]`,
           message:
             'Colour-function literal. UI code references design tokens: var(--color-…) from @cram/ui.',
         },
         {
-          selector: 'TemplateElement[value.raw=/(rgba?|hsla?|oklch|lab|lch)\\(/]',
+          selector: `TemplateElement[value.raw=${COLOUR_FUNCTION}]`,
           message:
             'Colour-function literal. UI code references design tokens: var(--color-…) from @cram/ui.',
         },

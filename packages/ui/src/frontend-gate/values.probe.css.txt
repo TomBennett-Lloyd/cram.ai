@@ -113,6 +113,10 @@
   filter: url(#ab);
   filter: url(#abcdef123);
   filter: url(#decal);
+  filter: url(#fade-mask);
+  filter: url(#fade_mask);
+  filter: url(#abcde);
+  filter: url(#abcdef1);
   filter: drop-shadow(0 0 0 rgb(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 rgba(0 0 0 / 50%)); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 hsl(0 0% 0%)); /* refused-by: declaration-property-value-disallowed-list */
@@ -120,6 +124,16 @@
   filter: drop-shadow(0 0 0 oklch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 lab(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 lch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 RGB(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 hwb(0 0% 0%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 oklab(0.5 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 color(srgb 1 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 color-mix(in srgb, red, blue)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 contrast-color(var(--color-ink))); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 device-cmyk(0 0 0 1)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 light-dark(var(--color-ink), var(--color-surface))); /* refused-by: declaration-property-value-disallowed-list */
+  filter: matlab(0);
+  filter: --brand-rgb(0);
   border-image-source: linear-gradient(#abc, transparent); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 var(--color-ink));
   grid-area: lab;

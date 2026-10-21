@@ -20,6 +20,8 @@
  * packages/ui/src/frontend-gate/frontend-gate.test.ts lints with this config; a
  * new entry gets its line there (#258).
  */
+import { COLOUR_FUNCTION, HEX_COLOUR } from './packages/ui/src/frontend-gate/colour-patterns.mjs';
+
 export default {
   plugins: ['stylelint-declaration-strict-value'],
 
@@ -145,7 +147,8 @@ export default {
      * so anything it does not name is unguarded. This rule closes the colour
      * half of that gap and only that half: it is property-agnostic, so whatever
      * the property, a hex literal or a colour-function call in its value is
-     * refused. Token references survive because `var(--color-…)` names a colour
+     * refused, by the two patterns colour-patterns.mjs beside the gate's probes
+     * owns. Token references survive because `var(--color-…)` names a colour
      * rather than spelling one. Named colours (`red`) are not caught here —
      * they are ordinary keywords, indistinguishable from `solid` or `auto` by
      * pattern — which is why every colour-bearing shorthand is on the list
@@ -175,7 +178,7 @@ export default {
      * syntax everywhere.
      */
     'declaration-property-value-disallowed-list': [
-      { '/.*/': ['/#[0-9a-fA-F]{3,8}\\b/', '/\\b(rgba?|hsla?|oklch|lab|lch)\\(/'] },
+      { '/.*/': [HEX_COLOUR, COLOUR_FUNCTION] },
       { reportDisables: true },
     ],
 
