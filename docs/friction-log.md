@@ -128,3 +128,8 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #300 lane's first cut used SQLite's read-only open flag and three repair tests failed, because a read-only connection leaves `-wal` and `-shm` beside the file on close and `rebuildCourse` reads a `-wal` as another connection still holding the file; `PRAGMA query_only` on a normal connection was the fix. One ticket so far on a library flag whose side effect is in the file system rather than in the API. Also the first `REBASE` bounce under `run-issue` step 5's pasted form (PR #310): seven shared files, resolved with no correction from the lane.
+
+## 2026-10-21 — PR #331
+
+- Phase: planning
+- Observed: issue #279's body placed the `run-issue` rebase hand-off at "step 4"; PR #310 had renumbered it to step 5 before the lane read it, and the dispatch's overlap note caught it first. Second issue body in one afternoon written by the merge owner with a stale step number (PR #310's lane found the first, in #295); a step number in an issue is a figure that goes stale the moment the skill is edited, so the issue should name the step by its heading or its first words. Counts toward #295's measurement.
