@@ -300,11 +300,12 @@ const slidesOf = (result: IngestResult<string>): readonly SlideRecord[] => {
   return result.slides;
 };
 
-/** Each deck's bytes and records; the PDF is read twice so its untitled first page reaches both lecture-title fallbacks. */
+/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`. */
 export const storedOutputCorpus = async (): Promise<
   readonly (readonly [Uint8Array, readonly SlideRecord[]])[]
 > => [
   [PPTX, slidesOf(ingestPptx(deckFile(PPTX, 'Lecture_04-Kinetics.pptx')))],
   [PDF, slidesOf(await ingestPdf(deckFile(PDF, 'week4\\-Lecture__04 -  Kinetics.v2.pdf')))],
   [PDF, slidesOf(await ingestPdf(deckFile(PDF, 'week4/.pdf')))],
+  [PDF, slidesOf(await ingestPdf(deckFile(PDF, 'Cafe\u0301_𝑘_rates.pdf')))],
 ];
