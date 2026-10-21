@@ -93,3 +93,23 @@ Entry format:
 
 - Phase: implementation
 - Observed: the frontend-gate probe harness compares sets of `line:rule` pairs and merges duplicates, so it cannot see a rule reporting one fault twice; the #280 lane added a counting case for its own rule only. The lane also spent one fix round after removing comment handling on the measurement that postcss strips comments, which holds except for a comment with no whitespace on either side. One ticket so far on each.
+
+## 2026-10-21 — PR #310
+
+- Phase: planning
+- Observed: issue #295, written by the merge owner from the triage pass, placed the `run-issue` skill's DIRTY arm at "step 4"; on disk it is step 5, and the lane found that out by reading the file. An unchecked merge-owner claim reaching a lane in an issue body, the shape #295 itself captures (PRs #86, #246, #266/#269 were in a dispatch note and two bounces). Counts toward #295's measurement, which stays open until three bounces and ten reports have run under PR #310's text.
+
+## 2026-10-21 — PR #313
+
+- Phase: planning
+- Observed: the #283 plan set pdf.js's deletion of `<` and `>` aside as out of scope without checking it against the inverse the plan relied on, and the reviewer found that the deletion can break that inverse because pdf.js edits the string it reorders (filed as #305). The lane also rewrote three regex lines twice because a `\uXXXX` escape typed into a tool parameter arrives as the literal character. One ticket so far on each.
+
+## 2026-10-21 — PR #313 (merge)
+
+- Phase: process
+- Observed: `merge-pr.sh`'s first run on PR #313 did `gh pr update-branch`, polled the new head green, and then refused at the merge step because the PR was `BEHIND` again: the #310 retro PR had merged during the poll. The merge owner's retro chains and lane-PR merges each serialise behind the merge they queue on, but not behind each other, so two independent chains can land one PR inside another's checks poll and cost it a full second CI round. First instance recorded; PR #235's entry (poll budget) was a different cause.
+
+## 2026-10-21 — PR #315
+
+- Phase: review
+- Observed: the #290 lane's config comment restated the issue's mechanism backwards ("descriptor, not a declaration") at five sites, a claim about parser behaviour written from memory that one stylelint run would have settled; review caught it and the fix touched all five. Counts toward #294 (a claim written before the run that would establish it), as its fifth instance.

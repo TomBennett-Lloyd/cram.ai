@@ -1,8 +1,10 @@
 /*
  * Probe for stylelint.config.mjs's tokens override, linted by
- * frontend-gate.test.ts at a path under packages/ui/src/tokens/. The three
+ * frontend-gate.test.ts at a path under packages/ui/src/tokens/. The
  * raw-value rules are off here; the :focus ban is not.
  */
+@property --probe-size { syntax: '<length>'; inherits: false; initial-value: 4px; }
+
 .t {
   color: red;
   filter: drop-shadow(0 0 0 #abc);
