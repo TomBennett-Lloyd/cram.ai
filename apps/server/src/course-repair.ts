@@ -6,7 +6,7 @@ import {
   type RebuildCourseResult,
   reembedCourse,
 } from '@cram/index';
-import type { CourseId, DiscardedTable } from '@cram/shared';
+import type { CourseId } from '@cram/shared';
 import { courseFilePath } from './data-directory';
 import { type IngestDeps, ingestFile } from './ingest-deck';
 import { embedSlides } from './slide-embedding';
@@ -43,20 +43,14 @@ const embedOrReject =
 export type RepairOutcome =
   RebuildCourseResult['status'] | OpenCourseResult['status'] | 'reembedded';
 
-export interface CourseRepaired {
-  readonly outcome: RepairOutcome;
-  /** The rows a rebuild could not carry over, which the student is told of (#225). */
-  readonly discarded: readonly DiscardedTable[];
-}
-
 /**
  * Brings a course file to the running schema and embedder. A rebuild discards what it cannot
- * carry over and reports it (`docs/adr/0004-storage.md` § Decision (d)).
+ * carry over and records it in the rebuilt file (`docs/adr/0004-storage.md` § Decision (d)).
  */
 export const repairCourse = async (
   courseId: CourseId,
   deps: IngestDeps,
-): Promise<CourseRepaired> => {
+): Promise<RepairOutcome> => {
   const spec = {
     path: courseFilePath(deps.files.dataDir, courseId),
     courseId,
@@ -66,13 +60,10 @@ export const repairCourse = async (
   const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed });
   if (rebuilt.status !== 'embedder-mismatch') {
     if ('course' in rebuilt) rebuilt.course.close();
-    return {
-      outcome: rebuilt.status,
-      discarded: rebuilt.status === 'rebuilt' ? rebuilt.discarded : [],
-    };
+    return rebuilt.status;
   }
   const reembedded = await reembedCourse(spec, embed);
-  if (reembedded.status !== 'open') return { outcome: reembedded.status, discarded: [] };
+  if (reembedded.status !== 'open') return reembedded.status;
   reembedded.course.close();
-  return { outcome: 'reembedded', discarded: [] };
+  return 'reembedded';
 };

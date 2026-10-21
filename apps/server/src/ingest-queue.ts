@@ -6,20 +6,21 @@ import {
   UploadId,
   type UploadProgress,
 } from '@cram/shared';
-import { type CourseRepaired, repairCourse, type RepairOutcome } from './course-repair';
+import { dismissRebuildReport, type RebuildReportDismissal } from './course-file';
+import { repairCourse, type RepairOutcome } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { errorName, type ServerLog } from './server-log';
 
 /** The outcomes after which the course file opens under the running schema and embedder. */
 const OPENS: ReadonlySet<RepairOutcome> = new Set(['open', 'rebuilt', 'reembedded']);
 
-const repairState = ({ outcome, discarded }: CourseRepaired): CourseRepair =>
-  OPENS.has(outcome) ? { state: 'done', discarded: [...discarded] } : { state: 'failed' };
+const repairState = (outcome: RepairOutcome): CourseRepair =>
+  OPENS.has(outcome) ? { state: 'done' } : { state: 'failed' };
 
 /**
- * Runs every course-file write, uploads and the repairs `startServer` queues, one at a time and
- * process-wide, so each course file has a single writer. Upload progress lives in memory, for
- * uploads since the server started; what a restart keeps is the course file's (`storedLectures`).
+ * Runs every course-file write, uploads, the repairs `startServer` queues and dismissals, one at a
+ * time and process-wide, so each course file has a single writer. Upload and repair progress live in
+ * memory, since the server started; what a restart keeps is the course file's (`storedLectures`).
  */
 export class IngestQueue {
   readonly #deps: IngestDeps;
@@ -78,13 +79,23 @@ export class IngestQueue {
     let outcome: string;
     try {
       const repaired = await repairCourse(courseId, this.#deps);
-      outcome = repaired.outcome;
+      outcome = repaired;
       this.#repairs.set(courseId, repairState(repaired));
     } catch (error) {
       outcome = errorName(error);
       this.#repairs.set(courseId, { state: 'failed' });
     }
     if (outcome !== 'open') this.#log({ operation: 'repair', courseId, outcome });
+  }
+
+  /** Queued behind every write so far; a rejection reaches the caller and never stalls the queue. */
+  dismissRebuildReport(courseId: CourseId): Promise<RebuildReportDismissal> {
+    const dismissed = this.#tail.then(() => dismissRebuildReport(this.#deps.files, courseId));
+    this.#tail = dismissed.then(
+      () => undefined,
+      () => undefined,
+    );
+    return dismissed;
   }
 
   /** The course's repair since the server started. */

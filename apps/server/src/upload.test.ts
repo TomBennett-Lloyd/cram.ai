@@ -26,6 +26,7 @@ const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 const HIVE_STORED = {
   state: 'read',
   lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
+  discarded: [],
 };
 
 let test: TestServer | undefined;
@@ -215,7 +216,7 @@ describe('the course file an upload writes', () => {
     expect(status.json).toEqual({
       courseId: 'bio',
       stored: HIVE_STORED,
-      repair: { state: 'done', discarded: [] },
+      repair: { state: 'done' },
       uploads: [],
     });
   });

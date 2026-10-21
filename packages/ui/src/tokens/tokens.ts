@@ -48,4 +48,14 @@ export const tokens = {
     md: 'var(--radius-md)',
     full: 'var(--radius-full)',
   },
+  line: {
+    sm: 'var(--line-sm)',
+    md: 'var(--line-md)',
+    lg: 'var(--line-lg)',
+  },
+  measure: {
+    sm: 'var(--measure-sm)',
+    md: 'var(--measure-md)',
+    lg: 'var(--measure-lg)',
+  },
 } as const;

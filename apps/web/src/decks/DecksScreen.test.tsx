@@ -161,7 +161,11 @@ describe('DecksScreen', () => {
   });
 
   it('lists the course file’s lectures after a restart, with no uploads since', async () => {
-    const stored = StoredLectures.parse({ state: 'read', lectures: [lecture('l1', 1, [1])] });
+    const stored = StoredLectures.parse({
+      state: 'read',
+      lectures: [lecture('l1', 1, [1])],
+      discarded: [],
+    });
     const { api, sent } = fakeApi(() => storedStatus(stored));
     renderDecks(api);
     await settle();
@@ -179,6 +183,7 @@ describe('DecksScreen', () => {
     const stored = StoredLectures.parse({
       state: 'read',
       lectures: [lecture('l1', 12, [3, 9]), lecture('l2', 1, []), lecture('l3', 4, [])],
+      discarded: [],
     });
     const { api } = fakeApi(() =>
       storedStatus(

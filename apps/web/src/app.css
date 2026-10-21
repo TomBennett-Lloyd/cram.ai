@@ -15,7 +15,7 @@ body {
 .app-header,
 .screen {
   box-sizing: border-box;
-  max-inline-size: 48rem;
+  max-inline-size: var(--measure-lg);
   margin-inline: auto;
   padding-inline: var(--space-4);
 }
@@ -91,7 +91,7 @@ input:not([type='file']) {
   flex: 1;
   min-inline-size: 0;
   padding: var(--space-2) var(--space-3);
-  border-width: calc(var(--space-1) / 4);
+  border-width: var(--line-sm);
   border-style: solid;
   border-color: var(--color-border-strong);
   border-radius: var(--radius-sm);
@@ -130,7 +130,7 @@ input:not([type='file']) {
 
 .failed {
   padding-inline-start: var(--space-3);
-  border-inline-start-width: var(--space-1);
+  border-inline-start-width: var(--line-lg);
   border-inline-start-style: solid;
   border-inline-start-color: var(--color-danger);
 }
@@ -212,9 +212,9 @@ input:not([type='file']) {
   flex-direction: column;
   align-items: flex-start;
   /* A card names a slide; a long title wraps rather than stretching the row. */
-  max-inline-size: 16rem;
+  max-inline-size: var(--measure-sm);
   padding: var(--space-2) var(--space-3);
-  border-width: calc(var(--space-1) / 4);
+  border-width: var(--line-sm);
   border-style: solid;
   border-color: var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -261,7 +261,7 @@ input:not([type='file']) {
   box-sizing: border-box;
   inline-size: calc(100% - 2 * var(--space-4));
   /* The slide reads as a page of prose; e2e/layout.spec.ts holds that it fits a phone. */
-  max-inline-size: 40rem;
+  max-inline-size: var(--measure-md);
   max-block-size: calc(100% - 2 * var(--space-8));
   padding: var(--space-6);
   border: none;
@@ -321,5 +321,5 @@ mark {
   font-weight: var(--font-weight-semibold);
   text-decoration-line: underline;
   text-decoration-color: var(--color-accent);
-  text-decoration-thickness: calc(var(--space-1) / 2);
+  text-decoration-thickness: var(--line-md);
 }
