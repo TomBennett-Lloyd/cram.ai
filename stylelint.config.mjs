@@ -197,6 +197,21 @@ export default {
     'cram/var-references-only': [true, { reportDisables: true }],
 
     /*
+     * A registered custom property's `initial-value` is that property's value,
+     * and no rule above requires a token there, so a `var()` of it can carry a
+     * raw length or a named colour (#290). A registration is therefore a token
+     * definition, and it lives with the others. The name is matched
+     * case-insensitively because at-rule names are.
+     */
+    'at-rule-disallowed-list': [
+      ['/^property$/i'],
+      {
+        reportDisables: true,
+        message: 'Register custom properties in packages/ui/src/tokens/ only (#290).',
+      },
+    ],
+
+    /*
      * A ring is for the reader who is navigating by keyboard, never for the one
      * who just clicked — docs/standards/design.md rule 11 owns that rule and the
      * argument for it. `:focus` matches however focus arrived, so styling it
@@ -262,6 +277,7 @@ export default {
         'scale-unlimited/declaration-strict-value': null,
         'cram/var-references-only': null,
         'declaration-property-value-disallowed-list': null,
+        'at-rule-disallowed-list': null,
       },
     },
   ],
