@@ -5,12 +5,18 @@ import { GROUNDED_QUESTION, stubApi } from './hermetic-api';
 const ringed = (locator: Locator) =>
   locator.evaluate((node) => getComputedStyle(node).outlineStyle !== 'none');
 
+/**
+ * The first slide card of a rendered answer. It waits for the card because a Tab pressed while the
+ * reply is pending leaves the document, and focus never returns when the cards land (#228).
+ */
 const answered = async (page: Page) => {
   await stubApi(page);
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
   await page.getByRole('button', { name: 'Ask' }).click();
-  return page.locator('.slide-card').first();
+  const card = page.locator('.slide-card').first();
+  await expect(card).toBeVisible();
+  return card;
 };
 
 test('a keyboard reader sees the ring on a slide card', async ({ page }) => {
