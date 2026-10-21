@@ -73,13 +73,39 @@ end
 # ==========================================================================================
 # 2. the real repo, via the shipped default path (no arguments, a real `pnpm ls`)
 # ==========================================================================================
-begin "the repo's own production tree passes with no arguments"
+# An allow-listed name no tracked manifest declares is reachable only transitively, so it is
+# in the census only while the shipped call walks past depth 0 (#182). The case refuses an
+# allow-list with no such entry rather than let the pin go vacuous.
+begin "the repo's own production tree passes with no arguments, transitive entries included"
+REPO=$(cd "$SCRIPTS/../.." && pwd -P) || exit 2
+listed=$(git -C "$REPO" ls-files -z -- package.json '*/package.json' |
+  (cd "$REPO" && xargs -0 node -e '
+    const fs = require("node:fs");
+    const fields = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+    const direct = new Set(process.argv.slice(1).flatMap((file) => {
+      const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+      return fields.flatMap((field) => Object.keys(manifest[field] || {}));
+    }));
+    const listed = fs.readFileSync(".claude/network-egress.allowlist", "utf8").split("\n")
+      .filter((line) => line && !line.startsWith("#")).map((line) => line.split(/\s/)[0]);
+    for (const name of listed) if (!direct.has(name)) console.log(name);
+  ')) || exit 2
+transitive=()
+while IFS= read -r name; do
+  [ -z "$name" ] || transitive+=("$name")
+done <<<"$listed"
+[ ${#transitive[@]} -gt 0 ] ||
+  bad "the allow-list names no transitive-only package, so nothing pins --depth Infinity"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   capture "$interpreter" "$CHECK"
   expect_rc 0 "$rc"
   expect_stdout "check-no-network-egress: OK"
   expect_not_out "unbound variable"
+  for name in ${transitive[@]+"${transitive[@]}"}; do
+    printf '%s\n' "$out" | grep -qF -e "  allowed $name@" -e "  absent $name " ||
+      bad "transitive entry $name is not in the scan: $out"
+  done
 done
 case_ctx=""
 end
