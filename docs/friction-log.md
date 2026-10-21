@@ -88,3 +88,8 @@ Entry format:
 
 - Phase: review
 - Observed: #254 merged mid-lane and changed stored output, which falsified the #257 plan's "no bump owed"; the reviewer found it by reading `origin/main`, a base the lane may not rebase onto unprompted, so the fact reached the lane at review rather than at the plan, and the rebase round then ran twice because #275 merged during the first. The lane also flagged one message-only `git commit --amend --no-verify`, used to reword a replayed commit whose body line began `#254` and so tripped the `^[#;]` body check; the tree had already passed verify and the final verify and CI ran on it. One ticket so far on each.
+
+## 2026-10-21 — PR #291
+
+- Phase: implementation
+- Observed: the frontend-gate probe harness compares sets of `line:rule` pairs and merges duplicates, so it cannot see a rule reporting one fault twice; the #280 lane added a counting case for its own rule only. The lane also spent one fix round after removing comment handling on the measurement that postcss strips comments, which holds except for a comment with no whitespace on either side. One ticket so far on each.
