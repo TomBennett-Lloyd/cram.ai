@@ -63,7 +63,7 @@ export const repairCourse = async (
     embedder: deps.files.embedder,
   };
   const embed = embedOrReject(deps);
-  const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed }, 'discard');
+  const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed });
   if (rebuilt.status !== 'embedder-mismatch') {
     if ('course' in rebuilt) rebuilt.course.close();
     return {

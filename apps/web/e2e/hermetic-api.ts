@@ -75,13 +75,19 @@ const questionOf = (body: string | null): string => {
     : '';
 };
 
+export interface StubOptions {
+  /** Every ask reply waits for this; without it, an ask replies at once (#231). */
+  readonly askReplyAfter?: Promise<void>;
+}
+
 /** Answers the app's API calls from the fixtures above, holding one upload's ingest in flight once. */
-export const stubApi = async (page: Page): Promise<void> => {
+export const stubApi = async (page: Page, options: StubOptions = {}): Promise<void> => {
   let ingestReads = 0;
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
-  await page.route('**/courses/*/ask', (route) =>
-    json(route, 200, askReply(questionOf(route.request().postData()))),
-  );
+  await page.route('**/courses/*/ask', async (route) => {
+    await options.askReplyAfter;
+    await json(route, 200, askReply(questionOf(route.request().postData())));
+  });
   await page.route('**/courses/*/decks?*', (route) =>
     json(route, 202, {
       uploadId: 'u1',
