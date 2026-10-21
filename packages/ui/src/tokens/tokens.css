@@ -64,6 +64,15 @@
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-full: 9999px;
+
+  /* Line weights are their own scale so that retuning spacing never re-weights a border (#209). */
+  --line-sm: 0.0625rem;
+  --line-md: 0.125rem;
+  --line-lg: 0.25rem;
+
+  --measure-sm: 16rem;
+  --measure-md: 40rem;
+  --measure-lg: 48rem;
 }
 
 /* Every --color-* token is re-declared here (tokens.test.ts); the rest are mode-invariant. */
