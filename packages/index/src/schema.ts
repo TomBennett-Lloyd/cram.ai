@@ -11,7 +11,7 @@ import { STORED_DECK_TABLES } from './stored-deck';
  * `packages/ingest/src/stored-output-pin.test.ts` fails on one its corpus reaches until it has (#257). Carriers:
  * `.claude/ledgers/schema-version.ledger`.
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
