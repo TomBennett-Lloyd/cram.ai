@@ -64,7 +64,7 @@ if (typeof command !== 'string') process.exit(0);
 let dir = typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallbackDir;
 
 // Words after which a `case` or `esac` still stands at command position.
-const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 'until', 'time']);
+const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 'until', 'time', 'coproc', 'function']);
 
 // Appends each simple command's words to `commands`; a nested scan is a `"$(...)"` body
 // and returns the index past the `)` that closes it: the first at paren depth 0 (#241)
@@ -75,7 +75,8 @@ function scan(src, i, commands, nested) {
   const heredocs = [];
   // Open parens, innermost last. Each holds the word and command it opened in (`$(`, `<(`,
   // `@(`, `a=(`, a subshell's empty one), which resume at its `)` without the group's text,
-  // so zsh's `dirty.txt(N)` names dirty.txt.
+  // so zsh's `dirty.txt(N)` names dirty.txt. A `pattern` group is a zsh case pattern's, whose
+  // words are never commands (#287).
   const groups = [];
   // Open `case` frames, innermost last, each at the paren depth it opened at. `state` runs
   // head (`case WORD in`) → pattern → body, and back to pattern at each `;;`.
@@ -86,7 +87,8 @@ function scan(src, i, commands, nested) {
   const frame = () => (cases.at(-1)?.depth === groups.length ? cases.at(-1) : undefined);
   const end = () => {
     if (word === null) return;
-    const atCommand = current.every((w) => LEADERS.has(w));
+    const atCommand =
+      !groups.at(-1)?.pattern && current.every((w, k) => LEADERS.has(w) || current[k - 1] === 'function');
     current.push(word);
     const f = frame();
     if (f?.state === 'head') {
@@ -129,13 +131,14 @@ function scan(src, i, commands, nested) {
       i += 2;
     } else if (c === '(') {
       const f = frame();
-      if (word === null && f?.state === 'pattern' && f.fresh) f.fresh = false;
-      else {
-        groups.push({ current, word });
-        word = null;
-        current = [];
-        commands.push(current);
-      }
+      // Only a `$(` opens a command group mid-pattern; `x(`, `@(` and `(` are glob groups (#287).
+      const pattern = !word?.endsWith('$') && (f?.state === 'pattern' || groups.at(-1)?.pattern === true);
+      // The pattern is under way, so an `esac` after the group is part of it (#287).
+      if (pattern && f) f.fresh = false;
+      groups.push({ current, word, open: i, pattern });
+      word = null;
+      current = [];
+      commands.push(current);
       i++;
     } else if (c === ')') {
       end();
@@ -149,6 +152,16 @@ function scan(src, i, commands, nested) {
         if (g) {
           current = g.current;
           word = g.word;
+          if (frame()?.state === 'pattern' && endsPattern(src, i + 1)) {
+            frame().state = 'body';
+            split();
+          } else if (g.pattern) {
+            // The pattern word goes on past the group, so a `#` after it opens no comment (#287).
+            word ??= '';
+          } else if (src.slice(g.open + 1, i).trim() === '' && /^[A-Za-z_]\w*$/.test(word ?? current.at(-1) ?? '')) {
+            // `NAME()` defines a function, so its body stands at command position (#287).
+            split();
+          }
         } else split();
       }
       i++;
@@ -203,6 +216,13 @@ function scan(src, i, commands, nested) {
   }
   end();
   return i;
+}
+
+// Whether the `)` before `i` ends a zsh case pattern: the character after it decides (#287).
+function endsPattern(src, i) {
+  if (src[i] !== ' ' && src[i] !== '\t') return src[i] === '\n' || src[i] === ';';
+  while (src[i] === ' ' || src[i] === '\t') i++;
+  return src[i] !== ')' && src[i] !== '|';
 }
 
 // Reads the `"…"` at `i`: returns its text and the index past the closing quote. A `$(`
