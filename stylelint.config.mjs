@@ -197,22 +197,17 @@ export default {
     'cram/var-references-only': [true, { reportDisables: true }],
 
     /*
-     * A registered custom property's `initial-value` is that property's value
-     * reached by a descriptor, not a declaration, so the rules above never
-     * hold it to a token and `padding: var(--registered)` carries whatever raw
-     * length it names (#290). Holding the descriptor to `var()` instead would
-     * refuse the same registrations: a typed `initial-value` must parse against
-     * its `syntax` and be computationally independent, which no `var()` is
-     * (CSS Properties and Values API 1 § 3). So a registration is a token
-     * definition, and it lives with the others. The name is matched
+     * A registered custom property's `initial-value` is that property's value,
+     * and no rule above requires a token there, so `padding: var(--registered)`
+     * carries whatever raw value it names (#290). A registration is therefore a
+     * token definition, and it lives with the others. The name is matched
      * case-insensitively because at-rule names are.
      */
     'at-rule-disallowed-list': [
       ['/^property$/i'],
       {
         reportDisables: true,
-        message:
-          'Register custom properties in packages/ui/src/tokens/ only: an @property initial-value is a raw value no token rule reaches (#290).',
+        message: 'Register custom properties in packages/ui/src/tokens/ only (#290).',
       },
     ],
 

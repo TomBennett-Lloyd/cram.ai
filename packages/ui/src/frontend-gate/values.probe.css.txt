@@ -200,7 +200,7 @@
   --probe-bare-word: var; /* refused-by: cram/var-references-only */
 }
 
-/* at-rule-disallowed-list: @property, whose initial-value no value rule reads */
+/* at-rule-disallowed-list: @property outside the tokens source */
 @property --probe-size { syntax: '<length>'; inherits: false; initial-value: 4px; } /* refused-by: at-rule-disallowed-list */
 @property --probe-colour { syntax: '<color>'; inherits: false; initial-value: red; } /* refused-by: at-rule-disallowed-list */
 @PROPERTY --probe-case { syntax: '<length>'; inherits: false; initial-value: 4px; } /* refused-by: at-rule-disallowed-list */
