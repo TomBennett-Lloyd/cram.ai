@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { type CourseId, type Upload, UploadId, type UploadProgress } from '@cram/shared';
+import { repairCourse } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { errorName, type ServerLog } from './server-log';
 
 /**
- * Runs uploads one at a time, process-wide, so each course file has a single writer. Progress
- * lives in memory, for uploads since the server started; what a restart keeps is the course
- * file's (`storedLectures`).
+ * Runs every course-file write, uploads and the repairs `startServer` queues, one at a time and
+ * process-wide, so each course file has a single writer. Upload progress lives in memory, for
+ * uploads since the server started; what a restart keeps is the course file's (`storedLectures`).
  */
 export class IngestQueue {
   readonly #deps: IngestDeps;
@@ -52,6 +53,22 @@ export class IngestQueue {
     return upload;
   }
 
+  /** Queues `repairCourse` behind every write queued so far; an outcome other than `open` is logged. */
+  repair(courseId: CourseId): void {
+    this.#tail = this.#tail.then(() => this.#repair(courseId));
+  }
+
+  /** The repair's top-level boundary (`docs/standards/error-handling.md` rule 2): a throw is logged by name. */
+  async #repair(courseId: CourseId): Promise<void> {
+    let outcome: string;
+    try {
+      outcome = await repairCourse(courseId, this.#deps);
+    } catch (error) {
+      outcome = errorName(error);
+    }
+    if (outcome !== 'open') this.#log({ operation: 'repair', courseId, outcome });
+  }
+
   /** Every course with an upload since the server started. */
   courseIds(): readonly CourseId[] {
     return [...this.#uploads.keys()];
@@ -61,7 +78,7 @@ export class IngestQueue {
     return [...(this.#uploads.get(courseId)?.values() ?? [])];
   }
 
-  /** Settles once every upload enqueued so far has finished. */
+  /** Settles once every job queued so far has finished. */
   idle(): Promise<void> {
     return this.#tail;
   }
