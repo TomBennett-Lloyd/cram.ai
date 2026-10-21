@@ -17,6 +17,18 @@ describe('AskReply', () => {
     expect(AskReply.safeParse({ ...reply, shown: [unit] }).success).toBe(true);
   });
 
+  it('carries the searched text only as non-blank text', () => {
+    const reply = { status: 'not-covered', withheld: [], slides: [] };
+    expect(AskReply.safeParse(reply).success).toBe(true);
+    expect(AskReply.safeParse({ ...reply, searched: 'Who are the workers?' }).success).toBe(true);
+    expect(AskReply.safeParse({ ...reply, searched: ' ' }).success).toBe(false);
+    const grounded = { status: 'grounded', shown: [unit], withheld: [], slides: [] };
+    expect(AskReply.safeParse({ ...grounded, searched: 'Who are the workers?' }).success).toBe(
+      true,
+    );
+    expect(AskReply.safeParse({ ...grounded, searched: '' }).success).toBe(false);
+  });
+
   it('refuses a model failure carrying the model’s own text', () => {
     expect(AskReply.safeParse({ status: 'model-failed' }).success).toBe(true);
     expect(

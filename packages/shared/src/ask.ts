@@ -8,9 +8,9 @@ export const AskRequest = z.strictObject({ question: NonBlankText });
 export type AskRequest = z.infer<typeof AskRequest>;
 
 /**
- * The server's answer to an `AskRequest`. `slides` is the call's retrieved set, best first: what
- * the citations name, and the closest slides when nothing survives (`docs/standards/grounding.md`
- * rule 5). `model-failed` carries no model output, which is not a unit (rule 1).
+ * `slides` is the call's retrieved set, best first: the citations' slides, or the closest when
+ * none survives (`docs/standards/grounding.md` rule 5). `searched` is the question as corrected,
+ * only when a typo was (#393). `model-failed` carries no model output, not a unit (rule 1).
  */
 export const AskReply = z.discriminatedUnion('status', [
   z.strictObject({
@@ -18,11 +18,13 @@ export const AskReply = z.discriminatedUnion('status', [
     shown: z.array(Unit).min(1),
     withheld: z.array(WithheldUnit),
     slides: z.array(RetrievedSlide),
+    searched: NonBlankText.optional(),
   }),
   z.strictObject({
     status: z.literal('not-covered'),
     withheld: z.array(WithheldUnit),
     slides: z.array(RetrievedSlide),
+    searched: NonBlankText.optional(),
   }),
   z.strictObject({ status: z.literal('model-failed') }),
 ]);

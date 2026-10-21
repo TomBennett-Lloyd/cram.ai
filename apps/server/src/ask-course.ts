@@ -1,6 +1,6 @@
-import type { ModelGateway } from '@cram/gateway';
+import type { Embedder, ModelGateway } from '@cram/gateway';
 import { ask, PROVISIONAL_NLI_THRESHOLDS, PROVISIONAL_VERIFIER_STRATEGY } from '@cram/grounding';
-import type { CourseReader, SearchQuery } from '@cram/index';
+import type { CourseReader } from '@cram/index';
 import type { AskReply, CourseId, CourseUnavailableProblem, RetrievedSlide } from '@cram/shared';
 import { type CourseFiles, courseExists, openToRead } from './course-file';
 import type { ServerLog } from './server-log';
@@ -18,31 +18,53 @@ export type AskOutcome =
   | { readonly status: 'question-over-length'; readonly maxInputTokens: number }
   | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
-const retrieve = (course: CourseReader, query: SearchQuery): readonly RetrievedSlide[] => {
+type Retrieval =
+  | { readonly status: 'over-length'; readonly maxInputTokens: number }
+  | {
+      readonly status: 'retrieved';
+      readonly slides: readonly RetrievedSlide[];
+      readonly searched: string | undefined;
+    };
+
+const retrieve = async (
+  course: CourseReader | undefined,
+  question: string,
+  embedder: Embedder,
+): Promise<Retrieval> => {
   try {
-    return course.search(query);
+    const correction = course?.correctSpelling(question);
+    const text = correction?.status === 'corrected' ? correction.searched : question;
+    const embedded = await embedQuestion(embedder, text);
+    if (embedded.status === 'over-length')
+      return { status: 'over-length', maxInputTokens: embedded.maxInputTokens };
+    return {
+      status: 'retrieved',
+      slides: course?.search({ text, embedding: embedded.vector }) ?? [],
+      searched: correction?.status === 'corrected' ? text : undefined,
+    };
   } finally {
-    course.close();
+    course?.close();
   }
 };
 
-/** Retrieve, then `@cram/grounding`'s `ask` (`docs/standards/grounding.md` rule 2). */
+/** Retrieve on the corrected question (#393), then `@cram/grounding`'s `ask` on the typed one (`docs/standards/grounding.md` rule 2). */
 export const askCourse = async (
   courseId: CourseId,
   question: string,
   deps: AskDeps,
 ): Promise<AskOutcome> => {
   if (!courseExists(deps.files, courseId)) return { status: 'no-such-course' };
-  const embedded = await embedQuestion(deps.gateway.embedder, question);
-  if (embedded.status === 'over-length')
-    return { status: 'question-over-length', maxInputTokens: embedded.maxInputTokens };
   const opened = openToRead(deps.files, courseId);
   if (opened.status !== 'open' && opened.status !== 'blank')
     return { status: 'course-unavailable', problem: opened.status };
-  const slides =
-    opened.status === 'blank'
-      ? []
-      : retrieve(opened.course, { text: question, embedding: embedded.vector });
+  const retrieval = await retrieve(
+    opened.status === 'open' ? opened.course : undefined,
+    question,
+    deps.gateway.embedder,
+  );
+  if (retrieval.status === 'over-length')
+    return { status: 'question-over-length', maxInputTokens: retrieval.maxInputTokens };
+  const { slides, searched } = retrieval;
   const result = await ask(question, slides, {
     gateway: deps.gateway,
     strategy: PROVISIONAL_VERIFIER_STRATEGY,
@@ -57,12 +79,18 @@ export const askCourse = async (
           shown: [...result.shown],
           withheld: [...result.withheld],
           slides: [...slides],
+          ...(searched === undefined ? {} : { searched }),
         },
       };
     case 'not-covered':
       return {
         status: 'replied',
-        reply: { ...result, withheld: [...result.withheld], slides: [...slides] },
+        reply: {
+          ...result,
+          withheld: [...result.withheld],
+          slides: [...slides],
+          ...(searched === undefined ? {} : { searched }),
+        },
       };
     case 'model-failed':
       deps.log({

@@ -64,6 +64,28 @@ describe('CourseIndex.correctSpelling', () => {
     expect(searched('Café CAFÉ naïve')).toBe('as typed: Café CAFÉ naïve');
   });
 
+  it('leaves as typed every near-miss FTS5 folds onto a course term, or has no term within reach of', () => {
+    holding('Istanbul café naïve straße ﬁne well-known foragers');
+    const corpus = [
+      'İstanbul',
+      'ISTANBUL',
+      'Cafe',
+      'CAFÉ',
+      'cafe\u0301',
+      'NAIVE',
+      'straße',
+      'STRASSE',
+      'ﬁne',
+      'fine',
+      'well-known',
+      'forager',
+      'FORAGERS',
+    ];
+    expect(corpus.filter((token) => course.correctSpelling(token).status !== 'as-typed')).toEqual(
+      [],
+    );
+  });
+
   it('never corrects into the terms of a lecture that was replaced', () => {
     holding('Propolis seals the hive');
     course.replaceLecture(deck(), [], [indexed(slide({ body: 'Wax seals the hive' }), HERE)]);
@@ -81,6 +103,7 @@ describe('CourseIndex.correctSpelling', () => {
     holding('The guild paints hive fronts red');
     expect(searched('paint')).toBe('as typed: paint');
     expect(searched('paimts')).toBe('paints');
+    expect(searched('paint and paimts')).toBe('paint and paints');
   });
 
   it('prefers the term held by more chunks', () => {

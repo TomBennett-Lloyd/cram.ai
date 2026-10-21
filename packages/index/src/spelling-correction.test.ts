@@ -119,7 +119,15 @@ describe('correctSpelling', () => {
     expect(searched('long', lexicon)).toBe('as typed: long');
     expect(searched('1550', lexicon)).toBe('as typed: 1550');
     expect(searched('ab13', lexicon)).toBe('as typed: ab13');
-    expect(searched('abc2', new FixtureLexicon({ abcd: 1 }))).toBe('as typed: abc2');
+    const abcd = new FixtureLexicon({ abcd: 1 });
+    expect(searched('abc2', abcd)).toBe('as typed: abc2');
+    expect(searched('ab2d', abcd)).toBe('as typed: ab2d');
+    expect(searched('2bcd', abcd)).toBe('as typed: 2bcd');
+  });
+
+  it('corrects a token, and into a term, that holds a combining mark', () => {
+    expect(searched('cafe\u0301x', new FixtureLexicon({ cafex: 1 }))).toBe('cafex');
+    expect(searched('cafey', new FixtureLexicon({ 'cafe\u0301': 1 }))).toBe('cafe\u0301');
   });
 
   it('never corrects a token into a term holding a digit', () => {

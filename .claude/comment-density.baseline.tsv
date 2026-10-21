@@ -3,7 +3,7 @@
 # points of non-blank lines (5000 = 50.00%). A ratio may fall, never
 # rise. Regenerate with:
 #     bash .claude/scripts/check-comment-density.sh --ratchet
-apps/server/src/ask-course.ts	140
+apps/server/src/ask-course.ts	102
 apps/server/src/compose-server.ts	330
 apps/server/src/course-file.ts	598
 apps/server/src/course-repair.ts	384
@@ -29,7 +29,7 @@ apps/web/src/api/api-context.ts	1111
 apps/web/src/api/api-fixture.ts	250
 apps/web/src/api/api-result.ts	1250
 apps/web/src/api/deck-file.ts	1428
-apps/web/src/ask/AnswerView.tsx	105
+apps/web/src/ask/AnswerView.tsx	97
 apps/web/src/ask/AskScreen.tsx	0
 apps/web/src/ask/SlideCard.tsx	666
 apps/web/src/ask/SlideDialog.tsx	606
@@ -38,7 +38,7 @@ apps/web/src/ask/WithheldPanel.tsx	2000
 apps/web/src/ask/cited-slide.ts	2000
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	591
+apps/web/src/copy.ts	588
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
@@ -64,7 +64,7 @@ eval/src/exam-metrics.ts	1379
 eval/src/file-attempt.ts	714
 eval/src/golden-question.ts	1481
 eval/src/hand-label.ts	1111
-eval/src/index-retriever.ts	459
+eval/src/index-retriever.ts	449
 eval/src/index.ts	0
 eval/src/ingested-course.ts	263
 eval/src/json-text.ts	0
@@ -169,7 +169,7 @@ packages/ingest/src/stored-output-equations.ts	340
 packages/ingest/src/stored-output-fixture.ts	180
 packages/ingest/src/stored-text.ts	1176
 packages/shared/src/api-refusal.ts	400
-packages/shared/src/ask.ts	1851
+packages/shared/src/ask.ts	1724
 packages/shared/src/citation.ts	4000
 packages/shared/src/course-list.ts	2000
 packages/shared/src/deck.ts	769
