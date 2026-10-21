@@ -8,6 +8,7 @@ import {
   NS,
   readXml,
   relationshipsOf,
+  startsWith,
   UnreadablePptx,
   type Parts,
   type PptxUnreadableReason,
@@ -17,6 +18,8 @@ import { notesText, slideContent } from './slide-xml';
 export type PptxIngestResult = IngestResult<PptxUnreadableReason>;
 
 const PRESENTATION = 'ppt/presentation.xml';
+/** ISO/IEC 29500 Strict's PresentationML namespace: a conforming deck this reader does not read, unlike any other root. */
+const STRICT_PRESENTATIONML = 'http://purl.oclc.org/ooxml/presentationml/main';
 
 const ZIP_MAGIC = [0x50, 0x4b];
 const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
@@ -26,15 +29,12 @@ const ENCRYPTED_PACKAGE = Buffer.from('EncryptedPackage', 'utf16le');
 /** fflate's own errors carry a numeric `code`: the archive's fault, not ours. */
 const FlateError = z.object({ code: z.number(), message: z.string() });
 
-const startsWith = (bytes: Uint8Array, magic: readonly number[]): boolean =>
-  magic.every((byte, index) => bytes[index] === byte);
-
 /** Bytes that are not a zip: an encrypted package, or not a PPTX at all. */
 const notZip = (bytes: Uint8Array): UnreadablePptx => {
-  if (!startsWith(bytes, OLE_MAGIC)) return new UnreadablePptx('not-a-pptx', 'not a zip archive');
+  if (!startsWith(bytes, OLE_MAGIC)) return new UnreadablePptx('not-zip', 'not a zip archive');
   return Buffer.from(bytes).includes(ENCRYPTED_PACKAGE)
-    ? new UnreadablePptx('encrypted', 'an encrypted OOXML package')
-    : new UnreadablePptx('not-a-pptx', 'an OLE compound file, not OOXML');
+    ? new UnreadablePptx('encrypted-package', 'an encrypted OOXML package')
+    : new UnreadablePptx('not-ooxml', 'an OLE compound file, not OOXML');
 };
 
 /** Only XML parts are inflated, so embedded media is never read. */
@@ -44,7 +44,7 @@ const unzipParts = (bytes: Uint8Array): Parts => {
   } catch (error) {
     const flate = FlateError.safeParse(error);
     if (!flate.success) throw error;
-    throw new UnreadablePptx('damaged', flate.data.message, { cause: error });
+    throw new UnreadablePptx('corrupt-zip', flate.data.message, { cause: error });
   }
 };
 
@@ -61,16 +61,22 @@ const pageOf = (parts: Parts, slidePart: string): PageText => {
 /** One page per `p:sldId`, in the presentation's order (ingest-pptx.test.ts). */
 const pagesOf = (parts: Parts): PageText[] => {
   if (parts[PRESENTATION] === undefined)
-    throw new UnreadablePptx('not-a-pptx', `no ${PRESENTATION}`);
+    throw new UnreadablePptx('no-presentation', `no ${PRESENTATION}`);
   const presentation = readXml(parts, PRESENTATION);
-  if (presentation.documentElement?.namespaceURI !== NS.p)
-    throw new UnreadablePptx('not-a-pptx', `${PRESENTATION} is not transitional PresentationML`);
+  const namespace = presentation.documentElement?.namespaceURI;
+  if (namespace === STRICT_PRESENTATIONML)
+    throw new UnreadablePptx('strict-presentationml', `${PRESENTATION} is Strict PresentationML`);
+  if (namespace !== NS.p)
+    throw new UnreadablePptx('not-presentationml', `${PRESENTATION} is not PresentationML`);
   const slides = relationshipsOf(parts, PRESENTATION);
   return [...presentation.getElementsByTagNameNS(NS.p, 'sldId')].map((sldId) => {
     const id = sldId.getAttributeNS(NS.r, 'id') ?? '';
     const slide = slides.get(id);
     if (slide === undefined)
-      throw new UnreadablePptx('damaged', `${PRESENTATION} lists slide ${id} with no relationship`);
+      throw new UnreadablePptx(
+        'unresolved-slide',
+        `${PRESENTATION} lists slide ${id} with no relationship`,
+      );
     return pageOf(parts, slide.target);
   });
 };

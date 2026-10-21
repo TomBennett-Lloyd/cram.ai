@@ -8,12 +8,12 @@ import {
   PDFDocument,
   PDFHexString,
   PDFName,
-  PDFString,
   popGraphicsState,
   pushGraphicsState,
   setFontAndSize,
   showText,
   StandardFonts,
+  type PDFPage,
   type PDFRef,
 } from 'pdf-lib';
 
@@ -28,6 +28,12 @@ export interface FixtureLine {
    * `pdftotext <deck>.pdf - | grep -o '[𝐸𝑚𝑐]'`.
    */
   readonly mathItalic?: true;
+  /**
+   * Draw `text` through a font whose `/ToUnicode` carries each of its characters, so any one reads back, the way a
+   * PDF carries a ligature glyph. Assumed to be how a typeset deck's PDF stores `ﬁ` (#256): check it on a
+   * self-authored pdfLaTeX export of `first`, `pdftotext <deck>.pdf - | grep -o 'ﬁ'`.
+   */
+  readonly toUnicode?: true;
 }
 
 export interface FixtureAnnotation {
@@ -52,6 +58,7 @@ export interface FixtureDeck {
 const PAGE: [number, number] = [960, 540];
 const SCALE = 0.3;
 const MATH_FONT = 'MathItalic';
+const TO_UNICODE_FONT = 'ToUnicode';
 
 /** U+1D434 is math italic `A`, U+1D44E `a`; italic `h` is the Letterlike U+210E. */
 const mathItalicOf = (code: number): number => {
@@ -67,10 +74,10 @@ const hex = (text: string, width: number): string =>
 
 const LETTERS = [0x41, 0x61].flatMap((first) => Array.from({ length: 26 }, (_, i) => first + i));
 
-/** Helvetica, its letters' `/ToUnicode` entries math italic (PDF 32000-1 § 9.10.3). */
-const mathItalicFont = (doc: PDFDocument): PDFRef => {
-  const entries = LETTERS.map(
-    (code) => `<${code.toString(16)}> <${hex(String.fromCodePoint(mathItalicOf(code)), 4)}>`,
+/** Helvetica, each code's `/ToUnicode` entry its text (PDF 32000-1 § 9.10.3). */
+const toUnicodeFont = (doc: PDFDocument, texts: ReadonlyMap<number, string>): PDFRef => {
+  const entries = [...texts].map(
+    ([code, text]) => `<${hex(String.fromCharCode(code), 2)}> <${hex(text, 4)}>`,
   );
   const cmap = [
     '/CIDInit /ProcSet findresource begin 12 dict begin begincmap',
@@ -92,26 +99,52 @@ const mathItalicFont = (doc: PDFDocument): PDFRef => {
   );
 };
 
+/** `text` as single-byte hex codes, and each code's character: a space is itself, so pdf.js reads it as one, and the rest count up from `A`. */
+const encode = (
+  text: string,
+): { readonly codes: string; readonly texts: ReadonlyMap<number, string> } => {
+  const characters = Array.from(new Set(Array.from(text)));
+  const glyphs = characters.filter((character) => character !== ' ');
+  const codeOf = (character: string): number =>
+    character === ' ' ? 0x20 : 0x41 + glyphs.indexOf(character);
+  return {
+    codes: Array.from(text, (character) => hex(String.fromCharCode(codeOf(character)), 2)).join(''),
+    texts: new Map(characters.map((character) => [codeOf(character), character])),
+  };
+};
+
+const showCodes = (page: PDFPage, name: string, codes: string, size: number, y: number): void => {
+  page.pushOperators(
+    beginText(),
+    setFontAndSize(name, size),
+    moveText(40, y),
+    showText(PDFHexString.of(codes)),
+    endText(),
+  );
+};
+
 /** A synthetic PDF deck authored in memory for the adapter tests (docs/standards/testing.md rule 3). */
 export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  const mathFont = mathItalicFont(doc);
+  const mathFont = toUnicodeFont(
+    doc,
+    new Map(LETTERS.map((code) => [code, String.fromCodePoint(mathItalicOf(code))])),
+  );
   if (deck.metadataTitle !== undefined) doc.setTitle(deck.metadataTitle);
   for (const fixture of deck.pages) {
     const page = doc.addPage(PAGE);
     page.node.setFontDictionary(PDFName.of(MATH_FONT), mathFont);
     let y = PAGE[1];
-    for (const line of fixture.lines) {
+    for (const [index, line] of fixture.lines.entries()) {
       y -= line.size * 1.2;
       if (line.mathItalic) {
-        page.pushOperators(
-          beginText(),
-          setFontAndSize(MATH_FONT, line.size),
-          moveText(40, y),
-          showText(PDFHexString.of(hex(line.text, 2))),
-          endText(),
-        );
+        showCodes(page, MATH_FONT, hex(line.text, 2), line.size, y);
+      } else if (line.toUnicode) {
+        const { codes, texts } = encode(line.text);
+        const name = `${TO_UNICODE_FONT}${String(index)}`;
+        page.node.setFontDictionary(PDFName.of(name), toUnicodeFont(doc, texts));
+        showCodes(page, name, codes, line.size, y);
       } else if (line.scaled) {
         page.pushOperators(
           pushGraphicsState(),
@@ -130,7 +163,7 @@ export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
             Type: 'Annot',
             Subtype: subtype,
             Rect: [0, 0, 10, 10],
-            Contents: PDFString.of(contents),
+            Contents: PDFHexString.fromText(contents),
           }),
         ),
       );

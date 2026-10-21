@@ -133,6 +133,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/shared/src/deck.ts` `Deck`; `packages/ingest/src/deck.ts` `fileStem`
 - What: `Deck` does not store the uploaded file name, so a rebuild passes the stored title through `fileStem` as the title fallback. If a title came from the first slide and contains `/`, `\`, `-` or `_`, and a later ingest no longer reads a title from that slide, the rebuilt title is mangled ("Cells/Tissues" becomes "Tissues"). This can only happen across an ingest change, which is exactly when rebuilds run. Root cause: the stored deck drops the file name.
 - Source: #147 review cycle 1
+- Update 2026-10-21 (#257): until #257, an ingest change rebuilt nothing unless it also moved `SCHEMA_VERSION`. Now `packages/ingest/src/stored-output-pin.test.ts` fails on a change its corpus reaches to the records ingest stores until `SCHEMA_VERSION` moves.
 
 ## 2026-10-21 — a new discardable table reaches the student as "other saved items"
 
@@ -176,3 +177,21 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/app.css` (`button:disabled` is the only inert-button style); `apps/web/src/shell/async-states.tsx` `Failed`'s Dismiss button
 - What: while a dismissal waits, the Dismiss button is `aria-disabled` and ignores presses, because a real `disabled` would drop the focus the reader put on it. No style matches `[aria-disabled='true']`, so it looks fully live. The "Dismissing…" pending label beside it says why. Root cause: the stylesheet has no treatment for an inert button that keeps its focus. Give it one when a second such button appears (`docs/standards/design.md` rule 9).
 - Source: #233 review cycle 1 confirmation pass
+
+## 2026-10-21 — a PDF that pdf.js cannot read is reported as damaged, whoever is at fault
+
+- Where: `UNREADABLE` in `packages/ingest/src/adapters/pdf/ingest-pdf.ts`
+- What: `UnknownErrorException` maps to `damaged`, but pdf.js raises it for every worker error it does not classify. That covers a damaged deck, pdf.js's own limits (its cipher factory throws `FormatError('unsupported encryption algorithm')`) and its internal bugs, and the exception name cannot tell them apart. So a reader limit is still reported in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). #108 adds PDF reasons and is the natural place to split it.
+- Source: #185 review cycle 1
+
+## 2026-10-21 — the PPTX reader finds the presentation part by fixed name, not by relationship
+
+- Where: `pagesOf` and `PRESENTATION` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`
+- What: the main part is read from the fixed name `ppt/presentation.xml` rather than from the package's `_rels/.rels` officeDocument relationship. A conforming package that names its main part elsewhere returns `no-presentation` → `not-a-pptx`, which is a reader limit reported as the deck's fault. Predates #185.
+- Source: #185 review cycle 1
+
+## 2026-10-21 — the eslint frontend gate refuses copy that only looks like a colour
+
+- Where: the frontend-gate block of `eslint.config.mjs`, its four `no-restricted-syntax` colour selectors
+- What: the selectors test every string literal and template element in UI code, so they cannot tell a style value from user-visible copy or a URL. The #273 review measured these as refused: `'Text color(s)'`, `'see lab(3)'`, the anchor `'#add'` and the entity `'&#123;'`. Root cause: the selectors match by node type, not by position. Scoping them to style-bearing positions (a `style`/`fill`/`stroke` attribute, a CSS-in-TS value) would remove the false refusals without opening a way past the gate.
+- Source: #273 review cycle 1

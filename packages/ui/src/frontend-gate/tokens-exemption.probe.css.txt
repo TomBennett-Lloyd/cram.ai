@@ -1,0 +1,12 @@
+/*
+ * Probe for stylelint.config.mjs's tokens override, linted by
+ * frontend-gate.test.ts at a path under packages/ui/src/tokens/. The three
+ * raw-value rules are off here; the :focus ban is not.
+ */
+.t {
+  color: red;
+  filter: drop-shadow(0 0 0 #abc);
+  --probe-raw: 4px;
+}
+
+.t:focus { color: red; } /* refused-by: selector-pseudo-class-disallowed-list */

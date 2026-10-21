@@ -163,3 +163,38 @@ Entry format:
 
 - Phase: verify
 - Observed: `pnpm verify` in the #209 lane went red twice on the gateway clock assertion #243 owns, with a rerun green each time, on a diff that cannot reach `packages/gateway`. Third rerun that flake has cost today (PR #255 took one), about ten minutes each under load; #243 is dispatched.
+
+## 2026-10-21 — PR #267
+
+- Phase: planning
+- Observed: the #254 lane pasted its restatement sweep's output into the plan comment from memory before running the command, and dropped a line; it noticed and fixed the comment before the first edit. `.claude/agents/ticket-agent.md` § 2 asks for the command and its output, and the output it got was a recollection. One ticket so far.
+
+## 2026-10-21 — PR #270
+
+- Phase: planning
+- Observed: the #247 plan's restatement sweep missed `docs/friction-log.md:120`, a dated and still-true carrier of #228's mechanism, because its claim family was the test's wording and not the behaviour ("pressed Tab before the answer rendered"); no edit turned out to be owed. Second sweep-shape miss today after PR #267's (an output pasted before its command ran); both were caught inside the lane.
+
+## 2026-10-21 — PR #272
+
+- Phase: review
+- Observed: the #243 lane quoted one earlier run's figure as the 10/10 control reading because its loop had not printed values; the reviewer caught it and the lane re-ran and pasted the readings. One ticket so far on a loop whose output was summarised before it was captured.
+
+## 2026-10-21 — PR #271
+
+- Phase: implementation
+- Observed: the #241 lane's mutant loop killed every mutant of the paren counter it wrote and still shipped a counter too broad for `${b%(*}`, because mutating a guard's edges exercises the inputs it has and never the inputs it should have excluded; the reviewer's side-by-side probe of the old and new hook over a hostile corpus found it, at the cost of one review cycle. Same shape as PR #90's (a guard that did not exist): `.claude/agents/ticket-agent.md` § 4's mutation pass cannot find a missing exclusion. Second instance.
+
+## 2026-10-21 — PRs #266 and #269
+
+- Phase: process
+- Observed: two REBASE bounces from the merge owner stated the expected `docs/tech-debt.md` heading count one too high, because the count came from `gh pr diff <n> | grep '^[-+]## '` over the whole diff, which also returns `docs/review-feedback.md`'s entry heading; both lanes corrected the figure from their own `comm` run. The per-file form (`git diff <base> <branch> -- docs/tech-debt.md`) is the one the bounce needs. Two instances in one morning, both harmless because the lane's arithmetic is the check, not the bounce's.
+
+## 2026-10-21 — PR #278
+
+- Phase: implementation
+- Observed: the #258 lane's first ESLint probe placed every colour at a string's start or end, so four anchoring mutants survived until the reviewer tried them; the grammar the lane listed for its mutation pass was property and value forms, with no axis for where the colour sits in the string. One ticket so far on a grammar list that omits a position axis.
+
+## 2026-10-21 — PR #277
+
+- Phase: review
+- Observed: #254 merged mid-lane and changed stored output, which falsified the #257 plan's "no bump owed"; the reviewer found it by reading `origin/main`, a base the lane may not rebase onto unprompted, so the fact reached the lane at review rather than at the plan, and the rebase round then ran twice because #275 merged during the first. The lane also flagged one message-only `git commit --amend --no-verify`, used to reword a replayed commit whose body line began `#254` and so tripped the `^[#;]` body check; the tree had already passed verify and the final verify and CI ran on it. One ticket so far on each.
