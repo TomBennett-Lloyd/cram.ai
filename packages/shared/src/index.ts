@@ -7,6 +7,7 @@ export {
   type SlideField,
   type SlideFieldName,
   quoteSpan,
+  SLIDE_FIELD_SEPARATOR,
   slideFields,
 } from './quotable-text';
 export { RetrievedSlide } from './retrieved-slide';

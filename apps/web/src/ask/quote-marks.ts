@@ -1,6 +1,7 @@
 import {
   type QuoteSpan,
   quoteSpan,
+  SLIDE_FIELD_SEPARATOR,
   type SlideFieldName,
   slideFields,
   type SlideRecord,
@@ -35,7 +36,7 @@ const segmentsOf = (text: string, offset: number, ranges: readonly QuoteSpan[]):
 /** Each field of the slide, with the spans its cited quotes cover marked; a quote may cross fields. */
 export const markedFields = (record: SlideRecord, quotes: readonly string[]): MarkedField[] => {
   const fields = slideFields(record);
-  const joined = fields.map(({ text }) => text).join('\n');
+  const joined = fields.map(({ text }) => text).join(SLIDE_FIELD_SEPARATOR);
   const ranges = quotes
     .map((quote) => quoteSpan(joined, quote))
     .filter((range) => range !== undefined)
@@ -43,7 +44,7 @@ export const markedFields = (record: SlideRecord, quotes: readonly string[]): Ma
   let offset = 0;
   return fields.map(({ field, text }) => {
     const marked = { field, segments: segmentsOf(text, offset, ranges) };
-    offset += text.length + 1;
+    offset += text.length + SLIDE_FIELD_SEPARATOR.length;
     return marked;
   });
 };

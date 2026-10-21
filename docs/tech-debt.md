@@ -139,3 +139,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/shared/src/deck.ts` `Deck`; `packages/ingest/src/deck.ts` `fileStem`
 - What: `Deck` does not store the uploaded file name, so a rebuild passes the stored title through `fileStem` as the title fallback. If a title came from the first slide and contains `/`, `\`, `-` or `_`, and a later ingest no longer reads a title from that slide, the rebuilt title is mangled ("Cells/Tissues" becomes "Tissues"). This can only happen across an ingest change, which is exactly when rebuilds run. Root cause: the stored deck drops the file name.
 - Source: #147 review cycle 1
+
+## 2026-10-21 — ADR 0006's carrier ledger names the old home of the quotable field list
+
+- Where: `docs/adr/0006-image-only-slides.md` § Decision (k), the "Code carriers citing by number" bullet; `packages/shared/src/quotable-text.ts` `slideFields`
+- What: the bullet lists `packages/grounding/src/slide-text.ts` as the carrier that makes `imageCaptions` part of the text a quote resolves against. Since #202 that file builds `slideText` from `slideFields`, which is now the carrier, and the ADR's recorded sweep no longer finds `packages/grounding/src/slide-text.ts` or `apps/web/src/ask/quote-marks.ts` while `packages/shared/src/quotable-text.ts` and its test are unclassified. The claim still holds through `slideFields`; only the site is stale. The ADR is humanAlways, so its next amendment should correct the entry.
+- Source: #202 review cycle 1
