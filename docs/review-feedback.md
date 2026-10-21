@@ -365,3 +365,16 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path, and `.claude/workflow.json` → `merge.approvedAtPlanRule` sends an ADR PR with any extra beyond its approved plan to the owner, limited to the extras.
 - **How applied**: the PR as proposed: ADR 0007 at `proposed`, plus the pointers. It is revised in place on the branch if review asks.
 - **Verdict**: approve 175 — owner 2026-10-21, re-approval after the post-approval true-up of the pin-manifest shape (#174); no changes requested
+
+## 2026-10-21 — issue #165 — egress-gate-first-party-census
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `check:no-network-egress`'s first-party census: every `.ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs` source under each workspace importer but the root, except `.test.` and `.spec.` files, scanned with the third-party census's builtin and global arms after type-only `import type` / `export type` clauses are blanked. A first-party file that imports a socket or process-spawn builtin or uses a network global fails the build until the allow-list names it;
+  - accept the allow-list's second key kind, a first-party source's repo-relative path, held to the same both-directions rule as a package name;
+  - grant `.claude/network-egress.allowlist` entries for the four first-party files the census flags today, each reached over loopback only: `apps/server/src/server.ts` (the listener), `apps/server/src/server-fixture.ts` (the server tests' fixture), `apps/web/src/main.tsx` (the SPA's `fetch` binding) and `packages/gateway/src/adapters/openai-http/openai-http-generator.ts` (the generator adapter, its endpoint restricted to loopback by `LoopbackEndpoint`). ADR 0007's downloader (#161) would be the fifth, and its entry is that ticket's ask;
+  - accept `CLAUDE.md` § Hard constraints' first bullet naming first-party source files beside production dependencies;
+  - accept two changes the issue did not name, both needed for the gate to be right: `GLOBAL_RE` no longer reads `this.#fetch(` as the global, and `pnpm verify`'s source-prose tier runs the gate when the change set holds a JS/TS file, since a comment can now change its verdict.
+- **Why**: `.claude/network-egress.allowlist` and `CLAUDE.md` are `humanAlways` paths, and #165 is a gate change the owner decides.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
