@@ -54,18 +54,20 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 . "$script_dir/worktree-lib.sh"
 
 # Env knobs, all overridable — the harness pins the waits to zero, and an operator
-# on a slow lane can widen the poll without editing the script.
-: "${MERGE_PR_GH_CMD:=gh}"                             # GitHub CLI; the one seam the harness stubs
+# on a slow lane can widen the poll without editing the script. Every *_RETRIES
+# knob counts ATTEMPTS, the first included, so each is at least 1 (#180).
+: "${MERGE_PR_GH_CMD:=gh}"                             # GitHub CLI
 : "${MERGE_PR_REAP_CMD:=$script_dir/reap-worktree.sh}" # the reaper, which owns its own safety checks
 : "${MERGE_PR_POLL_INTERVAL_SECONDS:=20}"              # between checks polls
 : "${MERGE_PR_POLL_TIMEOUT_SECONDS:=1800}"             # total budget for the checks poll
 : "${MERGE_PR_UPDATE_RETRIES:=3}"                      # update-branch attempts against the head-sha race
 : "${MERGE_PR_RETRY_SECONDS:=10}"                      # between those attempts, between state re-reads, and after a union push
 : "${MERGE_PR_EXPECTED_CHECKS:=0}"                     # a floor the operator can raise; see the checks step
-: "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # re-reads allowed for an eventually-consistent state
+: "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # reads of an eventually-consistent state; see the merge and issues steps
 : "${MERGE_PR_PRETTIER_CMD:=pnpm exec prettier}"       # formatter the append-only-log union re-runs; see that step
 : "${MERGE_PR_GH_TIMEOUT_SECONDS:=60}"                 # the time box on every gh call; see gh_call
-: "${MERGE_PR_READ_RETRIES:=3}"                        # retries of a failed checks-poll read before the step fails
+: "${MERGE_PR_READ_RETRIES:=4}"                        # consecutive failed checks-poll reads that fail the step
+: "${MERGE_PR_UNION_SEAM:=}"                           # unset outside merge-pr.test.sh; see log_union
 
 # `files` is deliberately NOT in this list. `gh pr view --json files` is
 # `files(first: 100)` with no truncation signal, and the humanAlways decision made
@@ -101,6 +103,12 @@ if [ "$MERGE_PR_GH_TIMEOUT_SECONDS" -lt 1 ]; then
   printf 'merge-pr: MERGE_PR_GH_TIMEOUT_SECONDS must be at least 1, got "%s"\n' "$MERGE_PR_GH_TIMEOUT_SECONDS" >&2
   exit 2
 fi
+for knob in MERGE_PR_UPDATE_RETRIES MERGE_PR_CONFIRM_RETRIES MERGE_PR_READ_RETRIES; do
+  if [ "${!knob}" -lt 1 ]; then
+    printf 'merge-pr: %s counts attempts and must be at least 1, got "%s"\n' "$knob" "${!knob}" >&2
+    exit 2
+  fi
+done
 
 usage() {
   cat >&2 <<'EOF'
@@ -202,94 +210,12 @@ defer() { # defer <step> <message>
 # --- JSON, read by node ----------------------------------------------------------------------
 #
 # node is the repo's declared runtime (package.json engines) and worktree-lib.sh
-# has already refused to load without it. Parsing is one pass that emits
-# TAB-separated records for bash to read — deliberately not `gh --jq`, which would
-# put jq in the stub's contract too, and deliberately not `eval` of a generated
-# assignment block, which would make a PR body a code-execution surface.
+# has already refused to load without it. The `gh pr view` answer is parsed by
+# pr-facts.mjs, the parser fill-verdict.sh shares; that file's header owns the
+# record format.
 
-pr_facts() { # stdin: a `gh pr view --json` object; stdout: <kind>\t<a>[\t<b>\t<c>] records
-  node -e '
-let raw = "";
-process.stdin.on("data", (d) => (raw += d)).on("end", () => {
-  let pr;
-  try {
-    pr = JSON.parse(raw);
-  } catch (e) {
-    process.stderr.write("gh returned output that is not JSON: " + e.message + "\n");
-    process.exit(2);
-  }
-  const out = [];
-  // Tabs and newlines are the record separators, so anything carrying them is
-  // flattened rather than allowed to invent extra fields or extra records.
-  const put = (...f) =>
-    out.push(f.map((v) => String(v == null ? "" : v).replace(/[\t\r\n]/g, " ")).join("\t"));
-  put("state", pr.state);
-  put("baseRefName", pr.baseRefName);
-  put("headRefName", pr.headRefName);
-  put("headRefOid", pr.headRefOid);
-  put("mergeStateStatus", pr.mergeStateStatus);
-  put("url", pr.url);
-  for (const l of pr.labels || []) put("label", l && l.name);
-  for (const c of pr.commits || []) put("commit", c && c.messageHeadline);
-  // One record per check: the latest run of each (workflow, name), so that a
-  // label re-run is counted once (issue #55). "Latest" is the later real
-  // startedAt. Whenever that cannot decide (a tie, or a run with no start time
-  // yet, which gh spells as empty or 0001-01-01), the entry that is not a
-  // SUCCESS wins, so the undecidable case is never settled toward green.
-  const realStart = (t) => (t && !String(t).startsWith("0001-") ? String(t) : "");
-  const green = (e) => e.status === "COMPLETED" && e.conclusion === "SUCCESS";
-  const supersedes = (e, h) => {
-    if (e.startedAt && h.startedAt && e.startedAt !== h.startedAt) return e.startedAt > h.startedAt;
-    return green(h) && !green(e);
-  };
-  const latest = new Map();
-  for (const c of pr.statusCheckRollup || []) {
-    // Two shapes share this array. A CheckRun carries status + conclusion; a
-    // StatusContext (the older commit-status API, which the rollup still mixes
-    // in) carries only "state". Normalising here gives the caller one vocabulary,
-    // and an unrecognised shape reports an empty status, which the caller counts
-    // as pending rather than as passing.
-    const name = (c && (c.name || c.context)) || "(unnamed check)";
-    let status = c && c.status;
-    let conclusion = c && c.conclusion;
-    if (!status && c && c.state) {
-      status = c.state === "PENDING" || c.state === "EXPECTED" ? "PENDING" : "COMPLETED";
-      conclusion = c.state;
-    }
-    const entry = { name, status, conclusion, startedAt: realStart(c && c.startedAt) };
-    const key = String((c && c.workflowName) || "") + "\u0000" + name;
-    const held = latest.get(key);
-    if (!held || supersedes(entry, held)) latest.set(key, entry);
-  }
-  for (const e of latest.values()) put("check", e.name, e.status, e.conclusion);
-  // The closing keywords GitHub itself honours, and the reason this is read from
-  // the body rather than from "closingIssuesReferences": the body is what the PR
-  // author wrote and what a reviewer read, and the squash-vs-rebase decision has
-  // to turn on the same text a human would count.
-  const seen = new Set();
-  const re = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi;
-  let m;
-  while ((m = re.exec(pr.body || ""))) {
-    if (!seen.has(m[1])) {
-      seen.add(m[1]);
-      put("closes", m[1]);
-    }
-  }
-  // Each lane declares itself in the body, fenced or not, read from the body for
-  // the reason the Closes read above gives: a ticket-agent lane by its report
-  // header (.claude/agents/ticket-agent.md rule 8), a task-orchestrator batch by
-  // its TASK REPORT header line (.claude/agents/task-orchestrator.md rule 7).
-  const lanes = new Set();
-  const laneRe = /^## Lane report — issue #(\d+)/gm;
-  while ((m = laneRe.exec(pr.body || ""))) lanes.add(m[1]);
-  for (const n of lanes) put("lane", n);
-  const batches = new Set();
-  const batchRe = /^## TASK REPORT — .*?batch: anchor #(\d+)/gm;
-  while ((m = batchRe.exec(pr.body || ""))) batches.add(m[1]);
-  for (const n of batches) put("batch", n);
-  process.stdout.write(out.join("\n") + "\n");
-});
-'
+pr_facts() { # stdin: a `gh pr view --json` object; stdout: pr-facts.mjs's records
+  node "$script_dir/pr-facts.mjs"
 }
 
 json_field() { # json_field <key>; stdin: a JSON object; stdout: that key as a string
@@ -490,11 +416,12 @@ else
   # commit-subject guard is what keeps a header-less task-orchestrator batch,
   # which also sits on an `<n>-<slug>` branch with its anchor among the Closes,
   # on the rebase arm: a curated batch names each member in a subject. A branch
-  # number no Closes line names says nothing, and the count decides.
+  # number no Closes line names says nothing, and the count decides. The commit
+  # count test is for bash 3.2, which under `set -u` aborts on an empty `[@]`.
   head_issue=""
   [[ "$pr_head_ref" =~ ^([0-9]+)- ]] && head_issue="${BASH_REMATCH[1]}"
   other_member=""
-  if [ -n "$head_issue" ] && [ "${#pr_closes[@]}" -gt 1 ]; then
+  if [ -n "$head_issue" ] && [ "${#pr_closes[@]}" -gt 1 ] && [ "${#pr_commits[@]}" -gt 0 ]; then
     for n in "${pr_closes[@]}"; do
       [ "$n" = "$head_issue" ] && continue
       for m in "${pr_commits[@]}"; do
@@ -1158,6 +1085,20 @@ EOF
   union_summary=$(printf '%s | ' "${summaries[@]}")
   union_summary=${union_summary% | }
 
+  # Two checks hold the merge below to this analysis — a conflict where merge-tree
+  # found one, and the same conflicted set — and only a tree that moved in between
+  # fails them, which no fixture can arrange from outside the run. The seam, run here
+  # with the worktree, is how merge-pr.test.sh's step 21 cases move it (#180).
+  if [ -n "$MERGE_PR_UNION_SEAM" ]; then
+    out=$("$MERGE_PR_UNION_SEAM" "$wt" 2>&1)
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+      rm -rf "$dir"
+      union_reason="MERGE_PR_UNION_SEAM exited $rc: $out"
+      return 1
+    fi
+  fi
+
   # ---- from here on the worktree is being written to; every failure runs union_abort.
 
   # --no-ff: the merge commit `gh pr update-branch` would have written itself.
@@ -1170,7 +1111,7 @@ EOF
 
   conflicted=$(git -C "$wt" diff --name-only --diff-filter=U 2>&1)
   if [ "$(printf '%s\n' "$conflicted" | sort)" != "$(printf '%s\n' "${seen_paths[@]}" | sort)" ]; then
-    union_abort "$wt" "$dir" "the merge left $(printf '%s' "$conflicted" | tr '\n' ' ')unresolved, not the analysed $union_paths — the tree moved under the analysis"
+    union_abort "$wt" "$dir" "the merge left $(printf '%s\n' "$conflicted" | tr '\n' ' ')unresolved, not the analysed $union_paths — the tree moved under the analysis"
     return 1
   fi
 
@@ -1511,8 +1452,8 @@ else
     # dropped request should not cost the run.
     if ! read_pr; then
       poll_read_failures=$((poll_read_failures + 1))
-      poll_log "read failed ($poll_read_failures in a row, $MERGE_PR_READ_RETRIES retries allowed): $last_error"
-      [ "$poll_read_failures" -le "$MERGE_PR_READ_RETRIES" ] ||
+      poll_log "read failed ($poll_read_failures of $MERGE_PR_READ_RETRIES attempts): $last_error"
+      [ "$poll_read_failures" -lt "$MERGE_PR_READ_RETRIES" ] ||
         fail 'checks' "$poll_read_failures consecutive reads failed; the last: $last_error"
       sleep "$MERGE_PR_POLL_INTERVAL_SECONDS"
       continue
@@ -1566,7 +1507,8 @@ else
   # moved.
   #
   # mergeStateStatus is eventually consistent: GitHub answers UNKNOWN while it is
-  # still computing the merge, so that one state is re-read rather than refused.
+  # still computing the merge, so that one state is re-read rather than refused —
+  # MERGE_PR_CONFIRM_RETRIES reads in all, the poll's last read being the first.
   # The MERGED arm leaves the loop early rather than deciding anything — a merged
   # PR also answers UNKNOWN, so without it a PR merged elsewhere during this
   # window sleeps out every remaining retry before the block below reaches the
@@ -1617,7 +1559,7 @@ elif [ "$already_merged" = "0" ]; then
     read_pr || fail 'merge' "merged with rc=0 but the state could not be confirmed: $last_error"
     [ "$pr_state" = "MERGED" ] && break
     if [ "$attempt" -ge "$MERGE_PR_CONFIRM_RETRIES" ]; then
-      fail 'merge' "gh pr merge exited 0 but the PR is still '$pr_state' after $MERGE_PR_CONFIRM_RETRIES re-reads"
+      fail 'merge' "gh pr merge exited 0 but the PR is still '$pr_state' after $MERGE_PR_CONFIRM_RETRIES reads"
     fi
     attempt=$((attempt + 1))
     sleep "$MERGE_PR_RETRY_SECONDS"
