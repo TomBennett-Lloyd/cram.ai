@@ -12,7 +12,8 @@ import {
   vector,
   type TempCourse,
 } from './course-fixture';
-import { CANDIDATES_PER_LIST, type CourseIndex, type IndexedSlide } from './course-index';
+import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
+import type { IndexedSlide } from './indexed-slide';
 
 const LECTURE_1 = LectureId.parse('lecture-1');
 const LECTURE_2 = LectureId.parse('lecture-2');
@@ -114,7 +115,7 @@ describe('CourseIndex.replaceLecture', () => {
     }).toThrow(/replaceLecture: lecture-1\/1 appears twice/);
     expect(() => {
       course.replaceLecture(deck(), [], [indexed(slide(), vector(1, 0, 0))]);
-    }).toThrow(/replaceLecture\(lecture-1\/1\): embedding has 3 dimensions/);
+    }).toThrow(/replaceLecture\(lecture-1\/1 chunk 1\): embedding has 3 dimensions/);
     expect(course.slides().map((s) => s.body)).toEqual(['alpha', 'beta', 'gamma', 'enzymes']);
   });
 

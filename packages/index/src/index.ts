@@ -2,14 +2,15 @@ export {
   CANDIDATES_PER_LIST,
   type CourseIndex,
   RETRIEVAL_K,
-  type IndexedSlide,
   type RemoveLectureResult,
   type SearchQuery,
   type SetTopicsResult,
   type SlideListing,
 } from './course-index';
 export { type ConfirmationState, type ConfirmResult } from './confirmation';
+export { embedSlideChunks, type EmbedTextResult, type EmbedTexts } from './embed-chunks';
 export { EmbedderIdentity } from './embedder-identity';
+export { type IndexedChunk, type IndexedSlide, wholeSlide } from './indexed-slide';
 export {
   openCourse,
   openCourseReadOnly,

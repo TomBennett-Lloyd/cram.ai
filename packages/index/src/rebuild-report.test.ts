@@ -3,12 +3,13 @@ import { type DiscardedTable, RebuildReportRevision, type SlideRecord } from '@c
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   deck,
+  embedWhole,
   indexed,
   openOrFail,
   slide,
   tempCourse,
-  vector,
   type TempCourse,
+  vector,
 } from './course-fixture';
 import type { CourseIndex } from './course-index';
 import { rebuildCourse, type RebuildDeps } from './rebuild-course';
@@ -29,7 +30,9 @@ const deps: RebuildDeps = {
       status: 'parsed',
       slides: [slide({ lectureId: stored.lectureId, lectureTitle: stored.lectureTitle })],
     }),
-  embed: (slides: readonly SlideRecord[]) => Promise.resolve(slides.map(() => vector(1, 0, 0, 0))),
+  embed: embedWhole((slides: readonly SlideRecord[]) =>
+    Promise.resolve(slides.map(() => vector(1, 0, 0, 0))),
+  ),
 };
 
 /** A current course file with one lecture and `notes` rows no rebuild carries over, then marked older. */

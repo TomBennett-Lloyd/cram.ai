@@ -12,7 +12,7 @@ const LectureSlideRow = z.object({
 });
 
 const LECTURE_SLIDES = `select decks.lecture_id, decks.lecture_title, slides.slide_no, slides.kind,
-    slides.id in (select rowid from slide_vec) as embedded
+    slides.id in (select slide_id from chunks where id in (select rowid from slide_vec)) as embedded
   from decks left join slides on slides.lecture_id = decks.lecture_id
   order by decks.lecture_id, slides.slide_no`;
 

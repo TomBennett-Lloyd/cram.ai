@@ -1,12 +1,12 @@
 import type { Embedder } from '@cram/gateway';
-import { type CourseIndex, openCourse } from '@cram/index';
 import {
-  type CourseId,
-  type Deck,
-  embedText,
-  type RetrievedSlide,
-  type SlideRecord,
-} from '@cram/shared';
+  type CourseIndex,
+  embedSlideChunks,
+  type IndexedSlide,
+  openCourse,
+  sourceIdOf,
+} from '@cram/index';
+import { type CourseId, type Deck, type RetrievedSlide, type SlideRecord } from '@cram/shared';
 
 /** One lecture's stored deck and the records ingest made of it. */
 export interface IndexedLecture {
@@ -21,7 +21,7 @@ export interface IndexRetrieverSpec {
   readonly k: number;
 }
 
-/** One vector per text; an over-length text rejects the run (#184). */
+/** One vector per text; an over-length question rejects the run (#184). */
 const embedAll = async (
   embedder: Embedder,
   texts: readonly string[],
@@ -51,14 +51,28 @@ export class IndexRetriever {
     this.#k = k;
   }
 
-  /** Slides are embedded one lecture per call, each as its `embedText`. */
+  /**
+   * Slides are indexed one lecture at a time through `embedSlideChunks`, as ingest indexes them. A
+   * slide left without a vector rejects the run, since recall@k would not see it (#184).
+   */
   static async open(spec: IndexRetrieverSpec): Promise<IndexRetriever> {
-    const embedded = [];
+    const embedded: {
+      readonly lecture: IndexedLecture;
+      readonly slides: readonly IndexedSlide[];
+    }[] = [];
     for (const lecture of spec.lectures) {
-      const vectors = await embedAll(spec.embedder, lecture.slides.map(embedText));
-      embedded.push({ lecture, vectors });
+      const slides = await embedSlideChunks(
+        (texts) => spec.embedder.embed({ texts: [...texts] }),
+        lecture.slides,
+      );
+      const unembedded = slides.find(({ chunks }) => chunks.some(({ embedding }) => !embedding));
+      if (unembedded !== undefined)
+        throw new Error(
+          `IndexRetriever: slide ${sourceIdOf(unembedded.record)} holds a line longer than the embedder takes`,
+        );
+      embedded.push({ lecture, slides });
     }
-    const dimension = embedded.flatMap(({ vectors }) => vectors)[0]?.length;
+    const dimension = embedded.flatMap(({ slides }) => slides)[0]?.chunks[0].embedding?.length;
     if (dimension === undefined) throw new Error('IndexRetriever: the course has no slide');
     const opened = openCourse({
       path: ':memory:',
@@ -67,13 +81,8 @@ export class IndexRetriever {
     });
     if (opened.status !== 'open')
       throw new Error(`IndexRetriever: in-memory course file not open: ${opened.status}`);
-    for (const { lecture, vectors } of embedded) {
-      const slides = lecture.slides.flatMap((record, index) => {
-        const embedding = vectors[index];
-        return embedding === undefined ? [] : [{ record, embedding }];
-      });
+    for (const { lecture, slides } of embedded)
       opened.course.replaceLecture(lecture.deck, [], slides);
-    }
     return new IndexRetriever(opened.course, spec.embedder, spec.k);
   }
 

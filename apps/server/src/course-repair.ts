@@ -31,8 +31,8 @@ const parseStored: ParseDeck = async (deck, courseId) => {
 /** Embeds a stored deck's slides the way an upload does, so a rebuild reproduces what it stored (#338). */
 const embedStored =
   (deps: IngestDeps): EmbedSlides =>
-  async (slides) =>
-    (await embedSlides(deps.embedder, slides)).map(({ embedding }) => embedding);
+  (slides) =>
+    embedSlides(deps.embedder, slides);
 
 /** What one repair did, for the log; `open` is a file that needed nothing. */
 export type RepairOutcome =

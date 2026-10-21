@@ -6,6 +6,7 @@ sweep: \bSCHEMA_VERSION\b|(?i)schema.?(version|bump)|user_version|rebuilds? (run
 carrier: packages/index/src/index.ts
 carrier: packages/index/src/open-course.ts
 carrier: packages/index/src/open-course.test.ts
+carrier: packages/index/src/reembed-course.test.ts
 carrier: packages/index/src/confirmation.test.ts
 carrier: packages/index/src/rebuild-course.test.ts
 carrier: packages/index/src/rebuild-report.test.ts

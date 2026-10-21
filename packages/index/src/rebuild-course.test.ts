@@ -6,13 +6,14 @@ import {
   COURSE,
   deck,
   EMBEDDER,
+  embedWhole,
   indexed,
   openOrFail,
   slide,
   tempCourse,
+  type TempCourse,
   text,
   vector,
-  type TempCourse,
 } from './course-fixture';
 import { openCourse } from './open-course';
 import {
@@ -115,7 +116,7 @@ const embed = vi.fn((slides: readonly SlideRecord[]) =>
   Promise.resolve(slides.map((_, index) => vector(1, index, 0, 0))),
 );
 
-const deps: RebuildDeps = { parse, embed };
+const deps: RebuildDeps = { parse, embed: embedWhole(embed) };
 
 beforeEach(() => {
   parse.mockClear();

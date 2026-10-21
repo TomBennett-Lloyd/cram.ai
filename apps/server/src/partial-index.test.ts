@@ -1,5 +1,5 @@
-import { openCourse } from '@cram/index';
-import { CourseId } from '@cram/shared';
+import { openCourse, sourceIdOf } from '@cram/index';
+import { CourseId, LectureId, SlideNo } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
@@ -16,7 +16,8 @@ import {
 } from './server-fixture';
 import { embedderIdentity, embedQuestion } from './slide-embedding';
 
-// A deck with slides longer than the embedder takes indexes whole, those slides without a vector (#338).
+// A deck with slides longer than the embedder takes indexes whole: a slide whose lines fit is split
+// into chunks (`docs/adr/0008-slide-chunking.md`), and one that cannot be split has no vector (#338).
 
 const EMBEDDER = new ShortEmbedder(12);
 /** More words than `EMBEDDER` takes. */
@@ -88,6 +89,31 @@ describe('an upload with slides longer than the embedder takes', () => {
     expect(uploads.map(({ progress }) => progress)).toEqual([
       { state: 'indexed', slideCount: 5, imageOnly: [], unembedded: [5] },
     ]);
+  });
+
+  it('indexes a content slide longer than the embedder takes as several chunks, none unembedded', async () => {
+    const server = await started();
+    await upload(server, [
+      [
+        'Bees',
+        'one two three four five',
+        'six seven eight nine ten',
+        'eleven twelve thirteen fourteen',
+      ],
+    ]);
+    const { uploads } = await settled(server);
+    expect(uploads.map(({ progress }) => progress)).toEqual([
+      { state: 'indexed', slideCount: 1, imageOnly: [], unembedded: [] },
+    ]);
+    const opened = openCourse({
+      path: courseFilePath(server.dataDir, BIO),
+      courseId: BIO,
+      embedder: await embedderIdentity(EMBEDDER),
+    });
+    if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
+    const sourceId = sourceIdOf({ lectureId: LectureId.parse('l1'), slideNo: SlideNo.parse(1) });
+    expect(opened.course.chunks(sourceId).length).toBeGreaterThan(1);
+    opened.course.close();
   });
 
   it('indexes the rest of a deck with a content slide longer than the embedder takes, naming that slide', async () => {

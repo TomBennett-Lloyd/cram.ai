@@ -37,6 +37,17 @@ describe('the committed eval course', () => {
     expect(Math.max(...spans)).toBeGreaterThan(1);
   });
 
+  // docs/adr/0008-slide-chunking.md: the split path's regression slide. A WordPiece tokenizer gives
+  // every whitespace word at least one token, so more words than the window is more tokens than it.
+  it('holds a content slide longer than the embedder window', () => {
+    const PINNED_EMBEDDER_WINDOW = 512; // model_max_length in the pinned embedder's tokenizer_config.json
+    const words = committed()
+      .deck.flatMap((lecture) => lecture.slides)
+      .filter((slide) => !slide.imageOnly)
+      .map((slide) => [slide.title, ...slide.body].join(' ').split(/\s+/).length);
+    expect(Math.max(...words)).toBeGreaterThan(PINNED_EMBEDDER_WINDOW);
+  });
+
   it('labels every verdict', () => {
     const verdicts = new Set(committed().labels.map((label) => label.verdict));
     expect([...verdicts].sort()).toEqual([...Verdict.options].sort());

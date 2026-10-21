@@ -19,3 +19,5 @@ carrier: apps/web/src/ask/quote-marks.ts
 carrier: apps/web/src/ask/quote-marks.test.ts
 carrier: docs/adr/0008-slide-chunking.md
 carrier: packages/shared/src/split-chunk.ts
+carrier: packages/index/src/chunk-row.ts
+carrier: packages/index/src/course-fixture.ts

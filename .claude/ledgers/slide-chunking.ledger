@@ -11,3 +11,4 @@ carrier: docs/adr/README.md
 carrier: docs/plan.md
 carrier: packages/shared/src/index.ts
 carrier: packages/shared/src/split-chunk.test.ts
+carrier: packages/index/src/embed-chunks.ts

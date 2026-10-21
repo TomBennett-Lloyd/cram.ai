@@ -3,7 +3,7 @@
 # IndexRetriever both embed it, so recall@k measures the retrieval the app runs; each one's test
 # checks that its embedder receives exactly it. The `.embed({ texts` arm finds a new embedding site.
 owner: packages/shared/src/embed-text.ts
-claim: a slide is embedded as embedText(record), by the app's ingest and by the eval retriever alike
+claim: a slide, and each chunk it is split into, is embedded as its embedText through embedSlideChunks, by the app's ingest and by the eval retriever alike
 cite: embedText
 sweep: \bembedText\b|\.claude/ledgers/slide-embed-text\.ledger|\.embed\(\{ ?texts|(?i:\bembedded as\b|text a slide is embedded)
 scope: :!pnpm-lock.yaml
@@ -19,3 +19,5 @@ excluded: eval/src/recording-gateway.test.ts
 excluded: eval/src/timed-gateway.test.ts
 excluded: packages/gateway/src/adapters/onnx/onnx-embedder.test.ts
 excluded: packages/gateway/src/fake-gateway.test.ts
+carrier: packages/index/src/embed-chunks.ts
+carrier: packages/index/src/embed-chunks.test.ts

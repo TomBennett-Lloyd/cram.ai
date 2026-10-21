@@ -1,6 +1,6 @@
 import type { Embedder, EmbeddingResult } from '@cram/gateway';
-import { EmbedderIdentity, type IndexedSlide } from '@cram/index';
-import { embedText, type SlideRecord } from '@cram/shared';
+import { EmbedderIdentity, embedSlideChunks, type IndexedSlide, wholeSlide } from '@cram/index';
+import type { SlideRecord } from '@cram/shared';
 
 export const PROBE_TEXT = 'embedder probe';
 
@@ -29,22 +29,17 @@ export const embedderIdentity = async (embedder: Embedder): Promise<EmbedderIden
 };
 
 /**
- * Every record, with a vector unless the embedder cannot take it whole, which is never truncated
- * (`docs/adr/0003-model-roles-and-backends.md` § Decision (d)), or it is a `references` slide (#338).
+ * Every record indexed as its chunks: a `references` slide with no vector (#338), every other one
+ * split until each piece fits the embedder, never truncated (`docs/adr/0008-slide-chunking.md` § Decision (c)).
  */
 export const embedSlides = async (
   embedder: Embedder,
   records: readonly SlideRecord[],
 ): Promise<readonly IndexedSlide[]> => {
   const embeddable = records.filter(({ kind }) => kind !== 'references');
-  const results = await resultsFor(embedder, embeddable.map(embedText));
-  const vectors = new Map(
-    embeddable.map((record, index) => {
-      const result = results[index];
-      return [record, result?.status === 'embedded' ? result.vector : undefined] as const;
-    }),
-  );
-  return records.map((record) => ({ record, embedding: vectors.get(record) }));
+  const chunked = await embedSlideChunks((texts) => resultsFor(embedder, texts), embeddable);
+  const bySlide = new Map(embeddable.map((record, index) => [record, chunked[index]]));
+  return records.map((record) => bySlide.get(record) ?? wholeSlide(record, undefined));
 };
 
 export const embedQuestion = async (
