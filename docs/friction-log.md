@@ -123,3 +123,8 @@ Entry format:
 
 - Phase: planning
 - Observed: the #311 lane's restatement sweep covered what the gate refuses and not what it exempts, so adding a tokens-directory exemption falsified "`tokens.css` is the one file this gate exempts" at three sites that review found. A fourth sweep shape after the three #293 captured (a change that adds an exemption needs an exemption-claim arm); counts toward #293.
+
+## 2026-10-21 — PR #324
+
+- Phase: implementation
+- Observed: the #300 lane's first cut used SQLite's read-only open flag and three repair tests failed, because a read-only connection leaves `-wal` and `-shm` beside the file on close and `rebuildCourse` reads a `-wal` as another connection still holding the file; `PRAGMA query_only` on a normal connection was the fix. One ticket so far on a library flag whose side effect is in the file system rather than in the API. Also the first `REBASE` bounce under `run-issue` step 5's pasted form (PR #310): seven shared files, resolved with no correction from the lane.

@@ -43,8 +43,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0006's carrier ledger names the old home of the quotable field list                            | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                               | #298         |
 | ledger sweeps with only literal arms cannot see a paraphrase                                       | #298         |
-| opening a course file to read it can write to it                                                   | #300         |
-| a course file whose stored `course_id` fails `CourseId` throws instead of being refused            | #300         |
 | a PDF that pdf.js cannot read is reported as damaged, whoever is at fault                          | #301         |
 | the PPTX reader finds the presentation part by fixed name, not by relationship                     | #301         |
 | pdf.js refuses a `Buffer` that `DeckFile` accepts by type                                          | #301         |
@@ -97,3 +95,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/shared/src/ingest-status.ts` `DiscardableTable`; `packages/index/src/schema.test.ts`; `packages/index/src/rebuild-report.ts` `readRebuildReport`
 - What: the schema test holds `DiscardableTable` equal to the current schema's discardable tables, so renaming `topics` drops the old name from the vocabulary. An undismissed report a rebuild wrote under that old name is then counted as `OTHER_ROW` (`apps/web/src/copy.ts` `discardedMessage`). `readRebuildReport` also reads an older file's `rebuild_report` with the current reader. Root cause: the report's table names are persisted across app versions, and the vocabulary only knows the current one.
 - Source: #299 review cycle 1
+
+## 2026-10-21 — a course file's `course` table with no row throws instead of being refused
+
+- Where: `packages/index/src/open-course.ts` `handOver` (the `CourseRow` parse); `packages/index/src/rebuild-course.ts` `rebuildCourse` (the older file's `course_id` read)
+- What: a `course` table holding no row makes the row read return `undefined`, so both parses throw a `ZodError`. An older file whose schema was not `strict` can also hold a non-text `course_id`, which throws the same way. This is the same class as #300's: a course file is external input, and the module that reads it should refuse a malformed file as a value (`docs/standards/error-handling.md` rule 1). It predates #300, which only touched those lines.
+- Source: #300 review cycle 1
