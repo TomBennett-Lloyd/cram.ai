@@ -43,8 +43,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0006's carrier ledger names the old home of the quotable field list                            | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                               | #298         |
 | ledger sweeps with only literal arms cannot see a paraphrase                                       | #298         |
-| opening a course file to read it can write to it                                                   | #300         |
-| a course file whose stored `course_id` fails `CourseId` throws instead of being refused            | #300         |
 | a PDF that pdf.js cannot read is reported as damaged, whoever is at fault                          | #301         |
 | the PPTX reader finds the presentation part by fixed name, not by relationship                     | #301         |
 | pdf.js refuses a `Buffer` that `DeckFile` accepts by type                                          | #301         |
