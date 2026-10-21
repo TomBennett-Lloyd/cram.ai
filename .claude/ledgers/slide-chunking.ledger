@@ -1,0 +1,13 @@
+# The rule that a slide is indexed as one or more chunks, cut between its lines only when the
+# embedder reports it over-length, owned by `splitChunk` and `CHUNK_WINDOW_FILL` in
+# packages/shared/src/split-chunk.ts (docs/standards/architecture.md rule 9;
+# docs/adr/0008-slide-chunking.md § Decision (j); #339).
+owner: packages/shared/src/split-chunk.ts
+claim: a slide is indexed as one or more chunks, cut between its lines only when the embedder reports it over-length
+sweep: \.claude/ledgers/slide-chunking\.ledger|\bsplitChunk\b|\bCHUNK_WINDOW_FILL\b|(?i:one or more chunks|slide is the chunk|(never|not) (inside|mid)[ -]bullet|split(s|ting)? (a slide )?by heading)
+scope: :!pnpm-lock.yaml
+carrier: docs/adr/0008-slide-chunking.md
+carrier: docs/adr/README.md
+carrier: docs/plan.md
+carrier: packages/shared/src/index.ts
+carrier: packages/shared/src/split-chunk.test.ts

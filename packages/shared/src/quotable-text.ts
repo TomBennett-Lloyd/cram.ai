@@ -1,4 +1,4 @@
-import type { SlideRecord } from './slide-record';
+import type { QuotableFields } from './slide-chunk';
 
 export type SlideFieldName = 'title' | 'body' | 'speakerNotes' | 'imageCaption';
 
@@ -17,7 +17,7 @@ export interface QuoteSpan {
 export const SLIDE_FIELD_SEPARATOR = '\n';
 
 /** The fields a quote resolves against, in reading order, blank ones left out (#202; `.claude/ledgers/quotable-fields.ledger`). */
-export const slideFields = (record: SlideRecord): readonly SlideField[] =>
+export const slideFields = (record: QuotableFields): readonly SlideField[] =>
   [
     { field: 'title' as const, text: record.title },
     { field: 'body' as const, text: record.body },

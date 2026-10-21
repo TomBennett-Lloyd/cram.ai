@@ -9,6 +9,8 @@ sweep: \bembedText\b|\.claude/ledgers/slide-embed-text\.ledger|\.embed\(\{ ?text
 scope: :!pnpm-lock.yaml
 carrier: packages/shared/src/index.ts
 carrier: packages/shared/src/embed-text.test.ts
+carrier: packages/shared/src/split-chunk.ts
+carrier: packages/shared/src/split-chunk.test.ts
 carrier: apps/server/src/slide-embedding.ts
 carrier: apps/server/src/slide-embedding.test.ts
 carrier: eval/src/index-retriever.ts
