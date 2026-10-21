@@ -14,4 +14,3 @@ carrier: packages/index/src/confirmation.ts
 carrier: packages/index/src/confirmation.test.ts
 carrier: apps/web/src/ask/quote-marks.ts
 carrier: apps/web/src/ask/quote-marks.test.ts
-excluded: docs/tech-debt.md

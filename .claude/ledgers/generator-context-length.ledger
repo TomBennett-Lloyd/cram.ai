@@ -9,4 +9,3 @@ carrier: .claude/scripts/models-pull.sh
 carrier: .claude/scripts/models-pull.test.sh
 carrier: packages/gateway/src/index.ts
 carrier: docs/adr/0003-model-roles-and-backends.md
-excluded: docs/tech-debt.md

@@ -12,4 +12,3 @@ carrier: apps/server/src/slide-embedding.ts
 carrier: apps/server/src/slide-embedding.test.ts
 carrier: eval/src/index-retriever.ts
 carrier: eval/src/index-retriever.test.ts
-excluded: docs/tech-debt.md
