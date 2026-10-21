@@ -577,7 +577,8 @@ if [ "$already_merged" = "0" ]; then
   # Ahead of the curated-history check, so that a HUMAN batch carrying its
   # verdict commit is told the rule rather than a commit count; a batch whose
   # verdict was folded by hand would pass that count (#105). Naming the member is
-  # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4).
+  # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4). The
+  # sites stating that this guard is the refusal: .claude/ledgers/human-batch-refusal.ledger.
   if [ "$merge_method" = "--rebase" ] && [ "$is_human" = "1" ]; then
     fail 'classify' "a --rebase PR classifies HUMAN (humanAlways: $human_hits), and a batch never carries a humanAlways path (.claude/workflow.json → orchestration.routeRule, #56) — bounce the batch to drop the member whose footprint reaches $human_hits, which runs as its own ticket-agent lane, or pass --method squash if this PR is a single issue"
   fi
