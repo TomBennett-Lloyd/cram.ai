@@ -28,10 +28,6 @@ export type JsonLinesParse<T> =
   | { readonly status: 'parsed'; readonly items: readonly T[] }
   | { readonly status: 'invalid'; readonly line: number; readonly message: string };
 
-/**
- * One schema-valid value per line, lines counted from 1. The newline ending the last
- * line is optional; any other blank line is invalid.
- */
 export const parseJsonLines = <S extends z.ZodType>(
   text: string,
   schema: S,

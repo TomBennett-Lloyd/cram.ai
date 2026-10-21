@@ -27,7 +27,6 @@ export const BaselineRow = z.discriminatedUnion('status', [
 ]);
 export type BaselineRow = z.infer<typeof BaselineRow>;
 
-/** `not-measurable` with `emptyReason` when nothing was counted. */
 export const baselineRow = (
   numerator: number,
   denominator: number,
@@ -53,7 +52,6 @@ export const absoluteRow = <F extends z.ZodType>(failure: F) =>
     NotMeasurable,
   ]);
 
-/** An absolute row's fields before its schema parses them; no item counted is `not-measurable`. */
 export const absoluteFields = <F>(items: number, failures: readonly F[], emptyReason: string) =>
   items === 0
     ? notMeasurable(emptyReason)

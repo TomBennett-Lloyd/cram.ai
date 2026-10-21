@@ -13,7 +13,6 @@ export const derivedTextTokens = (text: string): readonly string[] =>
 export const DerivedCoverageRow = absoluteRow(SlideRef);
 export type DerivedCoverageRow = z.infer<typeof DerivedCoverageRow>;
 
-/** An `imageOnly` slide of the eval deck and whether its record came out `derived`. */
 export interface ImageOnlySlide {
   readonly ref: SlideRef;
   readonly derived: boolean;
@@ -29,7 +28,6 @@ export const derivedTextCoverage = (slides: readonly ImageOnlySlide[]): DerivedC
     ),
   );
 
-/** One `imageOnly` slide's true text, from the deck's source, beside the text derived from its image. */
 export interface DerivedPair {
   readonly trueText: string;
   readonly derivedText: string;
