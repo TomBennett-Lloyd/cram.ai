@@ -24,7 +24,7 @@ describe('the records @cram/ingest stores', () => {
     const live = { schemaVersion: SCHEMA_VERSION, digest: sha256(JSON.stringify(records)) };
     const advice =
       live.schemaVersion === PIN.schemaVersion
-        ? `The corpus's records changed. If ingest's output changed, courses indexed earlier keep the old records until SCHEMA_VERSION in packages/index/src/schema.ts moves: bump it, then record its value and ${live.digest} as PIN. If only stored-output-fixture.ts or stored-output-equations.ts changed, record ${live.digest} as PIN.`
+        ? `The corpus's records changed. If ingest's output changed, courses indexed earlier keep the old records until SCHEMA_VERSION in packages/index/src/schema.ts moves: bump it, then record its value and ${live.digest} as PIN. If only the pin's corpus changed (pnpm check:stored-output-pin decides which), record ${live.digest} as PIN.`
         : `SCHEMA_VERSION moved: record ${JSON.stringify(live)} as PIN.`;
     expect(live, advice).toEqual(PIN);
   });
