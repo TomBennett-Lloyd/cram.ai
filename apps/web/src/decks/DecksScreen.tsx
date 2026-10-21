@@ -63,7 +63,6 @@ const storedMessages = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): rea
   ];
 };
 
-/** A course file that is unavailable only until its repair finishes. */
 const awaitingRepair = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): boolean =>
   stored.state === 'course-unavailable' && repairing(repair);
 

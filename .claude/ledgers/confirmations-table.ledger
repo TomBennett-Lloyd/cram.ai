@@ -1,0 +1,7 @@
+# The confirmations table's name, which a rebuild reports when it discards it (docs/standards/architecture.md rule 9; #225).
+owner: packages/index/src/confirmation.ts
+claim: the student's confirmations of derived text live in a table named confirmations, the name a rebuild's DiscardedTable carries
+sweep: create table confirmations\b|'confirmations'|\.claude/ledgers/confirmations-table\.ledger
+carrier: apps/web/src/copy.ts
+carrier: apps/web/src/copy.test.ts
+carrier: packages/index/src/rebuild-course.test.ts

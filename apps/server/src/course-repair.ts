@@ -1,5 +1,4 @@
 import {
-  type DiscardedTable,
   type EmbedSlides,
   type OpenCourseResult,
   type ParseDeck,
@@ -7,7 +6,7 @@ import {
   type RebuildCourseResult,
   reembedCourse,
 } from '@cram/index';
-import type { CourseId } from '@cram/shared';
+import type { CourseId, DiscardedTable } from '@cram/shared';
 import { courseFilePath } from './data-directory';
 import { type IngestDeps, ingestFile } from './ingest-deck';
 import { embedSlides } from './slide-embedding';

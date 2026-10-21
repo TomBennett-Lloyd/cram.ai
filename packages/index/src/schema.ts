@@ -25,6 +25,7 @@ export const classifySchema = (
 
 const KINDS = SlideKind.options.map((kind) => `'${kind}'`).join(', ');
 
+/** The `topics` table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/topics-table.ledger`. */
 const TABLES = `
   create table course (
     singleton integer primary key check (singleton = 1),

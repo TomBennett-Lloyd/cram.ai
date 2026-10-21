@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import type { ApiClient } from '../api/api-client';
 import type { ApiFailure } from '../api/api-result';
 
-/** How often a course with an upload still in flight is re-read. */
+/** How often a course is re-read. */
 export const POLL_INTERVAL_MS = 1000;
 
 export type IngestState =

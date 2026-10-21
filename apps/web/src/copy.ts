@@ -86,10 +86,7 @@ export const storedUnavailableMessage = (problem: string): string =>
 export const repairFailedMessage = (problem: string): string =>
   `${fileUnopened(problem)} and couldn’t be updated, so its stored decks can’t be listed.`;
 
-/**
- * Student words for the `@cram/index` tables a rebuild can discard, one row each. A table not
- * named here is counted among "other saved items".
- */
+/** Student words for the `@cram/index` tables a rebuild can discard; any other table counts as `OTHER_ROW`. */
 const DISCARDED_ROW: ReadonlyMap<string, readonly [one: string, many: string]> = new Map([
   ['topics', ['topic tag', 'topic tags']],
   [
