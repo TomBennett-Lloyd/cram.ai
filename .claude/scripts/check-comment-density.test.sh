@@ -50,8 +50,8 @@ srcfile() {
 
 # fixture <name> -> DIR, a repo-shaped tree whose three files sit at 2000, 4000 and 6000
 # basis points. The median of those three rows is 4000, which is what every new-file case
-# is measured against; a new file that case means to judge has at least 40 non-blank lines,
-# the gate's MIN_JUDGED_LINES.
+# is measured against; a new file that case means to judge has at least MIN_JUDGED_LINES
+# non-blank lines.
 fixture() {
   DIR="$TMP_ROOT/$1"
   must rm -rf "$DIR"
@@ -319,7 +319,7 @@ bootstrap
 must printf '// one more line of prose\n' >>"$DIR/packages/shared/src/b.ts"
 run_check
 expect_rc 1
-expect_stderr "1 file(s) above the committed comment density"
+expect_stderr "1 violation(s) against the committed baseline"
 expect_stderr "ERROR packages/shared/src/b.ts: 45.45% (4545) > baseline 40.00% (4000) — 5 comment / 11 non-blank line(s)"
 expect_stderr "delete, cite or move-to-test"
 expect_not_stdout "check-comment-density: OK"
@@ -476,7 +476,7 @@ expect_rc 1
 expect_stderr "ERROR packages/shared/src/edge.ts: 60.00% (6000) > repo median 40.00% (4000)"
 end
 
-# The #73 shape: a four-line file holding one docblock measured 25% against a 7-row median.
+# The #73 shape.
 begin "a four-line file holding one docblock is banked, though its ratio is above the median"
 fixture floor-docblock
 bootstrap
@@ -491,6 +491,24 @@ expect_rc 0
 expect_stdout "packages/shared/src/small.ts: 75.00% (7500) (new row)"
 run_check
 expect_rc 0
+end
+
+# A rename is a row with no file plus a file with no row; carrying the row across is the
+# footer's instruction, and it holds the file to its old ratio rather than the median.
+begin "a renamed file fails as both halves until its row is carried to the new path"
+fixture renamed
+bootstrap
+must mv "$DIR/apps/web/src/c.ts" "$DIR/apps/web/src/moved.ts"
+run_check
+expect_rc 1
+expect_stderr "2 violation(s) against the committed baseline"
+expect_stderr "ERROR apps/web/src/c.ts: baseline row with no measured file"
+expect_stderr "ERROR apps/web/src/moved.ts: no baseline row"
+expect_stderr "carry its row across to the new path"
+must perl -pi -e 's{^apps/web/src/c\.ts\t}{apps/web/src/moved.ts\t}' "$DIR/$BASELINE_REL"
+run_check
+expect_rc 0
+expect_stdout "check-comment-density: OK"
 end
 
 # The median is read from the BASELINE's rows, not from the current scan — so a batch of new

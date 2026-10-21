@@ -19,8 +19,8 @@
 # moves the figure for any file this repository holds.
 #
 # The baseline is a census (#187): the plain gate refuses a scanned file with no
-# row and a row with no measured file, so the PR that adds, deletes or renames a
-# source file banks it with `--ratchet`, and the median read from the baseline is
+# row and a row with no measured file, so the PR that adds or deletes a source
+# file banks it with `--ratchet`, and the median read from the baseline is
 # the median of the whole tree. `--ratchet` admits a file with no row at or below
 # that median, or at any ratio when it has fewer than MIN_JUDGED_LINES non-blank
 # lines, where one docblock is most of the ratio; once banked, every row ratchets
@@ -369,7 +369,7 @@ violation_count=$(grep -c '' <"$TMP/violations" || true)
 unmeasurable_count=$(grep -c '' <"$TMP/unmeasurable" || true)
 
 if [ "$violation_count" -gt 0 ]; then
-  printf '\ncheck-comment-density: %d file(s) above the committed comment density\n' \
+  printf '\ncheck-comment-density: %d violation(s) against the committed baseline\n' \
     "$violation_count" >&2
   LC_ALL=C sort "$TMP/violations" >&2
   printf '\nA prose finding is fixed by delete, cite or move-to-test, never by adding\n' >&2
@@ -377,7 +377,7 @@ if [ "$violation_count" -gt 0 ]; then
   printf 'and a ratio that fell are banked with:\n\n' >&2
   printf '    bash .claude/scripts/check-comment-density.sh --ratchet\n\n' >&2
   printf 'which adds, drops and lowers rows and never raises one.\n\n' >&2
-  printf 'A RENAMED file arrives as a new one and is judged against the median:\n' >&2
+  printf 'A RENAMED file arrives as a new one:\n' >&2
   printf 'carry its row across to the new path in %s.\n' "$BASELINE_REL" >&2
   exit 1
 fi
