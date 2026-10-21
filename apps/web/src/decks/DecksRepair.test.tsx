@@ -190,7 +190,7 @@ describe('the course file’s start-up repair', () => {
     await settle();
     expect(reads(sent)).toBe(2);
     expect([...screen.getByRole('alert').querySelectorAll('p')].map((p) => p.textContent)).toEqual([
-      'This course was rebuilt again since that notice was shown, so it now lists more. Read it before dismissing it.',
+      'This course was rebuilt again since that notice was shown. Read it before dismissing it.',
       discardedMessage(LATER),
     ]);
     fireEvent.click(dismissButton());
@@ -202,26 +202,44 @@ describe('the course file’s start-up repair', () => {
     expect(screen.queryAllByRole('alert')).toEqual([]);
   });
 
-  it('shows a later report after an earlier one was dismissed', async () => {
-    let rebuiltAgain = false;
-    const { api } = fakeApi(({ method }) =>
-      method === 'DELETE'
-        ? DISMISSED
-        : repairStatus(
-            rebuiltAgain ? undismissed(DISCARDED, 'b'.repeat(64)) : undismissed(DISCARDED),
-            repair({ state: rebuiltAgain ? 'running' : 'done' }),
-          ),
-    );
+  it('shows a report a later rebuild records again, with the same rows, once a read showed it gone', async () => {
+    let phase: 'shown' | 'dismissed' | 'recorded again' = 'shown';
+    const { api } = fakeApi(({ method }) => {
+      if (method === 'DELETE') {
+        phase = 'dismissed';
+        return DISMISSED;
+      }
+      return repairStatus(
+        phase === 'dismissed' ? STORED : undismissed(DISCARDED),
+        repair({ state: 'done' }),
+      );
+    });
+    const reread = async () => {
+      fireEvent.change(screen.getByLabelText('Add decks'), { target: { files: [] } });
+      await settle();
+    };
     renderDecks(api);
     await settle();
     fireEvent.click(dismissButton());
     await settle();
     expect(screen.queryAllByRole('alert')).toEqual([]);
-    rebuiltAgain = true;
-    fireEvent.change(screen.getByLabelText('Add decks'), { target: { files: [] } });
-    await settle();
+    await reread();
+    expect(screen.queryAllByRole('alert')).toEqual([]);
+    phase = 'recorded again';
+    await reread();
     expect(screen.getByRole('alert').querySelector('p')?.textContent).toBe(
       discardedMessage(DISCARDED),
     );
+  });
+
+  it('keeps a dismissed report hidden while a read still shows it', async () => {
+    const { api } = reported(() => DISMISSED);
+    renderDecks(api);
+    await settle();
+    fireEvent.click(dismissButton());
+    await settle();
+    fireEvent.change(screen.getByLabelText('Add decks'), { target: { files: [] } });
+    await settle();
+    expect(screen.queryAllByRole('alert')).toEqual([]);
   });
 });

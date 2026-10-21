@@ -132,6 +132,9 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
     state.status === 'ready' && state.ingest.stored.state === 'read'
       ? state.ingest.stored.report
       : undefined;
+  /** A revision names rows a later rebuild can record again, so a read showing none forgets it, in render (`docs/standards/react.md` rule 1). */
+  if (dismissal.status === 'dismissed' && report?.state === 'none')
+    setDismissal({ status: 'idle' });
   const lost: Dismissible | undefined =
     report?.state === 'undismissed' &&
     !(dismissal.status === 'dismissed' && dismissal.revision === report.revision)

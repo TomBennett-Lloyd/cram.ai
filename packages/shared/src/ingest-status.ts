@@ -59,7 +59,7 @@ export type StoredLecture = z.infer<typeof StoredLecture>;
 
 /**
  * The tables a rebuild discards from a current file, held to the schema by `packages/index/src/schema.test.ts`
- * (`.claude/ledgers/topics-table.ledger`, `confirmations-table.ledger`). A renamed table keeps its member (#299).
+ * (`.claude/ledgers/topics-table.ledger`, `.claude/ledgers/confirmations-table.ledger`).
  */
 export const DiscardableTable = z.enum(['topics', 'confirmations']);
 export type DiscardableTable = z.infer<typeof DiscardableTable>;

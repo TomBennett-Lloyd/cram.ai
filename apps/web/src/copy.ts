@@ -55,7 +55,7 @@ const refusalMessage = (refusal: ApiRefusal): string => {
     case 'no-such-course':
       return 'This course has no decks yet. Add one first.';
     case 'report-changed':
-      return 'This course was rebuilt again since that notice was shown, so it now lists more. Read it before dismissing it.';
+      return 'This course was rebuilt again since that notice was shown. Read it before dismissing it.';
     case 'payload-too-large':
       return 'That is too large for the server to accept.';
     case 'unsupported-media-type':
@@ -102,7 +102,7 @@ export const storedUnavailableMessage = (problem: CourseUnavailableProblem): str
 export const repairFailedMessage = (problem: CourseUnavailableProblem): string =>
   `${fileUnopened(problem)} and couldn’t be updated, so its stored decks can’t be listed.`;
 
-/** Student words for each `DiscardableTable`; a table no released schema defined counts as `OTHER_ROW`. */
+/** Student words for each `DiscardableTable`; any other table counts as `OTHER_ROW`. */
 const DISCARDED_ROW: Readonly<Record<DiscardableTable, readonly [one: string, many: string]>> = {
   topics: ['topic tag', 'topic tags'],
   confirmations: [

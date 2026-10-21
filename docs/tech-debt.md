@@ -85,3 +85,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: the frontend-gate block of `eslint.config.mjs`, its four `no-restricted-syntax` colour selectors
 - What: the selectors test every string literal and template element in UI code, so they cannot tell a style value from user-visible copy or a URL. The #273 review measured these as refused: `'Text color(s)'`, `'see lab(3)'`, the anchor `'#add'` and the entity `'&#123;'`. Root cause: the selectors match by node type, not by position. Scoping them to style-bearing positions (a `style`/`fill`/`stroke` attribute, a CSS-in-TS value) would remove the false refusals without opening a way past the gate.
 - Source: #273 review cycle 1
+
+## 2026-10-21 — a failed repair's log names the outcome, not the lecture or the cause
+
+- Where: `apps/server/src/course-repair.ts` `repairCourse`, `parseStored`; `apps/server/src/ingest-queue.ts` `#repair`
+- What: `rebuildCourse` returns the lecture whose stored deck no longer reads, and ingest says why, but `repairCourse` returns only the status and `parseStored` drops ingest's reason, so the log reads `deck-unreadable` with no lecture or reason (`docs/standards/error-handling.md` rule 4). Root cause: `RepairOutcome` is a bare status, and the log entry has one `outcome` field.
+- Source: #299 review cycle 1
+
+## 2026-10-21 — no gate holds a rebuild report across a rename of a discardable table
+
+- Where: `packages/shared/src/ingest-status.ts` `DiscardableTable`; `packages/index/src/schema.test.ts`; `packages/index/src/rebuild-report.ts` `readRebuildReport`
+- What: the schema test holds `DiscardableTable` equal to the current schema's discardable tables, so renaming `topics` drops the old name from the vocabulary. An undismissed report a rebuild wrote under that old name is then counted as `OTHER_ROW` (`apps/web/src/copy.ts` `discardedMessage`). `readRebuildReport` also reads an older file's `rebuild_report` with the current reader. Root cause: the report's table names are persisted across app versions, and the vocabulary only knows the current one.
+- Source: #299 review cycle 1
