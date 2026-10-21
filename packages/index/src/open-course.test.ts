@@ -216,6 +216,24 @@ describe('openCourseReadOnly', () => {
     expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
   });
 
+  it('sets no journal mode, so a course file in another one is left as it was', () => {
+    seed();
+    const db = new Database(temp.spec.path);
+    db.pragma('journal_mode = delete');
+    db.close();
+    const before = readFileSync(temp.spec.path);
+    const opened = openCourseReadOnly(temp.spec);
+    if (opened.status !== 'open') throw new Error(opened.status);
+    opened.course.close();
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+  });
+
+  it('throws on a file that is not there, and creates none', () => {
+    const missing = join(temp.dir, 'missing.sqlite');
+    expect(() => openCourseReadOnly({ ...temp.spec, path: missing })).toThrow();
+    expect(existsSync(missing)).toBe(false);
+  });
+
   it('reports a blank file as blank and leaves it empty, whether or not it may be written', () => {
     writeFileSync(temp.spec.path, '');
     expect(expectNoLeak(() => openCourseReadOnly(temp.spec))).toEqual({ status: 'blank' });
