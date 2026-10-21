@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { SlideRecord } from '@cram/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   alternateContent,
@@ -275,6 +276,20 @@ describe('ingestPptx', () => {
     });
     expect(record).toMatchObject({ title: 'Rate laws', speakerNotes: '' });
   });
+
+  it.each(['le', 'be'] as const)(
+    'reads a deck whose every part is UTF-16%s as its UTF-8 twin',
+    (utf16) => {
+      const deck = { slides: [{ ...titled('Rate laws — Arrhenius'), notes: ['Say this.'] }] };
+      const text = (slides: readonly SlideRecord[]) =>
+        slides.map(({ title, body, speakerNotes }) => ({ title, body, speakerNotes }));
+      const twin = text(ingested(deck));
+      expect(twin).toEqual([
+        expect.objectContaining({ title: 'Rate laws — Arrhenius', speakerNotes: 'Say this.' }),
+      ]);
+      expect(text(ingested({ ...deck, utf16 }))).toEqual(twin);
+    },
+  );
 
   it.each(['ppt/media/image1.png', 'ppt/media/image1.xml.jpeg'])(
     'reads the text of a deck whose %s cannot be inflated',
