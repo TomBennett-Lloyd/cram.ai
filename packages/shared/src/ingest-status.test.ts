@@ -27,7 +27,7 @@ describe('IngestStatus', () => {
   const lecture = { lectureId: 'l1', lectureTitle: 'Bees', slideCount: 2, imageOnly: [2] };
 
   it('carries the course file’s lectures beside the uploads, and refuses a status without them', () => {
-    const stored = { state: 'read', lectures: [lecture] };
+    const stored = { state: 'read', lectures: [lecture], discarded: [] };
     const repair = { state: 'none' };
     expect(IngestStatus.safeParse({ courseId: 'bio', stored, repair, uploads: [] }).success).toBe(
       true,
@@ -43,28 +43,36 @@ describe('IngestStatus', () => {
     );
     expect(StoredLectures.safeParse({ ...unavailable, problem: ' ' }).success).toBe(false);
     const read = (overrides: object) =>
-      StoredLectures.safeParse({ state: 'read', lectures: [{ ...lecture, ...overrides }] }).success;
+      StoredLectures.safeParse({
+        state: 'read',
+        lectures: [{ ...lecture, ...overrides }],
+        discarded: [],
+      }).success;
     expect(read({})).toBe(true);
     expect(read({ imageOnly: [0] })).toBe(false);
     expect(read({ lectureTitle: ' ' })).toBe(false);
   });
 });
 
-describe('CourseRepair', () => {
-  const done = (discarded: unknown) => CourseRepair.safeParse({ state: 'done', discarded }).success;
+describe('the rebuild report', () => {
+  const read = (discarded: unknown) =>
+    StoredLectures.safeParse({ state: 'read', lectures: [], discarded }).success;
 
   it('names each discarded table and how many of its rows were lost, at least one', () => {
-    expect(done([])).toBe(true);
-    expect(done([{ table: 'topics', rows: 12 }])).toBe(true);
-    expect(done([{ table: 'topics', rows: 0 }])).toBe(false);
-    expect(done([{ table: 'topics', rows: 1.5 }])).toBe(false);
-    expect(done([{ table: ' ', rows: 1 }])).toBe(false);
-    expect(CourseRepair.safeParse({ state: 'done' }).success).toBe(false);
+    expect(read([])).toBe(true);
+    expect(read([{ table: 'topics', rows: 12 }])).toBe(true);
+    expect(read([{ table: 'topics', rows: 0 }])).toBe(false);
+    expect(read([{ table: 'topics', rows: 1.5 }])).toBe(false);
+    expect(read([{ table: ' ', rows: 1 }])).toBe(false);
+    expect(read(undefined)).toBe(false);
   });
+});
 
+describe('CourseRepair', () => {
   it('refuses a state that is not a repair stage', () => {
-    for (const state of ['none', 'queued', 'running', 'failed'])
+    for (const state of ['none', 'queued', 'running', 'done', 'failed'])
       expect(CourseRepair.safeParse({ state }).success).toBe(true);
     expect(CourseRepair.safeParse({ state: 'rebuilt' }).success).toBe(false);
+    expect(CourseRepair.safeParse({ state: 'done', discarded: [] }).success).toBe(false);
   });
 });

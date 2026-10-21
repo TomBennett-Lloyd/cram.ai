@@ -24,7 +24,11 @@ const stateOf = (result: Awaited<ReturnType<ApiClient['ingestStatus']>>): Ingest
   if (result.status === 'refused' && result.refusal.status === 'no-such-course')
     return {
       status: 'ready',
-      ingest: { stored: { state: 'read', lectures: [] }, repair: { state: 'none' }, uploads: [] },
+      ingest: {
+        stored: { state: 'read', lectures: [], discarded: [] },
+        repair: { state: 'none' },
+        uploads: [],
+      },
     };
   return { status: 'failed', failure: result };
 };

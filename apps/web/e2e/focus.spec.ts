@@ -63,3 +63,40 @@ test('a tap paints no ring on the dialog it opens, or on the card after it', asy
   await expect(card).toBeFocused();
   expect(await ringed(card)).toBe(false);
 });
+
+/** The decks screen with a rebuild report showing, and the picker its dismissal lands on. */
+const reported = async (page: Page) => {
+  await stubApi(page, { rebuildReport: true });
+  await page.goto('/#/courses/bio/decks');
+  const dismiss = page.getByRole('button', { name: 'Dismiss' });
+  await expect(dismiss).toBeVisible();
+  return { dismiss, picker: page.getByLabel('Add decks') };
+};
+
+test('a keyboard reader who dismisses the rebuild notice lands on the deck picker, ringed', async ({
+  page,
+}) => {
+  const { dismiss, picker } = await reported(page);
+  await dismiss.focus();
+  await page.keyboard.press('Enter');
+  await expect(picker).toBeFocused();
+  expect(await ringed(picker)).toBe(true);
+});
+
+test('a mouse press on Dismiss paints no ring on the deck picker it lands on', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'the mouse arm runs on the desktop project');
+  const { dismiss, picker } = await reported(page);
+  await dismiss.click();
+  await expect(picker).toBeFocused();
+  expect(await ringed(picker)).toBe(false);
+});
+
+test('a tap on Dismiss paints no ring on the deck picker it lands on', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'the touch arm runs on the phone project');
+  const { dismiss, picker } = await reported(page);
+  await dismiss.tap();
+  await expect(picker).toBeFocused();
+  expect(await ringed(picker)).toBe(false);
+});

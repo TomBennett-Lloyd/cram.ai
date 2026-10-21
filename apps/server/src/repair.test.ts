@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { EmbeddingResult, EmbedRequest } from '@cram/gateway';
 import { openCourse, SCHEMA_VERSION, sourceIdOf } from '@cram/index';
 import { CourseId, TopicTag } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
+  GatedEmbedder,
   gatewayOf,
   PDF,
   pdfDeck,
@@ -18,13 +18,14 @@ import {
   uploadPath,
   WordEmbedder,
 } from './server-fixture';
-import { embedderIdentity, PROBE_TEXT } from './slide-embedding';
+import { embedderIdentity } from './slide-embedding';
 
 const BIO = CourseId.parse('bio');
 const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 const HIVE_STORED = {
   state: 'read',
   lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
+  discarded: [],
 };
 
 /** `WordEmbedder`'s vectors under another pin, so a file it wrote records another embedder. */
@@ -32,21 +33,8 @@ class RepinnedEmbedder extends WordEmbedder {
   override readonly pin = { ...new WordEmbedder().pin, model: 'fixture/repinned-embedder' };
 }
 
-/** A `RepinnedEmbedder` holding every text but its probe until `open` is called. */
-class GatedEmbedder extends RepinnedEmbedder {
-  #open: () => void = () => undefined;
-  readonly #gate = new Promise<void>((resolve) => {
-    this.#open = resolve;
-  });
-
-  open(): void {
-    this.#open();
-  }
-
-  override async embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
-    if (request.texts[0] !== PROBE_TEXT) await this.#gate;
-    return super.embed(request);
-  }
+class RepinnedGatedEmbedder extends GatedEmbedder {
+  override readonly pin = new RepinnedEmbedder().pin;
 }
 
 class RepinnedShortEmbedder extends ShortEmbedder {
@@ -128,7 +116,7 @@ const openedUnder = async (dataDir: string, embedder: WordEmbedder) =>
 describe('start-up repair', () => {
   it('re-embeds a course file another embedder wrote, before any upload runs', async () => {
     const dataDir = await seededDataDir();
-    const embedder = new GatedEmbedder();
+    const embedder = new RepinnedGatedEmbedder();
     const server = await restarted(dataDir, embedder);
     await upload(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
     const held = await send(server.server.port, { method: 'GET', path: '/courses/bio/ingest' });
@@ -143,7 +131,7 @@ describe('start-up repair', () => {
     ]);
     expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
       stored: { state: 'read', lectures: [HIVE_STORED.lectures[0], { lectureId: 'l2' }] },
-      repair: { state: 'done', discarded: [] },
+      repair: { state: 'done' },
       uploads: [{ progress: { state: 'indexed' } }],
     });
     expect(existsSync(`${courseFilePath(dataDir, BIO)}-wal`)).toBe(false);
@@ -155,7 +143,7 @@ describe('start-up repair', () => {
       await upload(seeding.server.port, await pdfDeck(HIVE), 'l1', 'hive.pdf', courseId);
     await settledStatus(seeding.server.port, 'chem');
     await seeding.server.close();
-    const embedder = new GatedEmbedder();
+    const embedder = new RepinnedGatedEmbedder();
     const server = await restarted(seeding.dataDir, embedder);
     const repairs = await Promise.all(
       ['bio', 'chem'].map(
@@ -170,7 +158,7 @@ describe('start-up repair', () => {
     embedder.open();
     for (const courseId of ['bio', 'chem'])
       expect((await settledStatus(server.server.port, courseId)).json).toMatchObject({
-        repair: { state: 'done', discarded: [] },
+        repair: { state: 'done' },
       });
   });
 
@@ -188,8 +176,9 @@ describe('start-up repair', () => {
       stored: {
         state: 'read',
         lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
+        discarded: [],
       },
-      repair: { state: 'done', discarded: [] },
+      repair: { state: 'done' },
     });
     const opened = await openedUnder(dataDir, new WordEmbedder());
     if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
@@ -200,7 +189,7 @@ describe('start-up repair', () => {
     opened.course.close();
   });
 
-  it('rebuilds an older course file whose rows no rebuild carries over, and reports them', async () => {
+  it('rebuilds an older course file whose rows no rebuild carries over, and reports them until dismissed, across restarts', async () => {
     const dataDir = await seededDataDir();
     const seeded = await openedUnder(dataDir, new WordEmbedder());
     if (seeded.status !== 'open') throw new Error(`course file: ${seeded.status}`);
@@ -213,10 +202,23 @@ describe('start-up repair', () => {
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
     ]);
-    expect(await repairedStatus(server)).toEqual({
-      stored: HIVE_STORED,
-      repair: { state: 'done', discarded: [{ table: 'topics', rows: 1 }] },
+    const reported = { stored: { ...HIVE_STORED, discarded: [{ table: 'topics', rows: 1 }] } };
+    expect(await repairedStatus(server)).toEqual({ ...reported, repair: { state: 'done' } });
+    await server.server.close();
+    const current = await restarted(dataDir);
+    expect(await repairedStatus(current)).toEqual({ ...reported, repair: { state: 'done' } });
+    expect(current.logs).toEqual([]);
+    const dismissed = await send(current.server.port, {
+      method: 'DELETE',
+      path: '/courses/bio/rebuild-report',
     });
+    expect(dismissed).toMatchObject({ status: 200, json: { status: 'dismissed' } });
+    expect(await repairedStatus(current)).toEqual({
+      stored: HIVE_STORED,
+      repair: { state: 'done' },
+    });
+    await current.server.close();
+    expect(await repairedStatus(await restarted(dataDir))).toMatchObject({ stored: HIVE_STORED });
   });
 
   it('logs a repair that throws, and leaves the course unavailable', async () => {
@@ -252,7 +254,7 @@ describe('start-up repair', () => {
     const server = await restarted(dataDir);
     await upload(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
     expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
-      repair: { state: 'done', discarded: [] },
+      repair: { state: 'done' },
     });
     expect(server.logs).toEqual([]);
     expect(existsSync(`${courseFilePath(dataDir, BIO)}-wal`)).toBe(false);
