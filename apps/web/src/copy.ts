@@ -20,6 +20,8 @@ export const CLOSEST_SLIDES = 'Closest slides';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 
+const fileUnopened = (problem: string): string => `This course’s file can’t be opened (${problem})`;
+
 export const RETRY = 'Try again';
 export const APP_FAILED = 'Something went wrong in cram.ai. Reload the page to start again.';
 export const MODEL_FAILED = 'The model didn’t answer. Ask again in a moment.';
@@ -31,7 +33,7 @@ const refusalMessage = (refusal: ApiRefusal): string => {
     case 'bad-request':
       return `The server refused the request: ${refusal.issue}`;
     case 'course-unavailable':
-      return `This course’s file can’t be opened (${refusal.problem}).`;
+      return `${fileUnopened(refusal.problem)}.`;
     case 'question-over-length':
       return `That question is too long for the model to read (at most ${String(refusal.maxInputTokens)} tokens). Shorten it and ask again.`;
     case 'no-such-course':
@@ -76,7 +78,7 @@ export const indexedMessage = ({
 
 /** Why the course file's lectures are not listed; this session's uploads still are. */
 export const storedUnavailableMessage = (problem: string): string =>
-  `This course’s file can’t be opened (${problem}), so its stored decks can’t be listed.`;
+  `${fileUnopened(problem)}, so its stored decks can’t be listed.`;
 
 export const progressMessage = (progress: UploadProgress): string => {
   switch (progress.state) {
@@ -91,7 +93,7 @@ export const progressMessage = (progress: UploadProgress): string => {
     case 'over-length':
       return `${slidesThat(progress.slides, 'holds', 'hold')} more text than the model reads at once (${String(progress.maxInputTokens)} tokens), so nothing from this deck was indexed.`;
     case 'course-unavailable':
-      return `This course’s file can’t be opened (${progress.problem}), so the deck was not indexed.`;
+      return `${fileUnopened(progress.problem)}, so the deck was not indexed.`;
     case 'failed':
       return 'Something went wrong reading this deck. Upload it again.';
   }

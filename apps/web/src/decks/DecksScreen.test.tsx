@@ -194,7 +194,7 @@ describe('DecksScreen', () => {
     renderDecks(api);
     await settle();
     expect(rows()).toEqual([
-      ['Title of l1', '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.'],
+      ['l1', '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.'],
     ]);
     expect(screen.queryByText(/No decks yet/)).toBeNull();
     await act(async () => {
@@ -203,7 +203,7 @@ describe('DecksScreen', () => {
     expect(reads(sent)).toBe(1);
   });
 
-  it('lists the lectures the course file holds, leaving one this session re-indexed to its upload', async () => {
+  it('lists the lectures the course file holds, leaving one with an indexed upload this session to that upload', async () => {
     const stored = StoredLectures.parse({
       state: 'read',
       lectures: [lecture('l1', 12, [3, 9]), lecture('l2', 1, []), lecture('l3', 4, [])],
@@ -218,8 +218,8 @@ describe('DecksScreen', () => {
     renderDecks(api);
     await settle();
     expect(rows()).toEqual([
-      ['Title of l1', '12 slides indexed. Slides 3, 9 have no text, so they can’t be cited yet.'],
-      ['Title of l3', '4 slides indexed.'],
+      ['l1', '12 slides indexed. Slides 3, 9 have no text, so they can’t be cited yet.'],
+      ['l3', '4 slides indexed.'],
       ['l2', '2 slides indexed.'],
       ['l3', 'This deck couldn’t be read (encrypted).'],
     ]);

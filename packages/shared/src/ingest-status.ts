@@ -5,7 +5,6 @@ import { CourseId, LectureId, SlideNo } from './slide-record';
 export const UploadId = z.string().min(1).brand<'UploadId'>();
 export type UploadId = z.infer<typeof UploadId>;
 
-/** What an indexed lecture holds: its slide count and its `image-only` slides by number. */
 const INDEXED_SLIDES = {
   slideCount: z.number().int().nonnegative(),
   imageOnly: z.array(SlideNo),

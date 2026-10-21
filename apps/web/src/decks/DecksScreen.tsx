@@ -34,17 +34,17 @@ const uploadAll = async (
   return refused;
 };
 
-/** A stored lecture this session has indexed again is left to that upload's row, which names its file. */
+/** A stored lecture with an `indexed` upload this session is left to that upload's row, which names its file. */
 const unlistedLectures = (
   lectures: readonly StoredLecture[],
   uploads: readonly Upload[],
 ): readonly StoredLecture[] => {
-  const reindexed = new Set(
+  const indexed = new Set(
     uploads
       .filter(({ progress }) => progress.state === 'indexed')
       .map(({ lectureId }) => lectureId),
   );
-  return lectures.filter(({ lectureId }) => !reindexed.has(lectureId));
+  return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
 };
 
 const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> }) => {
@@ -58,7 +58,7 @@ const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> 
     <ul className="upload-list">
       {lectures.map((lecture) => (
         <li key={`lecture:${lecture.lectureId}`} className="upload" data-state="indexed">
-          <span className="upload-file">{lecture.lectureTitle}</span>
+          <span className="upload-file">{lecture.lectureId}</span>
           <span className="upload-progress">{indexedMessage(lecture)}</span>
         </li>
       ))}
