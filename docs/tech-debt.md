@@ -69,8 +69,8 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 ## 2026-10-20 — the quotable fields of a SlideRecord are listed in two packages
 
-- Where: `packages/grounding/src/slide-text.ts` `slideText`; `packages/index/src/confirmation.ts` `textHashOf`
-- What: `slideText` decides which fields a quote resolves against (title, body, speaker notes, image captions), and `textHashOf` hashes those same fields to decide when a confirmation of derived text is void (`docs/adr/0006-image-only-slides.md` § Decision (g)). The two must change together. If `slideText` gained a field and `textHashOf` did not, an edit to quotable text would leave the confirmation standing. `@cram/index` cannot import `@cram/grounding`, so the field list's single owner belongs in `@cram/shared`, and both functions would read it from there.
+- Where: `packages/shared/src/quotable-text.ts` `slideFields`; `packages/index/src/confirmation.ts` `textHashOf`
+- What: `slideFields` decides which fields a quote resolves against (title, body, speaker notes, image captions), and `textHashOf` hashes those same fields to decide when a confirmation of derived text is void (`docs/adr/0006-image-only-slides.md` § Decision (g)). The two must change together. If `slideFields` gained a field and `textHashOf` did not, an edit to quotable text would leave the confirmation standing. `slideFields` is the single owner in `@cram/shared` since #202, which moved `@cram/grounding`'s `slideText` and `apps/web`'s quote marks onto it; `textHashOf` still lists the fields itself.
 - Source: #109 review
 
 ## 2026-10-20 — an eval report's sampling is what the caller says, never what the generator ran
@@ -106,15 +106,16 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-21 — opening a course file to read it can write to it
 
 - Where: `apps/server/src/course-file.ts` `openForRead`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
-- What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status the decks screen polls every second while an upload is in flight. Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
+- What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status `useIngestStatus` polls (`apps/web/src/decks/use-ingest-status.ts`). Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
 - Source: #146 review cycle 1
 
 ## 2026-10-21 — the web shows `@cram/index` status codes to the student
 
-- Where: `apps/web/src/copy.ts` `fileUnopened` and its three callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`)
+- Where: `apps/web/src/copy.ts` `fileUnopened` and its callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`, `repairFailedMessage`)
 - What: an unopenable course file is reported as "This course’s file can’t be opened (embedder-mismatch)", the raw `OpenCourseResult` status, with no words for what it means or what to do. Root cause: no mapping from `@cram/index`'s vocabulary to student-facing copy. #147 (rebuild or re-embed on course-unavailable) changes what the student can do about each one.
 - Source: #146 review cycle 1
 - Update 2026-10-21 (#147): the server now repairs both codes at start (`repairCourse` in `apps/server/src/course-repair.ts`), with no action from the student. Either code still reaches the student until a repair has rebuilt or re-embedded the file: while the repair is queued or running, and after any repair that ends any other way. #225 owns reporting the repair.
+- Update 2026-10-21 (#225): the decks screen now reports the repair (`CourseRepair` in `packages/shared/src/ingest-status.ts`). While a repair is queued or running it says the stored decks are being updated, with no code shown. `discardedMessage` maps `@cram/index` table names to student words by string, the same gap for a second vocabulary.
 
 ## 2026-10-21 — every start-up repair failure is logged as `Error`
 
@@ -139,3 +140,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/shared/src/deck.ts` `Deck`; `packages/ingest/src/deck.ts` `fileStem`
 - What: `Deck` does not store the uploaded file name, so a rebuild passes the stored title through `fileStem` as the title fallback. If a title came from the first slide and contains `/`, `\`, `-` or `_`, and a later ingest no longer reads a title from that slide, the rebuilt title is mangled ("Cells/Tissues" becomes "Tissues"). This can only happen across an ingest change, which is exactly when rebuilds run. Root cause: the stored deck drops the file name.
 - Source: #147 review cycle 1
+
+## 2026-10-21 — a new discardable table reaches the student as "other saved items"
+
+- Where: `apps/web/src/copy.ts` `DISCARDED_ROW`, `discardedMessage`; `packages/index/src/rebuild-course.ts` `discardedTables`
+- What: `docs/adr/0004-storage.md` § Decision (d) requires a rebuild to tell the user which derived data did not survive. The web names only the tables it has words for. A table added later, such as attempts or notes, is summed as `OTHER_ROW` with every test green. The `topics-table` and `confirmations-table` ledgers only notice a rename, not an addition. Root cause: nothing shared lists the tables a rebuild can discard, so no gate asks for the new table's student words.
+- Source: #225 review cycle 1
+
+## 2026-10-21 — ADR 0006's carrier ledger names the old home of the quotable field list
+
+- Where: `docs/adr/0006-image-only-slides.md` § Decision (k), the "Code carriers citing by number" bullet; `packages/shared/src/quotable-text.ts` `slideFields`
+- What: the bullet lists `packages/grounding/src/slide-text.ts` as the carrier that makes `imageCaptions` part of the text a quote resolves against. Since #202 that file builds `slideText` from `slideFields`, which is now the carrier, and the ADR's recorded sweep no longer finds `packages/grounding/src/slide-text.ts` or `apps/web/src/ask/quote-marks.ts` while `packages/shared/src/quotable-text.ts` and its test are unclassified. The claim still holds through `slideFields`; only the site is stale. The ADR is humanAlways, so its next amendment should correct the entry.
+- Source: #202 review cycle 1

@@ -2,6 +2,14 @@ export { Citation, SourceId } from './citation';
 export { Deck, DeckMediaType, SlideImage, SlideImageMediaType } from './deck';
 export { CourseId, LectureId, SlideKind, SlideNo, SlideRecord, SourceHash } from './slide-record';
 export { NonBlankText } from './non-blank-text';
+export {
+  type QuoteSpan,
+  type SlideField,
+  type SlideFieldName,
+  quoteSpan,
+  SLIDE_FIELD_SEPARATOR,
+  slideFields,
+} from './quotable-text';
 export { RetrievedSlide } from './retrieved-slide';
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { Unit, UnitKind } from './unit';
@@ -12,6 +20,8 @@ export { AskReply, AskRequest } from './ask';
 export { CourseList } from './course-list';
 export { ROUTE_COURSE_ID_MAX_LENGTH, RouteCourseId } from './route-course-id';
 export {
+  CourseRepair,
+  DiscardedTable,
   IngestStatus,
   StoredLecture,
   StoredLectures,

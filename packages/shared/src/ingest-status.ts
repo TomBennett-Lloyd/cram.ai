@@ -54,10 +54,31 @@ export const StoredLectures = z.discriminatedUnion('state', [
 ]);
 export type StoredLectures = z.infer<typeof StoredLectures>;
 
-/** `stored` is what the course file holds; `uploads` are those since the server started. */
+/** A table of an older course file whose rows a rebuild did not carry over; `table` is `@cram/index`'s name. */
+export const DiscardedTable = z.strictObject({
+  table: NonBlankText,
+  rows: z.number().int().positive(),
+});
+export type DiscardedTable = z.infer<typeof DiscardedTable>;
+
+/**
+ * The course file's start-up repair (#225). `none` is a course with no repair since the server
+ * started; `failed` leaves the file as `stored` reports it.
+ */
+export const CourseRepair = z.discriminatedUnion('state', [
+  z.strictObject({ state: z.literal('none') }),
+  z.strictObject({ state: z.literal('queued') }),
+  z.strictObject({ state: z.literal('running') }),
+  z.strictObject({ state: z.literal('done'), discarded: z.array(DiscardedTable) }),
+  z.strictObject({ state: z.literal('failed') }),
+]);
+export type CourseRepair = z.infer<typeof CourseRepair>;
+
+/** `stored` is what the course file holds; `repair` and `uploads` are since the server started. */
 export const IngestStatus = z.strictObject({
   courseId: CourseId,
   stored: StoredLectures,
+  repair: CourseRepair,
   uploads: z.array(Upload),
 });
 export type IngestStatus = z.infer<typeof IngestStatus>;

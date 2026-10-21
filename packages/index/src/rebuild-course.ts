@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { existsSync, renameSync, rmSync } from 'node:fs';
-import { CourseId, type Deck, type SlideRecord } from '@cram/shared';
+import { CourseId, type Deck, type DiscardedTable, type SlideRecord } from '@cram/shared';
 import { z } from 'zod';
 import type { CourseIndex } from './course-index';
 import {
@@ -23,12 +23,6 @@ export type ParseDeck = (deck: Deck, courseId: CourseId) => Promise<readonly Sli
 export interface RebuildDeps {
   readonly parse: ParseDeck;
   readonly embed: EmbedSlides;
-}
-
-/** A table of the older file whose rows the rebuild did not carry over. */
-export interface DiscardedTable {
-  readonly table: string;
-  readonly rows: number;
 }
 
 /** `refuse` answers `would-discard`, writing nothing, for a file holding rows no rebuild carries over. */

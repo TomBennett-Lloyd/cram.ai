@@ -163,12 +163,13 @@ export const pdfDeck = async (pages: readonly (readonly string[])[]): Promise<Ui
   return doc.save();
 };
 
-/** Polls the ingest status until no upload is still queued or ingesting. */
+/** Polls the ingest status until no upload or repair is still queued, ingesting or running. */
 export const settledStatus = async (port: number, courseId: string): Promise<Received> => {
   for (let attempt = 0; attempt < 500; attempt++) {
     const status = await send(port, { method: 'GET', path: `/courses/${courseId}/ingest` });
     const text = JSON.stringify(status.json);
-    if (!text.includes('"queued"') && !text.includes('"ingesting"')) return status;
+    if (!['"queued"', '"ingesting"', '"running"'].some((state) => text.includes(state)))
+      return status;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error(`settledStatus: ${courseId} never settled`);
