@@ -47,16 +47,19 @@ commit() {
 }
 
 # fixture <name> -> DIR, a repo on branch `work` at an origin/main holding the miniature ingest. It imports a node
-# builtin and awaits at top level, as the real entries do, so esbuild's platform and format are load-bearing.
+# builtin, a dependency from an ignored node_modules and awaits at top level, as the real entries do.
 fixture() {
   DIR="$TMP_ROOT/$1"
   must git init --quiet --bare -b main "$DIR.origin.git"
   must git init --quiet -b main "$DIR"
   put packages/ingest/package.json '{ "name": "ingest" }'
   put packages/ingest/src/index.ts "export { read } from './read';"
+  put .gitignore 'node_modules/'
+  put packages/ingest/node_modules/dep/index.js 'export const dep = (s) => s;'
   put packages/ingest/src/read.ts "import { basename } from 'node:path';
+import { dep } from 'dep';
 import { trim } from '../../shared/src/text';
-export const read = (s: string): string => trim(basename(s));"
+export const read = (s: string): string => dep(trim(basename(s)));"
   put packages/shared/src/text.ts 'export const trim = (s: string): string => s.trim();'
   put packages/ingest/src/stored-output-fixture.ts "import { deck } from './deck-fixture';
 import { read } from './read';
@@ -151,15 +154,68 @@ expect_rc 1 "$rc"
 expect_stderr "  packages/shared/src/text.ts"
 end
 
-begin "ingest's manifest counts as ingest"
-fixture manifest
-put packages/ingest/package.json '{ "name": "ingest", "version": "1.0.0" }'
+begin "what fixes node_modules and the runtime counts as ingest"
+for resolution in packages/ingest/package.json pnpm-lock.yaml .nvmrc; do
+  case_ctx="$resolution"
+  n=$((n + 1))
+  fixture "resolution_$n"
+  put "$resolution" '{ "name": "ingest", "version": "1.0.0" }'
+  put packages/ingest/src/deck-fixture.ts "export const deck = ' b ';"
+  pin b
+  commit edit
+  run_check "$DIR"
+  expect_rc 1 "$rc"
+  expect_stderr "  $resolution"
+done
+end
+
+begin "a production file with a non-ASCII name is matched"
+fixture non_ascii
+put packages/ingest/src/café.ts "export const accent = (s: string): string => s;"
+put packages/ingest/src/index.ts "export { read } from './read';
+export { accent } from './café';"
+commit accent
+must gitc "$DIR" push --quiet origin work:main
+must gitc "$DIR" fetch --quiet origin
+put packages/ingest/src/café.ts "export const accent = (s: string): string => s.trim();"
 put packages/ingest/src/deck-fixture.ts "export const deck = ' b ';"
 pin b
 commit edit
 run_check "$DIR"
 expect_rc 1 "$rc"
-expect_stderr "  packages/ingest/package.json"
+expect_stderr "  packages/ingest/src/café.ts"
+end
+
+begin "an untracked file that takes over an import's resolution counts as ingest"
+fixture untracked
+must mkdir -p "$DIR/packages/ingest/src/né"
+put packages/ingest/src/né/index.ts "export const x = 1;"
+put packages/ingest/src/index.ts "export { read } from './read';
+export { x } from './né';"
+commit x
+must gitc "$DIR" push --quiet origin work:main
+must gitc "$DIR" fetch --quiet origin
+put packages/ingest/src/né.ts "export const x = 2;"
+put packages/ingest/src/deck-fixture.ts "export const deck = ' b ';"
+pin b
+run_check "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "  packages/ingest/src/né.ts"
+end
+
+begin "a renamed production file is matched by its new path"
+fixture renamed
+must gitc "$DIR" mv packages/ingest/src/read.ts packages/ingest/src/reader.ts
+put packages/ingest/src/index.ts "export { read } from './reader';"
+put packages/ingest/src/stored-output-fixture.ts "import { deck } from './deck-fixture';
+import { read } from './reader';
+const built = await Promise.resolve(deck);
+export const corpus = (): string => read(built);"
+pin b
+commit rename
+run_check "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "  packages/ingest/src/reader.ts"
 end
 
 begin "a moved digest with no corpus change fails, even when only a test file changed"

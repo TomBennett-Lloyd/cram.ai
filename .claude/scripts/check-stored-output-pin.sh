@@ -11,11 +11,11 @@
 #   no changed path is in the corpus graph                 ->  1
 #   otherwise (a corpus-only re-record)                    ->  0
 #
-# The production graph is esbuild's metafile inputs for packages/ingest/src/index.ts, plus
-# packages/ingest/package.json, which pins the parsers; the corpus graph is the inputs for
-# packages/ingest/src/stored-output-fixture.ts. The production check runs first, so the files the two share never
-# decide the corpus check. Untracked files are not read: a file joins a graph only through an importer, and the
-# first importer in that chain is tracked.
+# The production graph is esbuild's metafile inputs for packages/ingest/src/index.ts, plus what fixes the code
+# under node_modules and the runtime's ICU: packages/ingest/package.json, pnpm-lock.yaml and .nvmrc. The corpus
+# graph is the inputs for packages/ingest/src/stored-output-fixture.ts. The production check runs first, so the
+# files the two share never decide the corpus check. Changed paths include untracked files, since a new file can
+# take over an import's resolution without its importer changing.
 #
 # Limit: a corpus change beside an output-neutral edit to a production-graph file is red, which fails towards a
 # needless rebuild. There is no fetch: any origin/main holding the branch point yields it as the merge-base. The
@@ -36,7 +36,7 @@ PIN_FILE=packages/ingest/src/stored-output-pin.test.ts
 SCHEMA_FILE=packages/index/src/schema.ts
 PRODUCTION_ENTRY=packages/ingest/src/index.ts
 CORPUS_ENTRY=packages/ingest/src/stored-output-fixture.ts
-MANIFEST=packages/ingest/package.json
+RESOLUTION_FILES=(packages/ingest/package.json pnpm-lock.yaml .nvmrc)
 
 refuse() {
   printf 'check-stored-output-pin: %s — no verdict\n' "$1" >&2
@@ -101,9 +101,12 @@ graph() {
 }
 
 graph "$PRODUCTION_ENTRY" >"$TMP/production" || refuse "could not read the import graph of $PRODUCTION_ENTRY"
-printf '%s\n' "$MANIFEST" >>"$TMP/production"
+printf '%s\n' "${RESOLUTION_FILES[@]}" >>"$TMP/production"
 graph "$CORPUS_ENTRY" >"$TMP/corpus" || refuse "could not read the import graph of $CORPUS_ENTRY"
-git -C "$ROOT" diff --name-only "$base" >"$TMP/changed" || refuse "git diff --name-only $short failed"
+# quotePath off: git otherwise octal-escapes a non-ASCII path, and esbuild writes it raw.
+{ git -C "$ROOT" -c core.quotePath=false diff --name-only "$base" &&
+  git -C "$ROOT" -c core.quotePath=false ls-files --others --exclude-standard; } >"$TMP/changed" ||
+  refuse "could not list the paths changed since $short"
 
 ingest_changed=$(grep -Fx -f "$TMP/production" "$TMP/changed")
 corpus_changed=$(grep -Fx -f "$TMP/corpus" "$TMP/changed")
