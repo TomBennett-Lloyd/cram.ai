@@ -245,3 +245,18 @@ Entry format:
 
 - Phase: rebase
 - Observed: the #368 lane's every `pnpm verify` ran the full tier for 10–13 minutes because the classifier resolves any apps/* change to everything, and its PR went DIRTY on `.claude/comment-density.baseline.tsv` against the trim batches, a file whose resolution is mechanical (take main's, re-run `--ratchet`) but which is not in `APPEND_ONLY_LOGS`, so the lane waited for a bounce to do what it already knew. Second lane today held by that file (#252's own rounds were the first). Candidate rule for the owner: let a lane clear a baseline-only conflict itself by regeneration, the way it clears the logs.
+
+## 2026-10-21 — PR #389
+
+- Phase: dispatch
+- Observed: the #374 trim batch's dispatch note said nothing else was in flight on apps/server while open PR #386 was editing `course-file.ts` and the density baseline; the lane found the overlap only through `gh pr list --json files`. The merge owner's overlap note came from the lane table, not from the open PRs' file lists. Also, the deletion ledger carried wrong line references that `sweep-report.sh` cannot see, caught by the reviewer (#391).
+
+## 2026-10-21 — PR #390
+
+- Phase: review
+- Observed: the #373 trim batch's pasted `sweep-report.sh` output ran to 125 KB for subjects like `SlideRecord` and `derived`, over GitHub's PR-body limit, so a pre-check had to be posted as three comments; the gate's median moved 769 → 676 → 666 during the lane, so the issue's fixed figure was stale against the live one; and a baseline `.tsv` row in the change set resolves `verify-tier.sh` to the full tier, so a comment-only batch ran every leg. Second batch to note the tier cost; a `baseline` class for the classifier is #292-shaped follow-up work.
+
+## 2026-10-21 — PR #387
+
+- Phase: implementation
+- Observed: the #372 trim batch found that a verbatim one-line collapse of a docblock often exceeds printWidth 100, which prettier does not reflow for comments, so a lane is pushed to reword against rule 1 or keep more lines; #379 is the gate-side half (fewer physical lines lower a row). The issue's "judged median" wording also reads two ways against the gate's printed median. Seventh and last batch of the campaign: median 769 → 645 bp across 183 rows, 39 judged files trimmed or justified, every batch's reviewer object was the ledger, and four of seven batches restored a sole-carrier deletion in review.
