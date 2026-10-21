@@ -362,7 +362,7 @@ if begin_with_esbuild "a comment-only .ts edit is the source-prose tier, and run
     expect_rc 0 "$rc"
     expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only; observing tests: none"
     expect_stdout "  src/app.ts"
-    expect_stdout "would run: pnpm lint:js && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm check:no-network-egress && pnpm exec prettier --check --ignore-unknown -- src/app.ts"
+    expect_stdout "would run: pnpm lint:js && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm check:no-network-egress && pnpm check:stored-output-pin && pnpm exec prettier --check --ignore-unknown -- src/app.ts"
     expect_not_out "verify:full"
     expect_not_out "unbound variable"
   done
@@ -515,7 +515,7 @@ if begin_with_esbuild "markdown alongside a comment-only source edit keeps the m
   expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only"
   expect_stdout "  docs/tier-fixture-guide.md"
   expect_stdout "  src/app.ts"
-  expect_stdout "pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:markdown-links"
+  expect_stdout "pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:stored-output-pin && pnpm check:markdown-links"
   expect_stdout "pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.ts"
   end
 fi
@@ -711,7 +711,7 @@ if begin_with_esbuild "a rung 2 set holding every kind of path emits its legs in
   run_tier
   expect_rc 0 "$rc"
   expect_stdout "verify tier: source-emit — 1 file(s) proven comment-only, 1 file(s) with an unchanged emit, not proven comment-only; observing tests: pkg/src/reader.test.ts, pkg2/src/reader.test.ts"
-  expect_stdout "would run: pnpm lint:js && pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck && pnpm check:comment-density && pnpm --filter ./pkg --fail-if-no-match exec vitest run src/reader.test.ts && pnpm --filter ./pkg2 --fail-if-no-match exec vitest run src/reader.test.ts && pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.css src/app.ts"
+  expect_stdout "would run: pnpm lint:js && pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck && pnpm check:comment-density && pnpm --filter ./pkg --fail-if-no-match exec vitest run src/reader.test.ts && pnpm --filter ./pkg2 --fail-if-no-match exec vitest run src/reader.test.ts && pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:stored-output-pin && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.css src/app.ts"
   end
 fi
 
@@ -733,7 +733,7 @@ export interface Kept { b: number }'
   run_tier
   expect_rc 0 "$rc"
   expect_stdout "verify tier: source-emit — 2 file(s) with an unchanged emit, not proven comment-only; observing tests: none"
-  expect_stdout "would run: pnpm lint:js && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm check:no-network-egress && pnpm exec prettier --check --ignore-unknown -- src/app.ts src/shapes.ts"
+  expect_stdout "would run: pnpm lint:js && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm check:no-network-egress && pnpm check:stored-output-pin && pnpm exec prettier --check --ignore-unknown -- src/app.ts src/shapes.ts"
   expect_not_stdout "source-prose"
   end
 fi

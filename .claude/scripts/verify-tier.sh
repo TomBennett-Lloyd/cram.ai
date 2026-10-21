@@ -131,6 +131,10 @@
 #   * check:no-network-egress, whenever a lintable file is admitted — its
 #     first-party census reads source text, comments included, so a comment
 #     naming `fetch(` changes its verdict (#165).
+#   * check:stored-output-pin — its verdict reads which paths the branch changed
+#     against packages/ingest's import graphs, which hold workspace sources
+#     beyond ingest's own, so admitting any source path can move it (#276). No
+#     markdown, ledger, script or new-package path can be in those graphs.
 #   * check:adr-index, check:no-course-content and check:markdown-links, when the
 #     set also holds .md — the one type this rung admits without an emit proof.
 #   * the observing tests, below, and the legs every class runs (further down).
@@ -268,7 +272,7 @@ LIST_CAP=20
 DATA_READING='readFileSync|readFile\(|import\.meta\.glob|fs\.'
 
 # `verify:full`'s legs in its own order (see LEG ORDER above).
-LEG_ORDER="lint:js lint:css lint:sh lint:workflows typecheck check:comment-density test check:adr-index check:ledgers check:module-names check:no-course-content check:no-network-egress check:node-types check:supply-chain-policy check:markdown-links test:scripts format:check"
+LEG_ORDER="lint:js lint:css lint:sh lint:workflows typecheck check:comment-density test check:adr-index check:ledgers check:module-names check:no-course-content check:no-network-egress check:node-types check:stored-output-pin check:supply-chain-policy check:markdown-links test:scripts format:check"
 
 DOCS_LEGS="pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm format:check"
 
@@ -949,6 +953,11 @@ build_legs() {
         ;;
       check:no-network-egress)
         if [ -s "$TMP/lintable" ] || [ "$has_pkg" = 1 ]; then
+          append_leg "pnpm $slot"
+        fi
+        ;;
+      check:stored-output-pin)
+        if [ "$has_src" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
