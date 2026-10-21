@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Database } from 'better-sqlite3';
-import type { SlideRecord, SourceId } from '@cram/shared';
+import { type SlideRecord, slideFields, type SourceId } from '@cram/shared';
 import { z } from 'zod';
 
 /**
@@ -18,14 +18,12 @@ export const CONFIRMATION_TABLE = `
 `;
 
 /**
- * The fields a quote resolves against (`@cram/grounding`'s `slideText`), as JSON so a field
- * boundary counts. The record's `derived` flag does not say which field was read from a picture.
+ * The fields a quote resolves against, read from `slideFields` and hashed as JSON so a field boundary
+ * counts (`.claude/ledgers/quotable-fields.ledger`). The record's `derived` flag does not say which field was read from a picture.
  */
-export const textHashOf = (
-  record: Pick<SlideRecord, 'title' | 'body' | 'speakerNotes' | 'imageCaptions'>,
-): string =>
+export const textHashOf = (record: SlideRecord): string =>
   createHash('sha256')
-    .update(JSON.stringify([record.title, record.body, record.speakerNotes, record.imageCaptions]))
+    .update(JSON.stringify(slideFields(record)))
     .digest('hex');
 
 /** A `slides` row whose derived text has no confirmation. */

@@ -33,22 +33,34 @@ const derivedId = sourceIdOf(DERIVED);
 
 describe('textHashOf', () => {
   const base = { title: 't', body: 'b', speakerNotes: 'n', imageCaptions: ['c'] };
+  const hashOf = (fields: Partial<typeof base> = {}) => textHashOf(slide({ ...base, ...fields }));
 
   it('changes when any field a quote resolves against changes', () => {
-    const hash = textHashOf(base);
-    expect(textHashOf({ ...base })).toBe(hash);
-    expect(textHashOf({ ...base, title: 'T' })).not.toBe(hash);
-    expect(textHashOf({ ...base, body: 'B' })).not.toBe(hash);
-    expect(textHashOf({ ...base, speakerNotes: 'N' })).not.toBe(hash);
-    expect(textHashOf({ ...base, imageCaptions: ['C'] })).not.toBe(hash);
+    const hash = hashOf();
+    expect(hashOf({ ...base })).toBe(hash);
+    expect(hashOf({ title: 'T' })).not.toBe(hash);
+    expect(hashOf({ body: 'B' })).not.toBe(hash);
+    expect(hashOf({ speakerNotes: 'N' })).not.toBe(hash);
+    expect(hashOf({ imageCaptions: ['C'] })).not.toBe(hash);
+    expect(hashOf({ imageCaptions: ['c', 'd'] })).not.toBe(hash);
   });
 
   it('counts a field boundary, so text moved between fields is different text', () => {
-    expect(textHashOf({ ...base, title: 'ab', body: '' })).not.toBe(
-      textHashOf({ ...base, title: 'a', body: 'b' }),
+    expect(hashOf({ title: 'ab', body: '' })).not.toBe(hashOf({ title: 'a', body: 'b' }));
+    expect(hashOf({ title: 'b', body: '' })).not.toBe(hashOf({ title: '', body: 'b' }));
+    expect(hashOf({ imageCaptions: ['ab'] })).not.toBe(hashOf({ imageCaptions: ['a', 'b'] }));
+  });
+
+  it('reads the fields slideFields gives, so a field it leaves out as blank is no quotable text', () => {
+    expect(hashOf({ title: ' ', speakerNotes: '\n' })).toBe(
+      hashOf({ title: '', speakerNotes: '' }),
     );
-    expect(textHashOf({ ...base, imageCaptions: ['ab'] })).not.toBe(
-      textHashOf({ ...base, imageCaptions: ['a', 'b'] }),
+    expect(hashOf({ imageCaptions: ['c', ' '] })).toBe(hashOf());
+  });
+
+  it('ignores what a quote cannot resolve against', () => {
+    expect(textHashOf(slide({ ...base, slideNo: 2, derived: true, kind: 'image-only' }))).toBe(
+      hashOf(),
     );
   });
 });
