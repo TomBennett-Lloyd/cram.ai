@@ -152,7 +152,7 @@ describe('the course file’s start-up repair', () => {
   });
 
   it('keeps the notice, and says why, when the dismissal is refused', async () => {
-    const { api } = reported(() => ({
+    const { api, sent } = reported(() => ({
       status: 409,
       body: { status: 'course-unavailable', problem: 'newer-schema' },
     }));
@@ -167,6 +167,7 @@ describe('the course file’s start-up repair', () => {
     ]);
     expect(document.activeElement).toBe(dismissButton());
     expect(dismissButton().getAttribute('aria-disabled')).toBe('false');
+    expect(reads(sent)).toBe(1);
   });
 
   it('re-reads, and shows the later report, when the one dismissed is no longer the file’s', async () => {

@@ -17,6 +17,14 @@ describe('UploadProgress', () => {
     );
   });
 
+  it('names why the course file could not take the deck by @cram/index’s open status', () => {
+    const unavailable = { state: 'course-unavailable' };
+    expect(UploadProgress.safeParse({ ...unavailable, problem: 'newer-schema' }).success).toBe(
+      true,
+    );
+    expect(UploadProgress.safeParse({ ...unavailable, problem: 'open' }).success).toBe(false);
+  });
+
   it('refuses a state that is not an ingest stage', () => {
     expect(UploadProgress.safeParse({ state: 'queued' }).success).toBe(true);
     expect(UploadProgress.safeParse({ state: 'done' }).success).toBe(false);
