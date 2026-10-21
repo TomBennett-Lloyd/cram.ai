@@ -198,3 +198,18 @@ Entry format:
 
 - Phase: review
 - Observed: #254 merged mid-lane and changed stored output, which falsified the #257 plan's "no bump owed"; the reviewer found it by reading `origin/main`, a base the lane may not rebase onto unprompted, so the fact reached the lane at review rather than at the plan, and the rebase round then ran twice because #275 merged during the first. The lane also flagged one message-only `git commit --amend --no-verify`, used to reword a replayed commit whose body line began `#254` and so tripped the `^[#;]` body check; the tree had already passed verify and the final verify and CI ran on it. One ticket so far on each.
+
+## 2026-10-21 — PR #284
+
+- Phase: implementation
+- Observed: the #256 lane's scripted exact-string edit of the PPTX corpus matched nothing (it keyed on a decomposed "Café" the file did not hold) and passed silently, so the commit's subject claimed "both formats" for a change that reached one; review caught it and the fix commit corrected the record. One ticket so far on a scripted edit with no asserted match count.
+
+## 2026-10-21 — PR #285
+
+- Phase: planning
+- Observed: the #273 lane's restatement sweep searched for the two colour-pattern lists it was merging and not for the rule whose scope the `var()` change widened, so three comments describing that rule went stale until review; the reviewer also found a ledger owed under `docs/standards/architecture.md` rule 9 that the plan had declared unnecessary. Third sweep-shape miss today (PRs #267 and #270 were the others), each a different shape: output before command, claim family too narrow, and now the list swept but not the rule.
+
+## 2026-10-21 — PR #289
+
+- Phase: implementation
+- Observed: the #268 lane found that diffing the old hook's verdicts against the new one's over a corpus shows which verdicts changed and not whether each change is a fix or a regression; it settled each by running the command under `zsh -fc` with a stub `git` and reading whether the revert ran, which also established that the Bash tool's shell on this machine is zsh. The same lane spent one serial mutant run (about 15 min) before parallelising the loop. Two instances today of a hook change needing ground truth from the shell rather than from the previous hook (PR #271's reviewer probe was the first).
