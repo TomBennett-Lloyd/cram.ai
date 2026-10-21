@@ -1,7 +1,8 @@
 import type { CourseId, IngestStatus, StoredLecture, Upload } from '@cram/shared';
-import { type ChangeEvent, useState } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import { useApi } from '../api/api-context';
 import type { ApiClient } from '../api/api-client';
+import type { ApiFailure } from '../api/api-result';
 import { DECK_FILE_ACCEPT, deckMediaType, lectureIdOf } from '../api/deck-file';
 import {
   discardedMessage,
@@ -12,8 +13,11 @@ import {
   repairFailedMessage,
   storedUnavailableMessage,
 } from '../copy';
-import { Empty, Failed, Pending } from '../shell/async-states';
+import { type Dismissible, Empty, Failed, Pending } from '../shell/async-states';
 import { repairing, useIngestStatus } from './use-ingest-status';
+
+/** Where dismissing the rebuild report has got to; a refused or failed call is reported in the alert. */
+type Dismissal = { readonly status: 'idle' } | { readonly status: 'dismissed' } | ApiFailure;
 
 interface Refused {
   readonly fileName: string;
@@ -49,16 +53,11 @@ const unlistedLectures = (
   return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
 };
 
-/** What the panel owes about the course file: what a rebuild lost, and why its lectures are missing. */
+/** Why the course file's lectures are missing, once no repair is still under way. */
 const storedMessages = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): readonly string[] => {
-  const lost =
-    repair.state === 'done' && repair.discarded.length > 0
-      ? [discardedMessage(repair.discarded)]
-      : [];
-  if (stored.state === 'read' || repairing(repair)) return lost;
+  if (stored.state === 'read' || repairing(repair)) return [];
   const { problem } = stored;
   return [
-    ...lost,
     repair.state === 'failed' ? repairFailedMessage(problem) : storedUnavailableMessage(problem),
   ];
 };
@@ -95,10 +94,28 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const api = useApi();
   const [revision, setRevision] = useState(0);
   const [refused, setRefused] = useState<readonly Refused[]>([]);
+  const [dismissal, setDismissal] = useState<Dismissal>({ status: 'idle' });
+  const picker = useRef<HTMLInputElement>(null);
   const state = useIngestStatus(api, courseId, revision);
   const reread = (): void => {
     setRevision((value) => value + 1);
   };
+  /**
+   * The server's report is empty once it answers, so the notice is hidden rather than re-read: a
+   * re-read remounts the alert, which would announce the notice again. Its button goes with it, so
+   * the focus lands on the screen's next act, the picker (`docs/standards/design.md` rule 11).
+   */
+  const dismiss = (): void => {
+    void api.dismissRebuildReport(courseId).then((result) => {
+      setDismissal(result.status === 'ok' ? { status: 'dismissed' } : result);
+      if (result.status === 'ok') picker.current?.focus();
+    });
+  };
+  const stored = state.status === 'ready' ? state.ingest.stored : undefined;
+  const lost: Dismissible | undefined =
+    dismissal.status !== 'dismissed' && stored?.state === 'read' && stored.discarded.length > 0
+      ? { message: discardedMessage(stored.discarded), onDismiss: dismiss }
+      : undefined;
   const onChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const input = event.currentTarget;
     const files = [...(input.files ?? [])];
@@ -111,18 +128,29 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const messages = [
     ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
     ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
+    ...(dismissal.status === 'idle' || dismissal.status === 'dismissed'
+      ? []
+      : [failureMessage(dismissal)]),
     ...(state.status === 'ready' ? storedMessages(state.ingest) : []),
   ];
   return (
     <main className="screen">
       <div className="file-picker">
         <label htmlFor="deck-files">Add decks</label>
-        <input id="deck-files" type="file" accept={DECK_FILE_ACCEPT} multiple onChange={onChange} />
+        <input
+          ref={picker}
+          id="deck-files"
+          type="file"
+          accept={DECK_FILE_ACCEPT}
+          multiple
+          onChange={onChange}
+        />
       </div>
-      {messages.length > 0 && (
+      {(messages.length > 0 || lost !== undefined) && (
         <Failed
           key={revision}
           messages={messages}
+          dismissible={lost}
           onRetry={state.status === 'failed' ? reread : undefined}
         />
       )}

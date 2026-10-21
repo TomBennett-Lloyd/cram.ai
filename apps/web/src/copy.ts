@@ -25,6 +25,7 @@ export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 const fileUnopened = (problem: string): string => `This course’s file can’t be opened (${problem})`;
 
 export const RETRY = 'Try again';
+export const DISMISS = 'Dismiss';
 export const APP_FAILED = 'Something went wrong in cram.ai. Reload the page to start again.';
 export const MODEL_FAILED = 'The model didn’t answer. Ask again in a moment.';
 export const COURSE_NAME_REFUSED =

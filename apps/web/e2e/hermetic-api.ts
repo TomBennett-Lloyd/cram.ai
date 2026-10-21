@@ -102,7 +102,7 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
       ingestReads < 2 ? { state: 'ingesting' } : { state: 'indexed', slideCount: 2, imageOnly: [] };
     return json(route, 200, {
       courseId: 'bio',
-      stored: { state: 'read', lectures: [] },
+      stored: { state: 'read', lectures: [], discarded: [] },
       repair: { state: 'none' },
       uploads: [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
     });

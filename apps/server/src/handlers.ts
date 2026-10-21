@@ -83,6 +83,25 @@ export const listCourses = (response: ServerResponse, context: HandlerContext): 
   sendJson(response, 200, list);
 };
 
+export const dismissRebuildReport = async (
+  route: RouteRequest,
+  context: HandlerContext,
+): Promise<void> => {
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  const dismissal = await context.queue.dismissRebuildReport(courseId);
+  switch (dismissal.status) {
+    case 'dismissed':
+      sendJson(route.response, 200, dismissal);
+      return;
+    case 'no-such-course':
+      sendRefusal(route.response, 404, dismissal);
+      return;
+    case 'course-unavailable':
+      sendRefusal(route.response, 409, dismissal);
+  }
+};
+
 export const ingestStatus = (route: RouteRequest, context: HandlerContext): void => {
   const courseId = courseIdOf(route);
   if (courseId === undefined) return;

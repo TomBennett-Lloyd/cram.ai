@@ -31,6 +31,7 @@ export {
   CourseRepair,
   DiscardedTable,
   IngestStatus,
+  RebuildReportDismissed,
   StoredLecture,
   StoredLectures,
   Upload,

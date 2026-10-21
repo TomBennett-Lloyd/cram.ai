@@ -1,8 +1,8 @@
 import { CourseRepair, StoredLectures } from '@cram/shared';
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../api/api-fixture';
-import { discardedMessage, PENDING } from '../copy';
+import { discardedMessage, DISMISS, PENDING } from '../copy';
 import { lecture, reads, renderDecks, repairStatus, rows, settle, status } from './decks-fixture';
 import { POLL_INTERVAL_MS } from './use-ingest-status';
 
@@ -18,7 +18,9 @@ describe('the course file’s start-up repair', () => {
     state: 'course-unavailable',
     problem: 'older-schema',
   });
-  const STORED = StoredLectures.parse({ state: 'read', lectures: [lecture('l1', 2, [])] });
+  const storedWith = (discarded: unknown[]) =>
+    StoredLectures.parse({ state: 'read', lectures: [lecture('l1', 2, [])], discarded });
+  const STORED = storedWith([]);
   const repair = (value: unknown) => CourseRepair.parse(value);
   const busy = () =>
     [...document.querySelectorAll('[aria-busy="true"]')].map((node) => node.textContent);
@@ -27,7 +29,7 @@ describe('the course file’s start-up repair', () => {
     const replies = [
       repairStatus(UNAVAILABLE, repair({ state: 'queued' })),
       repairStatus(UNAVAILABLE, repair({ state: 'running' })),
-      repairStatus(STORED, repair({ state: 'done', discarded: [] })),
+      repairStatus(STORED, repair({ state: 'done' })),
     ];
     const { api, sent } = fakeApi(() => replies[Math.min(reads(sent) - 1, 2)] ?? status());
     renderDecks(api);
@@ -68,24 +70,45 @@ describe('the course file’s start-up repair', () => {
     );
   });
 
-  it('tells the student what a rebuild lost, beside the lectures it kept', async () => {
+  it('tells the student what a rebuild lost, beside the lectures it kept, until they dismiss it', async () => {
     const discarded = [{ table: 'topics', rows: 12 }];
-    const { api } = fakeApi(() => repairStatus(STORED, repair({ state: 'done', discarded })));
+    const { api, sent } = fakeApi(({ method }) =>
+      method === 'DELETE'
+        ? { status: 200, body: { status: 'dismissed' } }
+        : repairStatus(storedWith(discarded), repair({ state: 'done' })),
+    );
     renderDecks(api);
     await settle();
-    expect(screen.getByRole('alert').textContent).toBe(discardedMessage(discarded));
+    expect(screen.getByRole('alert').querySelector('p')?.textContent).toBe(
+      discardedMessage(discarded),
+    );
     expect(discardedMessage(discarded)).toMatch(/^This course was rebuilt from its stored decks/);
     expect(rows()).toEqual([['l1', '2 slides indexed.']]);
+    fireEvent.click(screen.getByRole('button', { name: DISMISS }));
+    await settle();
+    expect(sent.at(-1)).toMatchObject({ method: 'DELETE', path: '/courses/bio/rebuild-report' });
+    expect(screen.queryAllByRole('alert')).toEqual([]);
+    expect(document.activeElement).toBe(screen.getByLabelText('Add decks'));
+    expect(reads(sent)).toBe(1);
   });
 
-  it('still says what a rebuild lost when the file cannot be opened since', async () => {
+  it('keeps the notice, and says why, when the dismissal is refused', async () => {
     const discarded = [{ table: 'topics', rows: 12 }];
-    const { api } = fakeApi(() => repairStatus(UNAVAILABLE, repair({ state: 'done', discarded })));
+    const { api } = fakeApi(({ method }) =>
+      method === 'DELETE'
+        ? { status: 409, body: { status: 'course-unavailable', problem: 'newer-schema' } }
+        : repairStatus(storedWith(discarded), repair({ state: 'done' })),
+    );
     renderDecks(api);
     await settle();
+    const button = screen.getByRole('button', { name: DISMISS });
+    button.focus();
+    fireEvent.click(button);
+    await settle();
     expect([...screen.getByRole('alert').querySelectorAll('p')].map((p) => p.textContent)).toEqual([
+      'This course’s file can’t be opened (newer-schema).',
       discardedMessage(discarded),
-      'This course’s file can’t be opened (older-schema), so its stored decks can’t be listed.',
     ]);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: DISMISS }));
   });
 });

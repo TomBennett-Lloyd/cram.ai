@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { type EmbedderIdentity, openCourse, type OpenCourseResult } from '@cram/index';
-import { CourseId, type StoredLectures } from '@cram/shared';
+import { CourseId, type RebuildReportDismissed, type StoredLectures } from '@cram/shared';
 import { COURSE_FILE_EXTENSION, courseFilePath, coursesDirectory } from './data-directory';
 
 export interface CourseFiles {
@@ -49,11 +49,37 @@ export const openForRead = (files: CourseFiles, courseId: CourseId): OpenCourseR
 
 /** What the course file holds; a course with no file yet holds no lectures. */
 export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLectures => {
-  if (!courseExists(files, courseId)) return { state: 'read', lectures: [] };
+  if (!courseExists(files, courseId)) return { state: 'read', lectures: [], discarded: [] };
   const opened = openForRead(files, courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
-    return { state: 'read', lectures: [...opened.course.lectures()] };
+    const { course } = opened;
+    return {
+      state: 'read',
+      lectures: [...course.lectures()],
+      discarded: [...course.rebuildReport()],
+    };
+  } finally {
+    opened.course.close();
+  }
+};
+
+export type RebuildReportDismissal =
+  | RebuildReportDismissed
+  | { readonly status: 'no-such-course' }
+  | { readonly status: 'course-unavailable'; readonly problem: string };
+
+/** The student has been told what the last rebuild discarded (`docs/adr/0004-storage.md` § Decision (d)). */
+export const dismissRebuildReport = (
+  files: CourseFiles,
+  courseId: CourseId,
+): RebuildReportDismissal => {
+  if (!courseExists(files, courseId)) return { status: 'no-such-course' };
+  const opened = openForRead(files, courseId);
+  if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
+  try {
+    opened.course.dismissRebuildReport();
+    return { status: 'dismissed' };
   } finally {
     opened.course.close();
   }

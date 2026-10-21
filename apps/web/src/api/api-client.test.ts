@@ -46,6 +46,17 @@ describe('ApiClient', () => {
     expect(sent[0]?.body).toBe('{"question":"Are drones male?"}');
   });
 
+  it('dismisses a rebuild report with a DELETE at the course’s rebuild-report route', async () => {
+    const { api, sent } = fakeApi(() => ({ status: 200, body: { status: 'dismissed' } }));
+    expect(await api.dismissRebuildReport(bio)).toEqual({
+      status: 'ok',
+      value: { status: 'dismissed' },
+    });
+    expect(sent.map(({ path, method }) => [path, method])).toEqual([
+      ['/courses/bio/rebuild-report', 'DELETE'],
+    ]);
+  });
+
   it('uploads the file as the body, naming its lecture and file name and its media type', async () => {
     const upload = {
       uploadId: 'u1',
