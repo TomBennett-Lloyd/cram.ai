@@ -175,3 +175,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: the `course-id-length`, `topics-table` and `network-egress-allowlist-path` ledgers under `.claude/ledgers/`, each one's `sweep:` line
 - What: each sweep matches the owning identifier and the ledger's own path, but has no claim arm and no numeric arm, which `docs/standards/architecture.md` rule 9 asks for. A later carrier that states the value in words or as a bare number joins the claim without joining the ledger, and `check:ledgers` stays green. The #183 review ran both arms by hand for the course-id length and found no unlisted carrier, so the gap is latent.
 - Source: #183 review cycle 1
+
+## 2026-10-21 — an `aria-disabled` button looks as live as an enabled one
+
+- Where: `apps/web/src/app.css` (`button:disabled` is the only inert-button style); `apps/web/src/shell/async-states.tsx` `Failed`'s Dismiss button
+- What: while a dismissal waits, the Dismiss button is `aria-disabled` and ignores presses, because a real `disabled` would drop the focus the reader put on it. No style matches `[aria-disabled='true']`, so it looks fully live. The "Dismissing…" pending label beside it says why. Root cause: the stylesheet has no treatment for an inert button that keeps its focus. Give it one when a second such button appears (`docs/standards/design.md` rule 9).
+- Source: #233 review cycle 1 confirmation pass
