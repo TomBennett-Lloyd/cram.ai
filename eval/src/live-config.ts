@@ -49,12 +49,7 @@ export const liveConfig = (env: Readonly<Record<string, string | undefined>>): L
       sampling: LIVE_SAMPLING,
     },
     verifier: { pin: LIVE_PINS.verifier, directory: snapshot(CRAM_MODELS_DIR, LIVE_PINS.verifier) },
-    // bge-small-en-v1.5's `1_Pooling/config.json`; the pooling moves into the pin with #124.
-    embedder: {
-      pin: LIVE_PINS.embedder,
-      directory: snapshot(CRAM_MODELS_DIR, LIVE_PINS.embedder),
-      pooling: 'cls',
-    },
+    embedder: { pin: LIVE_PINS.embedder, directory: snapshot(CRAM_MODELS_DIR, LIVE_PINS.embedder) },
   });
   return config.success
     ? { status: 'configured', config: config.data }

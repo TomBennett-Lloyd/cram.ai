@@ -26,10 +26,9 @@ describe('liveConfig', () => {
       pin: LIVE_PINS.verifier,
       directory: '/models/cross-encoder/nli-deberta-v3-base',
     });
-    expect(config.embedder).toMatchObject({
+    expect(config.embedder).toEqual({
       pin: LIVE_PINS.embedder,
       directory: '/models/BAAI/bge-small-en-v1.5',
-      pooling: 'cls',
     });
     expect(config.reranker).toBeUndefined();
   });
