@@ -76,7 +76,12 @@ const questionOf = (body: string | null): string => {
 };
 
 /** The rebuild report `stubApi` serves when asked for one, until the app dismisses it. */
-const REBUILD_REPORT = [{ table: 'topics', rows: 3 }];
+const REBUILD_REPORT = {
+  state: 'undismissed',
+  discarded: [{ table: 'topics', rows: 3 }],
+  revision: 'a'.repeat(64),
+};
+const NO_REPORT = { state: 'none' };
 
 export interface StubOptions {
   /** Every ask reply waits for this; without it, an ask replies at once (#231). */
@@ -89,7 +94,7 @@ export interface StubOptions {
 export const stubApi = async (page: Page, options: StubOptions = {}): Promise<void> => {
   const { rebuildReport = false } = options;
   let ingestReads = 0;
-  let discarded = rebuildReport ? REBUILD_REPORT : [];
+  let report = rebuildReport ? REBUILD_REPORT : NO_REPORT;
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
   await page.route('**/courses/*/ask', async (route) => {
     await options.askReplyAfter;
@@ -103,8 +108,8 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
       progress: { state: 'queued' },
     }),
   );
-  await page.route('**/courses/*/rebuild-report', (route) => {
-    discarded = [];
+  await page.route('**/courses/*/rebuild-report?*', (route) => {
+    report = NO_REPORT;
     return json(route, 200, { status: 'dismissed' });
   });
   await page.route('**/courses/*/ingest', (route) => {
@@ -113,7 +118,7 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
       ingestReads < 2 ? { state: 'ingesting' } : { state: 'indexed', slideCount: 2, imageOnly: [] };
     return json(route, 200, {
       courseId: 'bio',
-      stored: { state: 'read', lectures: [], discarded },
+      stored: { state: 'read', lectures: [], report },
       repair: { state: 'none' },
       uploads: rebuildReport
         ? []

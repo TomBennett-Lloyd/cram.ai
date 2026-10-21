@@ -11,6 +11,13 @@ describe('ApiRefusal', () => {
     expect(
       ApiRefusal.safeParse({ status: 'course-unavailable', problem: 'newer-schema' }).success,
     ).toBe(true);
+    expect(ApiRefusal.safeParse({ status: 'course-unavailable', problem: 'open' }).success).toBe(
+      false,
+    );
+  });
+
+  it('refuses a dismissal of a report other than the file’s by status alone', () => {
+    expect(ApiRefusal.safeParse({ status: 'report-changed' }).success).toBe(true);
   });
 
   it('carries the embedder limit on a question too long to embed', () => {

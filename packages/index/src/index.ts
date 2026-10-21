@@ -17,11 +17,13 @@ export {
   type OpenCourseResult,
   type OpenCourseSpec,
 } from './open-course';
+export { type RebuildReportDismissal } from './rebuild-report';
 export { SCHEMA_VERSION } from './schema';
 export { sourceIdOf } from './slide-row';
 export {
   rebuildCourse,
   type ParseDeck,
+  type ParsedDeck,
   type RebuildCourseResult,
   type RebuildDeps,
 } from './rebuild-course';

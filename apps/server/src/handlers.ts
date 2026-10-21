@@ -7,6 +7,7 @@ import {
   type IngestStatus,
   LectureId,
   NonBlankText,
+  RebuildReportRevision,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
@@ -83,13 +84,21 @@ export const listCourses = (response: ServerResponse, context: HandlerContext): 
   sendJson(response, 200, list);
 };
 
+/** The report the student was shown, so a later one is not dismissed unseen (#299). */
+const DismissalParams = z.object({ revision: RebuildReportRevision });
+
 export const dismissRebuildReport = async (
   route: RouteRequest,
   context: HandlerContext,
 ): Promise<void> => {
   const courseId = courseIdOf(route);
   if (courseId === undefined) return;
-  const dismissal = await context.queue.dismissRebuildReport(courseId);
+  const params = DismissalParams.safeParse(Object.fromEntries(route.url.searchParams));
+  if (!params.success) {
+    badRequest(route.response, z.prettifyError(params.error));
+    return;
+  }
+  const dismissal = await context.queue.dismissRebuildReport(courseId, params.data.revision);
   switch (dismissal.status) {
     case 'dismissed':
       sendJson(route.response, 200, dismissal);
@@ -98,6 +107,7 @@ export const dismissRebuildReport = async (
       sendRefusal(route.response, 404, dismissal);
       return;
     case 'course-unavailable':
+    case 'report-changed':
       sendRefusal(route.response, 409, dismissal);
   }
 };

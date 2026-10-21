@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
-import { DiscardedTable } from '@cram/shared';
+import { createHash } from 'node:crypto';
+import { DiscardedTable, type RebuildReport, RebuildReportRevision } from '@cram/shared';
 import { z } from 'zod';
 
 export const REBUILD_REPORT_TABLE_NAME = 'rebuild_report';
@@ -37,6 +38,28 @@ export const recordRebuildReport = (db: Database, discarded: readonly DiscardedT
   })();
 };
 
-export const clearRebuildReport = (db: Database): void => {
-  db.prepare(`delete from ${REBUILD_REPORT_TABLE_NAME}`).run();
+/** The report as the student is shown it; its revision hashes the rows `readRebuildReport` orders. */
+export const rebuildReportOf = (db: Database): RebuildReport => {
+  const discarded = readRebuildReport(db);
+  if (discarded.length === 0) return { state: 'none' };
+  const revision = createHash('sha256').update(JSON.stringify(discarded)).digest('hex');
+  return {
+    state: 'undismissed',
+    discarded: [...discarded],
+    revision: RebuildReportRevision.parse(revision),
+  };
 };
+
+/** `report-changed` when the file holds an undismissed report other than `revision`'s, which stays. */
+export type RebuildReportDismissal = 'dismissed' | 'report-changed';
+
+export const dismissRebuildReport = (
+  db: Database,
+  revision: RebuildReportRevision,
+): RebuildReportDismissal =>
+  db.transaction((): RebuildReportDismissal => {
+    const report = rebuildReportOf(db);
+    if (report.state === 'undismissed' && report.revision !== revision) return 'report-changed';
+    db.prepare(`delete from ${REBUILD_REPORT_TABLE_NAME}`).run();
+    return 'dismissed';
+  })();

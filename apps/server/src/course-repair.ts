@@ -12,21 +12,22 @@ import { type IngestDeps, ingestFile } from './ingest-deck';
 import { embedSlides } from './slide-embedding';
 
 /**
- * A stored deck read again. Its stored title goes in as the file name, which `@cram/ingest` titles
- * a lecture from when its first slide has none (`slidesFromPages`). The bytes are a plain
- * `Uint8Array` view, since SQLite hands back a `Buffer`, which pdf.js refuses (`readBody`).
+ * A stored deck read again, titled by its stored title when its first slide has none
+ * (`slidesFromPages`). The bytes are a plain `Uint8Array` view, since SQLite hands back a `Buffer`,
+ * which pdf.js refuses (`readBody`).
  */
 const parseStored: ParseDeck = async (deck, courseId) => {
   const { buffer, byteOffset, byteLength } = deck.content;
   const ingested = await ingestFile(deck.mediaType, {
     bytes: new Uint8Array(buffer, byteOffset, byteLength),
-    fileName: `${deck.lectureTitle}.deck`,
+    fileName: deck.lectureId,
+    storedTitle: deck.lectureTitle,
     courseId,
     lectureId: deck.lectureId,
   });
-  if (ingested.status === 'unreadable')
-    throw new Error(`repairCourse: lecture ${deck.lectureId} no longer reads: ${ingested.reason}`);
-  return ingested.slides;
+  return ingested.status === 'unreadable'
+    ? { status: 'unreadable' }
+    : { status: 'parsed', slides: ingested.slides };
 };
 
 /** Rejects on an over-length slide: `EmbedSlides` has no value arm for it yet (#184). */
