@@ -177,3 +177,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.slide-figure` in `apps/web/src/app.css`; `SlideImage` in `packages/shared/src/deck.ts`
 - What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
 - Source: #368 review cycle 1
+
+## 2026-10-21 — a quoted citation is turned back into a line number by two test helpers
+
+- Where: `lineOf` and `generatedFrom` in `packages/grounding/src/ground.test.ts`; `unitReply` in `apps/server/src/ask.test.ts`
+- What: each writes a quoted `Citation` as the line number the model emits, the inverse of `resolveCitations`' lookup, so a change to the generator's citation shape leaves both wrong the same way (`docs/standards/structure.md` rule 7). `@cram/grounding` exports no test-fixture entry point, so `apps/server/src/server-fixture.ts` already re-declares `cite` and `answer` from `packages/grounding/src/fake-gateway-fixture.ts`; the fix is that entry point.
+- Source: #367 review cycle 1

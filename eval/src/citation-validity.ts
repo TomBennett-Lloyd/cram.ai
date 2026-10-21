@@ -1,4 +1,4 @@
-import { resolveCitations } from '@cram/grounding';
+import { quotesResolve } from '@cram/grounding';
 import { Unit } from '@cram/shared';
 import { z } from 'zod';
 import { type AskedQuestion, survivingUnits } from './asked-question';
@@ -14,18 +14,14 @@ export type CitationFailure = z.infer<typeof CitationFailure>;
 export const CitationValidityRow = absoluteRow(CitationFailure);
 export type CitationValidityRow = z.infer<typeof CitationValidityRow>;
 
-/**
- * Of the surviving units, those whose every citation resolves against that call's retrieved set,
- * by `resolveCitations` itself (`docs/adr/0005-evaluation-as-gate.md` § Decision (d)).
- */
+/** The surviving units whose every citation passes resolution's own check, `quotesResolve` (`docs/adr/0005-evaluation-as-gate.md` § Decision (d)). */
 export const citationValidity = (asked: readonly AskedQuestion[]): CitationValidityRow => {
   const failures: CitationFailure[] = [];
   let units = 0;
   for (const { question, retrieved, result } of asked) {
     for (const unit of survivingUnits(result)) {
       units += 1;
-      if (resolveCitations([unit], retrieved).withheld.length > 0)
-        failures.push({ question: question.question, unit });
+      if (!quotesResolve(unit, retrieved)) failures.push({ question: question.question, unit });
     }
   }
   return CitationValidityRow.parse(

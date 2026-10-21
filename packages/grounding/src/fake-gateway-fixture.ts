@@ -9,7 +9,9 @@ import {
   type Recording,
 } from '@cram/gateway';
 import { type Citation, type RetrievedSlide, SlideRecord, SourceId, type Unit } from '@cram/shared';
+import type { DraftUnit } from './generate-units';
 import type { EntailmentScores } from './nli-verdict';
+import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
 const sampling = { temperature: 0, seed: 0 };
@@ -78,6 +80,17 @@ export const slide = (
 export const cite = (id: string, quote: string): Citation => ({
   sourceId: SourceId.parse(id),
   quote,
+});
+
+export const line = (id: string, n: number): LineCitation => ({
+  sourceId: SourceId.parse(id),
+  line: SlideLineNo.parse(n),
+});
+
+export const draft = (text: string, citations: readonly LineCitation[]): DraftUnit => ({
+  text,
+  citations: [...citations],
+  kind: 'answer-sentence',
 });
 
 export const answer = (text: string, citations: readonly Citation[]): Unit => ({
