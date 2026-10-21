@@ -10,6 +10,7 @@ import {
   SlideKind,
   type SourceId,
   StoredLecture,
+  type TopicTag,
 } from '@cram/shared';
 import { z } from 'zod';
 import {
@@ -260,7 +261,7 @@ export class CourseIndex {
   }
 
   /** Replaces a slide's topic tags (`docs/plan.md` §3.2): metadata, never content. */
-  setTopics(sourceId: SourceId, tags: readonly string[]): SetTopicsResult {
+  setTopics(sourceId: SourceId, tags: readonly TopicTag[]): SetTopicsResult {
     const id = RowId.optional().parse(
       this.#db.prepare('select id from slides where source_id = ?').pluck().get(sourceId),
     );
@@ -284,7 +285,7 @@ export class CourseIndex {
   }
 
   /** Every slide tagged `tag`, by lecture then slide number. */
-  slidesTagged(tag: string, listing: SlideListing = {}): readonly SlideRecord[] {
+  slidesTagged(tag: TopicTag, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
       `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
       tag,

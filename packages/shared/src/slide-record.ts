@@ -1,7 +1,21 @@
 import { z } from 'zod';
 import { NonBlankText } from './non-blank-text';
 
-export const CourseId = z.string().min(1).brand<'CourseId'>();
+const WINDOWS_DEVICE_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/;
+
+/** The longest course id; its carriers are `.claude/ledgers/course-id-length.ledger`. */
+export const COURSE_ID_MAX_LENGTH = 64;
+
+const COURSE_ID = new RegExp(
+  `^[a-z0-9](?:[a-z0-9-]{0,${String(COURSE_ID_MAX_LENGTH - 2)}}[a-z0-9])?$`,
+);
+
+/** Names a course and its file (`docs/adr/0004-storage.md` § Decision (a)), so lowercase, file-safe and no device name. */
+export const CourseId = z
+  .string()
+  .regex(COURSE_ID, 'lowercase letters, digits and inner hyphens')
+  .refine((id) => !WINDOWS_DEVICE_NAME.test(id), 'a Windows device name')
+  .brand<'CourseId'>();
 export type CourseId = z.infer<typeof CourseId>;
 
 export const LectureId = z.string().min(1).brand<'LectureId'>();

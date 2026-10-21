@@ -1,13 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   AskRequest,
-  type CourseId,
+  CourseId,
   type CourseList,
   DeckMediaType,
   type IngestStatus,
   LectureId,
   NonBlankText,
-  RouteCourseId,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
@@ -38,7 +37,7 @@ const mediaTypeOf = (request: IncomingMessage): string =>
   (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
 
 const courseIdOf = ({ response, courseSegment }: RouteRequest): CourseId | undefined => {
-  const parsed = RouteCourseId.safeParse(courseSegment);
+  const parsed = CourseId.safeParse(courseSegment);
   if (parsed.success) return parsed.data;
   badRequest(response, `course id: ${z.prettifyError(parsed.error)}`);
   return undefined;

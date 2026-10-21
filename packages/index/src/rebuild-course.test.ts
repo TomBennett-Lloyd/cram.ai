@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CourseId, LectureId, SlideNo, SlideRecord, type Deck } from '@cram/shared';
+import { CourseId, LectureId, SlideNo, SlideRecord, type Deck, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   COURSE,
@@ -163,14 +163,14 @@ describe('rebuildCourse', () => {
       [],
       [indexed(record, vector(1, 0, 0, 0))],
     );
-    seeded.setTopics(sourceIdOf(record), ['transport', 'water']);
+    seeded.setTopics(sourceIdOf(record), [TopicTag.parse('transport'), TopicTag.parse('water')]);
     seeded.close();
     const db = new Database(temp.spec.path);
     db.pragma(`user_version = ${String(OLDER)}`);
     db.close();
     const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
     expect(discarded).toEqual([{ table: 'topics', rows: 2 }]);
-    expect(course.slidesTagged('transport')).toEqual([]);
+    expect(course.slidesTagged(TopicTag.parse('transport'))).toEqual([]);
     expect(course.slides().map((s) => s.body)).toEqual(['osmosis']);
     course.close();
   });
