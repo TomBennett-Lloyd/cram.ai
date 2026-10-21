@@ -5,7 +5,12 @@ import type { EmbedderIdentity } from './embedder-identity';
 import { REBUILD_REPORT_TABLE } from './rebuild-report';
 import { STORED_DECK_TABLES } from './stored-deck';
 
-/** Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)). */
+/**
+ * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
+ * It also versions the records `@cram/ingest` stores, which only a rebuild re-reads, so a change to them moves
+ * it too: `packages/ingest/src/stored-output-pin.test.ts` fails until it has (#257). Carriers:
+ * `.claude/ledgers/schema-version.ledger`.
+ */
 export const SCHEMA_VERSION = 5;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
