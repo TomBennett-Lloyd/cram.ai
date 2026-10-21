@@ -91,6 +91,7 @@
   border-inline-end-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
   border-inline-end-width: var(--line-sm);
   border-image-width: 1;
+  -webkit-line-clamp: 3;
 
   /* declaration-strict-value: ignoreValues, and ignoreFunctions: false */
   color: currentColor;

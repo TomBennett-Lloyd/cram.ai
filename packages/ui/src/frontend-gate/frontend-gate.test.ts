@@ -86,12 +86,14 @@ const eslintRefusals = async (text: string, virtualPath: string): Promise<string
 describe('stylelint.config.mjs', () => {
   const values = readProbe('values.probe.css.txt');
 
-  it.each(['apps/web/src/__gate_probe__.css', 'packages/ui/src/__gate_probe__.css'])(
-    'refuses exactly the raw values the values probe marks, at %s',
-    async (virtualPath) => {
-      expect(await stylelintRefusals(values, virtualPath)).toEqual(expectedRefusals(values));
-    },
-  );
+  // A tokens/ directory outside packages/ui is not the exempt one.
+  it.each([
+    'apps/web/src/__gate_probe__.css',
+    'apps/web/src/tokens/__gate_probe__.css',
+    'packages/ui/src/__gate_probe__.css',
+  ])('refuses exactly the raw values the values probe marks, at %s', async (virtualPath) => {
+    expect(await stylelintRefusals(values, virtualPath)).toEqual(expectedRefusals(values));
+  });
 
   it('exempts tokens/ from the raw-value rules and not from the :focus ban', async () => {
     const tokens = readProbe('tokens-exemption.probe.css.txt');

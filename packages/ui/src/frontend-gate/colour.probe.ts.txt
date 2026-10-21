@@ -21,6 +21,8 @@ export const literals = [
   'oklch(0 0 0)', // refused-by: no-restricted-syntax
   'lab(0 0 0)', // refused-by: no-restricted-syntax
   'lch(0 0 0)', // refused-by: no-restricted-syntax
+  '0 0 1px #abc, transparent', // refused-by: no-restricted-syntax
+  '0 0 1px rgb(0 0 0), transparent', // refused-by: no-restricted-syntax
   'var(--color-ink)',
   'label',
 ];
@@ -40,6 +42,8 @@ export const templates = [
   `${n} oklch(0 0 0)`, // refused-by: no-restricted-syntax
   `${n} lab(0 0 0)`, // refused-by: no-restricted-syntax
   `${n} lch(0 0 0)`, // refused-by: no-restricted-syntax
+  `${n} #abc, transparent`, // refused-by: no-restricted-syntax
+  `${n} rgb(0 0 0), transparent`, // refused-by: no-restricted-syntax
   `${n} var(--color-ink)`,
   `${n} label`,
 ];

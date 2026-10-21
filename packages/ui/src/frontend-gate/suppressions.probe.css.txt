@@ -12,6 +12,12 @@
   /* stylelint-disable-next-line declaration-property-value-allowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
   --probe-raw: 4px;
 
+  /* The same scope, in the same-line and block forms. */
+  color: red; /* stylelint-disable-line scale-unlimited/declaration-strict-value -- probe */ /* refused-by: comment-word-disallowed-list */
+  /* stylelint-disable scale-unlimited/declaration-strict-value -- probe */ /* refused-by: comment-word-disallowed-list */
+  color: red;
+  /* stylelint-enable scale-unlimited/declaration-strict-value */
+
   /* A disable scoped to comment-word-disallowed-list, hiding the next disable. */
   /* stylelint-disable-next-line comment-word-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- probe */
