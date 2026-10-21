@@ -37,8 +37,6 @@ export interface RecordableGateway extends Omit<ModelGateway, 'generator'> {
 
 export interface RecordingGatewaySpec {
   readonly inner: RecordableGateway;
-  /** What the inner generator samples with; part of a generator recording's key. */
-  readonly sampling: Sampling;
 }
 
 export type RecordingsResult =
@@ -68,14 +66,14 @@ class RecordingLog {
 
 class RecordingGenerator implements Generator {
   readonly pin: GeneratorPin;
+  readonly sampling: Sampling;
   readonly #inner: RecordableGenerator;
-  readonly #sampling: Sampling;
   readonly #log: RecordingLog;
 
-  constructor(inner: RecordableGenerator, sampling: Sampling, log: RecordingLog) {
+  constructor(inner: RecordableGenerator, log: RecordingLog) {
     this.pin = inner.pin;
+    this.sampling = inner.sampling;
     this.#inner = inner;
-    this.#sampling = sampling;
     this.#log = log;
   }
 
@@ -85,7 +83,7 @@ class RecordingGenerator implements Generator {
     this.#log.add({
       role: 'generator',
       pin: this.pin,
-      sampling: this.#sampling,
+      sampling: this.sampling,
       request: wire,
       reply,
     });
@@ -182,8 +180,8 @@ export class RecordingGateway implements ModelGateway {
   readonly reranker: Reranker | null;
   readonly #log = new RecordingLog();
 
-  constructor({ inner, sampling }: RecordingGatewaySpec) {
-    this.generator = new RecordingGenerator(inner.generator, sampling, this.#log);
+  constructor({ inner }: RecordingGatewaySpec) {
+    this.generator = new RecordingGenerator(inner.generator, this.#log);
     this.verifier = new RecordingVerifier(inner.verifier, this.#log);
     this.embedder = new RecordingEmbedder(inner.embedder, this.#log);
     this.reranker =
