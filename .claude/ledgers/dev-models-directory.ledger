@@ -1,6 +1,7 @@
 # Where developer mode's weights live, owned by `models` in .claude/scripts/models-pull.sh (#20).
 owner: .claude/scripts/models-pull.sh
 claim: developer mode's weights live under CRAM_MODELS_DIR, else ~/.local/share/cram/models, one directory per repository
+cite: CRAM_MODELS_DIR
 sweep: dev-models-directory\.ledger|developerModelsDirectory|(?i:models[ -]?dir(ectory)?\b|weights (land|live))|CRAM_MODELS_DIR|\.local/share/cram(?![.\w])|['"]cram['"], ['"]models['"]
 scope: :!pnpm-lock.yaml
 carrier: .claude/scripts/models-pull.test.sh

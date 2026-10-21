@@ -19,6 +19,10 @@
 #   - The sweep runs as PCRE (26). Its sweep carries `\d` beside `\b` because
 #     `\b` alone reds an `-E` engine only on macOS (docs/standards/evidence.md
 #     member 10); #40 holds the reasoning for the Linux side.
+#   - The citation arm (#179): each accepted `cite:` form passes, and a sweep that
+#     does not match its cite, a cite naming neither form, and an identifier that
+#     is not a word in the owner each exit 2. Another ledger file is never an
+#     unlisted hit; the same text outside .claude/ledgers/ is.
 #   - Refusals are refusals, not passes: every malformed ledger and every broken
 #     sweep is exit 2, and blockers outrank drift (24). Only absence passes: no
 #     ledger directory, or an empty one, declares nothing to sweep.
@@ -69,7 +73,8 @@ fixture() {
     '# A fixture ledger.' \
     'owner: docs/owner.md' \
     'claim: the fixture value' \
-    "sweep: $NEEDLE" \
+    'cite: docs/owner.md' \
+    "sweep: $NEEDLE|docs/owner\\.md" \
     'scope: :!docs/narration.md' \
     'carrier: src/carrier.ts' \
     'excluded: docs/snapshot.md' \
@@ -156,8 +161,8 @@ expect_stderr "fixture-claim.ledger:$line_no:"
 expect_stderr "unknown key 'carriers'"
 end
 
-begin "a missing owner, claim or sweep line is refused (exit 2)"
-for key in owner claim sweep; do
+begin "a missing owner, claim, cite or sweep line is refused (exit 2)"
+for key in owner claim cite sweep; do
   case_ctx="no $key"
   fixture "c8-$key"
   must perl -pi -e "s/^$key: .*\n//" "$LEDGER"
@@ -175,6 +180,94 @@ must printf '%s\n' 'sweep: something_else' >>"$LEDGER"
 run
 expect_rc 2
 expect_stderr "needs exactly one sweep: line, found 2"
+end
+
+begin "a second cite: line is refused (exit 2)"
+fixture c9b
+must printf '%s\n' 'cite: docs/owner.md' >>"$LEDGER"
+run
+expect_rc 2
+expect_stderr "needs exactly one cite: line, found 2"
+end
+
+# --- the citation arm (#179) ------------------------------------------------------------------
+#
+# set_cite <cite> <sweep> — rewrites the fixture's cite: and sweep: lines and commits.
+set_cite() {
+  must perl -ni -e 'print unless /^(cite|sweep): /' "$LEDGER"
+  must printf 'cite: %s\nsweep: %s\n' "$1" "$2" >>"$LEDGER"
+  fixture_has "$LEDGER" "cite: $1"
+  commit_all
+}
+
+begin "every accepted cite: form passes when the sweep matches it (exit 0)"
+tick='`'
+for form in \
+  "docs/owner.md" \
+  "${tick}docs/owner.md${tick}" \
+  "docs/owner.md § Fixture" \
+  "${tick}docs/owner.md${tick} § Fixture" \
+  "${tick}${NEEDLE}${tick}"; do
+  case_ctx="$form"
+  fixture "c30-$(printf '%s' "$form" | tr -c 'A-Za-z0-9' '-')"
+  set_cite "$form" "$NEEDLE|docs/owner\.md"
+  run
+  expect_rc 0
+  expect_stdout "check-ledgers: OK — 1 ledger(s)"
+done
+case_ctx=""
+end
+
+begin "a sweep that does not match its cite: has no citation arm and is refused (exit 2)"
+fixture c31
+set_cite "docs/owner.md" "$NEEDLE"
+run
+expect_rc 2
+expect_stderr "the sweep has no citation arm"
+expect_stderr "cite: 'docs/owner.md'"
+end
+
+begin "a cite: that is neither the owner's path nor an identifier is refused, whatever the sweep matches (exit 2)"
+tick='`'
+for form in \
+  "the fixture value" \
+  "xdocs/owner.md" \
+  "docs/owner.mdx" \
+  "docs/ownerXmd" \
+  "docs/owner.md§Fixture" \
+  "docs/owner.md § " \
+  "${tick}docs/owner.md" \
+  "${tick}${NEEDLE}" \
+  "${NEEDLE}${tick}" \
+  "7${NEEDLE}"; do
+  case_ctx="$form"
+  fixture "c32-$(printf '%s' "$form" | tr -c 'A-Za-z0-9' '-')"
+  set_cite "$form" '.'
+  run
+  expect_rc 2
+  expect_stderr "is neither the owner's path"
+done
+case_ctx=""
+end
+
+begin "an identifier cite: that is not a word in the owner is refused (exit 2)"
+for form in OTHER_SYMBOL FIXTURE_LEDGER; do
+  case_ctx="$form"
+  fixture "c33-$form"
+  set_cite "$form" "$NEEDLE|$form"
+  run
+  expect_rc 2
+  expect_stderr "identifier '$form' does not occur as a word in the owner"
+done
+case_ctx=""
+end
+
+begin "the cite: match is PCRE, like the sweep: a \\b arm matches the cite (exit 0)"
+fixture c34
+set_cite "$NEEDLE" '\b'"$NEEDLE"'\b'
+run
+expect_rc 0
+expect_stdout "check-ledgers: OK"
 end
 
 begin "a ledger with no carrier: line is refused (exit 2)"
@@ -240,6 +333,23 @@ expect_stdout "check-ledgers: OK — 1 ledger(s)"
 expect_stdout "1 carrier(s) returned, 0 unlisted hit(s)"
 expect_not_stdout "$NEEDLE"
 expect_not_stderr "unlisted hit"
+end
+
+begin "another ledger file the sweep returns is not an unlisted hit; the same line outside .claude/ledgers/ is (exit 0, then 1)"
+fixture c16b
+must printf '%s\n' 'owner: docs/owner.md' 'claim: a second value' 'cite: docs/owner.md' \
+  'sweep: SECOND_NEEDLE|docs/owner\.md' "carrier: docs/owner.md" "excluded: docs/$NEEDLE.md" \
+  >"$ROOT/.claude/ledgers/second.ledger"
+must printf '%s\n' 'SECOND_NEEDLE .claude/ledgers/second.ledger' >>"$ROOT/docs/owner.md"
+commit_all
+run
+expect_rc 0
+expect_stdout "check-ledgers: OK — 2 ledger(s)"
+must cp "$ROOT/.claude/ledgers/second.ledger" "$ROOT/.claude/second.ledger.txt"
+run
+expect_rc 1
+expect_stderr ".claude/second.ledger.txt"
+expect_stderr "unlisted hit"
 end
 
 begin "red: a tracked file the sweep returns and the ledger does not classify (exit 1)"
@@ -331,8 +441,8 @@ begin "the sweep is PCRE: \\b is a word boundary and \\d a digit, so neither one
 fixture c26
 pcre_sweep='\b'"$NEEDLE"'\d\b'
 must perl -pi -e "s/$NEEDLE/${NEEDLE}7/" "$ROOT/docs/owner.md" "$ROOT/src/carrier.ts" "$ROOT/docs/snapshot.md"
-must perl -ni -e 'print unless /^sweep: /' "$LEDGER"
-must printf 'sweep: %s\n' "$pcre_sweep" >>"$LEDGER"
+must perl -ni -e 'print unless /^(cite|sweep): /' "$LEDGER"
+must printf 'cite: %s7\nsweep: %s\n' "$NEEDLE" "$pcre_sweep" >>"$LEDGER"
 must printf '%s\n' "b${NEEDLE}7" "${NEEDLE}7b" >"$ROOT/docs/decoy.md"
 commit_all
 fixture_has "$LEDGER" "sweep: $pcre_sweep"

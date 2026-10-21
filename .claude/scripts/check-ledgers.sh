@@ -23,6 +23,14 @@
 #                                      MUST return it (the sweep's positive control).
 #   claim: <one line of prose>         exactly once — what is owned, in words; the
 #                                      gate checks only non-emptiness.
+#   cite: <the owner's citation>       exactly once — the words a carrier uses to name
+#                                      the owner (architecture.md rule 9): the owner's
+#                                      path, bare or in backticks, optionally followed by
+#                                      ` § <section>`; or an identifier, bare or in
+#                                      backticks, that occurs as a word in the owner. The
+#                                      sweep MUST match this text, so a carrier that cites
+#                                      the owner is returned even when it paraphrases the
+#                                      claim (#179).
 #   sweep: <PCRE>                      exactly once — run as the single argument of
 #                                      git -C <root> grep --no-color -n -I -P --untracked -e <sweep> -- <scope tokens>
 #   scope: <pathspec> [<pathspec>...]  at most once — space-separated git pathspecs
@@ -38,8 +46,13 @@
 # Alphabets, refused loudly (exit 2): paths ^[A-Za-z0-9._/-]+$ with no leading `/`
 # and no `..` component; scope tokens ^[A-Za-z0-9._/:!*(),-]+$; `sweep:` any
 # non-empty text, reaching git only as one argv element — never through `eval` or
-# `bash -c`. The ledger file's own path is exempt from both membership checks (it
-# holds the pattern).
+# `bash -c`. A `cite:` naming neither form, or one the sweep does not match, is refused
+# the same way: a sweep with no citation arm is malformed, not drifted.
+#
+# Every path under .claude/ledgers/ is exempt from the unlisted-hit check: a ledger holds
+# its own pattern, and its `carrier:` and `excluded:` lines name other ledgers' owners,
+# which a citation arm written as a path returns (#179). Those lines are kept current by
+# their own ledger's run, so no ledger file is an unread carrier of another.
 #
 # Membership, in both directions, with the owner as the positive control. Drift
 # (exit 1): a hit path that is neither listed nor the owner nor the ledger file; a
@@ -56,7 +69,9 @@
 #
 # `-P` is mandatory: declared sweeps use `\b` beside `|`, and `git grep -E` on
 # macOS reads `\b` as the letter `b` (docs/standards/evidence.md member 10), so the
-# ERE engine would return different files on the owner's Mac than in CI.
+# ERE engine would return different files on the owner's Mac than in CI. The `cite:`
+# match runs on the same engine. Every other site that runs a ledger sweep is listed in
+# .claude/ledgers/sweep-engine.ledger.
 #
 # The OK line prints counts only and never a pattern, so a run redirected into an
 # untracked file inside the repository cannot become its own unlisted hit.
@@ -148,10 +163,10 @@ in_list() {
 # parse_ledger <file> — sets L_ID, L_OWNER, L_SWEEP, L_SCOPE and the L_CARRIERS /
 # L_EXCLUDED arrays, appending to `blockers` for everything it refuses.
 parse_ledger() {
-  local file="$1" base lineno=0 line key value n_owner=0 n_claim=0 n_sweep=0 n_scope=0 item tokens
+  local file="$1" base lineno=0 line key value n_owner=0 n_claim=0 n_cite=0 n_sweep=0 n_scope=0 item tokens
   base=$(basename "$file")
   L_ID=${base%.ledger}
-  L_OWNER="" L_SWEEP="" L_SCOPE=""
+  L_OWNER="" L_CITE="" L_SWEEP="" L_SCOPE=""
   L_CARRIERS=()
   L_EXCLUDED=()
   while IFS= read -r line || [ -n "$line" ]; do
@@ -177,6 +192,10 @@ parse_ledger() {
         ;;
       claim)
         n_claim=$((n_claim + 1))
+        ;;
+      cite)
+        n_cite=$((n_cite + 1))
+        L_CITE=$value
         ;;
       sweep)
         n_sweep=$((n_sweep + 1))
@@ -207,6 +226,7 @@ parse_ledger() {
 
   [ "$n_owner" -eq 1 ] || blockers+=("$base: needs exactly one owner: line, found $n_owner")
   [ "$n_claim" -eq 1 ] || blockers+=("$base: needs exactly one claim: line, found $n_claim")
+  [ "$n_cite" -eq 1 ] || blockers+=("$base: needs exactly one cite: line, found $n_cite")
   [ "$n_sweep" -eq 1 ] || blockers+=("$base: needs exactly one sweep: line, found $n_sweep")
   [ "$n_scope" -le 1 ] || blockers+=("$base: at most one scope: line, found $n_scope")
   [ "${#L_CARRIERS[@]}" -ge 1 ] || blockers+=("$base: needs at least one carrier: line")
@@ -224,8 +244,30 @@ parse_ledger() {
       blockers+=("$base: owner does not exist in the tree: '$L_OWNER'")
     elif ! grep -qF -- ".claude/ledgers/$L_ID.ledger" "$ROOT/$L_OWNER"; then
       blockers+=("$base: owner '$L_OWNER' does not name .claude/ledgers/$L_ID.ledger by path")
+    elif [ "$n_cite" -eq 1 ]; then
+      cite_names_owner "$base"
     fi
   fi
+}
+
+# cite_names_owner <base> — appends a blocker unless L_CITE is one of the two forms the
+# header's `cite:` row accepts for L_OWNER. PATH_RE leaves `.` as the one ERE
+# metacharacter a path can hold.
+cite_names_owner() {
+  local base="$1" tick='`' owner_re path_re ident_re ident
+  owner_re=${L_OWNER//./\\.}
+  path_re="^(${tick}${owner_re}${tick}|${owner_re})( § .+)?\$"
+  ident_re="^(${tick}[A-Za-z_][A-Za-z0-9_]*${tick}|[A-Za-z_][A-Za-z0-9_]*)\$"
+  if [[ $L_CITE =~ $path_re ]]; then
+    return 0
+  fi
+  if [[ $L_CITE =~ $ident_re ]]; then
+    ident=${L_CITE//$tick/}
+    grep -qwF -- "$ident" "$ROOT/$L_OWNER" ||
+      blockers+=("$base: cite: identifier '$ident' does not occur as a word in the owner '$L_OWNER'")
+    return 0
+  fi
+  blockers+=("$base: cite: '$L_CITE' is neither the owner's path (optionally with ' § <section>') nor an identifier")
 }
 
 # --- pass 1: parse everything before sweeping anything ---------------------------------------
@@ -248,7 +290,6 @@ EOF
 if [ ${#blockers[@]} -eq 0 ]; then
   for file in ${valid_files[@]+"${valid_files[@]}"}; do
     parse_ledger "$file"
-    ledger_rel=".claude/ledgers/$L_ID.ledger"
     scope_args=()
     if [ -n "$L_SCOPE" ]; then
       read -r -a scope_args <<<"$L_SCOPE"
@@ -261,11 +302,18 @@ if [ ${#blockers[@]} -eq 0 ]; then
       blockers+=("$L_ID: the sweep did not run cleanly (rc=$sweep_rc): $(head -n1 "$hits_err") — a broken check, not a clean tree")
       continue
     fi
+    printf '%s\n' "$L_CITE" >"$SCRATCH/$L_ID.cite"
+    git -C "$SCRATCH" grep --no-index -q -P -e "$L_SWEEP" -- "$L_ID.cite" 2>"$hits_err"
+    cite_rc=$?
+    if [ "$cite_rc" -ne 0 ]; then
+      blockers+=("$L_ID: the sweep has no citation arm — it does not match cite: '$L_CITE' (rc=$cite_rc) $(head -n1 "$hits_err")")
+      continue
+    fi
     LC_ALL=C cut -d: -f1 "$hits_out" | LC_ALL=C sort -u >"$SCRATCH/$L_ID.paths"
 
     while IFS= read -r hit_path; do
       [ -n "$hit_path" ] || continue
-      [ "$hit_path" = "$ledger_rel" ] && continue
+      case "$hit_path" in .claude/ledgers/*) continue ;; esac
       [ "$hit_path" = "$L_OWNER" ] && continue
       in_list "$hit_path" ${L_CARRIERS[@]+"${L_CARRIERS[@]}"} && continue
       in_list "$hit_path" ${L_EXCLUDED[@]+"${L_EXCLUDED[@]}"} && continue

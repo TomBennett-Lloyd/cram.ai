@@ -4,7 +4,8 @@
 # checks that its embedder receives exactly it. The `.embed({ texts` arm finds a new embedding site.
 owner: packages/shared/src/embed-text.ts
 claim: a slide is embedded as embedText(record), by the app's ingest and by the eval retriever alike
-sweep: \.claude/ledgers/slide-embed-text\.ledger|\bembedText\b|\.embed\(\{ ?texts|(?i:\bembedded as\b|text a slide is embedded)
+cite: embedText
+sweep: \bembedText\b|\.claude/ledgers/slide-embed-text\.ledger|\.embed\(\{ ?texts|(?i:\bembedded as\b|text a slide is embedded)
 scope: :!pnpm-lock.yaml
 carrier: packages/shared/src/index.ts
 carrier: packages/shared/src/embed-text.test.ts
