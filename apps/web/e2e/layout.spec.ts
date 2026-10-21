@@ -32,6 +32,27 @@ test('a long file name wraps inside the decks list', async ({ page }) => {
   expect(await scrollsSideways(page)).toBe(false);
 });
 
+test('a portrait slide picture letterboxes inside the 16:9 frame instead of growing it', async ({
+  page,
+}) => {
+  await page.route('**/courses/*/slide-image?*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1600"><rect width="100%" height="100%" fill="white"/></svg>',
+    }),
+  );
+  await page.goto('/#/courses/bio');
+  await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).click();
+  await page.locator('.slide-card').first().click();
+  const image = page.getByRole('dialog').getByRole('img');
+  await expect(image).toHaveJSProperty('complete', true);
+  const frame = await page.locator('.slide-figure').boundingBox();
+  expect(frame).not.toBeNull();
+  expect(Math.abs((frame?.height ?? 0) - ((frame?.width ?? 0) * 9) / 16)).toBeLessThan(2);
+});
+
 test('an answer and its open slide fit the narrowest phone width', async ({ page }) => {
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);

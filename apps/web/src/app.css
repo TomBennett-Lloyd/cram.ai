@@ -304,10 +304,12 @@ input:not([type='file']) {
 
 .slide-figure {
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
   box-sizing: border-box;
-  /* Held whether the picture loads or fails, so the lines below never move (design.md rule 6). */
+  /* Held whatever the picture's shape, or if it fails, so the lines below never move (design.md rule 6). */
   aspect-ratio: 16 / 9;
+  min-block-size: 0;
   margin: var(--space-4) 0 0;
   border-width: var(--line-sm);
   border-style: solid;
