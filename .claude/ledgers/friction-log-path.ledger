@@ -1,0 +1,13 @@
+# The friction log's path, owned by that file's own header (docs/standards/architecture.md rule 9; #179).
+owner: docs/friction-log.md
+claim: the friction log lives at docs/friction-log.md, one of the append-only logs merge-pr.sh's union step may resolve
+cite: docs/friction-log.md
+sweep: friction-log\.md|\.claude/ledgers/friction-log-path\.ledger
+carrier: .claude/scripts/merge-pr.sh
+carrier: .claude/scripts/merge-pr.test.sh
+carrier: .claude/agents/task-orchestrator.md
+carrier: .claude/skills/retro/SKILL.md
+carrier: .claude/skills/review-loop/SKILL.md
+carrier: .claude/skills/triage/SKILL.md
+carrier: .claude/workflow.json
+carrier: CLAUDE.md
