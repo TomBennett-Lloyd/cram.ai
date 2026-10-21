@@ -21,7 +21,7 @@ export interface IndexRetrieverSpec {
   readonly k: number;
 }
 
-/** One vector per text; an over-length text rejects the run until the embedder's over-length policy is decided (#184). */
+/** One vector per text; an over-length text rejects the run (#184). */
 const embedAll = async (
   embedder: Embedder,
   texts: readonly string[],

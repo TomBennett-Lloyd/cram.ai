@@ -5,6 +5,7 @@ import { CourseId, Deck } from '@cram/shared';
 import { expect } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
+  FailingEmbedder,
   GatedEmbedder,
   gatewayOf,
   PDF,
@@ -24,7 +25,9 @@ export const BIO = CourseId.parse('bio');
 export const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 export const HIVE_STORED = {
   state: 'read',
-  lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
+  lectures: [
+    { lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2], unembedded: [] },
+  ],
   report: { state: 'none' },
 };
 
@@ -38,6 +41,10 @@ export class RepinnedGatedEmbedder extends GatedEmbedder {
 }
 
 export class RepinnedShortEmbedder extends ShortEmbedder {
+  override readonly pin = new RepinnedEmbedder().pin;
+}
+
+export class RepinnedFailingEmbedder extends FailingEmbedder {
   override readonly pin = new RepinnedEmbedder().pin;
 }
 

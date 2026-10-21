@@ -36,7 +36,9 @@ describe('DecksScreen', () => {
     const replies = [
       status(upload('l1.pdf', { state: 'queued' })),
       status(upload('l1.pdf', { state: 'ingesting' })),
-      status(upload('l1.pdf', { state: 'indexed', slideCount: 12, imageOnly: [3, 9] })),
+      status(
+        upload('l1.pdf', { state: 'indexed', slideCount: 12, imageOnly: [3, 9], unembedded: [] }),
+      ),
     ];
     const { api, sent } = fakeApi(() => replies[Math.min(reads(sent) - 1, 2)] ?? status());
     renderDecks(api);
@@ -62,11 +64,11 @@ describe('DecksScreen', () => {
     const { api } = fakeApi(() =>
       status(
         upload('a.pdf', { state: 'unreadable', reason: 'encrypted', detail: '' }),
-        upload('b.pdf', { state: 'over-length', slides: [2], maxInputTokens: 512 }),
+        upload('b.pdf', { state: 'indexed', slideCount: 88, imageOnly: [], unembedded: [87] }),
         upload('c.pdf', { state: 'course-unavailable', problem: 'embedder-mismatch' }),
         upload('d.pdf', { state: 'failed' }),
-        upload('e.pdf', { state: 'indexed', slideCount: 1, imageOnly: [1] }),
-        upload('f.pdf', { state: 'over-length', slides: [2, 5], maxInputTokens: 512 }),
+        upload('e.pdf', { state: 'indexed', slideCount: 1, imageOnly: [1], unembedded: [] }),
+        upload('f.pdf', { state: 'indexed', slideCount: 6, imageOnly: [3], unembedded: [2, 5] }),
         upload('g.pdf', { state: 'unreadable', reason: 'not-a-deck', detail: 'no slides' }),
       ),
     );
@@ -76,11 +78,11 @@ describe('DecksScreen', () => {
       [...document.querySelectorAll('.upload-progress')].map((node) => node.textContent),
     ).toEqual([
       'This deck couldn’t be read (encrypted).',
-      'Slide 2 holds more text than the model reads at once (512 tokens), so nothing from this deck was indexed.',
+      '88 slides indexed. Slide 87 holds more text than the search model reads at once, so it’s found by its words only.',
       'This course’s file was indexed by a different embedding model, so the deck was not indexed.',
       'Something went wrong reading this deck. Upload it again.',
       '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.',
-      'Slides 2, 5 hold more text than the model reads at once (512 tokens), so nothing from this deck was indexed.',
+      '6 slides indexed. Slide 3 has no text, so it can’t be cited yet. Slides 2, 5 hold more text than the search model reads at once, so they’re found by their words only.',
       'This deck couldn’t be read (not-a-deck: no slides).',
     ]);
   });
@@ -208,13 +210,13 @@ describe('DecksScreen', () => {
   it('lists the lectures the course file holds, leaving one with an indexed upload this session to that upload', async () => {
     const stored = StoredLectures.parse({
       state: 'read',
-      lectures: [lecture('l1', 12, [3, 9]), lecture('l2', 1, []), lecture('l3', 4, [])],
+      lectures: [lecture('l1', 12, [3, 9]), lecture('l2', 1, []), lecture('l3', 4, [], [4])],
       report: { state: 'none' },
     });
     const { api } = fakeApi(() =>
       storedStatus(
         stored,
-        upload('l2', { state: 'indexed', slideCount: 2, imageOnly: [] }),
+        upload('l2', { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] }),
         upload('l3', { state: 'unreadable', reason: 'encrypted', detail: '' }),
       ),
     );
@@ -222,7 +224,10 @@ describe('DecksScreen', () => {
     await settle();
     expect(rows()).toEqual([
       ['l1', '12 slides indexed. Slides 3, 9 have no text, so they can’t be cited yet.'],
-      ['l3', '4 slides indexed.'],
+      [
+        'l3',
+        '4 slides indexed. Slide 4 holds more text than the search model reads at once, so it’s found by its words only.',
+      ],
       ['l2', '2 slides indexed.'],
       ['l3', 'This deck couldn’t be read (encrypted).'],
     ]);
