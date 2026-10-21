@@ -170,3 +170,37 @@ describe('CourseIndex.removeLecture', () => {
     expect(course.slides()).toHaveLength(4);
   });
 });
+
+describe('CourseIndex.lectures', () => {
+  it('reports each deck by lecture id, with its slide count and image-only slides in order', () => {
+    course.replaceLecture(deck({ lectureId: 'lecture-0', lectureTitle: 'Empty deck' }), [], []);
+    course.replaceLecture(
+      deck({ lectureTitle: 'Lecture 1, re-uploaded' }),
+      [],
+      // Inserted out of order, and slide 10 sorts before slide 2 as text.
+      (
+        [
+          [10, 'image-only'],
+          [3, 'references'],
+          [1, 'content'],
+          [2, 'image-only'],
+        ] as const
+      ).map(([slideNo, kind]) => indexed(slide({ slideNo, kind }), vector(1, 0, 0, slideNo))),
+    );
+    expect(course.lectures()).toEqual([
+      { lectureId: 'lecture-0', lectureTitle: 'Empty deck', slideCount: 0, imageOnly: [] },
+      {
+        lectureId: 'lecture-1',
+        lectureTitle: 'Lecture 1, re-uploaded',
+        slideCount: 4,
+        imageOnly: [2, 10],
+      },
+      { lectureId: 'lecture-2', lectureTitle: 'Lecture 2', slideCount: 1, imageOnly: [] },
+    ]);
+  });
+
+  it('drops a removed lecture', () => {
+    course.removeLecture(LECTURE_1);
+    expect(course.lectures().map(({ lectureId }) => lectureId)).toEqual(['lecture-2']);
+  });
+});

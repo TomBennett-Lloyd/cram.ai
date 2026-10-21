@@ -5,7 +5,8 @@ import { errorName, type ServerLog } from './server-log';
 
 /**
  * Runs uploads one at a time, process-wide, so each course file has a single writer. Progress
- * lives in memory, for uploads since the server started (#146).
+ * lives in memory, for uploads since the server started; what a restart keeps is the course
+ * file's (`storedLectures`).
  */
 export class IngestQueue {
   readonly #deps: IngestDeps;

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { type EmbedderIdentity, openCourse, type OpenCourseResult } from '@cram/index';
-import { type CourseId, RouteCourseId } from '@cram/shared';
+import { type CourseId, RouteCourseId, type StoredLectures } from '@cram/shared';
 import { COURSE_FILE_EXTENSION, courseFilePath, coursesDirectory } from './data-directory';
 
 export interface CourseFiles {
@@ -46,3 +46,15 @@ export const openForRead = (files: CourseFiles, courseId: CourseId): OpenCourseR
     courseId,
     embedder: files.embedder,
   });
+
+/** What the course file holds; a course with no file yet holds no lectures. */
+export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLectures => {
+  if (!courseExists(files, courseId)) return { state: 'read', lectures: [] };
+  const opened = openForRead(files, courseId);
+  if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
+  try {
+    return { state: 'read', lectures: [...opened.course.lectures()] };
+  } finally {
+    opened.course.close();
+  }
+};

@@ -11,7 +11,7 @@ import {
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
-import { courseExists, storedCourses } from './course-file';
+import { courseExists, storedCourses, storedLectures } from './course-file';
 import { readBody, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 
@@ -92,7 +92,11 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
     sendRefusal(route.response, 404, { status: 'no-such-course' });
     return;
   }
-  const status: IngestStatus = { courseId, uploads: [...uploads] };
+  const status: IngestStatus = {
+    courseId,
+    stored: storedLectures(context.files, courseId),
+    uploads: [...uploads],
+  };
   sendJson(route.response, 200, status);
 };
 

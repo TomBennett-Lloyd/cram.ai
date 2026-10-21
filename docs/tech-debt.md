@@ -103,3 +103,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/decks/DecksScreen.tsx` `reread`; `apps/web/src/decks/DecksScreen.test.tsx`
 - What: a retry after a failed status read keeps the last upload batch's refusals in the panel's alert, but the tests cover refusals and a failed read separately, so reverting `reread` to clear them passes every test.
 - Source: #16 confirmation pass 2
+
+## 2026-10-21 — opening a course file to read it can write to it
+
+- Where: `apps/server/src/course-file.ts` `openForRead`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
+- What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status the decks screen polls every second while an upload is in flight. Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
+- Source: #146 review cycle 1
+
+## 2026-10-21 — the web shows `@cram/index` status codes to the student
+
+- Where: `apps/web/src/copy.ts` `fileUnopened` and its three callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`)
+- What: an unopenable course file is reported as "This course’s file can’t be opened (embedder-mismatch)", the raw `OpenCourseResult` status, with no words for what it means or what to do. Root cause: no mapping from `@cram/index`'s vocabulary to student-facing copy. #147 (rebuild or re-embed on course-unavailable) changes what the student can do about each one.
+- Source: #146 review cycle 1
