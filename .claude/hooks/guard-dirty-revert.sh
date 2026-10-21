@@ -10,9 +10,10 @@
 # loud — never exit 2: this hook runs on every Bash call in every lane, so a
 # refusing failure would block all of them (hook-context.sh's header).
 #
-# The scan is lexical: the first word of each simple command, with `cd <dir>` and
-# `git -C <dir>` followed, and into `"$(...)"`. A command reached through a
-# variable, `xargs` or a shell keyword is not seen.
+# The scan is lexical: the first word of each simple command after its `NAME=value`
+# words, with `cd <dir>` and `git -C <dir>` followed, and into `"$(...)"`. A command
+# reached through an expansion, `xargs` or a shell keyword is not seen, and neither
+# `$'…'` nor a backtick is read as a unit.
 # Cases: .claude/scripts/guard-dirty-revert.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -73,26 +74,29 @@ const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 
 // here) counts the `(` of `[(]`, and both bash and zsh close at the `)` of `[)]`.
 function scan(src, i, commands, nested) {
   const heredocs = [];
-  // Open `case` frames, innermost last. `state` runs subject → in → pattern → body, and
-  // back to pattern at each `;;`. Only the `)` that ends a pattern is not a paren.
+  // Open parens, innermost last. A `(` inside a word (`$(`, `<(`, `@(`, `a=(`, …) holds
+  // that word and its command, which resume at its `)`; `null` is a subshell.
+  const groups = [];
+  // Open `case` frames, innermost last, each at the paren depth it opened at. `state` runs
+  // subject → in → pattern → body, and back to pattern at each `;;`.
   const cases = [];
-  let depth = 0;
   let current = [];
   let word = null;
   commands.push(current);
+  const frame = () => (cases.at(-1)?.depth === groups.length ? cases.at(-1) : undefined);
   const end = () => {
     if (word === null) return;
     const atCommand = current.every((w) => LEADERS.has(w));
     current.push(word);
-    const frame = cases.at(-1);
-    if (frame?.depth === depth && frame.state === 'subject') frame.state = 'in';
-    else if (frame?.depth === depth && frame.state === 'in') {
-      if (word === 'in') Object.assign(frame, { state: 'pattern', fresh: true });
-    } else if (frame?.depth === depth && frame.state === 'pattern') {
-      if (frame.fresh && word === 'esac') cases.pop();
-      else frame.fresh = false;
-    } else if (atCommand && word === 'esac' && frame?.depth === depth) cases.pop();
-    else if (atCommand && word === 'case') cases.push({ depth, state: 'subject', fresh: false });
+    const f = frame();
+    if (f?.state === 'subject') f.state = 'in';
+    else if (f?.state === 'in') {
+      if (word === 'in') Object.assign(f, { state: 'pattern', fresh: true });
+    } else if (f?.state === 'pattern') {
+      if (f.fresh && word === 'esac') cases.pop();
+      else f.fresh = false;
+    } else if (atCommand && word === 'esac' && f) cases.pop();
+    else if (atCommand && word === 'case') cases.push({ depth: groups.length, state: 'subject', fresh: false });
     word = null;
   };
   const split = () => {
@@ -102,8 +106,7 @@ function scan(src, i, commands, nested) {
   };
   while (i < src.length) {
     const c = src[i];
-    const frame = cases.at(-1)?.depth === depth ? cases.at(-1) : undefined;
-    const terminator = frame?.state === 'body' ? /^;(?:;&?|[&|])/.exec(src.slice(i, i + 3)) : null;
+    const terminator = frame()?.state === 'body' ? /^;(?:;&?|[&|])/.exec(src.slice(i, i + 3)) : null;
     if (c === '\n') {
       split();
       i++;
@@ -124,18 +127,36 @@ function scan(src, i, commands, nested) {
       while (i < src.length && src[i] !== '\n') i++;
     } else if (terminator) {
       split();
-      Object.assign(frame, { state: 'pattern', fresh: true });
+      Object.assign(frame(), { state: 'pattern', fresh: true });
       i += terminator[0].length;
-    } else if (c === '(' || c === ')') {
+    } else if (c === '(') {
+      const f = frame();
+      if (word === null && f?.state === 'pattern' && f.fresh) f.fresh = false;
+      else if (word === null) {
+        groups.push(null);
+        split();
+      } else {
+        groups.push({ current, word, start: i });
+        word = null;
+        current = [];
+        commands.push(current);
+      }
+      i++;
+    } else if (c === ')') {
       end();
-      const pattern = cases.at(-1)?.depth === depth && cases.at(-1).state === 'pattern' ? cases.at(-1) : undefined;
-      if (c === '(' && pattern?.fresh) pattern.fresh = false;
-      else if (c === '(') depth++;
-      else if (pattern) pattern.state = 'body';
-      else if (nested && depth === 0) return i + 1;
-      else depth--;
-      while (cases.at(-1)?.depth > depth) cases.pop();
-      split();
+      const f = frame();
+      if (f?.state === 'pattern') {
+        f.state = 'body';
+        split();
+      } else if (nested && groups.length === 0) return i + 1;
+      else {
+        const g = groups.pop();
+        while (cases.at(-1)?.depth > groups.length) cases.pop();
+        if (g) {
+          current = g.current;
+          word = g.word + src.slice(g.start, i + 1);
+        } else split();
+      }
       i++;
     } else if (';&|'.includes(c)) {
       split();
@@ -268,7 +289,11 @@ const git = (cwd, ...args) => {
 
 const commands = [];
 scan(command, 0, commands, false);
-for (const words of commands) {
+for (const simple of commands) {
+  // `NAME=value` words lead a command without being it.
+  let a = 0;
+  while (a < simple.length && /^[A-Za-z_]\w*\+?=/.test(simple[a])) a++;
+  const words = simple.slice(a);
   if (words[0] === 'cd') {
     dir = path.resolve(dir, words[1] ?? os.homedir());
     continue;

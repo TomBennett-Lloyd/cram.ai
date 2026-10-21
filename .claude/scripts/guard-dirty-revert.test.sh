@@ -225,6 +225,16 @@ refuses echo "$(a+=(1); git checkout -- dirty.txt)"
 refuses echo "$([[ x =~ ^(a)$ ]]; git checkout -- dirty.txt)"
 refuses echo "$(ls [(]*); git checkout -- dirty.txt)"
 passes echo "$(echo [)]*) git checkout -- dirty.txt"
+refuses echo "$(echo $((1+(2))); git checkout -- dirty.txt)"
+passes echo $(true) git checkout -- dirty.txt
+passes cat <(true) git checkout -- dirty.txt
+passes echo "$(echo @(a|b) git checkout -- dirty.txt)"
+refuses x=$(true) git checkout -- dirty.txt
+refuses A_1=x git checkout -- dirty.txt
+refuses a+=x git checkout -- dirty.txt
+refuses _=x b=y git checkout -- dirty.txt
+passes 1a=x git checkout -- dirty.txt
+passes a-b=x git checkout -- dirty.txt
 refuses echo "$(case x in a) true;; esac; git checkout -- dirty.txt)"
 refuses echo "$(case x in a) true;; esac)" && git checkout -- dirty.txt
 refuses echo "$(case x in (a) true;; esac)" && git checkout -- dirty.txt
