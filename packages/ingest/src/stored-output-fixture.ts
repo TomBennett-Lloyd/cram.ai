@@ -50,6 +50,8 @@ const EVERY_CONSTRUCT = equation(
       'oMath',
       construct('f', [], m('num', r('a')), m('den', r('b+c'))),
       construct('f', [['type', 'noBar']], m('num', r('n')), m('den', r('k'))),
+      construct('f', [['type', 'skw']], m('num', r('p')), m('den', r('q'))),
+      construct('f', [['type', 'lin']], m('num', r('s')), m('den', r('t'))),
       construct('sSub', [], e(r('x')), m('sub', r('i'))),
       construct('sSubSup', [], e(r('x')), m('sub', r('i')), m('sup', r('2'))),
       construct('sPre', [], m('sub', r('a')), m('sup', r('b')), e(r('C'))),
@@ -63,6 +65,14 @@ const EVERY_CONSTRUCT = equation(
       construct('nary', [], m('sub', r('0')), m('sup', r('1')), e(r('f'))),
       construct('nary', [['chr', '∑']], m('sub', r('k')), m('sup'), e(r('k'))),
       construct('d', [], e(r('a')), e(r('b'))),
+      construct(
+        'd',
+        [
+          ['begChr', '{'],
+          ['endChr', ''],
+        ],
+        e(r('one-sided')),
+      ),
       construct(
         'd',
         [
@@ -82,12 +92,16 @@ const EVERY_CONSTRUCT = equation(
       construct('limLow', [], e(r('lim')), m('lim', r('n→∞'))),
       construct('limUpp', [], e(r('X')), m('lim', r('T'))),
       construct('acc', [], e(r('o'))),
+      construct('acc', [['chr', '\u0303']], e(r('n'))),
       construct('bar', [], e(r('z'))),
       construct('bar', [['pos', 'top']], e(r('w'))),
       construct('groupChr', [], e(r('g'))),
+      construct('groupChr', [['chr', '\u23DE']], e(r('h'))),
       construct('m', [], m('mr', e(r('1')), e(r('2'))), m('mr', e(r('3')), e(r('4')))),
       construct('eqArr', [], e(r('s=1')), e(r('t=2'))),
       construct('phant', [['show', 'off']], e(r('hidden'))),
+      construct('phant', [['show', 'false']], e(r('hidden'))),
+      construct('phant', [['show', '0']], e(r('hidden'))),
       construct('phant', [], e(r('shown'))),
       m('box', r('B')),
       m('borderBox', r('D')),
@@ -95,7 +109,7 @@ const EVERY_CONSTRUCT = equation(
   ),
 );
 
-/** Each slide and page reaches one edge of how ingest reads a deck, so changing that edge changes the digest (#257's PR names them). */
+/** Each slide and page reaches one edge of how ingest reads a deck (#257's PR names them). */
 const PPTX = buildPptx({
   reversePartNames: true,
   slides: [

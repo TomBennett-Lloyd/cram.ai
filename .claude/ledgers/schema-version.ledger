@@ -1,11 +1,14 @@
 # The course file's schema version, which the stored-output pin asserts by its literal (docs/standards/architecture.md rule 9; #257).
 owner: packages/index/src/schema.ts
 claim: a course file is rebuilt when its user_version is older than SCHEMA_VERSION, which also versions the records ingest stores
-sweep: SCHEMA_VERSION|\.claude/ledgers/schema-version\.ledger
+sweep: (?i)schema.?(version|bump)|user_version|rebuilds? (run|only)|\.claude/ledgers/schema-version\.ledger
 carrier: packages/index/src/index.ts
+carrier: packages/index/src/open-course.ts
 carrier: packages/index/src/open-course.test.ts
 carrier: packages/index/src/rebuild-course.test.ts
 carrier: packages/index/src/rebuild-report.test.ts
 carrier: packages/ingest/src/stored-output-pin.test.ts
 carrier: apps/server/src/repair.test.ts
+carrier: docs/adr/0004-storage.md
+excluded: packages/index/src/stored-deck.ts
 excluded: docs/tech-debt.md

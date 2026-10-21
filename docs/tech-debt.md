@@ -133,7 +133,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/shared/src/deck.ts` `Deck`; `packages/ingest/src/deck.ts` `fileStem`
 - What: `Deck` does not store the uploaded file name, so a rebuild passes the stored title through `fileStem` as the title fallback. If a title came from the first slide and contains `/`, `\`, `-` or `_`, and a later ingest no longer reads a title from that slide, the rebuilt title is mangled ("Cells/Tissues" becomes "Tissues"). This can only happen across an ingest change, which is exactly when rebuilds run. Root cause: the stored deck drops the file name.
 - Source: #147 review cycle 1
-- Update 2026-10-21 (#257): until #257, an ingest change rebuilt nothing unless it also moved `SCHEMA_VERSION`. Now `packages/ingest/src/stored-output-pin.test.ts` fails on any change to the records ingest stores until `SCHEMA_VERSION` moves, so every such change does rebuild existing courses.
+- Update 2026-10-21 (#257): until #257, an ingest change rebuilt nothing unless it also moved `SCHEMA_VERSION`. Now `packages/ingest/src/stored-output-pin.test.ts` fails on a change its corpus reaches to the records ingest stores until `SCHEMA_VERSION` moves.
 
 ## 2026-10-21 — a new discardable table reaches the student as "other saved items"
 
