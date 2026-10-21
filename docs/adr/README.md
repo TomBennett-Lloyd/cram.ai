@@ -111,3 +111,4 @@ shape a sweep that reaches it.
 - [0005 — Evaluation as a merge gate: the synthetic deck, the contradiction set, two tiers, the metrics and their bars](0005-evaluation-as-gate.md)
 - [0003 — Model roles and backends: four roles, each configured alone; encoders in-process, the generator in-process or over private HTTP; candidates measured, not pinned](0003-model-roles-and-backends.md)
 - [0006 — Image-only slides: OCR and captions as derived text, flagged and shown with the original](0006-image-only-slides.md)
+- [0007 — Desktop packaging: an Electron shell around the one server; an unsigned NSIS installer from CI; weights downloaded at first launch by digest; OCR data inside](0007-desktop-packaging.md)
