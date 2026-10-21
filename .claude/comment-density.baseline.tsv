@@ -5,17 +5,17 @@
 #     bash .claude/scripts/check-comment-density.sh --ratchet
 apps/server/src/ask-course.ts	140
 apps/server/src/compose-server.ts	330
-apps/server/src/course-file.ts	756
-apps/server/src/course-repair.ts	1666
-apps/server/src/data-directory.ts	851
+apps/server/src/course-file.ts	598
+apps/server/src/course-repair.ts	384
+apps/server/src/data-directory.ts	652
 apps/server/src/dev-proxy.ts	967
 apps/server/src/dev.ts	232
-apps/server/src/gateway-config.ts	1086
+apps/server/src/gateway-config.ts	574
 apps/server/src/handlers.ts	157
 apps/server/src/http-body.ts	188
 apps/server/src/index.ts	0
 apps/server/src/ingest-deck.ts	526
-apps/server/src/ingest-queue.ts	1092
+apps/server/src/ingest-queue.ts	619
 apps/server/src/loopback.ts	1666
 apps/server/src/repair-fixture.ts	526
 apps/server/src/routes.ts	312
