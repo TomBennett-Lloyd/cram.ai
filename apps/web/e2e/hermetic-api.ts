@@ -75,21 +75,17 @@ const questionOf = (body: string | null): string => {
     : '';
 };
 
-export interface ApiStub {
-  /**
-   * Holds every ask reply from now until the returned `release` is called. Before the first call,
-   * an ask replies at once (#231).
-   */
-  readonly holdAsk: () => () => void;
+export interface StubOptions {
+  /** Every ask reply waits for this; without it, an ask replies at once (#231). */
+  readonly askReplyAfter?: Promise<void>;
 }
 
 /** Answers the app's API calls from the fixtures above, holding one upload's ingest in flight once. */
-export const stubApi = async (page: Page): Promise<ApiStub> => {
+export const stubApi = async (page: Page, options: StubOptions = {}): Promise<void> => {
   let ingestReads = 0;
-  let held: Promise<void> = Promise.resolve();
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
   await page.route('**/courses/*/ask', async (route) => {
-    await held;
+    await options.askReplyAfter;
     await json(route, 200, askReply(questionOf(route.request().postData())));
   });
   await page.route('**/courses/*/decks?*', (route) =>
@@ -111,13 +107,4 @@ export const stubApi = async (page: Page): Promise<ApiStub> => {
       uploads: [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
     });
   });
-  return {
-    holdAsk: () => {
-      let release = (): void => undefined;
-      held = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      return release;
-    },
-  };
 };

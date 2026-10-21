@@ -7,13 +7,16 @@ const ringed = (locator: Locator) =>
   locator.evaluate((node) => getComputedStyle(node).outlineStyle !== 'none');
 
 /**
- * The first slide card of a rendered answer. It holds the reply while it checks the pending state,
- * so a key pressed before `release()` lands on a pending reply every run (#231). It waits for the
- * card because a Tab pressed while the reply is pending leaves the document, and focus never
- * returns when the cards land (#228).
+ * The first slide card of a rendered answer (#231). It waits for the card because a Tab pressed
+ * while the reply is pending leaves the document, and focus never returns when the cards land
+ * (#228).
  */
 const answered = async (page: Page) => {
-  const release = (await stubApi(page)).holdAsk();
+  let release = (): void => undefined;
+  const askReplyAfter = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await stubApi(page, { askReplyAfter });
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
   await page.getByRole('button', { name: 'Ask' }).click();
