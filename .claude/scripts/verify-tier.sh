@@ -10,9 +10,9 @@
 #   every path is .md or in a class below     ->  the classes present, `+`-joined
 #   anything else                             ->  `pnpm verify:full`
 #
-#   source-prose   source whose minified emit and comment-free syntax are unchanged
-#   source-types   source whose minified emit is unchanged and whose types moved
-#   package        a file inside a workspace package new since the merge-base
+#   source-prose   source whose minified emit and comment-free reprint are unchanged
+#   source-emit    source whose minified emit is unchanged, not proven comment-only
+#   package        a file inside a workspace member new since the merge-base
 #   scripts        a .claude/scripts/*.sh file other than this one
 #   ledgers        a .claude/ledgers/*.ledger file
 #
@@ -59,22 +59,22 @@
 # is allowed to be wrong in.
 #
 # ---------------------------------------------------------------------------
-# RUNG 2 — source-prose and source-types (cumulo#477, #292)
+# RUNG 2 — source-prose and source-emit (cumulo#477, #292)
 #
 # A comment-only source edit changes no emitted code, and most of the composite
 # reads emitted code. The proof is mechanical: esbuild minifies the baseline blob
 # and the working file with the extension's loader, and the two outputs are
-# compared byte for byte. Identical output means every difference between the two
-# sources was a comment, whitespace or a type — esbuild erases all three.
+# compared byte for byte. Identical output means the edit changed no emitted
+# behaviour.
 #
-# COMMENT OR TYPE. The emit proof is the safety proof, and it cannot tell those
-# apart, so a second comparison names what moved: TypeScript's printer, with
-# removeComments, reprints both versions of a .ts/.tsx file, and identical output
-# is comment-only (source-prose); anything else is source-types. The name is
-# load-bearing: docs/standards/prose.md § Trim batches reads `source-prose` as
+# COMMENT-ONLY OR NOT. The emit proof is the safety proof, and it does not say
+# what moved, so a second comparison names it: TypeScript's printer, with
+# removeComments, reprints both versions of a .ts/.tsx/.js file, and identical
+# output is comment-only (source-prose); anything else is source-emit. The name
+# is load-bearing: docs/standards/prose.md § Trim batches reads `source-prose` as
 # "this PR moved only prose", and #129's deleted interface was labelled that way.
-# No node or no typescript under node_modules is source-types, the label that
-# claims less. .js and .css carry no types, so their proof alone is source-prose.
+# No node, no typescript under node_modules, or a .css file (which has no
+# reprint here) is source-emit, the label that claims less.
 #
 # THE BASELINE IS THE MERGE-BASE, not HEAD, and this is load-bearing. The change
 # set below spans merge-base...HEAD as well as the worktree, so a file whose code
@@ -180,9 +180,9 @@
 # closure starts at the changed basenames and adds any file under .claude/scripts
 # or .claude/hooks that names a member, until nothing more joins: a lib is
 # observed by whatever observes the scripts sourcing it, and harness-lib.sh,
-# which every harness names, selects them all. This script runs none of the
-# scripts it names, so it is the one file that never joins. A change to this script is a change to which legs run, and
-# only the full composite can vouch for that.
+# which every harness names, selects them all. This script runs only
+# workspace-lib.sh, so it never joins. A change to either of the two is a change
+# to which legs run, and only the full composite can vouch for that.
 #
 # check-ledgers.sh is a ledger's only reader, so the ledger class runs
 # check:ledgers and any test naming the ledger. The ledger's owner is not in the
@@ -197,7 +197,7 @@
 #
 # A new package arrives with its manifest and a lockfile edit, which no class
 # admits, so its first run is full — the manifest moves the dependency tree the
-# egress, node-types and supply-chain gates read. What makes the next run cheaper
+# egress and node-types gates read. What makes the next run cheaper
 # is evidence about that one. When `pnpm verify:full` run by this script exits 0
 # and the working tree hashes the same after the run as before, the tree is
 # BANKED (`git rev-parse --git-path verify-tier-green`: per worktree, never
@@ -213,12 +213,14 @@
 # narrowing gets its own line.
 #
 # The package class: a file whose nearest ancestor holding a package.json is a
-# package absent at the merge-base, whose manifest is not in the change set, and
-# whose `name` no file outside it mentions bar pnpm-lock.yaml and markdown.
-# Nothing on main can depend on a package main lacks, and that scan checks
-# nothing on the branch does either, so the package's reach is its own: eslint
-# over its directory (type-aware rules see across its files), its own typecheck
-# and test scripts, check:comment-density, check:module-names,
+# workspace member (workspace-lib.sh's census) absent at the merge-base, whose
+# manifest is not in the change set, and which no file outside it names — by its
+# `name`, its repo-relative directory, or `/<directory basename>/` for a relative
+# import — bar pnpm-lock.yaml and markdown. Nothing on main can depend on a
+# package main lacks, and that scan is the check that nothing on the branch
+# does, so the package's reach is its own: eslint over its directory (type-aware
+# rules see across its files), lint:sh (a shebang file needs no .sh), its own
+# typecheck and test scripts, check:comment-density, check:module-names,
 # check:no-course-content (a new package can carry a fixture file), and the
 # observing tests elsewhere.
 #
@@ -494,7 +496,7 @@ find_dev_tool() {
 
 # prove_comment_only <path> <loader> -> 0 when the path's minified emit is
 # unchanged since $BASE, 1 with $proof_reason set otherwise. Leaves the baseline
-# source in $TMP/base.src for types_unchanged.
+# source in $TMP/base.src for reprint_unchanged.
 prove_comment_only() {
   local path="$1" loader="$2"
   if ! git_at cat-file -e "$BASE:$path" 2>/dev/null; then
@@ -526,13 +528,13 @@ prove_comment_only() {
   return 0
 }
 
-# types_unchanged <path> <loader> -> 0 when the comment-free reprint of the path
-# matches its baseline's (see COMMENT OR TYPE above), 1 when it does not or the
-# reprint could not be made.
-types_unchanged() {
+# reprint_unchanged <path> <loader> -> 0 when the comment-free reprint of the
+# path matches its baseline's (see COMMENT-ONLY OR NOT above), 1 when it does not
+# or no reprint could be made.
+reprint_unchanged() {
   case "$2" in
-    ts | tsx) ;;
-    *) return 0 ;;
+    ts | tsx | js) ;;
+    *) return 1 ;;
   esac
   if [ "$typescript_looked" = 0 ]; then
     typescript_looked=1
@@ -542,7 +544,7 @@ types_unchanged() {
   node -e '
 const ts = require(process.argv[1]);
 const fs = require("fs");
-const kind = process.argv[2] === "tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+const kind = { ts: ts.ScriptKind.TS, tsx: ts.ScriptKind.TSX, js: ts.ScriptKind.JS }[process.argv[2]];
 const printer = ts.createPrinter({ removeComments: true });
 const reprint = (file) =>
   printer.printFile(
@@ -570,6 +572,27 @@ owning_package_dir() {
   return 1
 }
 
+workspace_looked=0
+# workspace_member <dir> -> 0 when the dir is a member by workspace-lib.sh's
+# census. An unreadable census makes nothing a member, so the path falls through
+# to the emit proof.
+workspace_member() {
+  local m
+  if [ "$workspace_looked" = 0 ]; then
+    workspace_looked=1
+    WORKSPACE_MEMBERS=()
+    if [ -f "$SCRIPTS/workspace-lib.sh" ]; then
+      # shellcheck source=./workspace-lib.sh
+      . "$SCRIPTS/workspace-lib.sh"
+      workspace_read verify-tier "$ROOT" 2>/dev/null || WORKSPACE_MEMBERS=()
+    fi
+  fi
+  for m in ${WORKSPACE_MEMBERS[@]+"${WORKSPACE_MEMBERS[@]}"}; do
+    [ "$m" = "$1" ] && return 0
+  done
+  return 1
+}
+
 # package_admits <new package dir> <path> -> 0 when the path is in the package
 # class (see NEW PACKAGES above), 1 with $reason set otherwise.
 package_admits() {
@@ -584,8 +607,8 @@ package_admits() {
     reason="could not read new package $pkg's name, so nothing can check what depends on it — $f"
     return 1
   fi
-  git_at grep -lF --untracked -e "$name" -- . ":(exclude)$pkg" ':(exclude)pnpm-lock.yaml' \
-    ':(exclude)*.md' >"$TMP/pkg-hits" 2>/dev/null
+  git_at grep -lF --untracked -e "$name" -e "$pkg/" -e "/${pkg##*/}/" -- . ":(exclude)$pkg" \
+    ':(exclude)pnpm-lock.yaml' ':(exclude)*.md' >"$TMP/pkg-hits" 2>/dev/null
   case $? in
     0)
       reason="new package $pkg is named outside itself by $(head -n 1 "$TMP/pkg-hits"), so its reach is not its own — $f"
@@ -657,7 +680,7 @@ classify_paths() {
         printf '%s\n' "$f" >>"$TMP/c-md"
         continue
         ;;
-      .claude/scripts/verify-tier.sh)
+      .claude/scripts/verify-tier.sh | .claude/scripts/workspace-lib.sh)
         reason="a change to the classifier is a change to which legs run, which only the full composite can vouch for — $f"
         return 1
         ;;
@@ -671,7 +694,8 @@ classify_paths() {
         continue
         ;;
     esac
-    if pkg=$(owning_package_dir "$f") && ! git_at cat-file -e "$MB:$pkg/package.json" 2>/dev/null; then
+    if pkg=$(owning_package_dir "$f") && workspace_member "$pkg" &&
+      ! git_at cat-file -e "$MB:$pkg/package.json" 2>/dev/null; then
       package_admits "$pkg" "$f" || return 1
       printf '%s\t%s\n' "$pkg" "$f" >>"$TMP/c-pkg"
       continue
@@ -690,7 +714,7 @@ classify_paths() {
       return 1
     fi
     printf '%s\n' "$f" >>"$TMP/c-src"
-    if types_unchanged "$f" "$loader"; then
+    if reprint_unchanged "$f" "$loader"; then
       printf '%s\n' "$f" >>"$TMP/c-comment"
     else
       printf '%s\n' "$f" >>"$TMP/c-type"
@@ -710,14 +734,10 @@ select_observing_tests() {
   : >"$OBSERVING"
   : >"$TMP/observing-raw"
 
-  # A changed harness runs whether or not it names itself.
-  while IFS= read -r f; do
-    case "$f" in
-      *.test.sh) [ -f "$ROOT/$f" ] && printf '%s\n' "$f" >>"$TMP/observing-raw" ;;
-    esac
-  done <"$TMP/c-script"
-
   grep -v -E '\.spec\.' "$TESTS" >"$TMP/runnable"
+  # A changed test runs whether or not it names itself: a pragma such as
+  # `// @vitest-environment` is a comment both proofs pass.
+  grep -xF -f "$CHANGED" "$TMP/runnable" >>"$TMP/observing-raw"
   files=()
   while IFS= read -r f; do
     files+=("$f")
@@ -796,7 +816,6 @@ build_legs() {
 
   : >"$TMP/present"
   : >"$TMP/css"
-  : >"$TMP/sh"
   while IFS= read -r f; do
     if [ ! -f "$ROOT/$f" ]; then
       has_deleted=1
@@ -805,7 +824,6 @@ build_legs() {
     printf '%s\n' "$f" >>"$TMP/present"
     case "$f" in
       *.css) printf '%s\n' "$f" >>"$TMP/css" ;;
-      *.sh) printf '%s\n' "$f" >>"$TMP/sh" ;;
     esac
   done <"$CHANGED"
   grep -v '\.css$' "$TMP/c-src" >"$TMP/lintable"
@@ -856,7 +874,7 @@ build_legs() {
         append_file_leg "pnpm exec stylelint --max-warnings 0 --" "$TMP/css"
         ;;
       lint:sh)
-        if [ "$has_script" = 1 ] || [ -s "$TMP/sh" ]; then
+        if [ "$has_script" = 1 ] || [ "$has_pkg" = 1 ]; then
           append_leg "pnpm lint:sh"
         fi
         ;;
@@ -936,7 +954,7 @@ build_legs() {
 
   name=""
   if [ -s "$TMP/c-type" ]; then
-    name="source-types"
+    name="source-emit"
   elif [ -s "$TMP/c-comment" ]; then
     name="source-prose"
   fi
@@ -952,7 +970,7 @@ class_summary() {
   n=$(grep -c '' <"$TMP/c-comment")
   [ "$n" -eq 0 ] || line="${line:+$line, }$n file(s) proven comment-only"
   n=$(grep -c '' <"$TMP/c-type")
-  [ "$n" -eq 0 ] || line="${line:+$line, }$n file(s) with an unchanged emit and moved types"
+  [ "$n" -eq 0 ] || line="${line:+$line, }$n file(s) with an unchanged emit, not proven comment-only"
   n=$(grep -c '' <"$TMP/c-pkg")
   [ "$n" -eq 0 ] || line="${line:+$line, }$n file(s) in new package(s) $(paste -s -d ' ' "$TMP/c-pkgdirs")"
   n=$(grep -c '' <"$TMP/c-script")
@@ -1015,13 +1033,17 @@ describe() {
   esac
 }
 
-# current_tree -> the tree object of the working tree as `git add -A` sees it.
-# The scratch index starts EMPTY, so every file is hashed from its content: a
-# copy of the real index carries its stat cache under a newer mtime, which
-# defeats git's racy-entry check, and a same-size edit made in the same second
-# as the last index write then hashes as unchanged.
+# current_tree -> the tree object of the working tree as `git add -A` sees it,
+# over the real index's entries. Seeded with read-tree, so it holds every staged
+# path — `git add -f` of an ignored file included, which an empty index would
+# drop and check:no-course-content exists for — and no stat data, so every file
+# is hashed from its content: a copy of the real index carries its stat cache
+# under a newer mtime, which defeats git's racy-entry check.
 current_tree() {
+  local staged
   rm -f "$TMP/tree-index"
+  staged=$(git_at write-tree 2>/dev/null) || return 1
+  GIT_INDEX_FILE="$TMP/tree-index" git_at read-tree "$staged" >/dev/null 2>&1 || return 1
   GIT_INDEX_FILE="$TMP/tree-index" git_at add -A >/dev/null 2>&1 || return 1
   GIT_INDEX_FILE="$TMP/tree-index" git_at write-tree 2>/dev/null
 }
@@ -1128,7 +1150,8 @@ if [ "$tier" = full ] && [ -s "$TMP/hits" ]; then
   done <"$TMP/hits"
 fi
 
-if [ "$tier" = full ] && green=$(banked_tree); then
+# changed_count is non-zero only after a change set that was collected whole.
+if [ "$tier" = full ] && [ "$changed_count" -gt 0 ] && green=$(banked_tree); then
   narrow "$green"
 fi
 

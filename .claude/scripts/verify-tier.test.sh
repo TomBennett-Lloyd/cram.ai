@@ -370,6 +370,17 @@ if begin_with_esbuild "a comment-only .ts edit is the source-prose tier, and run
   end
 fi
 
+if begin_with_esbuild "a comment-only .js edit is reprinted, and is source-prose"; then
+  must fixture comment_only_js
+  write_in src/tool.js 'export const t = 1;'
+  seed_origin 'feat: a js module'
+  write_in src/tool.js 'export const t = 1; // now with a note'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only"
+  end
+fi
+
 # The pragma case, and the reason the compiler stays in the leg list. `@ts-expect-error` is a
 # comment: esbuild strips it, the two emits match, and the rung takes the change — which is
 # exactly right, because the pragma changes no behaviour and exactly wrong if the tier then
@@ -387,14 +398,16 @@ fi
 
 # A .css comment is observable by stylelint and by nothing else in the composite, so the leg
 # list is the assertion: stylelint present, eslint absent (it was given no file it handles).
-if begin_with_esbuild "a comment-only .css edit is the source-prose tier, and stylelint is the leg that runs"; then
+# .css has no reprint here, so its proof alone takes the label that claims less: esbuild's
+# syntax minification also equates `#ff0000` with `red`.
+if begin_with_esbuild "a comment-only .css edit is the source-emit tier, and stylelint is the leg that runs"; then
   must fixture comment_only_css
   write_in src/app.css '.a { color: red; }'
   seed_origin 'style: a stylesheet to comment on'
   write_in src/app.css '.a { color: red; } /* now with a note */'
   run_tier
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-prose — 1 file(s) proven comment-only; observing tests: none"
+  expect_stdout "verify tier: source-emit — 1 file(s) with an unchanged emit, not proven comment-only; observing tests: none"
   expect_stdout "would run: pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck"
   expect_not_stdout "eslint"
   expect_not_out "verify:full"
@@ -452,6 +465,22 @@ if begin_with_esbuild "a test naming the changed file's basename joins the obser
   expect_rc 0 "$rc"
   expect_stdout "observing tests: pkg/src/names.test.ts"
   expect_stdout "pnpm --filter ./pkg --fail-if-no-match exec vitest run src/names.test.ts"
+  end
+fi
+
+# A changed test runs whether or not it names itself or reads anything: a pragma such as
+# `// @vitest-environment` is a comment to both proofs and still changes the run.
+if begin_with_esbuild "a comment-only edit to a test file selects that test"; then
+  must fixture observing_self
+  write_in pkg/package.json '{ "name": "@fixture/pkg", "private": true }'
+  write_in pkg/src/plain.test.ts "it('works', () => {});"
+  seed_origin 'test: a plain test'
+  write_in pkg/src/plain.test.ts "// @vitest-environment node
+it('works', () => {});"
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "observing tests: pkg/src/plain.test.ts"
+  expect_stdout "pnpm --filter ./pkg --fail-if-no-match exec vitest run src/plain.test.ts"
   end
 fi
 
@@ -680,7 +709,7 @@ if begin_with_esbuild "a rung 2 set holding every kind of path emits its legs in
   write_in src/app.css '.a { color: red; } /* now with a note */'
   run_tier
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-prose — 2 file(s) proven comment-only; observing tests: pkg/src/reader.test.ts, pkg2/src/reader.test.ts"
+  expect_stdout "verify tier: source-emit — 1 file(s) proven comment-only, 1 file(s) with an unchanged emit, not proven comment-only; observing tests: pkg/src/reader.test.ts, pkg2/src/reader.test.ts"
   expect_stdout "would run: pnpm lint:js && pnpm exec stylelint --max-warnings 0 -- src/app.css && pnpm typecheck && pnpm check:comment-density && pnpm --filter ./pkg --fail-if-no-match exec vitest run src/reader.test.ts && pnpm --filter ./pkg2 --fail-if-no-match exec vitest run src/reader.test.ts && pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- docs/tier-fixture-guide.md src/app.css src/app.ts"
   end
 fi
@@ -692,7 +721,7 @@ fi
 # erases both, so the emit proof admits it, and the tier used to call it source-prose — the
 # name the trim-batch rule reads as "only prose moved". The leg the move needs is whole
 # eslint, because strictTypeChecked's rules read types across files.
-if begin_with_esbuild "an interface deleted and a return type changed across two .ts files is source-types"; then
+if begin_with_esbuild "an interface deleted and a return type changed across two .ts files is source-emit"; then
   must fixture type_only
   write_in src/shapes.ts 'export interface Gone { a: number }
 export interface Kept { b: number }'
@@ -702,26 +731,26 @@ export interface Kept { b: number }'
   write_in src/app.ts 'export function f(): unknown { return 1; }'
   run_tier
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-types — 2 file(s) with an unchanged emit and moved types; observing tests: none"
+  expect_stdout "verify tier: source-emit — 2 file(s) with an unchanged emit, not proven comment-only; observing tests: none"
   expect_stdout "would run: pnpm lint:js && pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers && pnpm exec prettier --check --ignore-unknown -- src/app.ts src/shapes.ts"
   expect_not_stdout "source-prose"
   end
 fi
 
-if begin_with_esbuild "a type change in a .tsx file is source-types"; then
+if begin_with_esbuild "a type change in a .tsx file is source-emit"; then
   must fixture type_tsx
   write_in src/view.tsx 'export const V = (p: { a: number }) => <b>{p.a}</b>;'
   seed_origin 'feat: a view'
   write_in src/view.tsx 'export const V = (p: { a: string }) => <b>{p.a}</b>;'
   run_tier
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-types — 1 file(s) with an unchanged emit and moved types"
+  expect_stdout "verify tier: source-emit — 1 file(s) with an unchanged emit, not proven comment-only"
   end
 fi
 
 # One moved type among comment-only files names the whole set: the tier says what the
 # least prose-like file did.
-if begin_with_esbuild "a type change beside a comment-only change is still source-types, and both are counted"; then
+if begin_with_esbuild "a type change beside a comment-only change is still source-emit, and both are counted"; then
   must fixture type_and_comment
   write_in src/shapes.ts 'export type T = number;'
   seed_origin 'feat: a type alias'
@@ -729,14 +758,14 @@ if begin_with_esbuild "a type change beside a comment-only change is still sourc
   write_in src/app.ts 'export const a = 1; // now with a note'
   run_tier
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-types — 1 file(s) proven comment-only, 1 file(s) with an unchanged emit and moved types"
+  expect_stdout "verify tier: source-emit — 1 file(s) proven comment-only, 1 file(s) with an unchanged emit, not proven comment-only"
   end
 fi
 
 # The no-typescript fallback: a classifier copy outside any repository resolves tools from the
 # fixture's own node_modules only, which holds esbuild and nothing else, so the comparison that
 # could prove "comment-only" cannot run and the set takes the label that claims less.
-if begin_with_esbuild "with no typescript reachable, a comment-only .ts edit is source-types"; then
+if begin_with_esbuild "with no typescript reachable, a comment-only .ts edit is source-emit"; then
   must fixture no_typescript
   must mkdir -p "$ROOT/tool" "$WT/node_modules/.bin"
   must cp "$TIER" "$ROOT/tool/verify-tier.sh"
@@ -746,7 +775,7 @@ if begin_with_esbuild "with no typescript reachable, a comment-only .ts edit is 
   write_in src/app.ts 'export const a = 1; // now with a note'
   capture env GIT_CEILING_DIRECTORIES="$ROOT" bash "$ROOT/tool/verify-tier.sh" --dry-run "$WT"
   expect_rc 0 "$rc"
-  expect_stdout "verify tier: source-types — 1 file(s) with an unchanged emit and moved types"
+  expect_stdout "verify tier: source-emit — 1 file(s) with an unchanged emit, not proven comment-only"
   end
 fi
 
@@ -913,8 +942,6 @@ expect_rc 0 "$rc"
 expect_stdout "would run: pnpm check:ledgers && pnpm exec prettier --check --ignore-unknown -- .claude/ledgers/tier-fixture.ledger && pnpm check:tier-fixture-gate"
 end
 
-# A script that lint:sh's own command names makes the slot run whole, which it does anyway;
-# the gate script's slot is the one that shows the mapping.
 begin "a changed harness runs itself even when it names nothing that changed"
 script_fixture script_harness
 write_in .claude/scripts/tier-other.test.sh 'echo unrelated, revised'
@@ -931,6 +958,14 @@ run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full"
 expect_stdout "a change to the classifier is a change to which legs run, which only the full composite can vouch for — .claude/scripts/verify-tier.sh"
+end
+
+begin "a change to workspace-lib.sh, which the classifier sources, is the full tier"
+script_fixture script_workspace_lib
+write_in .claude/scripts/workspace-lib.sh 'echo a different census'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "which only the full composite can vouch for — .claude/scripts/workspace-lib.sh"
 end
 
 begin "a script change with no package.json to read the legs from is the full tier"
@@ -1004,6 +1039,8 @@ run_tier_for_real() { # the production invocation, NOT a dry run, with the shim 
 
 new_package_fixture() {
   must fixture "$1"
+  write_in pnpm-workspace.yaml "packages:
+  - 'pkg-new'"
   write_in pkg-new/package.json '{ "name": "@fixture/new", "private": true }'
   write_in pkg-new/src/x.ts 'export const x = 1;'
   write_in pnpm-lock.yaml "importers: { pkg-new: { name: '@fixture/new' } }"
@@ -1011,13 +1048,13 @@ new_package_fixture() {
   commit_all 'feat: a new package'
 }
 
-NEW_PACKAGE_LEGS="pnpm exec eslint --no-warn-ignored --max-warnings 0 -- pkg-new && pnpm --filter ./pkg-new --fail-if-no-match run --if-present typecheck && pnpm check:comment-density && pnpm --filter ./pkg-new --fail-if-no-match run --if-present test && pnpm check:ledgers && pnpm check:module-names && pnpm check:no-course-content && pnpm exec prettier --check --ignore-unknown -- pkg-new/src/x.ts"
+NEW_PACKAGE_LEGS="pnpm exec eslint --no-warn-ignored --max-warnings 0 -- pkg-new && pnpm lint:sh && pnpm --filter ./pkg-new --fail-if-no-match run --if-present typecheck && pnpm check:comment-density && pnpm --filter ./pkg-new --fail-if-no-match run --if-present test && pnpm check:ledgers && pnpm check:module-names && pnpm check:no-course-content && pnpm exec prettier --check --ignore-unknown -- pkg-new/src/x.ts"
 
 begin "a new package is the full tier first, because its manifest moved the dependency tree"
 new_package_fixture new_package_first
 run_tier
 expect_rc 0 "$rc"
-expect_stdout "verify tier: full — 4 file(s); new package pkg-new has its manifest in the change set"
+expect_stdout "verify tier: full — 5 file(s); new package pkg-new has its manifest in the change set"
 expect_stdout "would run: pnpm verify:full"
 expect_not_stdout "narrowed"
 end
@@ -1031,7 +1068,7 @@ expect_stdout "verify tier: banked tree "
 write_in pkg-new/src/x.ts 'export const x = 2;'
 run_tier
 expect_rc 0 "$rc"
-expect_stdout "verify tier: full — 4 file(s); new package pkg-new has its manifest in the change set"
+expect_stdout "verify tier: full — 5 file(s); new package pkg-new has its manifest in the change set"
 expect_stdout "verify tier: narrowed to package since banked tree "
 expect_stdout "1 file(s) in new package(s) pkg-new; observing tests: none"
 expect_stdout "would run: $NEW_PACKAGE_LEGS"
@@ -1125,15 +1162,78 @@ expect_stdout "could not read new package pkg-new's name"
 expect_stdout "would run: pnpm verify:full"
 end
 
-begin "a shell file inside a new package adds lint:sh to its legs"
+# lint-shell.sh also checks shebang files with no .sh, so the class runs it whatever the name.
+begin "an extension-less shebang file inside a new package still runs lint:sh"
 new_package_fixture new_package_shell
 shim_pnpm 0
 run_tier_for_real
-write_in pkg-new/run.sh 'echo run'
+write_in pkg-new/bin/run '#!/usr/bin/env bash'
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: narrowed to package since banked tree "
 expect_stdout "pnpm lint:sh"
+end
+
+# By path, not only by name: a relative import reaches the package without its name.
+begin "a new package reached by a relative import from outside it does not narrow"
+new_package_fixture new_package_relative
+write_in app/src/use.ts "import { x } from '../../pkg-new/src/x';"
+commit_all 'feat: reach into the new package by path'
+shim_pnpm 0
+run_tier_for_real
+write_in pkg-new/src/x.ts 'export const x = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "new package pkg-new is named outside itself by app/src/use.ts"
+expect_stdout "would run: pnpm verify:full"
+end
+
+# The repo-relative arm: a config that includes the package by path names neither its name nor
+# `/<basename>/`.
+begin "a new package a root config includes by path does not narrow"
+new_package_fixture new_package_config
+write_in tsconfig.json '{ "include": ["pkg-new/src"] }'
+commit_all 'chore: include the new package'
+shim_pnpm 0
+run_tier_for_real
+write_in pkg-new/src/x.ts 'export const x = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "new package pkg-new is named outside itself by tsconfig.json"
+end
+
+# The basename arm: from a sibling package a relative import holds `/fresh/` and never the
+# repo-relative `packages/fresh/`.
+begin "a nested new package reached from a sibling by a relative import does not narrow"
+must fixture new_package_sibling
+write_in pnpm-workspace.yaml "packages:
+  - 'packages/*'"
+write_in packages/fresh/package.json '{ "name": "@fixture/fresh", "private": true }'
+write_in packages/fresh/src/x.ts 'export const x = 1;'
+write_in packages/other/src/use.ts "import { x } from '../../fresh/src/x';"
+commit_all 'feat: a nested package and a sibling that reaches into it'
+shim_pnpm 0
+run_tier_for_real
+write_in packages/fresh/src/x.ts 'export const x = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "new package packages/fresh is named outside itself by packages/other/src/use.ts"
+end
+
+# A package.json that is not a workspace member gets no `pnpm --filter` legs: they would go
+# red on "No projects matched", the kind of spurious red that gets a gate bypassed.
+begin "a new directory with a package.json outside the workspace is not the package class"
+new_package_fixture new_package_nonmember
+write_in fixtures/thing/package.json '{ "name": "@fixture/thing", "private": true }'
+write_in fixtures/thing/data.ts 'export const d = 1;'
+commit_all 'test: a fixture manifest'
+shim_pnpm 0
+run_tier_for_real
+write_in fixtures/thing/data.ts 'export const d = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "the minified emit changed — fixtures/thing/data.ts"
+expect_stdout "would run: pnpm verify:full"
 end
 
 # A reading test in another package observes the new package's files and runs; one inside it
@@ -1142,6 +1242,9 @@ begin "under the package class, reading tests elsewhere run, and the package's o
 must fixture new_package_readers
 write_in lib/package.json '{ "name": "@fixture/lib", "private": true }'
 write_in lib/src/reader.test.ts "it('reads', () => readFileSync('x'));"
+write_in pnpm-workspace.yaml "packages:
+  - 'lib'
+  - 'pkg-new'"
 seed_origin 'test: a reading test in another package'
 write_in pkg-new/package.json '{ "name": "@fixture/new", "private": true }'
 write_in pkg-new/src/x.ts 'export const x = 1;'
@@ -1155,6 +1258,54 @@ expect_rc 0 "$rc"
 expect_stdout "observing tests: lib/src/reader.test.ts, pkg-new/src/x.test.ts"
 expect_stdout "pnpm --filter ./lib --fail-if-no-match exec vitest run src/reader.test.ts && pnpm --filter ./pkg-new --fail-if-no-match run --if-present test"
 expect_not_stdout "vitest run src/x.test.ts"
+end
+
+# The emit proof's baseline when narrowing is the banked tree: measured from the merge-base,
+# this file's emit moved.
+if begin_with_esbuild "after a banked code edit, a comment edit to the same file narrows to source-prose"; then
+  must fixture bank_emit_baseline
+  write_in src/app.ts 'export const a = 2;'
+  shim_pnpm 0
+  run_tier_for_real
+  expect_stdout "verify tier: banked tree "
+  write_in src/app.ts 'export const a = 2; // now with a note'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: full — 1 file(s); the minified emit changed — src/app.ts"
+  expect_stdout "verify tier: narrowed to source-prose since banked tree "
+  end
+fi
+
+# A force-added ignored file is the path check:no-course-content exists for. The delta must
+# hold it, so the run cannot narrow past that gate.
+if begin_with_esbuild "a force-added ignored file after the bank stops narrowing"; then
+  must fixture bank_forced
+  write_in .gitignore 'node_modules/
+*.pdf'
+  write_in src/app.ts 'export const a = 2;'
+  shim_pnpm 0
+  run_tier_for_real
+  expect_stdout "verify tier: banked tree "
+  write_in lecture.pdf 'not really a deck'
+  must gitc "$WT" add -f lecture.pdf
+  write_in src/app.ts 'export const a = 2; // now with a note'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: not narrowed since banked tree "
+  expect_stdout "lecture.pdf"
+  expect_stdout "would run: pnpm verify:full"
+  end
+fi
+
+begin "an empty change set is not narrowed, even with a bank"
+must fixture bank_empty
+shim_pnpm 0
+run_tier_for_real
+expect_stdout "verify tier: banked tree "
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — the change set is empty"
+expect_not_stdout "narrow"
 end
 
 begin "a banked tree git does not hold is ignored"

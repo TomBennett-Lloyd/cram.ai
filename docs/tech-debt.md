@@ -129,3 +129,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-ledgers.sh`'s unlisted-hit loop
 - What: every path under `.claude/ledgers/` is exempt from the unlisted-hit check, so another ledger's `claim:` or `#` line restating a value is never returned. Only the lines the gate itself checks (`owner:`, `cite:`, `carrier:`, `excluded:`) need the exemption. No hidden restatement exists today (#179's review sweep).
 - Source: #179 review
+
+## 2026-10-21 — the trim-batch trigger does not say whether a `+`-joined tier counts
+
+- Where: `docs/standards/prose.md` § Trim batches (first paragraph); `.claude/skills/review-loop/SKILL.md` **Trim-batch lane**
+- What: both say a PR whose diff `.claude/scripts/verify-tier.sh` classifies `source-prose` or `docs` is a trim batch. #292 made composite tier names reachable, so a trim batch that writes the restatement ledger prose.md rule 1 asks for now classifies `source-prose+ledgers`, and neither text says whether that counts. Nothing regressed: before #292 a diff touching a ledger classified `full`, which was never a trim batch. The fix is a standards decision.
+- Source: #292 review cycle 1
