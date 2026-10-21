@@ -113,7 +113,6 @@ const encode = (
   };
 };
 
-/** Shows hex `codes` at `y` in the page's font `name`. */
 const showCodes = (page: PDFPage, name: string, codes: string, size: number, y: number): void => {
   page.pushOperators(
     beginText(),

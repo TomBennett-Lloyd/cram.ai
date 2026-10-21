@@ -144,7 +144,7 @@ const PPTX = buildPptx({
         ]),
         group(shape(['A grouped caption under the table'])),
       ],
-      notes: ['Read from an absolute target'],
+      notes: ['Read from an absolute target', PDFJS_FOLDED_LINE],
       absoluteNotesTarget: true,
     },
     {
@@ -157,7 +157,7 @@ const PPTX = buildPptx({
           shape([paragraphOf(run('Rest energy is '), MASS_ENERGY, run(' for a body at rest'))]),
           picture,
         ),
-        shape(['Café au lait and the word ℎ for Planck']),
+        shape(['Café au lait and the word ℎ for Planck', PDFJS_FOLDED_LINE]),
       ],
     },
     { shapes: [shape(['Every construct'], 'title'), shape([paragraphOf(EVERY_CONSTRUCT)])] },
