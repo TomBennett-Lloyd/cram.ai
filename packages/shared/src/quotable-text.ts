@@ -7,13 +7,11 @@ export interface SlideField {
   readonly text: string;
 }
 
-/** Indices into the searched text, `end` exclusive. */
 export interface QuoteSpan {
   readonly start: number;
   readonly end: number;
 }
 
-/** What joins one quotable field to the next where a slide is read as one text. */
 export const SLIDE_FIELD_SEPARATOR = '\n';
 
 /** The fields a quote resolves against, in reading order, blank ones left out (#202; `.claude/ledgers/quotable-fields.ledger`). */
