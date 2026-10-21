@@ -36,7 +36,7 @@ type PptxFailure = keyof typeof UNREADABLE;
 /** Derived from `UNREADABLE`, so every reason has a failure that produces it (#185). */
 export type PptxUnreadableReason = (typeof UNREADABLE)[PptxFailure];
 
-/** A deck its own bytes cannot yield; `ingestPptx` returns it as a value (docs/standards/error-handling.md rule 1). */
+/** `ingestPptx` returns this as a value (docs/standards/error-handling.md rule 1). */
 export class UnreadablePptx extends Error {
   readonly reason: PptxUnreadableReason;
 
@@ -68,12 +68,13 @@ const BYTE_ORDER_MARKS = [
   { mark: [0xfe, 0xff], encoding: 'UTF-16BE' },
 ] as const;
 
-/** OPC parts are UTF-8 or UTF-16, and a UTF-16 part opens with its byte-order mark (XML 1.0 §4.3.3, #185). */
+/** A UTF-16 part opens with its byte-order mark (XML 1.0 §4.3.3); any other part is read as UTF-8 (#185). */
 const decodePart = (bytes: Uint8Array, partName: string): string => {
   const encoding =
     BYTE_ORDER_MARKS.find(({ mark }) => startsWith(bytes, mark))?.encoding ?? 'UTF-8';
+  const decoder = new TextDecoder(encoding, { fatal: true });
   try {
-    return new TextDecoder(encoding, { fatal: true }).decode(bytes);
+    return decoder.decode(bytes);
   } catch (error) {
     throw new UnreadablePptx('undecodable-part', `${partName} is not ${encoding}`, {
       cause: error,

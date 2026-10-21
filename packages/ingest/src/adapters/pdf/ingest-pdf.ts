@@ -15,7 +15,7 @@ const Annotation = z.object({
   contentsObj: z.object({ str: z.string() }).optional(),
 });
 
-/** The pdf.js exceptions a deck's own bytes can raise: values, not bugs (docs/standards/error-handling.md rule 1). */
+/** The pdf.js exceptions returned as values, not bugs (docs/standards/error-handling.md rule 1). */
 const PdfjsException = z.object({
   name: z.enum(['InvalidPDFException', 'PasswordException', 'UnknownErrorException']),
   message: z.string(),

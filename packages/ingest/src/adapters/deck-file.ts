@@ -9,7 +9,7 @@ export interface DeckFile {
   readonly lectureId: LectureId;
 }
 
-/** `Reason` is the adapter's own vocabulary for a deck its bytes cannot yield. */
+/** `Reason` is the adapter's own vocabulary. */
 export type IngestResult<Reason extends string> =
   | { readonly status: 'ingested'; readonly slides: readonly SlideRecord[] }
   | {
