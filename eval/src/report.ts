@@ -15,7 +15,6 @@ import { LatencySummary } from './latency';
 import { BaselineRow, NotMeasurable } from './metric-row';
 import { ArmDecision } from './verifier-arms';
 
-/** Closed, since a baseline is per class (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)); the target is #3's machine. */
 export const MachineClass = z.enum(['target-cpu-laptop', 'dev-apple-silicon']);
 export type MachineClass = z.infer<typeof MachineClass>;
 
@@ -44,7 +43,6 @@ export const EvalReport = z.strictObject({
     embedder: EmbedderPin,
     reranker: RerankerPin.nullable(),
   }),
-  /** Whether the generator's server was seen serving `pins.generator`'s weights (#171). */
   servedGenerator: ServedArtefact,
   determinism: z.strictObject({ generator: Sampling }),
   nliThresholds: z.strictObject({ entailedAt: Probability, contradictedAt: Probability }),

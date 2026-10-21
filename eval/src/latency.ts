@@ -3,7 +3,6 @@ import { NotMeasurable, notMeasurable } from './metric-row';
 
 const Milliseconds = z.number().nonnegative();
 
-/** Wall-clock durations of one kind of call, summarised. */
 export const LatencySummary = z.discriminatedUnion('status', [
   z.strictObject({
     status: z.literal('measured'),
