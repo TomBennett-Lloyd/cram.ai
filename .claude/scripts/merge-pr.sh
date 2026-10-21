@@ -54,7 +54,8 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 . "$script_dir/worktree-lib.sh"
 
 # Env knobs, all overridable — the harness pins the waits to zero, and an operator
-# on a slow lane can widen the poll without editing the script.
+# on a slow lane can widen the poll without editing the script. Every *_RETRIES
+# knob counts ATTEMPTS, the first included, so each is at least 1 (#180).
 : "${MERGE_PR_GH_CMD:=gh}"                             # GitHub CLI; the one seam the harness stubs
 : "${MERGE_PR_REAP_CMD:=$script_dir/reap-worktree.sh}" # the reaper, which owns its own safety checks
 : "${MERGE_PR_POLL_INTERVAL_SECONDS:=20}"              # between checks polls
@@ -62,10 +63,11 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 : "${MERGE_PR_UPDATE_RETRIES:=3}"                      # update-branch attempts against the head-sha race
 : "${MERGE_PR_RETRY_SECONDS:=10}"                      # between those attempts, between state re-reads, and after a union push
 : "${MERGE_PR_EXPECTED_CHECKS:=0}"                     # a floor the operator can raise; see the checks step
-: "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # re-reads allowed for an eventually-consistent state
+: "${MERGE_PR_CONFIRM_RETRIES:=5}"                     # reads of an eventually-consistent state; see the merge and issues steps
 : "${MERGE_PR_PRETTIER_CMD:=pnpm exec prettier}"       # formatter the append-only-log union re-runs; see that step
 : "${MERGE_PR_GH_TIMEOUT_SECONDS:=60}"                 # the time box on every gh call; see gh_call
-: "${MERGE_PR_READ_RETRIES:=3}"                        # retries of a failed checks-poll read before the step fails
+: "${MERGE_PR_READ_RETRIES:=4}"                        # consecutive failed checks-poll reads that fail the step
+: "${MERGE_PR_UNION_SEAM:=}"                           # unset outside merge-pr.test.sh; see log_union
 
 # `files` is deliberately NOT in this list. `gh pr view --json files` is
 # `files(first: 100)` with no truncation signal, and the humanAlways decision made
@@ -101,6 +103,12 @@ if [ "$MERGE_PR_GH_TIMEOUT_SECONDS" -lt 1 ]; then
   printf 'merge-pr: MERGE_PR_GH_TIMEOUT_SECONDS must be at least 1, got "%s"\n' "$MERGE_PR_GH_TIMEOUT_SECONDS" >&2
   exit 2
 fi
+for knob in MERGE_PR_UPDATE_RETRIES MERGE_PR_CONFIRM_RETRIES MERGE_PR_READ_RETRIES; do
+  if [ "${!knob}" -lt 1 ]; then
+    printf 'merge-pr: %s counts attempts and must be at least 1, got "%s"\n' "$knob" "${!knob}" >&2
+    exit 2
+  fi
+done
 
 usage() {
   cat >&2 <<'EOF'
@@ -408,11 +416,12 @@ else
   # commit-subject guard is what keeps a header-less task-orchestrator batch,
   # which also sits on an `<n>-<slug>` branch with its anchor among the Closes,
   # on the rebase arm: a curated batch names each member in a subject. A branch
-  # number no Closes line names says nothing, and the count decides.
+  # number no Closes line names says nothing, and the count decides. The commit
+  # count test is for bash 3.2, which under `set -u` aborts on an empty `[@]`.
   head_issue=""
   [[ "$pr_head_ref" =~ ^([0-9]+)- ]] && head_issue="${BASH_REMATCH[1]}"
   other_member=""
-  if [ -n "$head_issue" ] && [ "${#pr_closes[@]}" -gt 1 ]; then
+  if [ -n "$head_issue" ] && [ "${#pr_closes[@]}" -gt 1 ] && [ "${#pr_commits[@]}" -gt 0 ]; then
     for n in "${pr_closes[@]}"; do
       [ "$n" = "$head_issue" ] && continue
       for m in "${pr_commits[@]}"; do
@@ -1076,6 +1085,20 @@ EOF
   union_summary=$(printf '%s | ' "${summaries[@]}")
   union_summary=${union_summary% | }
 
+  # Two checks hold the merge below to this analysis — a conflict where merge-tree
+  # found one, and the same conflicted set — and only a tree that moved in between
+  # fails them, which no fixture can arrange from outside the run. The seam, run here
+  # with the worktree, is how merge-pr.test.sh's step 21 cases move it (#180).
+  if [ -n "$MERGE_PR_UNION_SEAM" ]; then
+    out=$("$MERGE_PR_UNION_SEAM" "$wt" 2>&1)
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+      rm -rf "$dir"
+      union_reason="MERGE_PR_UNION_SEAM exited $rc: $out"
+      return 1
+    fi
+  fi
+
   # ---- from here on the worktree is being written to; every failure runs union_abort.
 
   # --no-ff: the merge commit `gh pr update-branch` would have written itself.
@@ -1088,7 +1111,7 @@ EOF
 
   conflicted=$(git -C "$wt" diff --name-only --diff-filter=U 2>&1)
   if [ "$(printf '%s\n' "$conflicted" | sort)" != "$(printf '%s\n' "${seen_paths[@]}" | sort)" ]; then
-    union_abort "$wt" "$dir" "the merge left $(printf '%s' "$conflicted" | tr '\n' ' ')unresolved, not the analysed $union_paths — the tree moved under the analysis"
+    union_abort "$wt" "$dir" "the merge left $(printf '%s\n' "$conflicted" | tr '\n' ' ')unresolved, not the analysed $union_paths — the tree moved under the analysis"
     return 1
   fi
 
@@ -1429,8 +1452,8 @@ else
     # dropped request should not cost the run.
     if ! read_pr; then
       poll_read_failures=$((poll_read_failures + 1))
-      poll_log "read failed ($poll_read_failures in a row, $MERGE_PR_READ_RETRIES retries allowed): $last_error"
-      [ "$poll_read_failures" -le "$MERGE_PR_READ_RETRIES" ] ||
+      poll_log "read failed ($poll_read_failures of $MERGE_PR_READ_RETRIES attempts): $last_error"
+      [ "$poll_read_failures" -lt "$MERGE_PR_READ_RETRIES" ] ||
         fail 'checks' "$poll_read_failures consecutive reads failed; the last: $last_error"
       sleep "$MERGE_PR_POLL_INTERVAL_SECONDS"
       continue
@@ -1484,7 +1507,8 @@ else
   # moved.
   #
   # mergeStateStatus is eventually consistent: GitHub answers UNKNOWN while it is
-  # still computing the merge, so that one state is re-read rather than refused.
+  # still computing the merge, so that one state is re-read rather than refused —
+  # MERGE_PR_CONFIRM_RETRIES reads in all, the poll's last read being the first.
   # The MERGED arm leaves the loop early rather than deciding anything — a merged
   # PR also answers UNKNOWN, so without it a PR merged elsewhere during this
   # window sleeps out every remaining retry before the block below reaches the
@@ -1535,7 +1559,7 @@ elif [ "$already_merged" = "0" ]; then
     read_pr || fail 'merge' "merged with rc=0 but the state could not be confirmed: $last_error"
     [ "$pr_state" = "MERGED" ] && break
     if [ "$attempt" -ge "$MERGE_PR_CONFIRM_RETRIES" ]; then
-      fail 'merge' "gh pr merge exited 0 but the PR is still '$pr_state' after $MERGE_PR_CONFIRM_RETRIES re-reads"
+      fail 'merge' "gh pr merge exited 0 but the PR is still '$pr_state' after $MERGE_PR_CONFIRM_RETRIES reads"
     fi
     attempt=$((attempt + 1))
     sleep "$MERGE_PR_RETRY_SECONDS"

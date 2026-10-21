@@ -270,7 +270,15 @@ case "\$1 \$2" in
     exit 0
     ;;
   "issue view")
-    if [ -f "\$state/issue.\$3" ]; then
+    # A sequence per issue, as \`pr view\` is: issue.<n>.1, issue.<n>.2, … fall back to
+    # issue.<n>, then to CLOSED.
+    n=0
+    [ -f "\$state/issue.\$3.count" ] && read -r n <"\$state/issue.\$3.count"
+    n=\$((n + 1))
+    printf '%s' "\$n" >"\$state/issue.\$3.count"
+    if [ -f "\$state/issue.\$3.\$n" ]; then
+      cat "\$state/issue.\$3.\$n"
+    elif [ -f "\$state/issue.\$3" ]; then
       cat "\$state/issue.\$3"
     else
       printf '{"number":%s,"state":"CLOSED"}\n' "\$3"
@@ -360,14 +368,15 @@ fixture() { # fixture <name> [humanAlways JSON array]
 
 reset_calls() { # a second run of the subject against the same state, from the top
   : >"$STATE/calls.log"
-  must rm -f "$STATE/view.count" "$STATE/ub.count"
+  must rm -f "$STATE/view.count" "$STATE/ub.count" "$STATE"/issue.*.count
 }
 
 POLL_TIMEOUT=30
 GH_TIMEOUT=60
 FAKE_BOX="" # non-empty: the watchdog's sleep is sleep_stub's, which fires only at a hang
 
-# MERGE_METHOD, set as a prefix (`MERGE_METHOD=rebase run_merge`), passes --method.
+# Prefixes a case may set: MERGE_METHOD (`MERGE_METHOD=rebase run_merge`) passes --method,
+# MERGE_BASH names the interpreter, and UNION_SEAM is MERGE_PR_UNION_SEAM.
 run_merge() { # run_merge [caller's working directory]
   capture -C "${1:-$REPO}" env \
     PATH="${FAKE_BOX:+$ROOT/clock:}$PATH" \
@@ -379,9 +388,10 @@ run_merge() { # run_merge [caller's working directory]
     MERGE_PR_RETRY_SECONDS=0 \
     MERGE_PR_UPDATE_RETRIES=3 \
     MERGE_PR_CONFIRM_RETRIES=2 \
-    MERGE_PR_READ_RETRIES=2 \
+    MERGE_PR_READ_RETRIES=3 \
     MERGE_PR_GH_TIMEOUT_SECONDS="$GH_TIMEOUT" \
-    bash "$SUBJECT" ${MERGE_METHOD:+--method "$MERGE_METHOD"} "$PR" "$REPO"
+    MERGE_PR_UNION_SEAM="${UNION_SEAM-}" \
+    "${MERGE_BASH:-bash}" "$SUBJECT" ${MERGE_METHOD:+--method "$MERGE_METHOD"} "$PR" "$REPO"
 }
 
 called() { # called <exact calls.log line>
@@ -1572,8 +1582,8 @@ end
 # cumulo#488: the chain died on `error connecting to api.github.com` and left the PR
 # open with no signal. The property under test is that the repair is a re-run —
 # the script keeps no state of its own, so the second run re-reads and proceeds.
-# The poll retries a failed read MERGE_PR_READ_RETRIES times (2 here), so the
-# outage outlasts that: reads 2, 3 and 4 all fail.
+# The poll allows MERGE_PR_READ_RETRIES consecutive failed reads (3 here) and the
+# outage is exactly that long: reads 2, 3 and 4 all fail.
 begin "a re-run after a mid-poll network failure resumes and completes"
 fixture resume
 write_view default
@@ -1617,12 +1627,12 @@ elapsed=$((SECONDS - started))
 FAKE_BOX=""
 expect_rc 1
 expect_stderr 'checks — FAILED'
-expect_stderr 'read failed (2 in a row, 2 retries allowed)'
+expect_stderr 'read failed (2 of 3 attempts)'
 expect_stderr '3 consecutive reads failed'
 expect_stderr "did not answer within ${GH_TIMEOUT}s"
 expect_not_called "pr merge $PR --squash"
 views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
-[ "$views" -eq 4 ] || bad "expected classify plus a read and its two retries, got $views pr view calls"
+[ "$views" -eq 4 ] || bad "expected classify plus three failed reads, got $views pr view calls"
 [ "$elapsed" -lt 45 ] || bad "the run took ${elapsed}s, so the box did not cut the 90 s of hangs short"
 end
 
@@ -1640,7 +1650,7 @@ FAKE_BOX=1
 run_merge
 FAKE_BOX=""
 expect_rc 0
-expect_stderr 'read failed (1 in a row, 2 retries allowed)'
+expect_stderr 'read failed (1 of 3 attempts)'
 expect_called "pr merge $PR --squash"
 expect_stdout "done — PR #$PR MERGED"
 end
@@ -1666,6 +1676,25 @@ expect_stderr "did not answer within ${GH_TIMEOUT}s"
 ubs=$(grep -c -- "^pr update-branch $PR" "$STATE/calls.log")
 [ "$ubs" -eq 1 ] || bad "a write of unknown outcome was retried: $ubs update-branch calls"
 expect_not_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 13e. …and one failed read short of MERGE_PR_READ_RETRIES still merges
+# ==========================================================================================
+# The knob counts attempts (#180): 13 is the outage the step fails on, and this one is one
+# read shorter, which the step must ride out.
+begin "MERGE_PR_READ_RETRIES-1 failed poll reads are ridden out and the run merges"
+fixture read-retries-boundary
+write_view default
+for n in 2 3; do
+  must printf 'error connecting to api.github.com\n' >"$STATE/view.$n"
+  must printf '1\n' >"$STATE/view.$n.rc"
+done
+write_merged_view
+run_merge
+expect_rc 0
+expect_stderr 'read failed (2 of 3 attempts)'
+expect_called "pr merge $PR --squash"
 end
 
 # ==========================================================================================
@@ -1974,6 +2003,108 @@ expect_stderr 'feedback — FAILED'
 expect_stderr 'no "- **Category**:" line'
 expect_not_called "pr merge $PR --squash"
 end
+
+# ==========================================================================================
+# 17l. MERGE_PR_CONFIRM_RETRIES bounds the UNKNOWN merge state at that many reads
+# ==========================================================================================
+# The knob counts reads, the first included (#180), and the first is the poll's: at 2, the
+# merge step re-reads once. Classify, the poll and one re-read are three views.
+begin "an UNKNOWN merge state is read MERGE_PR_CONFIRM_RETRIES times, then refused"
+fixture confirm-unknown
+V_MSST="UNKNOWN"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr "merge — FAILED: mergeStateStatus is 'UNKNOWN', not CLEAN"
+expect_not_called "pr merge $PR --squash"
+views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
+[ "$views" -eq 3 ] || bad "expected classify, the poll and 1 re-read, got $views pr view calls"
+end
+
+# ==========================================================================================
+# 17m. …and a state that settles on the last of those reads is merged
+# ==========================================================================================
+begin "an UNKNOWN merge state that reads CLEAN on the last allowed read is merged"
+fixture confirm-unknown-boundary
+V_MSST="UNKNOWN"
+write_view default
+V_MSST="CLEAN"
+write_view 3
+write_merged_view
+run_merge
+expect_rc 0
+expect_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 17n. the post-merge state is read MERGE_PR_CONFIRM_RETRIES times before the step fails
+# ==========================================================================================
+# No view.merged, so every read after the merge still answers OPEN.
+begin "a merge gh reports but the PR never shows is read MERGE_PR_CONFIRM_RETRIES times"
+fixture confirm-merged
+write_view default
+run_merge
+expect_rc 1
+expect_stderr "the PR is still 'OPEN' after 2 reads"
+after=$(sed -n "$(call_line "pr merge $PR")"',$p' "$STATE/calls.log" | grep -c -- "^pr view $PR ")
+[ "$after" -eq 2 ] || bad "expected 2 reads after the merge, got $after"
+end
+
+# ==========================================================================================
+# 17o. …and a PR that shows MERGED on the last of those reads finishes the chain
+# ==========================================================================================
+begin "a PR that reads MERGED on the last allowed post-merge read finishes the chain"
+fixture confirm-merged-boundary
+write_view default
+V_STATE="MERGED"
+V_MSST="UNKNOWN"
+write_view 4
+run_merge
+expect_rc 0
+expect_stdout "done — PR #$PR MERGED"
+end
+
+# ==========================================================================================
+# 17p. each Closes issue is read MERGE_PR_CONFIRM_RETRIES times before it is reported open
+# ==========================================================================================
+begin "a Closes issue is read MERGE_PR_CONFIRM_RETRIES times, and closing on the last read counts"
+fixture confirm-issues
+V_BODY="What and why. Closes #12. Closes #13"
+V_COMMITS="#12: the change,#13: the other"
+write_view default
+write_merged_view
+must printf '{"number":12,"state":"OPEN"}\n' >"$STATE/issue.12"
+must printf '{"number":13,"state":"OPEN"}\n' >"$STATE/issue.13.1"
+MERGE_METHOD=squash run_merge
+expect_rc 1
+expect_stdout 'still OPEN: #12 (reported below)'
+reads=$(grep -c -- '^issue view 12 ' "$STATE/calls.log")
+[ "$reads" -eq 2 ] || bad "expected 2 reads of #12, got $reads"
+reads=$(grep -c -- '^issue view 13 ' "$STATE/calls.log")
+[ "$reads" -eq 2 ] || bad "expected #13 read twice, closing on the second, got $reads"
+end
+
+# ==========================================================================================
+# 17q. a head-branch PR with no commit subjects classifies, under every bash
+# ==========================================================================================
+# GitHub never answers a PR with no commit, so this is the guard's case and not a state to
+# expect: without it, bash 3.2 under `set -u` aborts on the empty commit list (#180).
+i=0
+for b in $BASHES; do
+  i=$((i + 1))
+  begin "a head-branch PR closing two issues with no commit subjects squashes (under $b)"
+  fixture "no-commits-$i"
+  V_BODY="What and why. Closes #$PR. Closes #12"
+  V_COMMITS=""
+  write_view default
+  write_merged_view
+  MERGE_BASH="$b" run_merge
+  expect_rc 0
+  expect_stdout "single issue #$PR by head branch '$HEAD_REF', also closing #12 -> squash"
+  expect_called "pr merge $PR --squash"
+  end
+done
 
 # ==========================================================================================
 # 20. append vs append: resolved, pushed and MERGED in one invocation
@@ -2775,6 +2906,113 @@ expect_union_refused "$before_sha" \
 end
 
 # ==========================================================================================
+# 21. the union's post-analysis guards, reached through MERGE_PR_UNION_SEAM
+# ==========================================================================================
+# Those guards fire only on a tree that moved between merge-tree's analysis and the
+# worktree merge, so each case here moves it from the seam, which runs with the lane
+# worktree at exactly that point (#180).
+
+# seam <<'EOF' … EOF — $ROOT/seam, a script whose body (stdin) sees the lane worktree as "$1"
+seam() {
+  {
+    printf '#!/usr/bin/env bash\n'
+    cat
+  } >"$ROOT/seam"
+  must chmod +x "$ROOT/seam"
+}
+
+# expect_seam_refused <origin sha before> <lane's last subject> <stderr fragment>… — refused
+# with nothing pushed or merged, no merge in progress, and no commit after the lane's own.
+expect_seam_refused() {
+  local before="$1" subject="$2" got
+  shift 2
+  expect_union_refused "$before" "$@"
+  got=$(git -C "$ROOT/wt" log -1 --format=%s)
+  [ "$got" = "$subject" ] || bad "the lane worktree's last commit is '$got', not '$subject'"
+}
+
+begin "a merge whose conflicted set is not the analysed one is refused"
+td_fixture union-seam-moved notes.txt 'base
+'
+main_writes "$TD" "$TD_BASE$TD_MAIN_ENTRY" notes.txt 'main
+'
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+# The lane commits its own notes.txt after the analysis, so the merge conflicts there too.
+seam <<'EOF'
+printf 'branch\n' >"$1/notes.txt" && git -C "$1" commit -qam 'a lane commit after the analysis'
+EOF
+UNION_SEAM="$ROOT/seam" run_merge
+expect_seam_refused "$before_sha" 'a lane commit after the analysis' \
+  "the merge left $TD notes.txt unresolved, not the analysed $TD — the tree moved under the analysis"
+end
+
+# ==========================================================================================
+# 21b. …and a merge that comes out clean after merge-tree said it would not is refused
+# ==========================================================================================
+begin "a worktree merge reporting no conflict after merge-tree reported one is refused"
+td_fixture union-seam-clean
+td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+# The lane takes main's copy of the log after the analysis, which leaves nothing to conflict.
+seam <<'EOF'
+git -C "$1" checkout main -- docs/tech-debt.md && git -C "$1" commit -qm 'main copy of the log'
+EOF
+UNION_SEAM="$ROOT/seam" run_merge
+expect_seam_refused "$before_sha" 'main copy of the log' \
+  "reported no conflict, which contradicts what merge-tree just said"
+end
+
+# ==========================================================================================
+# 21c. a seam that fails refuses the union before the worktree is touched
+# ==========================================================================================
+begin "a failing MERGE_PR_UNION_SEAM refuses the union with nothing written"
+td_fixture union-seam-fails
+td_main_writes "$TD_BASE$TD_MAIN_ENTRY"
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+seam <<'EOF'
+echo 'the seam says no'
+exit 3
+EOF
+UNION_SEAM="$ROOT/seam" run_merge
+expect_seam_refused "$before_sha" 'the lane logs its own finding' 'MERGE_PR_UNION_SEAM exited 3: the seam says no'
+end
+
+# ==========================================================================================
+# 21d. a resolution `git diff HEAD --check` rejects is refused, and the merge undone
+# ==========================================================================================
+# No seam: a whitespace error in main's own entry reaches this guard on an unmoved tree.
+begin "a union carrying a whitespace error is refused by git diff --check and aborted"
+td_fixture union-check
+ws='   '
+td_main_writes "$TD_BASE${TD_MAIN_ENTRY%- Source: #2
+}- Source: #2$ws
+"
+td_branch_writes "$TD_BASE$TD_BRANCH_ENTRY"
+before_sha=$(origin_branch_sha)
+conflict_always
+td_views
+run_merge
+expect_rc 1
+expect_stderr 'the conflict is not one this script may resolve'
+expect_stderr 'git diff HEAD --check rejected the resolution'
+expect_stderr 'trailing whitespace'
+expect_not_called "pr merge $PR --squash"
+expect_branch_unpushed "$before_sha"
+expect_no_merge_in_progress
+[ "$(git -C "$ROOT/wt" log -1 --format=%s)" = 'the lane logs its own finding' ] ||
+  bad "the refused resolution was committed"
+end
+
+# ==========================================================================================
 # 18. usage
 # ==========================================================================================
 begin "a missing or non-numeric PR number is a usage error, and nothing is called"
@@ -2806,7 +3044,15 @@ capture -C "$REPO" env MERGE_PR_GH_CMD="$ROOT/gh" MERGE_PR_GH_TIMEOUT_SECONDS=0 
   bash "$SUBJECT" "$PR" "$REPO"
 expect_rc 2
 expect_stderr 'MERGE_PR_GH_TIMEOUT_SECONDS must be at least 1'
+# An attempt count of zero is no attempt at all (#180).
+for knob in MERGE_PR_UPDATE_RETRIES MERGE_PR_CONFIRM_RETRIES MERGE_PR_READ_RETRIES; do
+  case_ctx="zero $knob"
+  capture -C "$REPO" env MERGE_PR_GH_CMD="$ROOT/gh" "$knob=0" bash "$SUBJECT" "$PR" "$REPO"
+  expect_rc 2
+  expect_stderr "$knob counts attempts and must be at least 1"
+done
 case_ctx=""
+[ -s "$STATE/calls.log" ] && bad "gh was called for a run refused at its knobs"
 end
 
 finish
