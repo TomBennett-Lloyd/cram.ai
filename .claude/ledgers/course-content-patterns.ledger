@@ -6,9 +6,9 @@ sweep: check-no-course-content\.sh|\bpptx\b.*\bkey\b|^\*\.pptx$|packages/ingest/
 carrier: .gitignore
 carrier: .claude/scripts/check-no-course-content.test.sh
 excluded: docs/review-feedback.md
-excluded: CLAUDE.md
-excluded: apps/server/src/data-directory.ts
-excluded: docs/adr/0004-storage.md
-excluded: docs/adr/0005-evaluation-as-gate.md
-excluded: eval/src/render-deck.ts
+carrier: CLAUDE.md
+carrier: apps/server/src/data-directory.ts
+carrier: docs/adr/0004-storage.md
+carrier: docs/adr/0005-evaluation-as-gate.md
+carrier: eval/src/render-deck.ts
 excluded: package.json

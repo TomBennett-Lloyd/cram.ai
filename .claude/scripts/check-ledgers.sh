@@ -50,12 +50,11 @@
 # the same way: a sweep with no citation arm is malformed, not drifted.
 #
 # Every path under .claude/ledgers/ is exempt from the unlisted-hit check: a ledger holds
-# its own pattern, and its `carrier:` and `excluded:` lines name other ledgers' owners,
-# which a citation arm written as a path returns (#179). Those lines are kept current by
-# their own ledger's run, so no ledger file is an unread carrier of another.
+# its own pattern, and its lines name other ledgers' owners, which a citation arm written
+# as a path returns (#179).
 #
 # Membership, in both directions, with the owner as the positive control. Drift
-# (exit 1): a hit path that is neither listed nor the owner nor the ledger file; a
+# (exit 1): a hit path that is neither listed nor the owner nor exempt (above); a
 # `carrier:` the sweep no longer returns; the `owner:` the sweep no longer returns.
 # The gate compares MEMBERSHIP, never values — a carrier holding a wrong copy still
 # matches — so rule 10's true-up stays the change's job.
@@ -160,8 +159,8 @@ in_list() {
   return 1
 }
 
-# parse_ledger <file> — sets L_ID, L_OWNER, L_SWEEP, L_SCOPE and the L_CARRIERS /
-# L_EXCLUDED arrays, appending to `blockers` for everything it refuses.
+# parse_ledger <file> — sets the L_* globals from one ledger, appending to `blockers` for
+# everything it refuses.
 parse_ledger() {
   local file="$1" base lineno=0 line key value n_owner=0 n_claim=0 n_cite=0 n_sweep=0 n_scope=0 item tokens
   base=$(basename "$file")

@@ -1,8 +1,10 @@
 # The review-feedback log's path, owned by `feedbackLog` in .claude/workflow.json, which points
 # here from `feedbackLogLedger` (docs/standards/architecture.md rule 9; #179). The executable
 # carriers fail closed on a rename: ci.yml's merge-ritual-gate grep step reds every
-# awaiting-review PR, merge-pr.sh's feedback step refuses every humanAlways merge, and
-# fill-verdict.sh finds no entry to fill.
+# awaiting-review PR, and merge-pr.sh's feedback step refuses every humanAlways merge.
+# Inside the owner, which the gate never lists, these keys also state the path and move
+# with it: merge.reviewedSourceRule, merge.humanAlwaysRule, merge.approvedAtPlanRule,
+# merge.mergeRitual, merge.mergeRitualGate and orchestration.rollback.
 owner: .claude/workflow.json
 claim: the review-feedback log lives at docs/review-feedback.md, where every humanAlways PR adds its entry
 cite: feedbackLog

@@ -423,7 +423,7 @@ end
 begin "blockers outrank drift — a malformed second ledger beside a drifted first one exits 2"
 fixture c24
 must printf '%s\n' "A new carrier: $NEEDLE." >"$ROOT/docs/new-carrier.md"
-must printf '%s\n' 'owner: docs/owner.md' 'claim: a second value' 'sweep: (' 'carrier: src/carrier.ts' >"$ROOT/.claude/ledgers/zzz-second.ledger"
+must printf '%s\n' 'owner: docs/owner.md' 'claim: a second value' 'cite: docs/owner.md' 'sweep: (' 'carrier: src/carrier.ts' >"$ROOT/.claude/ledgers/zzz-second.ledger"
 must printf '%s\n' '.claude/ledgers/zzz-second.ledger' >>"$ROOT/docs/owner.md"
 run
 expect_rc 2

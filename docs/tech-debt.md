@@ -118,3 +118,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/copy.ts` `indexedMessage`; `packages/ingest/src/slide-text.ts` (an `image-only` slide is classed from its title and body only)
 - What: A citation can quote the speaker notes, and BM25 finds the slide by them, so such a slide can be found and cited. The copy reads the `image-only` kind as "no text". Suspected root cause: one kind is doing two jobs, "derive text from the image" and "nothing to cite".
 - Source: PR for #338 (review; this was already true before #338)
+
+## 2026-10-21 — check:ledgers accepts any word in the owner as a citation
+
+- Where: `.claude/scripts/check-ledgers.sh`'s `cite_names_owner`
+- What: the identifier form of `cite:` passes when the word occurs anywhere in the owner, whether it is a local variable, the claim's own literal or an English word, and the path form's `§ <section>` is never checked against the owner. So the gate proves the sweep matches _a_ name the owner holds, not one carriers use to cite it (#179's review found `cite: ALLOWLIST`, a shell local no carrier could write). Suspected root cause: "citable" has no definition the gate can test, such as an exported symbol or an existing heading.
+- Source: #179 review
+
+## 2026-10-21 — the .claude/ledgers/ exemption hides siblings' claim and comment lines
+
+- Where: `.claude/scripts/check-ledgers.sh`'s unlisted-hit loop
+- What: every path under `.claude/ledgers/` is exempt from the unlisted-hit check, so another ledger's `claim:` or `#` line restating a value is never returned. Only the lines the gate itself checks (`owner:`, `cite:`, `carrier:`, `excluded:`) need the exemption. No hidden restatement exists today (#179's review sweep).
+- Source: #179 review

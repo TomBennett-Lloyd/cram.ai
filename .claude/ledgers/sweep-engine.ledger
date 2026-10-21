@@ -11,3 +11,4 @@ excluded: .claude/scripts/check-no-network-egress.sh
 excluded: docs/standards/architecture.md
 excluded: docs/standards/evidence.md
 excluded: package.json
+excluded: docs/tech-debt.md
