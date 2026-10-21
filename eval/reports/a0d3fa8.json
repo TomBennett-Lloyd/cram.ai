@@ -1,5 +1,5 @@
 {
-  "measuredCommit": "a109414",
+  "measuredCommit": "a0d3fa8",
   "pullRequest": 214,
   "machineClass": "dev-apple-silicon",
   "pins": {
@@ -229,8 +229,8 @@
       "perUnitLatency": {
         "status": "measured",
         "samples": 30,
-        "medianMs": 19.14227050000045,
-        "maxMs": 32.790500000002794
+        "medianMs": 175.73125049998634,
+        "maxMs": 343.86162500001956
       }
     },
     "llm": {
@@ -255,8 +255,8 @@
       "perUnitLatency": {
         "status": "measured",
         "samples": 30,
-        "medianMs": 307.2807290000055,
-        "maxMs": 615.9503339999937
+        "medianMs": 347.9681870000204,
+        "maxMs": 672.3787500000326
       }
     },
     "nliThenLlm": {
@@ -323,8 +323,8 @@
       "perUnitLatency": {
         "status": "measured",
         "samples": 30,
-        "medianMs": 19.867354000001797,
-        "maxMs": 34.63066600001184
+        "medianMs": 166.22033350000856,
+        "maxMs": 415.72387500002515
       }
     },
     "crossEncoderPrimary": {
@@ -340,27 +340,27 @@
     "ask": {
       "status": "measured",
       "samples": 31,
-      "medianMs": 2285.6220409999987,
-      "maxMs": 41689.48037500001
+      "medianMs": 3023.9725000000035,
+      "maxMs": 55734.898708
     },
     "perCall": {
       "generator": {
         "status": "measured",
         "samples": 92,
-        "medianMs": 1975.672375000002,
-        "maxMs": 41204.859749999996
+        "medianMs": 2345.264332999999,
+        "maxMs": 51106.353166999994
       },
       "verifier": {
         "status": "measured",
         "samples": 200,
-        "medianMs": 19.5643124999915,
-        "maxMs": 34.61162500001956
+        "medianMs": 136.16916699998546,
+        "maxMs": 655.5683329999738
       },
       "embedder": {
         "status": "measured",
         "samples": 37,
-        "medianMs": 3.8885830000003807,
-        "maxMs": 46.63066600000002
+        "medianMs": 14.542083999999704,
+        "maxMs": 247.71320799999967
       },
       "reranker": {
         "status": "not-measurable",
