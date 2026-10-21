@@ -203,3 +203,8 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #256 lane's scripted exact-string edit of the PPTX corpus matched nothing (it keyed on a decomposed "Café" the file did not hold) and passed silently, so the commit's subject claimed "both formats" for a change that reached one; review caught it and the fix commit corrected the record. One ticket so far on a scripted edit with no asserted match count.
+
+## 2026-10-21 — PR #285
+
+- Phase: planning
+- Observed: the #273 lane's restatement sweep searched for the two colour-pattern lists it was merging and not for the rule whose scope the `var()` change widened, so three comments describing that rule went stale until review; the reviewer also found a ledger owed under `docs/standards/architecture.md` rule 9 that the plan had declared unnecessary. Third sweep-shape miss today (PRs #267 and #270 were the others), each a different shape: output before command, claim family too narrow, and now the list swept but not the rule.
