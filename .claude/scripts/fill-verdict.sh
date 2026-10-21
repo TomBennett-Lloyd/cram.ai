@@ -117,28 +117,8 @@ cd "$repo_root" || exit 2
 pr_json=$("$FILL_VERDICT_GH_CMD" pr view "$pr_number" --json state,headRefName,headRefOid,baseRefName,body 2>&1) ||
   fail 'pr' "gh pr view $pr_number failed: $pr_json"
 
-# TAB-separated `key value` records; the Closes keywords are the ones merge-pr.sh's pr_facts reads.
-facts=$(printf '%s' "$pr_json" | node -e '
-let raw = "";
-process.stdin.on("data", (d) => (raw += d)).on("end", () => {
-  let pr;
-  try {
-    pr = JSON.parse(raw);
-  } catch (e) {
-    process.stderr.write("gh returned output that is not JSON: " + e.message + "\n");
-    process.exit(2);
-  }
-  const put = (k, v) => console.log(k + "\t" + String(v == null ? "" : v).replace(/[\t\r\n]/g, " "));
-  for (const k of ["state", "headRefName", "headRefOid", "baseRefName"]) put(k, pr[k]);
-  const seen = new Set();
-  const re = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi;
-  let m;
-  while ((m = re.exec(pr.body || ""))) {
-    if (!seen.has(m[1])) put("closes", m[1]);
-    seen.add(m[1]);
-  }
-});
-' 2>&1) || fail 'pr' "$facts"
+# pr-facts.mjs is merge-pr.sh's parser too, so both read the same Closes lines.
+facts=$(printf '%s' "$pr_json" | node "$script_dir/pr-facts.mjs" 2>&1) || fail 'pr' "$facts"
 
 pr_state="" head_ref="" head_sha="" base_ref="" closes=()
 while IFS=$'\t' read -r key value; do
