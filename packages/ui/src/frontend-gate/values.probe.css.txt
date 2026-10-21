@@ -1,0 +1,136 @@
+/*
+ * Probe for stylelint.config.mjs, linted by frontend-gate.test.ts at a path
+ * outside the tokens exemption. A line whose trailing comment carries the
+ * refused-by marker must draw exactly the rules it lists; every other line must
+ * lint clean. The `.txt` suffix keeps it out of `lint:css`'s glob.
+ */
+.p {
+  /* declaration-strict-value: each string entry, raw then token */
+  fill: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  fill: var(--color-ink);
+  stroke: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  stroke: var(--color-ink);
+  background: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  background: var(--color-surface);
+  font-size: 16px; /* refused-by: scale-unlimited/declaration-strict-value */
+  font-size: var(--font-size-md);
+  font-family: serif; /* refused-by: scale-unlimited/declaration-strict-value */
+  font-family: var(--font-family-body);
+  font-weight: 700; /* refused-by: scale-unlimited/declaration-strict-value */
+  font-weight: var(--font-weight-bold);
+  line-height: 1.5; /* refused-by: scale-unlimited/declaration-strict-value */
+  line-height: var(--line-height-body);
+  margin: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin: var(--space-1);
+  padding: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding: var(--space-1);
+  gap: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  gap: var(--space-1);
+  row-gap: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  row-gap: var(--space-1);
+  column-gap: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  column-gap: var(--space-1);
+  border-radius: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-radius: var(--radius-sm);
+  border: 1px solid red; /* refused-by: scale-unlimited/declaration-strict-value */
+  border: var(--line-sm) var(--border-style) var(--color-ink);
+  outline: 1px solid red; /* refused-by: scale-unlimited/declaration-strict-value */
+  outline: var(--line-md) var(--outline-style) var(--color-focus);
+  box-shadow: 0 0 4px red; /* refused-by: scale-unlimited/declaration-strict-value */
+  box-shadow: var(--shadow-sm);
+  text-shadow: 0 0 4px red; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-shadow: var(--shadow-sm);
+  background-image: url(a.png); /* refused-by: scale-unlimited/declaration-strict-value */
+  background-image: var(--image-hero);
+  border-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-width: var(--line-sm);
+  outline-width: thin; /* refused-by: scale-unlimited/declaration-strict-value */
+  outline-width: var(--line-md);
+  outline-offset: 2px; /* refused-by: scale-unlimited/declaration-strict-value */
+  outline-offset: var(--line-md);
+  column-rule-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  column-rule-width: var(--line-sm);
+  stroke-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  stroke-width: var(--line-sm);
+  text-decoration-thickness: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-decoration-thickness: var(--line-sm);
+  max-inline-size: 40rem; /* refused-by: scale-unlimited/declaration-strict-value */
+  max-inline-size: var(--measure-md);
+  max-width: 40rem; /* refused-by: scale-unlimited/declaration-strict-value */
+  max-width: var(--measure-md);
+
+  /* declaration-strict-value: the regex entries */
+  color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  color: var(--color-ink);
+  background-color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-start-color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-decoration-color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-decoration-color: var(--color-accent);
+  color-scheme: light dark;
+  margin-top: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin-inline-start: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin-block: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin-block: var(--space-1);
+  padding-top: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding-inline-end: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding-inline: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding-inline: var(--space-1);
+  /* The residual stylelint.config.mjs names: an unlisted property takes a raw
+     length. These two stand next to the anchored `margin-`/`padding-` entries. */
+  scroll-margin-top: 4px;
+  scroll-padding-top: 4px;
+  border-top-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-right-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-bottom-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-left-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-block-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-block-start-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-block-end-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-start-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-end-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-end-width: var(--line-sm);
+  border-image-width: 1;
+  -webkit-line-clamp: 3;
+
+  /* declaration-strict-value: ignoreValues, and ignoreFunctions: false */
+  color: currentColor;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  margin: 0;
+  margin: auto;
+  color: initial;
+  color: unset;
+  margin: 0 auto;
+  padding: calc(var(--space-1) * 2); /* refused-by: scale-unlimited/declaration-strict-value */
+
+  /* declaration-property-value-disallowed-list, on properties the list above omits */
+  filter: drop-shadow(0 0 0 #abc); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #ABCD); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #123456); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #12345678); /* refused-by: declaration-property-value-disallowed-list */
+  filter: url(#ab);
+  filter: url(#abcdef123);
+  filter: url(#decal);
+  filter: drop-shadow(0 0 0 rgb(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 rgba(0 0 0 / 50%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 hsl(0 0% 0%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 hsla(0 0% 0% / 50%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 oklch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 lab(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 lch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  border-image-source: linear-gradient(#abc, transparent); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 var(--color-ink));
+  grid-area: lab;
+
+  /* declaration-property-value-allowed-list: a custom property only aliases */
+  --probe-alias: var(--space-1);
+  --probe-raw: 4px; /* refused-by: declaration-property-value-allowed-list */
+  --probe-calc: calc(var(--space-1) * 2); /* refused-by: declaration-property-value-allowed-list */
+}
+
+/* selector-pseudo-class-disallowed-list: bare :focus only */
+.p:focus { color: var(--color-ink); } /* refused-by: selector-pseudo-class-disallowed-list */
+.p:focus-visible { color: var(--color-ink); }
+.p:focus-within { color: var(--color-ink); }
