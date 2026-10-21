@@ -1,7 +1,8 @@
 # The ADR Status vocabulary (docs/standards/architecture.md rule 9; #115).
 owner: docs/adr/README.md
 claim: an ADR's Status is exactly one header line whose value is proposed, accepted, or superseded by NNNN — docs/adr/README.md's **Status** bullet
-sweep: docs/adr/README\.md\S* (vocabulary|\*\*Status\*\*)|adr-status-lib|superseded by NNNN|proposed[^a-z\n]{0,8}accepted|`proposed`[^\n]{0,40}`accepted`|\.claude/ledgers/adr-status-vocabulary\.ledger
+cite: docs/adr/README.md § Status
+sweep: docs/adr/README\.md`?\S* (§ Status|vocabulary|\*\*Status\*\*)|adr-status-lib|superseded by NNNN|proposed[^a-z\n]{0,8}accepted|`proposed`[^\n]{0,40}`accepted`|\.claude/ledgers/adr-status-vocabulary\.ledger
 carrier: docs/adr/0000-template.md
 carrier: .claude/scripts/adr-status-lib.sh
 carrier: .claude/scripts/adr-status-lib.test.sh
