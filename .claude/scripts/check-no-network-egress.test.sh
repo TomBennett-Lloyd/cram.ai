@@ -73,13 +73,39 @@ end
 # ==========================================================================================
 # 2. the real repo, via the shipped default path (no arguments, a real `pnpm ls`)
 # ==========================================================================================
-begin "the repo's own production tree passes with no arguments"
+# An allow-listed name no tracked manifest declares is reachable only transitively, so it is
+# in the census only while the shipped call walks past depth 0 (#182). The case refuses an
+# allow-list with no such entry rather than let the pin go vacuous.
+begin "the repo's own production tree passes with no arguments, transitive entries included"
+REPO=$(cd "$SCRIPTS/../.." && pwd -P) || exit 2
+listed=$(git -C "$REPO" ls-files -z -- package.json '*/package.json' |
+  (cd "$REPO" && xargs -0 node -e '
+    const fs = require("node:fs");
+    const fields = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+    const direct = new Set(process.argv.slice(1).flatMap((file) => {
+      const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+      return fields.flatMap((field) => Object.keys(manifest[field] || {}));
+    }));
+    const listed = fs.readFileSync(".claude/network-egress.allowlist", "utf8").split("\n")
+      .filter((line) => line && !line.startsWith("#")).map((line) => line.split(/\s/)[0]);
+    for (const name of listed) if (!direct.has(name)) console.log(name);
+  ')) || exit 2
+transitive=()
+while IFS= read -r name; do
+  [ -z "$name" ] || transitive+=("$name")
+done <<<"$listed"
+[ ${#transitive[@]} -gt 0 ] ||
+  bad "the allow-list names no transitive-only package, so nothing pins the walk past depth 0"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   capture "$interpreter" "$CHECK"
   expect_rc 0 "$rc"
   expect_stdout "check-no-network-egress: OK"
   expect_not_out "unbound variable"
+  for name in ${transitive[@]+"${transitive[@]}"}; do
+    printf '%s\n' "$out" | grep -qF -e "  allowed $name@" -e "  absent $name " ||
+      bad "transitive entry $name is not in the scan: $out"
+  done
 done
 case_ctx=""
 end
@@ -327,6 +353,22 @@ run_check
 expect_rc 0 "$rc"
 expect_stdout "absent top-linux-x64 — an optional dependency not installed on this platform"
 expect_stdout "OK — 0 production package(s) scanned, 0 network-capable"
+end
+
+# The absent instance sits at another version's path, as pnpm would lay it out.
+begin "an entry whose name is absent under one parent but installed and clean under another is stale"
+fixture variant_two_parents
+pkg parent-a package.json '{"optionalDependencies":{"variant":"2.0.0"}}'
+pkg parent-a index.js 'module.exports = 1;'
+pkg parent-b index.js 'module.exports = 2;'
+pkg variant index.js 'module.exports = 3;'
+absent_variant="\"variant\":{\"from\":\"variant\",\"version\":\"2.0.0\",\"path\":\"$DIR/node_modules/.pnpm/variant@2.0.0/node_modules/variant\"}"
+tree "$(dep parent-a "$absent_variant"),$(dep parent-b "$(dep variant)")" parent-a parent-b
+allow "variant ships a native addon on one platform only"
+run_check
+expect_rc 1 "$rc"
+expect_stderr "ERROR variant is allow-listed but the scan no longer detects it"
+expect_not_stdout "absent variant"
 end
 
 # chmod 000 does not stop root reading the file, so under root the case cannot be built.

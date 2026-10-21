@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { LectureId, SlideNo, SourceId } from '@cram/shared';
+import { LectureId, SlideNo, SourceId, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   deck,
@@ -59,15 +59,19 @@ const source = (lectureId: string, slideNo: number): SourceId =>
 
 describe('CourseIndex.replaceLecture', () => {
   it('leaves none of a longer deck’s tail findable by its words, its vector, or its tags', () => {
-    expect(course.setTopics(source('lecture-1', 3), ['tail'])).toEqual({ status: 'set' });
+    expect(course.setTopics(source('lecture-1', 3), [TopicTag.parse('tail')])).toEqual({
+      status: 'set',
+    });
     course.replaceLecture(deck(), [slideImage(1, 'new one')], lectureOne(['delta', 'epsilon']));
     expect(course.slides().map((s) => s.body)).toEqual(['delta', 'epsilon', 'enzymes']);
     expect(reachable('gamma', TAIL)).toEqual(['delta', 'enzymes', 'epsilon']);
-    expect(course.slidesTagged('tail')).toEqual([]);
+    expect(course.slidesTagged(TopicTag.parse('tail'))).toEqual([]);
   });
 
   it('replaces the deck and every slide image, and drops the old slides’ tags', () => {
-    expect(course.setTopics(source('lecture-1', 1), ['cells'])).toEqual({ status: 'set' });
+    expect(course.setTopics(source('lecture-1', 1), [TopicTag.parse('cells')])).toEqual({
+      status: 'set',
+    });
     course.replaceLecture(
       deck({ content: new TextEncoder().encode('new deck') }),
       [slideImage(1, 'new one')],
@@ -77,15 +81,15 @@ describe('CourseIndex.replaceLecture', () => {
     expect(text(course.slideImage(LECTURE_1, SlideNo.parse(1))?.content)).toBe('new one');
     expect(course.slideImage(LECTURE_1, SlideNo.parse(3))).toBeUndefined();
     expect(reachable('alpha', OTHER)).toEqual(['delta', 'enzymes']);
-    expect(course.slidesTagged('cells')).toEqual([]);
+    expect(course.slidesTagged(TopicTag.parse('cells'))).toEqual([]);
   });
 
   it('leaves another lecture’s slides, tags, deck and images as they were', () => {
-    course.setTopics(source('lecture-2', 1), ['enzymes']);
+    course.setTopics(source('lecture-2', 1), [TopicTag.parse('enzymes')]);
     course.replaceLecture(deck(), [], []);
     expect(course.slides().map((s) => s.body)).toEqual(['enzymes']);
     expect(reachable('alpha', TAIL)).toEqual(['enzymes']);
-    expect(course.slidesTagged('enzymes').map((s) => s.body)).toEqual(['enzymes']);
+    expect(course.slidesTagged(TopicTag.parse('enzymes')).map((s) => s.body)).toEqual(['enzymes']);
     expect(course.deck(LECTURE_2)?.lectureTitle).toBe('Lecture 2');
     expect(text(course.slideImage(LECTURE_2, SlideNo.parse(1))?.content)).toBe('enzymes image');
   });
@@ -150,7 +154,7 @@ describe('CourseIndex.replaceLecture', () => {
 
 describe('CourseIndex.removeLecture', () => {
   it('deletes the lecture’s slides, tags, deck and images, and leaves the other lecture', () => {
-    course.setTopics(source('lecture-1', 3), ['tail']);
+    course.setTopics(source('lecture-1', 3), [TopicTag.parse('tail')]);
     expect(course.removeLecture(LECTURE_1)).toEqual({ status: 'removed' });
     expect(course.slides().map((s) => s.body)).toEqual(['enzymes']);
     expect(reachable('alpha beta gamma', TAIL)).toEqual(['enzymes']);
@@ -160,7 +164,7 @@ describe('CourseIndex.removeLecture', () => {
     expect(text(course.slideImage(LECTURE_2, SlideNo.parse(1))?.content)).toBe('enzymes image');
     // The re-added slides take the removed rows' ids, so a tag left behind would reappear on them.
     course.replaceLecture(deck(), [], lectureOne(['delta', 'epsilon', 'zeta']));
-    expect(course.slidesTagged('tail')).toEqual([]);
+    expect(course.slidesTagged(TopicTag.parse('tail'))).toEqual([]);
   });
 
   it('reports a lecture the course does not hold, and changes nothing', () => {

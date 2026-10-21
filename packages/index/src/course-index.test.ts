@@ -1,4 +1,4 @@
-import { SourceId } from '@cram/shared';
+import { SourceId, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   indexed,
@@ -189,16 +189,16 @@ describe('CourseIndex topics', () => {
   it('replaces a slide’s tags, and lists tagged slides in deck order', () => {
     const first = sourceIdOf(slide({ slideNo: 1 }));
     const second = sourceIdOf(slide({ slideNo: 2 }));
-    course.setTopics(second, ['cells', 'water']);
-    course.setTopics(first, ['cells']);
-    course.setTopics(second, ['water']);
-    expect(course.slidesTagged('cells').map((s) => s.body)).toEqual(['first']);
-    expect(course.slidesTagged('water').map((s) => s.body)).toEqual(['second']);
-    expect(course.slidesTagged('absent')).toEqual([]);
+    course.setTopics(second, [TopicTag.parse('cells'), TopicTag.parse('water')]);
+    course.setTopics(first, [TopicTag.parse('cells')]);
+    course.setTopics(second, [TopicTag.parse('water')]);
+    expect(course.slidesTagged(TopicTag.parse('cells')).map((s) => s.body)).toEqual(['first']);
+    expect(course.slidesTagged(TopicTag.parse('water')).map((s) => s.body)).toEqual(['second']);
+    expect(course.slidesTagged(TopicTag.parse('absent'))).toEqual([]);
   });
 
   it('reports a slide the course does not hold', () => {
-    expect(course.setTopics(SourceId.parse('lecture-9/1'), ['cells'])).toEqual({
+    expect(course.setTopics(SourceId.parse('lecture-9/1'), [TopicTag.parse('cells')])).toEqual({
       status: 'no-such-slide',
     });
   });

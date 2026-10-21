@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CourseId, LectureId, SlideNo, SlideRecord, type Deck } from '@cram/shared';
+import { CourseId, LectureId, SlideNo, SlideRecord, type Deck, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   COURSE,
@@ -163,14 +163,14 @@ describe('rebuildCourse', () => {
       [],
       [indexed(record, vector(1, 0, 0, 0))],
     );
-    seeded.setTopics(sourceIdOf(record), ['transport', 'water']);
+    seeded.setTopics(sourceIdOf(record), [TopicTag.parse('transport'), TopicTag.parse('water')]);
     seeded.close();
     const db = new Database(temp.spec.path);
     db.pragma(`user_version = ${String(OLDER)}`);
     db.close();
     const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
     expect(discarded).toEqual([{ table: 'topics', rows: 2 }]);
-    expect(course.slidesTagged('transport')).toEqual([]);
+    expect(course.slidesTagged(TopicTag.parse('transport'))).toEqual([]);
     expect(course.slides().map((s) => s.body)).toEqual(['osmosis']);
     course.close();
   });
@@ -193,26 +193,12 @@ describe('rebuildCourse', () => {
     expect(discarded).toEqual([{ table: 'confirmations', rows: 1 }]);
   });
 
-  it('refuses, on request, to rebuild a file with rows it would discard, and leaves it untouched', async () => {
-    writeOlderFile(temp.spec.path);
-    const before = readFileSync(temp.spec.path);
-    const result = await rebuildCourse(temp.spec, deps, 'refuse');
-    expect(result).toMatchObject({ status: 'would-discard', fileVersion: OLDER });
-    expect('discarded' in result && result.discarded.map(({ table }) => table).sort()).toEqual([
-      'exam "marks"',
-      'notes',
-    ]);
-    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
-    expect(filesInDir()).toEqual(['course-a.sqlite']);
-    expect(parse).not.toHaveBeenCalled();
-  });
-
-  it('rebuilds under the refuse policy when every row carries over', async () => {
+  it('reports nothing discarded when every row carries over', async () => {
     writeOlderFile(temp.spec.path);
     const db = new Database(temp.spec.path);
     db.exec('delete from notes; delete from "exam ""marks""";');
     db.close();
-    const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps, 'refuse'));
+    const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
     course.close();
     expect(discarded).toEqual([]);
   });
