@@ -1,7 +1,7 @@
 import { SlideNo, SlideRecord, type CourseId, type LectureId, type SourceHash } from '@cram/shared';
 import type { PageText } from './page-text';
 import { slideText } from './slide-text';
-import { storedPage } from './stored-text';
+import { storedPage, storedText } from './stored-text';
 
 export interface DeckSource {
   readonly courseId: CourseId;
@@ -29,7 +29,7 @@ export const slidesFromPages = (
     return { page: stored, slideNo, text: slideText(stored, slideNo) };
   });
   const lectureTitle =
-    [read[0]?.text.title, fileStem(source.fileName)].find(
+    [read[0]?.text.title, storedText(fileStem(source.fileName))].find(
       (title) => title !== undefined && title !== '',
     ) ?? UNTITLED_LECTURE;
   return read.map(({ page, slideNo, text }) =>
