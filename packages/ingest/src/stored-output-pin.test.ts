@@ -9,8 +9,8 @@ import { storedOutputCorpus as corpus } from './stored-output-fixture';
  * `SCHEMA_VERSION` moves (`docs/adr/0004-storage.md` § Decision (d); #257).
  */
 const PIN = {
-  schemaVersion: 6,
-  digest: '140efd0beaf70822082d0ebdd81f38509f09b4d10e97dd5188344f39b79c3ec6',
+  schemaVersion: 7,
+  digest: 'b39e945520b2b955384952e0a15e78da92a6ab23e148d31220ffa288c08b9376',
 };
 
 const sha256 = (data: string | Uint8Array): string =>
