@@ -1,12 +1,6 @@
 import Database from 'better-sqlite3';
 import { existsSync, renameSync, rmSync } from 'node:fs';
-import {
-  CourseId,
-  type Deck,
-  type DiscardedTable,
-  type LectureId,
-  type SlideRecord,
-} from '@cram/shared';
+import type { CourseId, Deck, DiscardedTable, LectureId, SlideRecord } from '@cram/shared';
 import { z } from 'zod';
 import type { CourseIndex } from './course-index';
 import {
@@ -153,7 +147,7 @@ export const rebuildCourse = async (
   const old = new Database(spec.path, { fileMustExist: true });
   let discarded: readonly DiscardedTable[];
   try {
-    const recorded = CourseId.parse(old.prepare('select course_id from course').pluck().get());
+    const recorded = z.string().parse(old.prepare('select course_id from course').pluck().get());
     if (recorded !== spec.courseId) return { status: 'course-mismatch', recorded };
     if (!hasTable(old, 'decks'))
       return { status: 'no-stored-decks', fileVersion: opened.fileVersion };
