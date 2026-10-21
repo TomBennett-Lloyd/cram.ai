@@ -1,9 +1,0 @@
-# The longest course id a route carries (docs/standards/architecture.md rule 9; #16).
-owner: packages/shared/src/route-course-id.ts
-claim: a route course id is at most ROUTE_COURSE_ID_MAX_LENGTH characters, which RouteCourseId's pattern is built from
-sweep: ROUTE_COURSE_ID_MAX_LENGTH|\.claude/ledgers/route-course-id-length\.ledger
-carrier: packages/shared/src/index.ts
-carrier: packages/shared/src/route-course-id.test.ts
-carrier: apps/server/src/upload.test.ts
-carrier: apps/web/src/courses/course-name.ts
-carrier: apps/web/src/courses/course-name.test.ts

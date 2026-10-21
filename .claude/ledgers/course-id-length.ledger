@@ -1,0 +1,9 @@
+# The longest course id (docs/standards/architecture.md rule 9; #16, #183).
+owner: packages/shared/src/slide-record.ts
+claim: a course id is at most COURSE_ID_MAX_LENGTH characters, which CourseId's pattern is built from
+sweep: COURSE_ID_MAX_LENGTH|\.claude/ledgers/course-id-length\.ledger
+carrier: packages/shared/src/index.ts
+carrier: packages/shared/src/slide-record.test.ts
+carrier: apps/server/src/upload.test.ts
+carrier: apps/web/src/courses/course-name.ts
+carrier: apps/web/src/courses/course-name.test.ts

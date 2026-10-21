@@ -1,4 +1,4 @@
-import { CourseId, LectureId, SourceId } from '@cram/shared';
+import { CourseId, LectureId, SourceId, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   indexed,
@@ -151,18 +151,18 @@ describe('CourseIndex.slides and slidesTagged excluding unconfirmed derived slid
     indexLectures(course, [indexed(DERIVED, AWAY), indexed(TYPED, AWAY), indexed(CONFIRMED, AWAY)]);
     course.confirmDerived(CONFIRMED, AT);
     for (const record of [DERIVED, TYPED, CONFIRMED])
-      course.setTopics(sourceIdOf(record), ['cells']);
+      course.setTopics(sourceIdOf(record), [TopicTag.parse('cells')]);
   });
 
   it('lists every slide by default, for notes', () => {
     expect(slideNos(course.slides())).toEqual([1, 2, 3]);
-    expect(slideNos(course.slidesTagged('cells'))).toEqual([1, 2, 3]);
+    expect(slideNos(course.slidesTagged(TopicTag.parse('cells')))).toEqual([1, 2, 3]);
   });
 
   it('leaves the unconfirmed derived slide out when asked, and keeps typed and confirmed ones', () => {
     const exclude = { excludeUnconfirmedDerived: true };
     expect(slideNos(course.slides(exclude))).toEqual([2, 3]);
-    expect(slideNos(course.slidesTagged('cells', exclude))).toEqual([2, 3]);
+    expect(slideNos(course.slidesTagged(TopicTag.parse('cells'), exclude))).toEqual([2, 3]);
   });
 });
 

@@ -241,8 +241,9 @@ describe('the raster of an imageOnly slide', () => {
     expect([image.width, image.height]).toEqual([2 * PAGE.width, 2 * PAGE.height]);
   });
 
+  // The grow cases overflow RASTER_MIN only just: a raster's cost is its pixel count (#200).
   it('widens to hold its widest line, keeping the right margin blank', async () => {
-    const image = await rasterOf({ body: ['w'.repeat(300)] });
+    const image = await rasterOf({ body: ['w'.repeat(90)] });
     expect(image.width).toBeGreaterThan(2 * PAGE.width);
     expect(inked(image, [image.width - RASTER_MARGIN, image.width], [0, image.height])).toBe(false);
     expect(inked(image, [image.width - 2 * RASTER_MARGIN, image.width], [0, image.height])).toBe(
@@ -252,7 +253,7 @@ describe('the raster of an imageOnly slide', () => {
 
   it('lengthens to hold every line, keeping the bottom margin blank', async () => {
     const image = await rasterOf({
-      body: Array.from({ length: 60 }, (_, n) => `Item ${String(n)}`),
+      body: Array.from({ length: 30 }, (_, n) => `Item ${String(n)}`),
     });
     expect(image.height).toBeGreaterThan(2 * PAGE.height);
     expect(inked(image, [0, image.width], [image.height - RASTER_MARGIN, image.height])).toBe(

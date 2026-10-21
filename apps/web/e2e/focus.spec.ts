@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { PENDING } from '../src/copy';
 import { GROUNDED_QUESTION, stubApi } from './hermetic-api';
 
 /** Whether the element paints a focus ring now: an outline style other than `none`. */
@@ -6,15 +7,23 @@ const ringed = (locator: Locator) =>
   locator.evaluate((node) => getComputedStyle(node).outlineStyle !== 'none');
 
 /**
- * The first slide card of a rendered answer. It waits for the card because a Tab pressed while the
- * reply is pending leaves the document, and focus never returns when the cards land (#228).
+ * The first slide card of a rendered answer (#231). It waits for the card because a Tab pressed
+ * while the reply is pending leaves the document, and focus never returns when the cards land
+ * (#228).
  */
 const answered = async (page: Page) => {
-  await stubApi(page);
+  let release = (): void => undefined;
+  const askReplyAfter = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await stubApi(page, { askReplyAfter });
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
   await page.getByRole('button', { name: 'Ask' }).click();
-  const card = page.locator('.slide-card').first();
+  const reply = page.getByRole('region', { name: 'Answer' });
+  await expect(reply.locator('[aria-busy="true"]')).toHaveText(PENDING.answer);
+  release();
+  const card = reply.locator('.slide-card').first();
   await expect(card).toBeVisible();
   return card;
 };
