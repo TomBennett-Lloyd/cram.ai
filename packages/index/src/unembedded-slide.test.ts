@@ -2,20 +2,20 @@ import { LectureId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   deck,
+  embedWhole,
   indexed,
   indexLectures,
   openOrFail,
   slide,
   tempCourse,
-  vector,
   type TempCourse,
+  vector,
 } from './course-fixture';
 import type { CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
 import { reembedCourse } from './open-course';
-import { sourceIdOf } from './slide-row';
 
-// Slides stored with `embedding: undefined` (`IndexedSlide`, #338).
+// Slides stored as one whole chunk with no vector (`IndexedSlide`, #338).
 
 const AWAY = vector(0, 0, 0, 1);
 const LECTURE_1 = LectureId.parse('lecture-1');
@@ -87,15 +87,12 @@ describe('re-embedding a slide to no vector', () => {
 
   it('keeps a slide `replaceEmbedder` names as undefined, and still refuses one it does not name', () => {
     expect(() => {
-      course.replaceEmbedder(NEW, new Map([[sourceIdOf(slide({ slideNo: 1 })), undefined]]));
+      course.replaceEmbedder(NEW, [indexed(slide({ slideNo: 1, body: 'osmosis' }), undefined)]);
     }).toThrow(/no embedding for lecture-1\/2/);
-    course.replaceEmbedder(
-      NEW,
-      new Map([
-        [sourceIdOf(slide({ slideNo: 1 })), vector(1, 0)],
-        [sourceIdOf(slide({ slideNo: 2 })), undefined],
-      ]),
-    );
+    course.replaceEmbedder(NEW, [
+      indexed(slide({ slideNo: 1, body: 'osmosis' }), vector(1, 0)),
+      indexed(slide({ slideNo: 2, body: 'diffusion' }), undefined),
+    ]);
     expect(course.slides()).toHaveLength(2);
     expect(bodies('', vector(0, 1), 2)).toEqual(['osmosis']);
     expect(course.lectures()[0]?.unembedded).toEqual([2]);
@@ -103,8 +100,9 @@ describe('re-embedding a slide to no vector', () => {
 
   it('keeps a slide `reembedCourse`’s embed returns no vector for', async () => {
     course.close();
-    const result = await reembedCourse({ ...temp.spec, embedder: NEW }, () =>
-      Promise.resolve([undefined, vector(1, 0)]),
+    const result = await reembedCourse(
+      { ...temp.spec, embedder: NEW },
+      embedWhole(() => Promise.resolve([undefined, vector(1, 0)])),
     );
     if (result.status !== 'open') throw new Error(result.status);
     course = result.course;

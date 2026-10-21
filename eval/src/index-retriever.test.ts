@@ -75,8 +75,35 @@ describe('IndexRetriever', () => {
       },
     };
     await expect(IndexRetriever.open(spec({ embedder: overLength }))).rejects.toThrow(
-      "text 1 is 600 tokens, over the embedder's 512",
+      'slide l1/2 holds a line longer than the embedder takes',
     );
+  });
+
+  it('splits a slide over the embedder’s input length and retrieves it by either chunk’s words', async () => {
+    const long = record({
+      slideNo: 4,
+      title: 'Honey',
+      body: 'Nectar is carried home in the crop.\nHoney is ripened by fanning wings.',
+    });
+    const whole = embedText(long);
+    const overWhole: Embedder = {
+      pin: embedder.pin,
+      embed: async (request) =>
+        (await embedder.embed(request)).map((result, index) =>
+          request.texts[index] === whole
+            ? { status: 'over-length', inputTokens: 40, maxInputTokens: 30 }
+            : result,
+        ),
+    };
+    const retriever = await IndexRetriever.open(
+      spec({ lectures: [{ deck, slides: [...SLIDES, long] }], embedder: overWhole, k: 1 }),
+    );
+    const byFirst = await retriever.retrieve('Nectar is carried home in the crop');
+    const bySecond = await retriever.retrieve('Honey is ripened by fanning wings');
+    retriever.close();
+    expect(
+      [byFirst, bySecond].map((hits) => hits.map(({ record: slide }) => slide.slideNo)),
+    ).toEqual([[4], [4]]);
   });
 
   it('refuses an embedder that returns a different number of results than texts', async () => {

@@ -66,12 +66,3 @@ export const slideRowValues = (record: SlideRecord): readonly (string | number)[
   record.sourceHash,
   textHashOf(record),
 ];
-
-/** The FTS5 columns of `slides_fts`, in order. */
-export const ftsValues = (record: SlideRecord): readonly string[] => [
-  record.lectureTitle,
-  record.title,
-  record.body,
-  record.speakerNotes,
-  record.imageCaptions.join('\n'),
-];

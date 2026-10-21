@@ -109,7 +109,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-21 — an over-length slide's whole text now reaches the generator prompt
 
 - Where: `packages/index/src/course-index.ts` `search` → the generator's retrieved context
-- What: until #338 the embedder's input limit capped every stored slide's length. A slide stored with no vector is still returned by BM25 and sent whole. Grounding holds, because resolution and verification judge quotes. The risk is quality, through #184's open "context trimmed silently" entry. #339 removes the case by splitting long slides.
+- What: until #338 the embedder's input limit capped every stored slide's length. A slide stored with no vector is still returned by BM25 and sent whole. Grounding holds, because resolution and verification judge quotes. The risk is quality, through #184's open "context trimmed silently" entry.
 - Source: PR for #338 (review)
 
 ## 2026-10-21 — "has no text, so it can't be cited yet" is false for an image-only PPTX slide with speaker notes
@@ -153,3 +153,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-comment-density.sh` (the median block, and the `MIN_JUDGED_LINES` arm of the comparison); `.claude/comment-density.baseline.tsv`
 - What: the admission median is taken over every baseline row, including the rows of files under `MIN_JUDGED_LINES`, which are banked at any ratio. Those small files are denser, so the bar that judged files are measured against sits above their own median: on the #187 census (origin/main 1a7277a) it was 769 bp over all 170 rows against 641 over the 92 files of 40 or more non-blank lines. Each dense small file a lane banks raises the bar for later lanes, so "new dense files cannot lift the bar" holds within one PR, not across PRs. A median over judged rows only would need a line count in the baseline, which is a format change.
 - Source: #187 review cycle 1
+
+## 2026-10-21 — the `chunks` table stores text that no production path reads
+
+- Where: `packages/index/src/chunk-row.ts` (`CHUNK_TABLE`'s text columns); `packages/index/src/course-index.ts` `chunks()`
+- What: every slide's quotable text is stored a second time, split across its chunks, and that copy is read only by `CourseIndex.chunks()`, which only tests call. A rebuild re-parses the stored deck, and a re-embed runs `embedSlideChunks` from the slides again. Neither reads the chunk text. `slides_fts` is contentless (`content = ''`), so it does not need the copy either. Suspected root cause: the plan argued for storing the text as a way to avoid re-running the split, and the code never needed that. Decide whether to drop the columns, keeping a line range or nothing, or to keep them for a reader that will need them, such as a chunk-level highlight.
+- Source: PR for #339 (review)

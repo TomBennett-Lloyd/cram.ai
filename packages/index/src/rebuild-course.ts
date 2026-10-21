@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { existsSync, renameSync, rmSync } from 'node:fs';
 import type { CourseId, Deck, DiscardedTable, LectureId, SlideRecord } from '@cram/shared';
 import { z } from 'zod';
+import { CHUNK_TABLE_NAME } from './chunk-row';
 import type { CourseIndex } from './course-index';
 import {
   embedSlides,
@@ -48,6 +49,7 @@ export type RebuildCourseResult =
 const REPRODUCED_TABLES: ReadonlySet<string> = new Set([
   'course',
   'slides',
+  CHUNK_TABLE_NAME,
   ...STORED_DECK_TABLE_NAMES,
   REBUILD_REPORT_TABLE_NAME,
 ]);

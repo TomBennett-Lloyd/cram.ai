@@ -206,8 +206,6 @@ describe('CourseIndex topics', () => {
 
 describe('CourseIndex.replaceEmbedder', () => {
   const NEW = EmbedderIdentity.parse({ model: 'new', dimension: 2 });
-  const one = sourceIdOf(slide({ slideNo: 1 }));
-  const two = sourceIdOf(slide({ slideNo: 2 }));
 
   beforeEach(() => {
     indexLectures(course, [
@@ -218,24 +216,21 @@ describe('CourseIndex.replaceEmbedder', () => {
 
   it('refuses embeddings that miss a slide, name a slide the course lacks, or have the wrong dimension', () => {
     expect(() => {
-      course.replaceEmbedder(NEW, new Map([[one, vector(1, 0)]]));
+      course.replaceEmbedder(NEW, [indexed(slide({ slideNo: 1 }), vector(1, 0))]);
     }).toThrow(/no embedding for lecture-1\/2/);
-    const extra = new Map([
-      [one, vector(1, 0)],
-      [two, vector(0, 1)],
-      [SourceId.parse('lecture-9/1'), vector(1, 1)],
-    ]);
+    const extra = [
+      indexed(slide({ slideNo: 1 }), vector(1, 0)),
+      indexed(slide({ slideNo: 2 }), vector(0, 1)),
+      indexed(slide({ lectureId: 'lecture-9' }), vector(1, 1)),
+    ];
     expect(() => {
       course.replaceEmbedder(NEW, extra);
     }).toThrow(/lacks/);
     expect(() => {
-      course.replaceEmbedder(
-        NEW,
-        new Map([
-          [one, vector(1, 0)],
-          [two, vector(0, 1, 0)],
-        ]),
-      );
+      course.replaceEmbedder(NEW, [
+        indexed(slide({ slideNo: 1 }), vector(1, 0)),
+        indexed(slide({ slideNo: 2 }), vector(0, 1, 0)),
+      ]);
     }).toThrow(/3 dimensions/);
     expect(course.search({ text: '', embedding: AWAY }, 2)).toHaveLength(2);
   });

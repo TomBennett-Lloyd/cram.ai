@@ -6,6 +6,7 @@ import {
   type LectureId,
   type RebuildReportRevision,
   type RetrievedSlide,
+  type SlideChunk,
   type SlideImage,
   type SlideNo,
   type SlideRecord,
@@ -14,6 +15,7 @@ import {
   type TopicTag,
 } from '@cram/shared';
 import { z } from 'zod';
+import { CHUNK_COLUMNS, chunkFromRow, chunkRowValues, ftsValues } from './chunk-row';
 import {
   confirmationState,
   confirmDerived,
@@ -24,13 +26,18 @@ import {
 } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
+import {
+  type IndexedChunk,
+  type IndexedSlide,
+  requireDimension,
+  requireSlideChunks,
+} from './indexed-slide';
 import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
 import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
 import { storedLectures } from './stored-lectures';
 import {
-  ftsValues,
   SLIDE_COLUMNS,
   slideFromRow,
   slideRowValues,
@@ -48,17 +55,8 @@ import {
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
 
-/** Depth of each ranked list fed to fusion; provisional on the same terms as `RETRIEVAL_K`. */
+/** Chunks each ranked list reads before its dedupe to slides (`docs/adr/0008-slide-chunking.md` § Decision (f)); provisional as `RETRIEVAL_K` is. */
 export const CANDIDATES_PER_LIST = 50;
-
-/**
- * A slide and its vector. `undefined` stores the slide for listing, citation and BM25, outside the
- * vector list: a slide the embedder does not take whole is never truncated (#338).
- */
-export interface IndexedSlide {
-  readonly record: SlideRecord;
-  readonly embedding: Float32Array | undefined;
-}
 
 export interface SearchQuery {
   readonly text: string;
@@ -86,19 +84,14 @@ export type RemoveLectureResult =
 const RowId = z.number().int();
 const RowIds = z.array(RowId);
 
-const requireDimension = (
-  operation: string,
-  embedding: Float32Array,
-  embedder: EmbedderIdentity,
-): void => {
-  if (embedding.length !== embedder.dimension) {
-    throw new Error(
-      `${operation}: embedding has ${String(embedding.length)} dimensions; ${embedder.model} has ${String(embedder.dimension)}`,
-    );
-  }
-};
+/** Each slide once, at its best chunk's rank (`docs/adr/0008-slide-chunking.md` § Decision (f)). */
+const firstPerSlide = (
+  chunkIds: readonly number[],
+  slideOf: (chunkId: number) => number,
+): readonly number[] => [...new Set(chunkIds.map(slideOf))];
 
 const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (${SLIDE_COLUMNS.replace(/\w+/g, '?')}) returning id`;
+const INSERT_CHUNK = `insert into chunks (${CHUNK_COLUMNS}) values (${CHUNK_COLUMNS.replace(/\w+/g, '?')}) returning id`;
 
 /** One open course file (`docs/adr/0004-storage.md`). */
 export class CourseIndex {
@@ -112,9 +105,16 @@ export class CourseIndex {
     this.#embedder = embedder;
   }
 
-  #dropIndexRows(id: number): void {
-    this.#db.prepare('delete from slides_fts where rowid = ?').run(id);
-    this.#db.prepare('delete from slide_vec where rowid = ?').run(BigInt(id));
+  /** Deletes a slide's chunks and their index rows, keeping the slide. */
+  #dropIndexRows(slideId: number): void {
+    const chunkIds = RowIds.parse(
+      this.#db.prepare('select id from chunks where slide_id = ?').pluck().all(slideId),
+    );
+    for (const id of chunkIds) {
+      this.#db.prepare('delete from slides_fts where rowid = ?').run(id);
+      this.#db.prepare('delete from slide_vec where rowid = ?').run(BigInt(id));
+    }
+    this.#db.prepare('delete from chunks where slide_id = ?').run(slideId);
   }
 
   #writeVector(id: number, embedding: Float32Array): void {
@@ -126,7 +126,7 @@ export class CourseIndex {
   /** Refuses a batch before anything is written. */
   #checkBatch(operation: string, slides: readonly IndexedSlide[]): void {
     const seen = new Set<SourceId>();
-    for (const { record, embedding } of slides) {
+    for (const { record, chunks } of slides) {
       const sourceId = sourceIdOf(record);
       if (record.courseId !== this.#courseId) {
         throw new Error(
@@ -136,21 +136,29 @@ export class CourseIndex {
       if (seen.has(sourceId))
         throw new Error(`${operation}: ${sourceId} appears twice in one batch`);
       seen.add(sourceId);
-      if (embedding !== undefined)
-        requireDimension(`${operation}(${sourceId})`, embedding, this.#embedder);
+      requireSlideChunks(operation, record, chunks, this.#embedder);
     }
   }
 
-  /** Text, and the vector when there is one; the caller holds the transaction and has dropped the lecture's rows. */
-  #writeSlides(slides: readonly IndexedSlide[]): void {
-    const insert = this.#db.prepare(INSERT_SLIDE).pluck();
+  /** A slide's chunks, their text rows and the vectors they have; the caller holds the transaction. */
+  #writeChunks(slideId: number, lectureTitle: string, chunks: readonly IndexedChunk[]): void {
+    const insert = this.#db.prepare(INSERT_CHUNK).pluck();
     const writeText = this.#db.prepare(
       'insert into slides_fts (rowid, lecture_title, title, body, speaker_notes, image_captions) values (?, ?, ?, ?, ?, ?)',
     );
-    for (const { record, embedding } of slides) {
-      const id = RowId.parse(insert.get(...slideRowValues(record)));
-      writeText.run(id, ...ftsValues(record));
+    for (const { chunk, embedding } of chunks) {
+      const id = RowId.parse(insert.get(...chunkRowValues(slideId, chunk)));
+      writeText.run(id, ...ftsValues(lectureTitle, chunk));
       if (embedding !== undefined) this.#writeVector(id, embedding);
+    }
+  }
+
+  /** Each slide and its chunks; the caller holds the transaction and has dropped the lecture's rows. */
+  #writeSlides(slides: readonly IndexedSlide[]): void {
+    const insert = this.#db.prepare(INSERT_SLIDE).pluck();
+    for (const { record, chunks } of slides) {
+      const id = RowId.parse(insert.get(...slideRowValues(record)));
+      this.#writeChunks(id, record.lectureTitle, chunks);
     }
   }
 
@@ -213,6 +221,17 @@ export class CourseIndex {
     );
   }
 
+  /** The chunks a slide is indexed as, in order; none for a slide the course lacks. */
+  chunks(sourceId: SourceId): readonly SlideChunk[] {
+    return this.#db
+      .prepare(
+        `select chunk_no, title, body, speaker_notes, image_captions from chunks
+          where slide_id = (select id from slides where source_id = ?) order by chunk_no`,
+      )
+      .all(sourceId)
+      .map(chunkFromRow);
+  }
+
   /**
    * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
    * Each list leaves out what the query excludes before it is cut to depth: references slides unless
@@ -247,8 +266,10 @@ export class CourseIndex {
         .pluck()
         .all(query.embedding, depth),
     );
+    const slideIdOf = this.#db.prepare('select slide_id from chunks where id = ?').pluck();
+    const slideOf = (chunkId: number): number => RowId.parse(slideIdOf.get(chunkId));
     const byId = this.#db.prepare(`select id, ${SLIDE_COLUMNS} from slides where id = ?`);
-    return fuseByReciprocalRank([bm25, nearest])
+    return fuseByReciprocalRank([firstPerSlide(bm25, slideOf), firstPerSlide(nearest, slideOf)])
       .slice(0, k)
       .map((id) => {
         const slide = slideFromRow(byId.get(id), this.#courseId);
@@ -289,28 +310,27 @@ export class CourseIndex {
   }
 
   /**
-   * Swaps every vector and the recorded embedder in one transaction. `embeddings` names every slide;
-   * one named `undefined` keeps its row and has no vector (`IndexedSlide`).
+   * Swaps every slide's chunks and vectors and the recorded embedder in one transaction, so a new
+   * embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)). `slides` names every slide.
    */
-  replaceEmbedder(
-    embedder: EmbedderIdentity,
-    embeddings: ReadonlyMap<SourceId, Float32Array | undefined>,
-  ): void {
+  replaceEmbedder(embedder: EmbedderIdentity, slides: readonly IndexedSlide[]): void {
+    const bySource = new Map(slides.map((slide) => [sourceIdOf(slide.record), slide]));
     const stored = this.#storedSlides('');
-    const vectors = stored.flatMap((slide) => {
-      if (!embeddings.has(slide.sourceId))
+    const rewritten = stored.map((slide) => {
+      const chunks = bySource.get(slide.sourceId)?.chunks;
+      if (chunks === undefined)
         throw new Error(`replaceEmbedder: no embedding for ${slide.sourceId}`);
-      const embedding = embeddings.get(slide.sourceId);
-      if (embedding === undefined) return [];
-      requireDimension(`replaceEmbedder(${slide.sourceId})`, embedding, embedder);
-      return [{ id: slide.id, embedding }];
+      requireSlideChunks('replaceEmbedder', slide.record, chunks, embedder);
+      return { slide, chunks };
     });
-    if (embeddings.size !== stored.length)
-      throw new Error('replaceEmbedder: embeddings name slides the course lacks');
+    if (bySource.size !== stored.length || slides.length !== stored.length)
+      throw new Error('replaceEmbedder: embeddings name a slide twice or one the course lacks');
     this.#db.transaction(() => {
+      for (const { slide } of rewritten) this.#dropIndexRows(slide.id);
       this.#db.exec('drop table slide_vec');
       createVectorTable(this.#db, embedder.dimension);
-      for (const { id, embedding } of vectors) this.#writeVector(id, embedding);
+      for (const { slide, chunks } of rewritten)
+        this.#writeChunks(slide.id, slide.record.lectureTitle, chunks);
       this.#db
         .prepare('update course set embedder_model = ?, embedder_dimension = ?')
         .run(embedder.model, embedder.dimension);

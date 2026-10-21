@@ -20,6 +20,16 @@ export {
   slideFields,
 } from './quotable-text';
 export { RetrievedSlide } from './retrieved-slide';
+export { ChunkNo, type QuotableFields, type SlideChunk, wholeSlideChunk } from './slide-chunk';
+export {
+  CHUNK_WINDOW_FILL,
+  type ChunkLine,
+  type ChunkLineField,
+  type ChunkSplit,
+  chunkLines,
+  type OverLengthMeasure,
+  splitChunk,
+} from './split-chunk';
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { TopicTag } from './topic-tag';
 export { Unit, UnitKind } from './unit';

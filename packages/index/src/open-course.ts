@@ -1,8 +1,9 @@
 import Database, { SqliteError } from 'better-sqlite3';
-import type { CourseId, SlideRecord, SourceId } from '@cram/shared';
+import type { CourseId, SlideRecord } from '@cram/shared';
 import * as sqliteVec from 'sqlite-vec';
 import { z } from 'zod';
-import { CourseIndex, type IndexedSlide } from './course-index';
+import { CourseIndex } from './course-index';
+import type { IndexedSlide } from './indexed-slide';
 import { type EmbedderIdentity, sameEmbedder } from './embedder-identity';
 import { classifySchema, createSchema } from './schema';
 import { sourceIdOf } from './slide-row';
@@ -179,24 +180,27 @@ export const openCourseReadOnly = (spec: OpenCourseSpec): ReadCourseResult => {
   );
 };
 
-/** One vector per slide, or `undefined` for a slide stored without one (`IndexedSlide`). */
-export type EmbedSlides = (
-  slides: readonly SlideRecord[],
-) => Promise<readonly (Float32Array | undefined)[]>;
+/** Each slide indexed as its chunks (`IndexedSlide`), in the order given. */
+export type EmbedSlides = (slides: readonly SlideRecord[]) => Promise<readonly IndexedSlide[]>;
 
-/** Pairs each slide with its result from `embed`, which must return exactly one per slide. */
+/** Each slide as `embed` indexed it, refused unless it returns exactly those slides in order. */
 export const embedSlides = async (
   operation: string,
   slides: readonly SlideRecord[],
   embed: EmbedSlides,
 ): Promise<readonly IndexedSlide[]> => {
-  const embeddings = await embed(slides);
-  if (embeddings.length !== slides.length) {
+  const indexed = await embed(slides);
+  if (indexed.length !== slides.length) {
     throw new Error(
-      `${operation}: embed returned ${String(embeddings.length)} vectors for ${String(slides.length)} slides`,
+      `${operation}: embed returned ${String(indexed.length)} indexed slides for ${String(slides.length)} slides`,
     );
   }
-  return slides.map((record, index) => ({ record, embedding: embeddings[index] }));
+  slides.forEach((record, index) => {
+    const returned = indexed[index]?.record;
+    if (returned === undefined || sourceIdOf(returned) !== sourceIdOf(record))
+      throw new Error(`${operation}: embed returned slide ${String(index)} out of order`);
+  });
+  return indexed;
 };
 
 /** Opens a course under `spec.embedder`, first re-embedding every slide with `embed` if the file records another. */
@@ -210,11 +214,10 @@ export const reembedCourse = async (
   let opened = false;
   try {
     if (!sameEmbedder(file.recorded, spec.embedder)) {
-      const indexed = await embedSlides('reembedCourse', course.slides(), embed);
-      const bySource = new Map<SourceId, Float32Array | undefined>(
-        indexed.map(({ record, embedding }) => [sourceIdOf(record), embedding]),
+      course.replaceEmbedder(
+        spec.embedder,
+        await embedSlides('reembedCourse', course.slides(), embed),
       );
-      course.replaceEmbedder(spec.embedder, bySource);
     }
     opened = true;
     return { status: 'open', course };

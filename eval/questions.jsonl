@@ -29,3 +29,4 @@
 {"question": "What is the third step of the guild's inspection checklist?", "expectedCitations": [{"lectureId": "lecture-06", "slideNo": 6}], "mustNotContain": []}
 {"question": "What kind of glass jars does the guild use for honey?", "expectedCitations": [{"lectureId": "lecture-04", "slideNo": 5}], "mustNotContain": []}
 {"question": "When are drones driven out of the hive?", "expectedCitations": [{"lectureId": "lecture-01", "slideNo": 4}], "mustNotContain": []}
+{"question": "What does the clerk seal the cash box with on a market day?", "expectedCitations": [{"lectureId": "lecture-04", "slideNo": 7}], "mustNotContain": []}

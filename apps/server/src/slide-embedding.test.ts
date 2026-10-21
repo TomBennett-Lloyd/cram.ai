@@ -41,7 +41,7 @@ describe('embedSlides', () => {
     ];
     const embedder = new RecordingEmbedder(100);
     const slides = await embedSlides(embedder, records);
-    expect(slides.every(({ embedding }) => embedding !== undefined)).toBe(true);
+    expect(slides.every(({ chunks: [{ embedding }] }) => embedding !== undefined)).toBe(true);
     expect(embedder.sent).toEqual([records.map(embedText)]);
   });
 
@@ -54,7 +54,7 @@ describe('embedSlides', () => {
     ];
     const slides = await embedSlides(new RecordingEmbedder(12), records);
     expect(slides.map(({ record: { slideNo } }) => slideNo)).toEqual([1, 2, 3, 4]);
-    expect(slides.map(({ embedding }) => embedding !== undefined)).toEqual([
+    expect(slides.map(({ chunks: [{ embedding }] }) => embedding !== undefined)).toEqual([
       true,
       false,
       false,
@@ -71,8 +71,24 @@ describe('embedSlides', () => {
     const embedder = new RecordingEmbedder(100);
     const [first, second] = await embedSlides(embedder, records);
     expect(embedder.sent).toEqual([[embedText(wasps)]]);
-    expect(first?.embedding).toBeUndefined();
+    expect(first?.chunks[0].embedding).toBeUndefined();
     const [own] = await new WordEmbedder().embed({ texts: [embedText(wasps)] });
-    expect(second?.embedding).toEqual(own?.status === 'embedded' ? own.vector : 'not embedded');
+    expect(second?.chunks[0].embedding).toEqual(
+      own?.status === 'embedded' ? own.vector : 'not embedded',
+    );
+  });
+
+  it('splits a slide over the window into chunks that each fit, and sends each chunk as its embedText', async () => {
+    const record = slide({
+      title: 'Honey',
+      body: 'one two three\nfour five six\nseven eight nine',
+    });
+    const embedder = new RecordingEmbedder(6);
+    const [indexed] = await embedSlides(embedder, [record]);
+    const chunks = indexed?.chunks ?? [];
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every(({ embedding }) => embedding !== undefined)).toBe(true);
+    expect(embedder.sent[0]).toEqual([embedText(record)]);
+    expect(embedder.sent.slice(1).flat()).toEqual(chunks.map(({ chunk }) => embedText(chunk)));
   });
 });

@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { SlideKind, type CourseId } from '@cram/shared';
+import { CHUNK_TABLE } from './chunk-row';
 import { CONFIRMATION_TABLE } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
 import { REBUILD_REPORT_TABLE } from './rebuild-report';
@@ -12,7 +13,7 @@ import { STORED_DECK_TABLES } from './stored-deck';
  * until it has. Carriers:
  * `.claude/ledgers/schema-version.ledger`.
  */
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -80,6 +81,7 @@ export const createSchema = (
 ): void => {
   db.transaction(() => {
     db.exec(TABLES);
+    db.exec(CHUNK_TABLE);
     db.exec(STORED_DECK_TABLES);
     db.exec(CONFIRMATION_TABLE);
     db.exec(REBUILD_REPORT_TABLE);

@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CourseId, Deck, SlideImage, SlideRecord } from '@cram/shared';
+import { ChunkNo, CourseId, Deck, SlideImage, SlideRecord } from '@cram/shared';
 import type { z } from 'zod';
-import type { CourseIndex, IndexedSlide } from './course-index';
+import type { CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
-import { openCourse, type OpenCourseSpec } from './open-course';
+import { type IndexedSlide, wholeSlide } from './indexed-slide';
+import { type EmbedSlides, openCourse, type OpenCourseSpec } from './open-course';
 
 export const COURSE = CourseId.parse('course-a');
 export const EMBEDDER = EmbedderIdentity.parse({ model: 'fixture-embedder', dimension: 4 });
@@ -53,13 +54,41 @@ export const text = (bytes: Uint8Array | undefined): string | undefined =>
 
 export const vector = (...values: number[]): Float32Array => new Float32Array(values);
 
-export const indexed = (
+export const indexed = (record: SlideRecord, embedding: Float32Array | undefined): IndexedSlide =>
+  wholeSlide(record, embedding);
+
+export const chunked = (
   record: SlideRecord,
-  embedding: Float32Array | undefined,
-): IndexedSlide => ({
-  record,
-  embedding,
-});
+  first: Float32Array,
+  ...rest: Float32Array[]
+): IndexedSlide => {
+  const lines = record.body.split('\n');
+  const embeddings = [first, ...rest];
+  const per = Math.ceil(lines.length / embeddings.length);
+  const [head, ...tail] = embeddings.map((embedding, index) => ({
+    chunk: {
+      chunkNo: ChunkNo.parse(index + 1),
+      title: record.title,
+      body: lines.slice(index * per, (index + 1) * per).join('\n'),
+      speakerNotes: index === embeddings.length - 1 ? record.speakerNotes : '',
+      imageCaptions: index === embeddings.length - 1 ? record.imageCaptions : [],
+    },
+    embedding,
+  }));
+  if (head === undefined) throw new Error('chunked: no embedding');
+  return { record, chunks: [head, ...tail] };
+};
+
+export const embedWhole =
+  (
+    vectors: (slides: readonly SlideRecord[]) => Promise<readonly (Float32Array | undefined)[]>,
+  ): EmbedSlides =>
+  async (slides) => {
+    const embeddings = await vectors(slides);
+    return slides
+      .slice(0, embeddings.length)
+      .map((record, index) => wholeSlide(record, embeddings[index]));
+  };
 
 export interface TempCourse {
   readonly dir: string;

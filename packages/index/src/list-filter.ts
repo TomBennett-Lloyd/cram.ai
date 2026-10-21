@@ -15,8 +15,8 @@ export interface ListFilters {
 const REFERENCES = `kind = '${SlideKind.enum.references}'`;
 
 /**
- * One subquery per list. vec0 drops rows before `k` only for `rowid in`; FTS5 given
- * `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR; `search-plan.test.ts` asserts it).
+ * One subquery per list, over the chunks of the slides it names (`docs/adr/0008-slide-chunking.md` § Decision (b)). vec0 drops rows
+ * before `k` only for `rowid in`; FTS5 given `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR; `search-plan.test.ts`).
  */
 export const listFilters = (exclusions: ListExclusions): ListFilters => {
   const left = [
@@ -26,7 +26,7 @@ export const listFilters = (exclusions: ListExclusions): ListFilters => {
   if (left.length === 0) return { bm25: '', vector: '' };
   const leftOut = left.map((condition) => `(${condition})`).join(' or ');
   return {
-    bm25: `and rowid not in (select id from slides where ${leftOut})`,
-    vector: `and rowid in (select id from slides where not (${leftOut}))`,
+    bm25: `and rowid not in (select id from chunks where slide_id in (select id from slides where ${leftOut}))`,
+    vector: `and rowid in (select id from chunks where slide_id in (select id from slides where not (${leftOut})))`,
   };
 };

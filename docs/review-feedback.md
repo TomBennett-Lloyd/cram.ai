@@ -432,3 +432,19 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path, and each entry is an owner decision under `CLAUDE.md` § Hard constraints. The census header allow-lists a false positive with a reason that says so. The alternative is to move the git calls into a `.test.` file or a package.json one-liner. That would only dodge the census, and it would drop the guard's tests.
 - **How applied**: the PR as proposed, with the one allow-list line. It is revised in place on the branch if review asks.
 - **Verdict**: Owner, chat, 2026-10-21: "approve 214 and 252" — accepts the allow-list line for eval/src/measured-commit.ts; earlier "214 yeah lets land it and iterate from there". Approved, no changes.
+
+## 2026-10-21 — issue #339 — plan-feedback-new-adr-not-amendment
+
+- **Category**: plan
+- **Feedback**: the owner's two answers to the #339 plan, verbatim, both in chat on 2026-10-21. First, "approve with both reccomendations for 339": Q1 defers the heading-aware cut, and Q2 leaves `CLAUDE.md` as it is. Second, after the lane stopped under rule 5(b) because `docs/adr/README.md` § Amendments allows a merged ADR no new reasoning: "339 new adr (as long as it wont introduce a contradiction?)". The nine decision points move unchanged into a new `docs/adr/0008-slide-chunking.md`, and `docs/adr/0004-storage.md` is neither edited nor superseded.
+- **Why**: the plan had placed new decisions in an `## Amendments` entry on a merged ADR, which `docs/adr/README.md` § Amendments reserves for moved values and supersession Status lines. The owner's condition required that no existing ADR sentence become false.
+- **How applied**: the plan comment's S0 sweep checked ADRs 0001, 0003, 0004, 0005 and 0006 and found no falsified sentence (https://github.com/TomBennett-Lloyd/cram.ai/issues/339#issuecomment-6315418361). `docs/adr/0008-slide-chunking.md` § Context states its relation to 0004 in one line, and the plan's footprint names ADR 0008 and `docs/adr/README.md` in place of ADR 0004.
+- **Verdict**: owner-directed in chat 2026-10-21 (a REVISE then PROCEED on the plan), applied before execution
+
+## 2026-10-21 — issue #339 — adr-0008-slide-chunking
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/339#issuecomment-6315418361 in chat on 2026-10-21 ("approve with both reccomendations for 339"; then REVISE and PROCEED: "339 new adr (as long as it wont introduce a contradiction?)"). The PR asks the owner to decide only the one extra beyond that plan: accept `excluded: docs/adr/0008-slide-chunking.md` in the topics-table ledger (`topics-table.ledger` under `.claude/ledgers/`). The exclusion was added when the branch was rebased onto #179, after the PROCEED. That ledger's sweep matches ADR 0008 because the ADR names the index's schema module by path, but only where it cites the course file's version counter. The ADR is therefore not a carrier of the topics table's name.
+- **Why**: `docs/adr/**` is a `humanAlways` path, and `.claude/workflow.json` → `merge.approvedAtPlanRule` counts a ledger carrier change from a rebase after the PROCEED as an extra, which sends the PR to the owner limited to that extra.
+- **How applied**: the PR as proposed, with ADR 0008 at `proposed`. It is revised in place on the branch if review asks.
+- **Verdict**: Owner, chat, 2026-10-21: "approve 364" — the plan was approved on 2026-10-21 ("approve with both reccomendations for 339", then "339 new adr (as long as it wont introduce a contradiction?)"); the one extra, the topics-table.ledger exclusion of ADR 0008 from a post-approval rebase, is accepted. Approved, no changes.

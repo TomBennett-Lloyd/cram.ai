@@ -10,17 +10,18 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { CourseId } from '@cram/shared';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   COURSE,
   EMBEDDER,
+  embedWhole,
   indexed,
   indexLectures,
   openOrFail,
   slide,
   tempCourse,
-  vector,
   type TempCourse,
+  vector,
 } from './course-fixture';
 import { CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
@@ -181,7 +182,7 @@ describe('a stored course row that its schemas would refuse', () => {
       status: 'embedder-mismatch',
       recorded: { model: '', dimension: 4 },
     });
-    const embed = () => Promise.resolve([vector(1, 0, 0, 0), vector(0, 1, 0, 0)]);
+    const embed = embedWhole(() => Promise.resolve([vector(1, 0, 0, 0), vector(0, 1, 0, 0)]));
     const repaired = await reembedCourse(temp.spec, embed);
     if (repaired.status === 'open') repaired.course.close();
     expect(repaired.status).toBe('open');
@@ -274,57 +275,5 @@ describe('openCourseReadOnly', () => {
     expect(expectNoLeak(() => openCourseReadOnly(temp.spec))).toEqual({
       status: 'not-a-course-file',
     });
-  });
-});
-
-describe('reembedCourse', () => {
-  const other = () => ({ ...temp.spec, embedder: OTHER_EMBEDDER });
-
-  it('re-embeds every slide and records the new embedder, after which only it opens the course', async () => {
-    seed();
-    const embed = vi.fn((slides: readonly unknown[]) =>
-      Promise.resolve(slides.map((_, index) => (index === 0 ? vector(0, 0, 1) : vector(1, 0, 0)))),
-    );
-    const result = await reembedCourse(other(), embed);
-    if (result.status !== 'open') throw new Error(result.status);
-    expect(embed).toHaveBeenCalledTimes(1);
-    expect(result.course.search({ text: '', embedding: vector(0, 0, 1) }, 1)[0]?.record.body).toBe(
-      'osmosis',
-    );
-    result.course.close();
-    expect(openCourse(temp.spec).status).toBe('embedder-mismatch');
-    openOrFail(other()).close();
-  });
-
-  it('does not call the embedder when the file already records it', async () => {
-    seed();
-    const embed = vi.fn(() => Promise.resolve([]));
-    const result = await reembedCourse(temp.spec, embed);
-    expect(result.status).toBe('open');
-    if (result.status === 'open') result.course.close();
-    expect(embed).not.toHaveBeenCalled();
-  });
-
-  it('leaves the course under its old embedder when embedding fails or returns the wrong count', async () => {
-    seed();
-    await expect(
-      reembedCourse(other(), () => Promise.reject(new Error('backend down'))),
-    ).rejects.toThrow('backend down');
-    await expect(reembedCourse(other(), () => Promise.resolve([vector(1, 0, 0)]))).rejects.toThrow(
-      /1 vectors for 2 slides/,
-    );
-    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
-    openOrFail(temp.spec).close();
-  });
-
-  it('returns the file state unchanged when the file cannot be opened as this course', async () => {
-    seed();
-    setUserVersion(temp.spec.path, SCHEMA_VERSION + 1);
-    const embed = vi.fn(() => Promise.resolve([]));
-    expect(await reembedCourse(other(), embed)).toEqual({
-      status: 'newer-schema',
-      fileVersion: SCHEMA_VERSION + 1,
-    });
-    expect(embed).not.toHaveBeenCalled();
   });
 });

@@ -6,13 +6,14 @@ import {
   COURSE,
   deck,
   EMBEDDER,
+  embedWhole,
   indexed,
   openOrFail,
   slide,
   tempCourse,
+  type TempCourse,
   text,
   vector,
-  type TempCourse,
 } from './course-fixture';
 import { openCourse } from './open-course';
 import {
@@ -115,7 +116,7 @@ const embed = vi.fn((slides: readonly SlideRecord[]) =>
   Promise.resolve(slides.map((_, index) => vector(1, index, 0, 0))),
 );
 
-const deps: RebuildDeps = { parse, embed };
+const deps: RebuildDeps = { parse, embed: embedWhole(embed) };
 
 beforeEach(() => {
   parse.mockClear();
@@ -262,7 +263,7 @@ describe('rebuildCourse', () => {
       rebuildCourse(temp.spec, { ...deps, embed: () => Promise.resolve([]) }),
     ).rejects.toMatchObject({
       message: 'rebuildCourse: lecture lecture-1 did not rebuild',
-      cause: new Error('rebuildCourse: embed returned 0 vectors for 2 slides'),
+      cause: new Error('rebuildCourse: embed returned 0 indexed slides for 2 slides'),
     });
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);
