@@ -2,7 +2,7 @@
 #
 # Harness for .claude/hooks/guard-dirty-revert.sh: one case per refuse arm and
 # per pass arm, each run against a throwaway git repo whose tracked files are
-# dirty or clean by name. A pass case names the edge whose mutant it catches.
+# dirty or clean by name.
 #
 # Usage: bash .claude/scripts/guard-dirty-revert.test.sh   (or `pnpm test:scripts`)
 # Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke.
@@ -37,6 +37,28 @@ for f in "${DIRTY_FILES[@]}"; do
 done
 must cp /dev/null "$REPO/untracked.txt"
 
+# CONF: conf.txt unmerged (UU) mid-merge, other.txt an ordinary dirty file beside it.
+CONF="$TMP_ROOT/conf"
+must git init -q -b main "$CONF"
+must git -C "$CONF" config user.email "harness@example.invalid"
+must git -C "$CONF" config user.name "Harness"
+must git -C "$CONF" config commit.gpgsign false
+printf 'base\n' >"$CONF/conf.txt" || exit 2
+must cp /dev/null "$CONF/other.txt"
+must git -C "$CONF" add -A
+must git -C "$CONF" commit -q -m base
+must git -C "$CONF" checkout -q -b theirs
+printf 'theirs\n' >"$CONF/conf.txt" || exit 2
+must git -C "$CONF" commit -q -am theirs
+must git -C "$CONF" checkout -q main
+printf 'ours\n' >"$CONF/conf.txt" || exit 2
+must git -C "$CONF" commit -q -am ours
+if git -C "$CONF" merge -q theirs >/dev/null 2>&1; then
+  printf 'FATAL harness setup failed: the CONF merge did not conflict\n' >&2
+  exit 2
+fi
+printf 'uncommitted\n' >"$CONF/other.txt" || exit 2
+
 # event <cwd|-> <command> -> a Bash PreToolUse event at $TMP_ROOT/event.json; `-` omits cwd.
 event() {
   must node -e '
@@ -55,7 +77,7 @@ refuses() {
   expect_rc 2
   expect_stderr "  $2 (in "
   expect_stderr "docs/standards/testing.md rule 8"
-  expect_stderr "git stash push -- <path>"
+  expect_stderr "a copy you set aside"
   [ -z "$out" ] || bad "expected no stdout; got: $out"
   end
 }
@@ -101,6 +123,12 @@ passes 'git restore -S dirty.txt'
 passes 'git restore --source dirty.txt clean.txt'
 passes 'git restore -Ws dirty.txt clean.txt'
 passes 'git restore -S -sW dirty.txt'
+
+# --- conflict resolution ------------------------------------------------------------------
+
+passes 'git checkout --theirs conf.txt' "$CONF"
+passes 'git restore --ours conf.txt' "$CONF"
+refuses 'git checkout --theirs conf.txt other.txt' other.txt "$CONF"
 
 # --- which tree -------------------------------------------------------------------------
 
@@ -154,6 +182,10 @@ refuses $'cat <<<x\ngit checkout -- dirty.txt' dirty.txt
 refuses $'cat << "EOF"\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
 refuses $'cat <<EOF >/dev/null\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
 passes 'git commit -m "git checkout -- dirty.txt"'
+passes $'git commit -m "$(cat <<\'EOF\'\n#1: drop the old advice "revert it (git checkout -- dirty.txt)"\nEOF\n)"'
+passes $'git commit -m "$(cat <<\'EOF\'\n#1: a 6" ruler\ngit restore dirty.txt was the bad revert\nEOF\n)"'
+refuses "echo \"\$(git checkout -- dirty.txt)\"" dirty.txt
+refuses "git commit -m \"\$(echo x)\" && git checkout -- dirty.txt" dirty.txt
 passes $'git commit -F - <<\'EOF\'\ngit checkout -- dirty.txt\nEOF'
 passes '# git checkout -- dirty.txt'
 passes 'true # ; git checkout -- dirty.txt'
@@ -177,7 +209,26 @@ begin "a crashing interpreter is exit 1 and says the call was not checked"
 event "$REPO" 'git checkout -- dirty.txt'
 HOOK_NODE_CMD="$TMP_ROOT/bin/node-crash" capture bash "$HOOK" <"$TMP_ROOT/event.json"
 expect_rc 1
-expect_stderr "guard-dirty-revert: could not read the hook event"
+expect_stderr "guard-dirty-revert: $TMP_ROOT/bin/node-crash exited non-zero"
+end
+
+printf '#!/nonexistent/interpreter\n' >"$TMP_ROOT/bin/git-unspawnable" || exit 2
+must chmod +x "$TMP_ROOT/bin/git-unspawnable"
+
+begin "a git that resolves but cannot be spawned is exit 1, never a refusal"
+event "$REPO" 'git checkout side'
+HOOK_GIT_CMD="$TMP_ROOT/bin/git-unspawnable" capture bash "$HOOK" <"$TMP_ROOT/event.json"
+expect_rc 1
+expect_stderr "guard-dirty-revert: could not run $TMP_ROOT/bin/git-unspawnable"
+expect_not_stderr "refused"
+expect_not_stderr "TypeError"
+end
+
+begin "a missing git is exit 1 and names the tool"
+event "$REPO" 'git checkout -- dirty.txt'
+HOOK_GIT_CMD="$TMP_ROOT/bin/no-such-git" capture bash "$HOOK" <"$TMP_ROOT/event.json"
+expect_rc 1
+expect_stderr "guard-dirty-revert: required tool not found: $TMP_ROOT/bin/no-such-git"
 end
 
 begin "a missing interpreter is exit 1 and names the tool"
