@@ -206,6 +206,72 @@ expect_rc 0
 expect_stdout 'ADR 0007 accepted; ADR 0001 left superseded by 0007'
 end
 
+# check-adr-index.sh admits any list marker and emphasis around the label; this script reads the
+# Status line with the same parser (adr-status-lib.sh), so every spelling the gate passes is one it
+# flips, its markup kept, and nothing else in the file moves (#115).
+for spelling in '* Status:' '**Status:**' '+   **Status:**	' '  - Status:'; do
+  begin "ADR flip in the gate's markup '$spelling': flipped, markup and the rest kept"
+  fixture "adrmarkup-${spelling//[^a-zA-Z]/-}"
+  printf '# 0007 — New\n\n%s proposed  \n- **Date:** 2026-10-20\n\n## Context\n\nStatus: proposed' "$spelling" >"$WT/docs/adr/0007-new.md"
+  printf '# 0007 — New\n\n%s accepted\n- **Date:** 2026-10-20\n\n## Context\n\nStatus: proposed' "$spelling" >"$TMP_ROOT/expected-0007.md"
+  seal
+  run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+  expect_rc 0
+  cmp -s "$WT/docs/adr/0007-new.md" "$TMP_ROOT/expected-0007.md" ||
+    bad "0007 reads [$(cat "$WT/docs/adr/0007-new.md")]"
+  expect_stdout 'ADR 0007 accepted'
+  end
+done
+
+begin 'refuses an ADR whose header carries two Status lines in different markup, writing nothing'
+fixture adrtwostatus
+printf '# 0007 — New\n\n- **Status:** proposed\n* Status: proposed\n\n## Context\n' >"$WT/docs/adr/0007-new.md"
+seal
+run 50 --category approved-no-changes --verdict approved "$ROOT"
+expect_rc 1
+expect_stderr 'docs/adr/0007-new.md has 2 Status lines in its header; expected one'
+expect_untouched
+end
+
+begin 'two flipped ADRs are each rewritten at their own Status line'
+fixture adrtwo
+printf '# 0007 — New\n\n- **Status:** proposed\n\n## Context\n' >"$WT/docs/adr/0007-new.md"
+printf '# 0008 — Newer\n\n- **Date:** 2026-10-20\n* Status: proposed\n\n## Context\n' >"$WT/docs/adr/0008-newer.md"
+seal
+run 50 --category approved-no-changes --verdict approved --no-push "$ROOT"
+expect_rc 0
+[ "$(cat "$WT/docs/adr/0007-new.md")" = "$(printf '# 0007 — New\n\n- **Status:** accepted\n\n## Context')" ] ||
+  bad "0007 reads [$(cat "$WT/docs/adr/0007-new.md")]"
+[ "$(cat "$WT/docs/adr/0008-newer.md")" = "$(printf '# 0008 — Newer\n\n- **Date:** 2026-10-20\n* Status: accepted\n\n## Context')" ] ||
+  bad "0008 reads [$(cat "$WT/docs/adr/0008-newer.md")]"
+expect_stdout 'ADR 0007 accepted; ADR 0008 accepted'
+end
+
+begin 'refuses an ADR whose header carries no Status line, writing nothing'
+fixture adrnostatus
+printf '# 0007 — New\n\n- **Date:** 2026-10-20\n\n## Context\n\n- **Status:** proposed\n' >"$WT/docs/adr/0007-new.md"
+seal
+run 50 --category approved-no-changes --verdict approved "$ROOT"
+expect_rc 1
+expect_stderr 'docs/adr/0007-new.md has 0 Status lines in its header; expected one'
+expect_untouched
+end
+
+begin 'a Status write that fails restores the tree, entry included, and refuses'
+fixture adrwritefail
+dir="$TMP_ROOT/mutant-writefail"
+must mkdir -p "$dir"
+must cp "$SUBJECT" "$SCRIPTS/worktree-lib.sh" "$SCRIPTS/pr-facts.mjs" "$SCRIPTS/adr-status-lib.sh" "$dir/"
+must perl -pi -e 's/^adr_status_set\(\) \{/adr_status_set() { return 1;/' "$dir/adr-status-lib.sh"
+fixture_has "$dir/adr-status-lib.sh" 'adr_status_set() { return 1;'
+printf '# 0007 — New\n\n- **Status:** proposed\n' >"$WT/docs/adr/0007-new.md"
+seal
+capture bash "$dir/fill-verdict.sh" 50 --category approved-no-changes --verdict approved "$ROOT"
+expect_rc 1
+expect_stderr "could not set docs/adr/0007-new.md's Status to accepted; tree restored"
+expect_untouched
+end
+
 begin 'a modified proposed ADR is flipped like an added one'
 fixture adrmodified
 must git -C "$ROOT" checkout -q main
@@ -479,7 +545,7 @@ end
 mutant() {
   local dir="$TMP_ROOT/mutant-$1"
   must mkdir -p "$dir"
-  must cp "$SUBJECT" "$SCRIPTS/worktree-lib.sh" "$SCRIPTS/pr-facts.mjs" "$dir/"
+  must cp "$SUBJECT" "$SCRIPTS/worktree-lib.sh" "$SCRIPTS/pr-facts.mjs" "$SCRIPTS/adr-status-lib.sh" "$dir/"
   must perl -pi -e "$2" "$dir/fill-verdict.sh"
   fixture_lacks "$dir/fill-verdict.sh" "$3"
   MUTANT="$dir/fill-verdict.sh"
@@ -508,21 +574,6 @@ expect_rc 0
   bad "mutant's message: $(git -C "$WT" log -1 --format=%B)"
 grep -qF -- "-c core.commentChar=';' -c commit.cleanup=strip commit -m" "$SUBJECT" ||
   bad "the subject's commit lacks the flag pair"
-end
-
-# --- the ADR record guard ------------------------------------------------------------------------
-
-# The node pass prints only numbers it has already matched, so the shell's guard on its records is
-# reached by a mutant of that pass alone.
-begin "mutant whose node pass prints a non-number: the record is refused and the tree restored"
-mutant badnum 's/"accepted\\t" \+ num\)/"accepted\\t" + num + "x")/' '"accepted\t" + num)'
-fixture badnum
-printf '# 0007 — New\n\n- **Status:** proposed\n' >"$WT/docs/adr/0007-new.md"
-seal
-capture bash "$MUTANT" 50 --category approved-no-changes --verdict approved "$ROOT"
-expect_rc 1
-expect_stderr "node printed 'accepted	0007x' where an ADR record belongs; tree restored"
-expect_untouched
 end
 
 finish

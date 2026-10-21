@@ -35,8 +35,8 @@
 # notice in both modes, writing nothing; no member `src` directory with a
 # baseline present is the moved-tree case and exits 2.
 #
-# Wired into `verify:full` and into `.claude/scripts/verify-tier.sh`'s
-# source-prose tier, which is where a comment-only change set lands.
+# Wired into `verify:full` and into the cheaper tiers
+# `.claude/scripts/verify-tier.sh`'s docblock names.
 #
 # No dependencies: bash (3.2, which macOS ships as /bin/bash), find and awk, with
 # no gawk extensions.

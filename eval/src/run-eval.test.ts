@@ -13,7 +13,7 @@ import { label, question } from './eval-fixture';
 import { RecordingGateway } from './recording-gateway';
 import { runEval, type EvalRunSpec } from './run-eval';
 import { indexedLecture as lecture, record } from './run-fixture';
-import { type Respond, SAMPLING, ScriptedGateway } from './scripted-gateway-fixture';
+import { type Respond, SAMPLING, ScriptedGateway, SERVED } from './scripted-gateway-fixture';
 
 const COURSE = CourseId.parse('hollowmere');
 
@@ -150,7 +150,12 @@ const recordRun = async (respond: Respond, overrides: Partial<EvalRunSpec> = {})
 };
 
 const replay = (recordings: readonly Recording[]) =>
-  new FakeGateway({ pins: PROVISIONAL_DEFAULT_PINS, sampling: SAMPLING, recordings });
+  new FakeGateway({
+    pins: PROVISIONAL_DEFAULT_PINS,
+    sampling: SAMPLING,
+    served: SERVED,
+    recordings,
+  });
 
 describe('runEval', () => {
   it('replays its own recordings over FakeGateway to the same report', async () => {
@@ -168,6 +173,7 @@ describe('runEval', () => {
       verifierRecall: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
     });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });
+    expect(report.servedGenerator).toEqual(SERVED);
     expect(report.verifierArms).toMatchObject({
       crossEncoderPrimary: { status: 'tied' },
       secondOpinion: { status: 'drop', failed: 'recall' },

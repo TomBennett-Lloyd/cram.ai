@@ -57,7 +57,8 @@
 #
 #   subject=<identifier>   required on `trued` and `deleted` rows — the trimmed
 #                          subject whose inbound references pre-check (a) greps
-#   sweep=<pcre>           a restatement ledger's sweep, run with `git grep -P`
+#   sweep=<pcre>           a restatement ledger's sweep, run with `git grep -P`,
+#                          the engine .claude/scripts/check-ledgers.sh's header owns
 #   control=<path>         required with `sweep=`, and only with it: the carrier
 #                          the sweep MUST return (prose.md rule 3(b))
 #   quote=<string>         required, repeatable, on `out-of-scope` rows — the

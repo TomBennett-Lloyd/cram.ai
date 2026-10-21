@@ -47,23 +47,17 @@ export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<Uplo
   if (ingested.status === 'unreadable')
     return { state: 'unreadable', reason: ingested.reason, detail: ingested.detail };
   const records = ingested.slides;
-  const embedded = await embedSlides(deps.embedder, records);
-  if (embedded.status === 'over-length')
-    return {
-      state: 'over-length',
-      slides: [...embedded.slideNos],
-      maxInputTokens: embedded.maxInputTokens,
-    };
+  const slides = await embedSlides(deps.embedder, records);
   const opened = openForWrite(deps.files, job.courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
-    opened.course.replaceLecture(lectureDeck(job, records), [], embedded.slides);
+    opened.course.replaceLecture(lectureDeck(job, records), [], slides);
+    const stored = opened.course.lectures().find(({ lectureId }) => lectureId === job.lectureId);
+    if (stored === undefined)
+      throw new Error(`ingestDeck: lecture ${job.lectureId} was not stored`);
+    const { slideCount, imageOnly, unembedded } = stored;
+    return { state: 'indexed', slideCount, imageOnly, unembedded };
   } finally {
     opened.course.close();
   }
-  return {
-    state: 'indexed',
-    slideCount: records.length,
-    imageOnly: records.filter(({ kind }) => kind === 'image-only').map(({ slideNo }) => slideNo),
-  };
 };

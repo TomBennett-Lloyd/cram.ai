@@ -23,7 +23,7 @@ One entry per distinct feedback item; the slug names that item's subject and dis
 **Restatement ledger for the placeholder literal** (`docs/standards/architecture.md` rule 9). The sentence above owns the string `pending — filled at merge`; "literal and identical everywhere" is the property, so the sites that quote it have to move with it. **A change to the string re-runs the sweep** — `git grep -nF 'pending — filled at merge' -- ':/'`, plus an arm shaped around the claim, since a paraphrase ("the placeholder", "left pending") is invisible to a literal sweep. This list names the carriers that sweep found; it promises nothing about being all of them, and an enumeration that promised that would be falsified by the next quoting site.
 
 - **Carriers — they state the literal and must move with it**: in this file, the `## Entry format` sentence above, which owns it, and the `## Category vocabulary` section, which quotes it while declaring that the string is not a category. Outside it: `.claude/skills/review-loop/SKILL.md` step 5, which tells the writer what to put in the two fields; `.claude/skills/run-issue/SKILL.md`'s ticket-agent lane, in the sentence pointing at `merge-pr.sh`; and the two **executable** carriers — `.claude/scripts/merge-pr.sh`'s feedback step, with `.claude/scripts/merge-pr.test.sh` carrying it in the fixtures on both sides of that step's refusal, and `.claude/scripts/fill-verdict.sh`'s `PLACEHOLDER`, with `.claude/scripts/fill-verdict.test.sh`.
-- **Why `merge-pr.sh` is the carrier that matters.** Its failure direction if the string moves without it is a **quiet pass**, not a refusal: the step matches the field names `- **Category**:` and `- **Verdict**:` — different strings, which go on matching — and only the placeholder test stops matching, so the gate opens and a `humanAlways` PR merges with no verdict. Contrast the path `docs/review-feedback.md`, whose ledger lives in `.claude/workflow.json` → `feedbackLogLedger` and whose carriers fail loud and closed. A gate that fails open is the reason this ledger exists at all. `fill-verdict.sh` fails the other way: a moved string matches no entry, and every run refuses.
+- **Why `merge-pr.sh` is the carrier that matters.** Its failure direction if the string moves without it is a **quiet pass**, not a refusal: the step matches the field names `- **Category**:` and `- **Verdict**:` — different strings, which go on matching — and only the placeholder test stops matching, so the gate opens and a `humanAlways` PR merges with no verdict. Contrast the path `docs/review-feedback.md`, whose ledger is `.claude/ledgers/review-feedback-path.ledger` and whose carriers fail loud and closed. A gate that fails open is the reason this ledger exists at all. `fill-verdict.sh` fails the other way: a moved string matches no entry, and every run refuses.
 - **Not carriers**: past-tense narration of what a specific entry or PR did; pointers that name the placeholder without quoting it; and a live `- **Category**:` or `- **Verdict**:` field still reading the placeholder **on an unmerged branch**, which is the form being used rather than declared. On a merged entry the same field is not a use of the form but a verdict nobody filled, which is what the sentence above and the vocabulary below both say.
 
 ## Category vocabulary
@@ -378,6 +378,38 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/network-egress.allowlist` and `CLAUDE.md` are `humanAlways` paths, and #165 is a gate change the owner decides.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: Owner, chat, 2026-10-21: "approve 252, 266, 296". Approved, no changes.
+
+## 2026-10-21 — issue #179 — review-feedback-path-ledger
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - accept `.claude/workflow.json` → `feedbackLogLedger` becoming a pointer to the declared `.claude/ledgers/review-feedback-path.ledger`. The key keeps its name. The prose floor's carriers move into the ledger, where `check:ledgers` re-runs them, and the ledger's header lists the workflow.json keys that state the path;
+  - accept that fix direction (1b) of #179, the recorded-commit check, moves to #245 rather than ship here. A declared ledger has no recorded commit, and a recorded sha that contains a new ledger file has to be a branch commit, which a squash merge never brings to `main`;
+  - accept that the ADR 0001 (d) TypeScript-form and citation arms are handed to #29, whose humanAlways ADR prose holds that ledger (sweep in the PR body).
+- **Why**: `.claude/workflow.json` is a `humanAlways` path. The other two items narrow the issue's acceptance, which only the owner can do.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: Owner, chat, 2026-10-21: "approve 269, 175, 199, 204, 259" — accepts the workflow.json pointer, the #245 split and ADR 0001 (d) arms to #29. Approved, no changes.
+
+## 2026-10-20 — issue #115 — adr-status-one-parser-and-ledger
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide whether `docs/adr/README.md`'s **Status** bullet now states the rule both scripts enforce:
+  - accept "exactly one `Status:` line" in the header. `check-adr-index.sh` used to read the first of several and now fails a second, because `fill-verdict.sh` already refused one at merge. No ADR on main carries two;
+  - accept the bullet as the vocabulary's owner, naming `.claude/ledgers/adr-status-vocabulary.ledger`, with the template listed as a carrier rather than made the owner. A template carrying the ledger path would copy it into every new ADR;
+  - accept the bullet's sentence naming `.claude/scripts/adr-status-lib.sh` as the one parser of the line, used by the gate and by the accept flip.
+- **Why**: `docs/adr/**` is a `humanAlways` path, and this bullet is the convention every ADR's header is held to, so the wording is the owner's to approve.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: Owner, chat, 2026-10-21: "approve 269, 175, 199, 204, 259". Approved, no changes.
+
+## 2026-10-21 — issue #211 — routerule-credits-classify-guard
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to decide:
+  - accept the rewrite of `.claude/workflow.json` → `orchestration.routeRule`'s "so a HUMAN batch is refused at merge by construction" clause: the curated-history count stays as the rule's reason, and the refusal is credited to `.claude/scripts/merge-pr.sh`'s classify step, which refuses a `--rebase` PR that classifies HUMAN, because a verdict folded into a member's commit by hand passes it (#105);
+  - accept the new `.claude/ledgers/human-batch-refusal.ledger`, owned by `merge-pr.sh`, listing the sites that state where that refusal happens.
+- **Why**: #105 showed the count does not refuse a HUMAN batch by construction; the classify guard PR #213 added does. `.claude/workflow.json` is a `humanAlways` path, so the owner decides.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: Owner, chat, 2026-10-21: "approve 269, 175, 199, 204, 259". Approved, no changes.
 
 ## 2026-10-21 — PR #214 — eval-measured-commit-egress-entry
 

@@ -18,7 +18,8 @@ export interface ReplaySpec {
 /**
  * Tier 1 (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)): the course replayed from `run`'s
  * recordings under the pins and sampling a live run would use now, so a re-pin or a prompt change
- * misses rather than replaying the old model. The run's own facts are carried over.
+ * misses rather than replaying the old model. The run's own facts, its served weights' check among
+ * them, are carried over.
  */
 export const replayRun = (spec: ReplaySpec): Promise<EvalReport> =>
   runEval({
@@ -35,6 +36,7 @@ export const replayRun = (spec: ReplaySpec): Promise<EvalReport> =>
       pins: LIVE_PINS,
       sampling: LIVE_SAMPLING,
       recordings: spec.run.recordings,
+      served: spec.run.report.servedGenerator,
     }),
     clock: () => 0,
   });

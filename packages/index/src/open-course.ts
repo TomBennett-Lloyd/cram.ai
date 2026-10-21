@@ -179,9 +179,12 @@ export const openCourseReadOnly = (spec: OpenCourseSpec): ReadCourseResult => {
   );
 };
 
-export type EmbedSlides = (slides: readonly SlideRecord[]) => Promise<readonly Float32Array[]>;
+/** One vector per slide, or `undefined` for a slide stored without one (`IndexedSlide`). */
+export type EmbedSlides = (
+  slides: readonly SlideRecord[],
+) => Promise<readonly (Float32Array | undefined)[]>;
 
-/** Pairs each slide with its vector from `embed`, which must return exactly one per slide. */
+/** Pairs each slide with its result from `embed`, which must return exactly one per slide. */
 export const embedSlides = async (
   operation: string,
   slides: readonly SlideRecord[],
@@ -193,10 +196,7 @@ export const embedSlides = async (
       `${operation}: embed returned ${String(embeddings.length)} vectors for ${String(slides.length)} slides`,
     );
   }
-  return slides.flatMap((record, index) => {
-    const embedding = embeddings[index];
-    return embedding === undefined ? [] : [{ record, embedding }];
-  });
+  return slides.map((record, index) => ({ record, embedding: embeddings[index] }));
 };
 
 /** Opens a course under `spec.embedder`, first re-embedding every slide with `embed` if the file records another. */
@@ -211,7 +211,7 @@ export const reembedCourse = async (
   try {
     if (!sameEmbedder(file.recorded, spec.embedder)) {
       const indexed = await embedSlides('reembedCourse', course.slides(), embed);
-      const bySource = new Map<SourceId, Float32Array>(
+      const bySource = new Map<SourceId, Float32Array | undefined>(
         indexed.map(({ record, embedding }) => [sourceIdOf(record), embedding]),
       );
       course.replaceEmbedder(spec.embedder, bySource);

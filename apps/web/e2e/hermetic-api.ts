@@ -115,7 +115,9 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
   await page.route('**/courses/*/ingest', (route) => {
     ingestReads += 1;
     const progress =
-      ingestReads < 2 ? { state: 'ingesting' } : { state: 'indexed', slideCount: 2, imageOnly: [] };
+      ingestReads < 2
+        ? { state: 'ingesting' }
+        : { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] };
     return json(route, 200, {
       courseId: 'bio',
       stored: { state: 'read', lectures: [], report },

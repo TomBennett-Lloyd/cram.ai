@@ -4,6 +4,8 @@ _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13 
 
 Weak signals from `/retro` that don't yet have a clear improvement action — recorded so patterns become visible across tasks ("we churn on X in half of tasks") instead of being forced into premature lessons. `/triage` mines this for repeats (≥3 similar entries, or affecting ≥50% of recent tasks) and converts patterns into workflow issues, deleting captured entries. Singletons stay until they repeat or go stale.
 
+This file's own path has a restatement ledger (`docs/standards/architecture.md` rule 9): `.claude/ledgers/friction-log-path.ledger`, which `check:ledgers` re-runs.
+
 Entry format:
 
 ```
@@ -143,3 +145,63 @@ Entry format:
 
 - Phase: dispatch
 - Observed: the #296 lane reported no friction of its own, but its merge made PR #337 (#294) DIRTY on the same `.claude/agents/ticket-agent.md` § 4 paragraph, costing that lane a source-conflict rebase round; a third lane (#293, PR #334) edits § 2 of the same file. The merge owner admitted all three in parallel with the overlap named in each dispatch, pricing it as rebase cost; a same-paragraph edit on an agent definition is same-file SOURCE overlap by `run-issue` step 1's own rule and should have been sequenced or batched at dispatch. One ticket so far on agent-definition edits colliding.
+
+## 2026-10-21 — PR #334
+
+- Phase: planning
+- Observed: the #293 lane's first claim-family arm, written for the sweep-shape rule it was itself landing, missed `.claude/agents/planner.md:35` ("the command you ran and the output it returned"); the positive control caught it before the plan went out. The ticket ran into the exact shape it fixes, and the control was what made that visible. No rule change: § 2's three-part sweep now owns it.
+
+## 2026-10-21 — PR #329
+
+- Phase: rebase
+- Observed: in one of the #302 lane's three rebase rounds, a delete script whose assertion failed still reached `rebase --continue`, because the chain used `;` rather than `&&`; a tip commit made the missed deletion. Two of the three rounds were forced by redirect-row deletions on `docs/tech-debt.md` (#324, #327), both log-only. Counts toward a lane-side rule that a scripted rebase step chains with `&&` (`docs/standards/evidence.md` form 8 asserts the edit's count; this is the step after it).
+
+## 2026-10-21 — PR #266
+
+- Phase: implementation
+- Observed: the #165 lane mutated the test-exclusion regex but not the line that applies it to the basename, and review found the surviving mutant. The guard's edges include the site that applies the pattern, not only the pattern's arms; second instance of a mutant list stopping at the regex (PR #278's anchoring mutants were the first, now in ticket-agent § 4's axes rule). One ticket so far on the application site.
+
+## 2026-10-21 — PR #345
+
+- Phase: merge
+- Observed: the #297 lane found that `merge-pr.sh` has unioned a conflict confined to `APPEND_ONLY_LOGS` since #60 (PR #64), so the issue's proposed script change was already shipped; triage wrote the fix direction without reading the script's union step. On the merge owner's side, every log-only `REBASE —` bounce sent today (PRs #266, #269, #275, #324, #327 twice, #329 twice, #334) was avoidable under that union, each costing a lane round and a CI run; PR #345's step 5 now reads the conflicted set first. Second instance today of a triage issue restating shipped behaviour (#332's carrier sweep is the other).
+
+## 2026-10-21 — PR #289
+
+- Phase: implementation
+- Observed: the #268 lane left two background wait loops of the form `until ! pgrep -f 268-mut/mutate.py; do sleep 15; done` running for 4 h 44 min after the PR merged: `pgrep -f` matched the loop's own command line, so the loop could never see the script finish. The lane read its result file directly and never noticed. The merge owner's `kill` was refused by the permission classifier and the owner killed them by hand. One ticket so far on a self-matching `pgrep -f` wait.
+
+## 2026-10-21 — PR #350
+
+- Phase: implementation
+- Observed: the #338 lane's per-package tests were green before `pnpm verify` refused `course-index.ts` and `upload.test.ts` on `max-lines` at 300, forcing a module extraction and two test-file splits mid-step. Third instance today of the composite gate's size rules arriving after a package's own tests pass (PR #313's corpus split, PR #320's test split, now this); the pattern has reached `/triage`'s threshold and a workflow issue is owed on where the size rules run in a lane's loop.
+
+## 2026-10-21 — PR #351
+
+- Phase: review
+- Observed: the #276 lane argued away the plan's untracked-file arm during implementation by reasoning about module resolution, and the reviewer refuted the argument with a shadowing counterexample. An argument for deleting a planned guard needs a mutant shape drawn from the grammar list, not reasoning alone; one ticket so far, and ticket-agent § 4's hostile-corpus rule (PR #336) is the nearest home if it recurs.
+
+## 2026-10-21 — PR #355
+
+- Phase: implementation
+- Observed: two gates tightened on `main` while the #171 lane ran — #165's first-party egress census (PR #266) and #269's ledger citation arms — and each surfaced only at `pnpm verify` or CI: a shared HTTP test fixture was extracted to meet `max-lines` and then reverted because the census counts any non-test module that opens a server, and a docblock's mention of a script became an unlisted ledger hit on the unioned head. Nothing at plan time names which gates a ticket's new files will meet. Second instance today of a gate landing mid-flight costing an open lane a round (PR #353 took one from #351's new verify leg).
+
+## 2026-10-21 — PR #269
+
+- Phase: merge
+- Observed: the #179 lane rebased three times as `main` moved under an approved humanAlways PR, and every ledger merged on `main` meanwhile needed a `cite:` line on the branch because the branch itself was landing the rule that requires one. Once merged, its gate then cost PR #355 a fix round for an unlisted hit and PR #204 a pre-warned cite line. A gate that tightens what every open branch must carry lands cheapest when the merge owner names it in the next bounce to each open lane, which this merge owner did for #204 only after #355 had paid. Counts toward #297.
+
+## 2026-10-22 — PR #353
+
+- Phase: verify
+- Observed: the #292 lane's every `pnpm verify` ran the full composite by design (the classifier vouches for no change to itself), about five minutes each, and its 55-mutant loop ran serially for about 50 minutes because `verify-tier.test.sh` has no case filter. Separately, #269's new `sweep-engine.ledger` turned two lines of this branch's existing prose into unlisted hits that only a trial merge against `main` could show; the lane found them by running one before pushing. One ticket so far on a harness case filter; the trial-merge habit is worth a sentence in ticket-agent § 7 if it recurs.
+
+## 2026-10-22 — PR #204
+
+- Phase: review
+- Observed: the #115 lane's paraphrase sweep found `review-loop/SKILL.md:42` and dropped it as "stays true", when `architecture.md` rule 9's test is whether the file carries the value, not whether the sentence is currently true; the reviewer restored it. Also one harness run returned a green rc because the driver's renamed `set` arm fell through to bash's builtin `set` (second instance of a harness whose verdict is not what ran: PR #284's decomposed edit was the first; `evidence.md` form 6 now covers the exit-code half).
+
+## 2026-10-22 — PR #259
+
+- Phase: implementation
+- Observed: the #211 lane's first ledger sweep had no claim arm, which rule 9 requires, and the reviewer caught it: mutating the arms you wrote cannot surface an arm you never wrote, the same blind spot ticket-agent § 4's grammar list exists for, now in a sweep rather than a guard. Main then moved during the bounce round (#204), forcing a second log-only rebase before CI would run; fourth lane today to pay a round purely to a neighbour's log append.

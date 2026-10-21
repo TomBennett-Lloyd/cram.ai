@@ -38,7 +38,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
 | grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
 | ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
-| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                  | #292         |
 | ADR 0003's restatement ledger does not list #20's new carriers                               | #298         |
 | ADR 0006's carrier ledger names the old home of the quotable field list                      | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                         | #298         |
@@ -100,3 +99,51 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `unzipParts` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`; `readXml` and `resolveTarget` in `packages/ingest/src/adapters/pptx/ooxml.ts`
 - What: only names ending in lowercase `.xml` or `.rels` are inflated, parts are looked up by exact case, and relationship targets are not percent-decoded, though OPC part names compare case-insensitively and may be escaped. A conforming package whose main, slide or notes part is named another way reads as `missing-part`, so `damaged`: a reader limit in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). Predates #301, which made the main part's name come from a relationship and so more reachable.
 - Source: #301 review cycle 1
+
+## 2026-10-21 — which slides get a vector is decided twice, once by the server and once by eval
+
+- Where: `apps/server/src/slide-embedding.ts` `embedSlides`; `eval/src/index-retriever.ts` `embedAll`
+- What: the server embeds no `references` slide and stores an over-length slide with no vector. Eval's `IndexRetriever` cannot import that rule, so it embeds every slide and rejects an over-length text. Default search leaves references out of both lists, and an over-length text fails loudly, so recall@k is unaffected today. But the embedded-text ledger's claim that recall@k measures the retrieval the app runs now rests on two copies of one rule. Suspected root cause: the rule lives in an app, where eval cannot reach it; it belongs in a package both import, beside `packages/shared/src/embed-text.ts`.
+- Source: PR for #338 (review); #184
+
+## 2026-10-21 — an over-length slide's whole text now reaches the generator prompt
+
+- Where: `packages/index/src/course-index.ts` `search` → the generator's retrieved context
+- What: until #338 the embedder's input limit capped every stored slide's length. A slide stored with no vector is still returned by BM25 and sent whole. Grounding holds, because resolution and verification judge quotes. The risk is quality, through #184's open "context trimmed silently" entry. #339 removes the case by splitting long slides.
+- Source: PR for #338 (review)
+
+## 2026-10-21 — "has no text, so it can't be cited yet" is false for an image-only PPTX slide with speaker notes
+
+- Where: `apps/web/src/copy.ts` `indexedMessage`; `packages/ingest/src/slide-text.ts` (an `image-only` slide is classed from its title and body only)
+- What: A citation can quote the speaker notes, and BM25 finds the slide by them, so such a slide can be found and cited. The copy reads the `image-only` kind as "no text". Suspected root cause: one kind is doing two jobs, "derive text from the image" and "nothing to cite".
+- Source: PR for #338 (review; this was already true before #338)
+
+## 2026-10-21 — check:ledgers accepts any word in the owner as a citation
+
+- Where: `.claude/scripts/check-ledgers.sh`'s `cite_names_owner`
+- What: the identifier form of `cite:` passes when the word occurs anywhere in the owner, whether it is a local variable, the claim's own literal or an English word, and the path form's `§ <section>` is never checked against the owner. So the gate proves the sweep matches _a_ name the owner holds, not one carriers use to cite it (#179's review found `cite: ALLOWLIST`, a shell local no carrier could write). Suspected root cause: "citable" has no definition the gate can test, such as an exported symbol or an existing heading.
+- Source: #179 review
+
+## 2026-10-21 — the .claude/ledgers/ exemption hides siblings' claim and comment lines
+
+- Where: `.claude/scripts/check-ledgers.sh`'s unlisted-hit loop
+- What: every path under `.claude/ledgers/` is exempt from the unlisted-hit check, so another ledger's `claim:` or `#` line restating a value is never returned. Only the lines the gate itself checks (`owner:`, `cite:`, `carrier:`, `excluded:`) need the exemption. No hidden restatement exists today (#179's review sweep).
+- Source: #179 review
+
+## 2026-10-21 — `describeError` is copied in each gateway adapter
+
+- Where: `describeError` in `packages/gateway/src/adapters/onnx/encoder-artefact.ts` and in `packages/gateway/src/adapters/openai-http/http-failure.ts`
+- What: two adapters each write their own copy of the one-line description of a caught error. #171 merged the two copies inside the HTTP adapter into `http-failure.ts`. Merging across adapters belongs to the adapters root (`docs/standards/structure.md` rule 5), which is a change of its own.
+- Source: #171 review cycle 1
+
+## 2026-10-21 — `LoopbackEndpoint` is unbranded, so every generator entry point re-parses its config
+
+- Where: `LoopbackEndpoint` and `HttpGeneratorConfig` in `packages/gateway/src/role-config.ts`; `OpenAiHttpGenerator`'s constructor and `loadOpenAiHttpGenerator` in `packages/gateway/src/adapters/openai-http/openai-http-generator.ts`
+- What: a value of type `HttpGeneratorConfig` does not prove its endpoint is on loopback, so each entry point must parse it again before any request, and throw if it is not. #171's loader needed its own parse before `/api/show`, and a test now guards that parse. Branding the schema would move the proof into the type (`docs/standards/typing.md` rules 1 and 3), but it touches every consumer of the config.
+- Source: #171 review cycle 1
+
+## 2026-10-21 — the trim-batch trigger does not say whether a `+`-joined tier counts
+
+- Where: `docs/standards/prose.md` § Trim batches (first paragraph); `.claude/skills/review-loop/SKILL.md` **Trim-batch lane**
+- What: both say a PR whose diff `.claude/scripts/verify-tier.sh` classifies `source-prose` or `docs` is a trim batch. #292 made composite tier names reachable, so a trim batch that writes the restatement ledger prose.md rule 1 asks for now classifies `source-prose+ledgers`, and neither text says whether that counts. Nothing regressed: before #292 a diff touching a ledger classified `full`, which was never a trim batch. The fix is a standards decision.
+- Source: #292 review cycle 1

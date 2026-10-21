@@ -2,16 +2,19 @@ import {
   type EncoderLoad,
   type EncoderLoadFailure,
   type GatewayConfig,
+  type GeneratorLoadFailure,
   loadOnnxEmbedder,
   loadOnnxReranker,
   loadOnnxVerifier,
-  OpenAiHttpGenerator,
+  loadOpenAiHttpGenerator,
   type Reranker,
 } from '@cram/gateway';
 import type { RecordableGateway } from './recording-gateway';
 
 export type LiveGatewayOpen =
-  { readonly status: 'open'; readonly gateway: RecordableGateway } | EncoderLoadFailure;
+  | { readonly status: 'open'; readonly gateway: RecordableGateway }
+  | GeneratorLoadFailure
+  | EncoderLoadFailure;
 
 type RerankerLoad = EncoderLoad<Reranker | null>;
 
@@ -20,8 +23,10 @@ const loadReranker = async (config: GatewayConfig): Promise<RerankerLoad> =>
     ? { status: 'loaded', encoder: null }
     : loadOnnxReranker(config.reranker);
 
-/** The real backends `config` names; the first encoder that does not load is the result. */
+/** The real backends `config` names; the first role that does not load is the result. */
 export const openLiveGateway = async (config: GatewayConfig): Promise<LiveGatewayOpen> => {
+  const generator = await loadOpenAiHttpGenerator(config.generator);
+  if (generator.status === 'load-failed') return generator;
   const verifier = await loadOnnxVerifier(config.verifier);
   if (verifier.status === 'load-failed') return verifier;
   const embedder = await loadOnnxEmbedder(config.embedder);
@@ -31,7 +36,7 @@ export const openLiveGateway = async (config: GatewayConfig): Promise<LiveGatewa
   return {
     status: 'open',
     gateway: {
-      generator: new OpenAiHttpGenerator(config.generator),
+      generator: generator.generator,
       verifier: verifier.encoder,
       embedder: embedder.encoder,
       reranker: reranker.encoder,

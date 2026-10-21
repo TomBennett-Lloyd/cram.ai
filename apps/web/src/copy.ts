@@ -87,12 +87,21 @@ const slidesThat = (slides: readonly number[], one: string, many: string): strin
 export const indexedMessage = ({
   slideCount,
   imageOnly,
-}: Pick<StoredLecture, 'slideCount' | 'imageOnly'>): string => {
-  const indexed = `${String(slideCount)} ${slideCount === 1 ? 'slide' : 'slides'} indexed.`;
-  return imageOnly.length === 0
-    ? indexed
-    : `${indexed} ${slidesThat(imageOnly, 'has no text, so it', 'have no text, so they')} can’t be cited yet.`;
-};
+  unembedded,
+}: Pick<StoredLecture, 'slideCount' | 'imageOnly' | 'unembedded'>): string =>
+  [
+    `${String(slideCount)} ${slideCount === 1 ? 'slide' : 'slides'} indexed.`,
+    ...(imageOnly.length === 0
+      ? []
+      : [
+          `${slidesThat(imageOnly, 'has no text, so it', 'have no text, so they')} can’t be cited yet.`,
+        ]),
+    ...(unembedded.length === 0
+      ? []
+      : [
+          `${slidesThat(unembedded, 'holds', 'hold')} more text than the search model reads at once, so ${unembedded.length === 1 ? 'it’s' : 'they’re'} found by ${unembedded.length === 1 ? 'its' : 'their'} words only.`,
+        ]),
+  ].join(' ');
 
 /** Why the course file's lectures are not listed; this session's uploads still are. */
 export const storedUnavailableMessage = (problem: CourseUnavailableProblem): string =>
@@ -143,8 +152,6 @@ export const progressMessage = (progress: UploadProgress): string => {
       return indexedMessage(progress);
     case 'unreadable':
       return `This deck couldn’t be read (${progress.reason}${progress.detail === '' ? '' : `: ${progress.detail}`}).`;
-    case 'over-length':
-      return `${slidesThat(progress.slides, 'holds', 'hold')} more text than the model reads at once (${String(progress.maxInputTokens)} tokens), so nothing from this deck was indexed.`;
     case 'course-unavailable':
       return `${fileUnopened(progress.problem)}, so the deck was not indexed.`;
     case 'failed':

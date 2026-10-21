@@ -20,7 +20,8 @@ minimumReleaseAgeStrict: true
 
 allowBuilds:
   # esbuild is a root devDependency because .claude/scripts/verify-tier.sh's
-  # source-prose rung and .claude/scripts/models-pull.sh's pin read run it. pnpm installs @esbuild/<platform> and the bin shim
+  # source-prose rung, .claude/scripts/models-pull.sh's pin read and
+  # .claude/scripts/check-stored-output-pin.sh's import graphs run it. pnpm installs @esbuild/<platform> and the bin shim
   # resolves that binary at runtime, so the rung works without the install
   # script, and not running install-time code is the safer default. The
   # source-prose cases in .claude/scripts/verify-tier.test.sh run that shim.

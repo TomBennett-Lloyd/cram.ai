@@ -12,7 +12,23 @@ describe('MachineClass', () => {
 });
 
 describe('EvalReport', () => {
-  const { measuredCommit, pullRequest, retrievalK, nliThresholds } = EvalReport.shape;
+  const { measuredCommit, pullRequest, retrievalK, nliThresholds, servedGenerator } =
+    EvalReport.shape;
+
+  it.each([{ status: 'verified' }, { status: 'unverified', reason: 'HTTP 404' }])(
+    'admits the served-weights record %j',
+    (served) => {
+      expect(servedGenerator.safeParse(served).success).toBe(true);
+    },
+  );
+
+  it.each([
+    { status: 'unverified', reason: ' ' },
+    { status: 'unverified' },
+    { status: 'verified', reason: 'HTTP 404' },
+  ])('refuses the served-weights record %j', (served) => {
+    expect(servedGenerator.safeParse(served).success).toBe(false);
+  });
 
   it.each(['abc1234', 'a'.repeat(40)])('admits the commit %s', (sha) => {
     expect(measuredCommit.safeParse(sha).success).toBe(true);

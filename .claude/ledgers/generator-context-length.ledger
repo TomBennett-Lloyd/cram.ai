@@ -4,7 +4,8 @@
 # installed app's backend (#7) is to apply it. The arms include node-llama-cpp's contextSize.
 owner: packages/gateway/src/provisional-pins.ts
 claim: developer mode serves the generator with PROVISIONAL_GENERATOR_CONTEXT_LENGTH, never above the artefact's trained length, and the installed app's backend is to apply the same value
-sweep: \.claude/ledgers/generator-context-length\.ledger|PROVISIONAL_GENERATOR_CONTEXT_LENGTH|num_ctx|\bn_ctx\b|(?i:context[ _-]?(length|size|window))
+cite: PROVISIONAL_GENERATOR_CONTEXT_LENGTH
+sweep: PROVISIONAL_GENERATOR_CONTEXT_LENGTH|\.claude/ledgers/generator-context-length\.ledger|num_ctx|\bn_ctx\b|(?i:context[ _-]?(length|size|window))
 scope: :!pnpm-lock.yaml
 carrier: .claude/scripts/generator-pin.mjs
 carrier: .claude/scripts/models-pull.sh

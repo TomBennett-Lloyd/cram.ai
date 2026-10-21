@@ -1,7 +1,8 @@
 # The contradiction set's pass bar (docs/standards/architecture.md rule 9).
 owner: CLAUDE.md
 claim: the contradiction set in eval/ must pass at 100% — CLAUDE.md § Hard constraints, "The slides win"
-sweep: contradiction.set.*(100\s?%|\bbar\b)|100\s?%.*contradiction|\.claude/ledgers/contradiction-set-bar\.ledger
+cite: `CLAUDE.md` § Hard constraints
+sweep: `?CLAUDE\.md`? § Hard constraints|contradiction.set.*(100\s?%|\bbar\b)|100\s?%.*contradiction|\.claude/ledgers/contradiction-set-bar\.ledger
 carrier: docs/plan.md
 carrier: docs/standards/grounding.md
 carrier: docs/adr/0001-grounding-architecture.md
@@ -10,3 +11,12 @@ carrier: docs/adr/0005-evaluation-as-gate.md
 carrier: eval/src/contradiction-set.ts
 excluded: docs/review-feedback.md
 excluded: docs/tech-debt.md
+excluded: .claude/network-egress.allowlist
+excluded: .claude/scripts/check-no-course-content.sh
+excluded: .claude/scripts/check-no-network-egress.sh
+excluded: .claude/scripts/models-pull.sh
+excluded: docs/adr/0002-deployables.md
+excluded: docs/adr/0004-storage.md
+excluded: docs/adr/0006-image-only-slides.md
+excluded: packages/shared/src/unit.ts
+excluded: docs/adr/0007-desktop-packaging.md

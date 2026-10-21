@@ -1,8 +1,16 @@
 # Why esbuild is in the tree (docs/standards/architecture.md rule 9; #30).
 owner: .claude/scripts/verify-tier.sh
-claim: esbuild is a root devDependency declared for verify-tier.sh's source-prose rung and models-pull.sh's pin read, not brought by vite
-sweep: esbuild\b.{0,80}(devDependenc|dependency of|arriv|bring|transitiv)|(arriv|brought|pulled|comes?)[a-z]* (with|by|in) (vite|vitest|tsx)\b|(vite|vitest|tsx)\)?[^.\n]{0,40}\bbrings?\b|\.claude/ledgers/esbuild-provenance\.ledger
+claim: esbuild is a root devDependency declared for verify-tier.sh's source-prose rung, models-pull.sh's pin read and check-stored-output-pin.sh's import graphs, not brought by vite
+cite: .claude/scripts/verify-tier.sh
+sweep: verify-tier\.sh|esbuild\b.{0,80}(devDependenc|dependency of|arriv|bring|transitiv)|(arriv|brought|pulled|comes?)[a-z]* (with|by|in) (vite|vitest|tsx)\b|(vite|vitest|tsx)\)?[^.\n]{0,40}\bbrings?\b|\.claude/ledgers/esbuild-provenance\.ledger
 scope: :!pnpm-lock.yaml
 carrier: pnpm-workspace.yaml
 carrier: .claude/scripts/verify-tier.test.sh
 excluded: docs/friction-log.md
+excluded: .claude/scripts/check-comment-density.sh
+excluded: .claude/scripts/lint-shell.sh
+excluded: CLAUDE.md
+excluded: docs/adr/0005-evaluation-as-gate.md
+excluded: docs/standards/prose.md
+excluded: docs/tech-debt.md
+excluded: package.json

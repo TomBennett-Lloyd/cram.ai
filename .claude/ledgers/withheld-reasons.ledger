@@ -1,7 +1,8 @@
 # The withheld-reason vocabulary (docs/standards/architecture.md rule 9; #29).
 owner: packages/shared/src/verification.ts
 claim: why a unit is withheld — dangling-citation, or any verdict but supported — as @cram/shared's WithheldReason declares it
-sweep: dangling-citation|`WithheldReason`|\.claude/ledgers/withheld-reasons\.ledger
+cite: `WithheldReason`
+sweep: `WithheldReason`|dangling-citation|\.claude/ledgers/withheld-reasons\.ledger
 carrier: packages/shared/src/verification.test.ts
 carrier: packages/shared/src/unit.ts
 carrier: packages/shared/src/withheld.ts

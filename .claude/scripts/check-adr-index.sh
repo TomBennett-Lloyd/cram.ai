@@ -4,7 +4,8 @@
 #
 #   file -> index   every docs/adr/NNNN-*.md (0000-template.md excepted) has an index row
 #   index -> file   every index row links to a file that exists, under the row's own number
-#   status          every such file carries a `Status:` line from the template's vocabulary
+#   status          every such file carries exactly one header `Status:` line, read by
+#                   adr-status-lib.sh, whose value is docs/adr/README.md's vocabulary
 #   supersession    every `superseded by NNNN` — in a Status line or an index-row annotation
 #                   — names an ADR file that actually exists
 #
@@ -29,6 +30,9 @@ set -uo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 ADR_DIR=${1:-"$SCRIPT_DIR/../../docs/adr"}
+
+# shellcheck source=./adr-status-lib.sh
+. "$SCRIPT_DIR/adr-status-lib.sh"
 
 TEMPLATE=0000-template.md
 
@@ -76,26 +80,6 @@ check_supersessions() { # check_supersessions <adr-dir> <text> <what>
     # The match is leftmost, so this literal removal always shortens the string.
     text=${text#*"superseded by $number"}
   done
-}
-
-# Prints the ADR's Status value, or nothing when the header carries no `Status:` line with a
-# value. Only the header counts — everything above the first `## ` section — so prose in a
-# Context section may use the word without becoming the ADR's status. Deliberately tolerant
-# about the markup around the label (bullet, bold, both, neither) and strict about the value:
-# the vocabulary is what the gate is for, not whether someone wrote `**Status:**`.
-adr_status_value() { # adr_status_value <file>
-  local line value
-  local status_re='^[[:space:]]*([-*+][[:space:]]+)?\**Status:\**[[:space:]]*(.*)$'
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      '## '*) return 0 ;;
-    esac
-    if [[ $line =~ $status_re ]]; then
-      value=${BASH_REMATCH[2]}
-      printf '%s' "${value%"${value##*[![:space:]]}"}"
-      return 0
-    fi
-  done <"$1"
 }
 
 readme="$ADR_DIR/README.md"
@@ -213,19 +197,19 @@ for path in ${adr_files[@]+"${adr_files[@]}"}; do
     *) fail "ADR file $base is not listed in the index in $readme" ;;
   esac
 
-  # The vocabulary is the template's, verbatim and lower-case (0000-template.md: "proposed |
-  # accepted | superseded by NNNN"). An ADR whose status is a free-text variant is a decision
-  # whose standing cannot be read mechanically, which is how a superseded ADR goes on being
-  # cited as current.
-  status=$(adr_status_value "$path")
-  case "$status" in
-    proposed | accepted) ;;
-    'superseded by '[0-9][0-9][0-9][0-9])
-      check_supersessions "$ADR_DIR" "$status" "the Status of $base"
-      ;;
-    '') fail "ADR file $base has no 'Status:' line with a value (expected '- **Status:** accepted')" ;;
-    *) fail "ADR file $base has Status '$status'; expected proposed, accepted, or 'superseded by NNNN'" ;;
-  esac
+  # One header Status line, so that this gate and fill-verdict.sh, which refuses any other
+  # count at merge, cannot disagree about which line is the ADR's standing (#115).
+  adr_status_read "$path"
+  status=$ADR_STATUS_VALUE
+  if [ "$ADR_STATUS_COUNT" -gt 1 ]; then
+    fail "ADR file $base has $ADR_STATUS_COUNT Status lines in its header; expected one"
+  elif [ -z "$status" ]; then
+    fail "ADR file $base has no 'Status:' line with a value (expected '- **Status:** accepted')"
+  elif ! adr_status_known "$status"; then
+    fail "ADR file $base has Status '$status'; expected proposed, accepted, or 'superseded by NNNN'"
+  else
+    check_supersessions "$ADR_DIR" "$status" "the Status of $base"
+  fi
 done
 
 # Every row-without-file is already an error above, except a row pointing at the template,

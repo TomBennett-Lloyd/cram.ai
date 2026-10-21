@@ -5,7 +5,7 @@ import { decodeTokensPerSecond } from '../../generator-timing';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
 import { HttpGeneratorConfig } from '../../role-config';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
-import { OpenAiHttpGenerator } from './openai-http-generator';
+import { checkServedModel, loadOpenAiHttpGenerator } from './openai-http-generator';
 
 // `docs/adr/0003-model-roles-and-backends.md` § Decision (k): A4's two figures on this machine, A11 (prompt-prefix reuse)
 // and A12 (thinking suppressed), against a live server:
@@ -64,9 +64,9 @@ const replyTo = async (payload: object) => {
 };
 
 const timed = async (system: string, question: string) => {
-  const { reply, timing } = await new OpenAiHttpGenerator(config()).timedReply(
-    wire(system, question),
-  );
+  const load = await loadOpenAiHttpGenerator(config());
+  if (load.status !== 'loaded') throw new Error(load.detail);
+  const { reply, timing } = await load.generator.timedReply(wire(system, question));
   if (timing === null) throw new Error(`no content token arrived: ${JSON.stringify(reply)}`);
   return timing;
 };
@@ -74,6 +74,10 @@ const timed = async (system: string, question: string) => {
 describe.runIf(env.CRAM_MEASURE === '1')(
   'OpenAI-compatible generator against a live server',
   () => {
+    it('#171: the server serves the pin’s weights', async () => {
+      await expect(checkServedModel(config())).resolves.toEqual({ status: 'verified' });
+    });
+
     it(
       'A12: reasoning_effort none leaves no thinking output where the default thinks',
       async () => {

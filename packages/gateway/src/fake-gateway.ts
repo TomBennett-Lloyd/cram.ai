@@ -18,6 +18,7 @@ import type { Embedder, Generator, ModelGateway, Reranker, Verifier } from './mo
 import type { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
 import { Recording, recordingKey } from './recording';
 import type { Sampling } from './role-config';
+import type { ServedArtefact } from './served-artefact';
 import type { Role } from './role';
 
 /** A replay with no recording; never a fallback (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)). */
@@ -60,14 +61,27 @@ class Replies<R> {
   }
 }
 
+/** A replay serves no model. */
+export const REPLAYED: ServedArtefact = {
+  status: 'unverified',
+  reason: 'replayed from recordings',
+};
+
 class FakeGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly served: ServedArtefact;
   readonly #replies: Replies<GeneratorReply>;
 
-  constructor(pin: GeneratorPin, sampling: Sampling, replies: Replies<GeneratorReply>) {
+  constructor(
+    pin: GeneratorPin,
+    sampling: Sampling,
+    served: ServedArtefact,
+    replies: Replies<GeneratorReply>,
+  ) {
     this.pin = pin;
     this.sampling = sampling;
+    this.served = served;
     this.#replies = replies;
   }
 
@@ -144,6 +158,8 @@ export interface FakeGatewaySpec {
   readonly pins: FakeGatewayPins;
   readonly sampling: Sampling;
   readonly recordings: readonly Recording[];
+  /** What the generator reports; `REPLAYED` when absent. */
+  readonly served?: ServedArtefact;
 }
 
 /** Replays recordings keyed as `Recording` states; a miss rejects with `RecordingMissError`. */
@@ -176,7 +192,12 @@ export class FakeGateway implements ModelGateway {
       }
     }
     const { pins } = spec;
-    this.generator = new FakeGenerator(pins.generator, spec.sampling, generator);
+    this.generator = new FakeGenerator(
+      pins.generator,
+      spec.sampling,
+      spec.served ?? REPLAYED,
+      generator,
+    );
     this.verifier = new FakeVerifier(pins.verifier, verifier);
     this.embedder = new FakeEmbedder(pins.embedder, embedder);
     this.reranker = pins.reranker === undefined ? null : new FakeReranker(pins.reranker, reranker);

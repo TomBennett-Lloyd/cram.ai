@@ -577,7 +577,8 @@ if [ "$already_merged" = "0" ]; then
   # Ahead of the curated-history check, so that a HUMAN batch carrying its
   # verdict commit is told the rule rather than a commit count; a batch whose
   # verdict was folded by hand would pass that count (#105). Naming the member is
-  # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4).
+  # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4). The
+  # sites stating that this guard is the refusal: .claude/ledgers/human-batch-refusal.ledger.
   if [ "$merge_method" = "--rebase" ] && [ "$is_human" = "1" ]; then
     fail 'classify' "a --rebase PR classifies HUMAN (humanAlways: $human_hits), and a batch never carries a humanAlways path (.claude/workflow.json → orchestration.routeRule, #56) — bounce the batch to drop the member whose footprint reaches $human_hits, which runs as its own ticket-agent lane, or pass --method squash if this PR is a single issue"
   fi
@@ -703,10 +704,10 @@ fi
 
 # The logs this step may resolve, declared once: .claude/skills/review-loop/SKILL.md
 # step 5 cites this name rather than listing them. Each path is an executable carrier
-# of that log's name (the path ledgers that exist: docs/tech-debt.md's header, and
-# .claude/workflow.json → feedbackLogLedger), and a rename that misses this list fails
-# closed: the conflict arrives under a path the list lacks, and the conflicted-set test
-# refuses naming it.
+# of that log's name (the path ledgers: docs/tech-debt.md's header,
+# .claude/ledgers/review-feedback-path.ledger and .claude/ledgers/friction-log-path.ledger),
+# and a rename that misses this list fails closed: the conflict arrives under a path the
+# list lacks, and the conflicted-set test refuses naming it.
 APPEND_ONLY_LOGS=('docs/review-feedback.md' 'docs/tech-debt.md' 'docs/friction-log.md')
 
 is_append_only_log() { # is_append_only_log <path> -> 0 when <path> is one of APPEND_ONLY_LOGS
