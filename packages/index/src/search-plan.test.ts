@@ -8,7 +8,7 @@ import { createSchema } from './schema';
 
 // A plan, not a timing, so the gate holds on a loaded machine (#136, #152).
 const PlanRow = z.object({ detail: z.string() });
-const VIRTUAL_TABLE_SCAN = /^SCAN (\w+) VIRTUAL TABLE INDEX \d+:(.*)$/;
+const VIRTUAL_TABLE_SCAN = /^SCAN (\w+).*? VIRTUAL TABLE INDEX \d+:(.*)$/;
 
 interface VirtualTableScan {
   readonly table: string;
