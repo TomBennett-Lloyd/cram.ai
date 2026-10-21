@@ -106,15 +106,16 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-21 — opening a course file to read it can write to it
 
 - Where: `apps/server/src/course-file.ts` `openForRead`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
-- What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status the decks screen polls every second while an upload is in flight. Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
+- What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status `useIngestStatus` polls (`apps/web/src/decks/use-ingest-status.ts`). Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
 - Source: #146 review cycle 1
 
 ## 2026-10-21 — the web shows `@cram/index` status codes to the student
 
-- Where: `apps/web/src/copy.ts` `fileUnopened` and its three callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`)
+- Where: `apps/web/src/copy.ts` `fileUnopened` and its callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`, `repairFailedMessage`)
 - What: an unopenable course file is reported as "This course’s file can’t be opened (embedder-mismatch)", the raw `OpenCourseResult` status, with no words for what it means or what to do. Root cause: no mapping from `@cram/index`'s vocabulary to student-facing copy. #147 (rebuild or re-embed on course-unavailable) changes what the student can do about each one.
 - Source: #146 review cycle 1
 - Update 2026-10-21 (#147): the server now repairs both codes at start (`repairCourse` in `apps/server/src/course-repair.ts`), with no action from the student. Either code still reaches the student until a repair has rebuilt or re-embedded the file: while the repair is queued or running, and after any repair that ends any other way. #225 owns reporting the repair.
+- Update 2026-10-21 (#225): the decks screen now reports the repair (`CourseRepair` in `packages/shared/src/ingest-status.ts`). While a repair is queued or running it says the stored decks are being updated, with no code shown. `discardedMessage` maps `@cram/index` table names to student words by string, the same gap for a second vocabulary.
 
 ## 2026-10-21 — every start-up repair failure is logged as `Error`
 
@@ -139,3 +140,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/shared/src/deck.ts` `Deck`; `packages/ingest/src/deck.ts` `fileStem`
 - What: `Deck` does not store the uploaded file name, so a rebuild passes the stored title through `fileStem` as the title fallback. If a title came from the first slide and contains `/`, `\`, `-` or `_`, and a later ingest no longer reads a title from that slide, the rebuilt title is mangled ("Cells/Tissues" becomes "Tissues"). This can only happen across an ingest change, which is exactly when rebuilds run. Root cause: the stored deck drops the file name.
 - Source: #147 review cycle 1
+
+## 2026-10-21 — a new discardable table reaches the student as "other saved items"
+
+- Where: `apps/web/src/copy.ts` `DISCARDED_ROW`, `discardedMessage`; `packages/index/src/rebuild-course.ts` `discardedTables`
+- What: `docs/adr/0004-storage.md` § Decision (d) requires a rebuild to tell the user which derived data did not survive. The web names only the tables it has words for. A table added later, such as attempts or notes, is summed as `OTHER_ROW` with every test green. The `topics-table` and `confirmations-table` ledgers only notice a rename, not an addition. Root cause: nothing shared lists the tables a rebuild can discard, so no gate asks for the new table's student words.
+- Source: #225 review cycle 1

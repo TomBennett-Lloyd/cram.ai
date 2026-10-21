@@ -107,6 +107,7 @@ describe('POST /courses/:id/decks', () => {
     expect(status.json).toEqual({
       courseId: 'bio',
       stored: HIVE_STORED,
+      repair: { state: 'none' },
       uploads: [
         {
           uploadId: (accepted.json as { uploadId: string }).uploadId,
@@ -209,9 +210,14 @@ describe('the course file an upload writes', () => {
     await upload(server, await pdfDeck(HIVE));
     await server.server.close();
     test = await startTestServer(undefined, server.dataDir);
-    const status = await send(test.server.port, { method: 'GET', path: '/courses/bio/ingest' });
+    const status = await settledStatus(test.server.port, 'bio');
     expect(status.status).toBe(200);
-    expect(status.json).toEqual({ courseId: 'bio', stored: HIVE_STORED, uploads: [] });
+    expect(status.json).toEqual({
+      courseId: 'bio',
+      stored: HIVE_STORED,
+      repair: { state: 'done', discarded: [] },
+      uploads: [],
+    });
   });
 });
 
@@ -226,6 +232,7 @@ describe('GET /courses/:id/ingest', () => {
     expect(status.json).toEqual({
       courseId: 'bio',
       stored: { state: 'course-unavailable', problem: 'not-a-course-file' },
+      repair: { state: 'none' },
       uploads: [],
     });
   });

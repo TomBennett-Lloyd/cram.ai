@@ -1,5 +1,6 @@
 import type {
   ApiRefusal,
+  DiscardedTable,
   PartialPolicy,
   StoredLecture,
   UploadProgress,
@@ -12,6 +13,7 @@ export const PENDING = {
   courses: 'Loading courses…',
   decks: 'Loading decks…',
   answer: 'Checking your slides…',
+  repair: 'Updating this course’s stored decks…',
 } as const;
 
 /** The fixed system string for a question no surviving unit answers (`docs/standards/grounding.md` rule 5). */
@@ -79,6 +81,39 @@ export const indexedMessage = ({
 /** Why the course file's lectures are not listed; this session's uploads still are. */
 export const storedUnavailableMessage = (problem: string): string =>
   `${fileUnopened(problem)}, so its stored decks can’t be listed.`;
+
+/** Why the course file's lectures are not listed once its start-up repair has failed (#225). */
+export const repairFailedMessage = (problem: string): string =>
+  `${fileUnopened(problem)} and couldn’t be updated, so its stored decks can’t be listed.`;
+
+/** Student words for the `@cram/index` tables a rebuild can discard; any other table counts as `OTHER_ROW`. */
+const DISCARDED_ROW: ReadonlyMap<string, readonly [one: string, many: string]> = new Map([
+  ['topics', ['topic tag', 'topic tags']],
+  [
+    'confirmations',
+    [
+      'confirmation of text read from a slide picture',
+      'confirmations of text read from slide pictures',
+    ],
+  ],
+]);
+const OTHER_ROW = ['other saved item', 'other saved items'] as const;
+
+const counted = (rows: number, [one, many]: readonly [string, string]): string =>
+  `${String(rows)} ${rows === 1 ? one : many}`;
+
+/** What a rebuild lost (`docs/adr/0004-storage.md` § Decision (d)); `discarded` is not empty. */
+export const discardedMessage = (discarded: readonly DiscardedTable[]): string => {
+  const named = discarded.flatMap(({ table, rows }) => {
+    const noun = DISCARDED_ROW.get(table);
+    return noun === undefined ? [] : [counted(rows, noun)];
+  });
+  const other = discarded
+    .filter(({ table }) => !DISCARDED_ROW.has(table))
+    .reduce((sum, { rows }) => sum + rows, 0);
+  const lost = other === 0 ? named : [...named, counted(other, OTHER_ROW)];
+  return `This course was rebuilt from its stored decks for this version of cram.ai, and what was saved with it didn’t carry over: ${lost.join(', ')}.`;
+};
 
 export const progressMessage = (progress: UploadProgress): string => {
   switch (progress.state) {
