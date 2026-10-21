@@ -44,6 +44,8 @@ export interface FixtureAnnotation {
 
 export interface FixturePage {
   readonly lines: readonly FixtureLine[];
+  /** Width and height in points; a landscape slide when omitted. */
+  readonly size?: readonly [number, number];
   readonly annotations?: readonly FixtureAnnotation[];
 }
 
@@ -160,9 +162,10 @@ export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
   );
   if (deck.metadataTitle !== undefined) doc.setTitle(deck.metadataTitle);
   for (const fixture of deck.pages) {
-    const page = doc.addPage(PAGE);
+    const size = fixture.size ?? PAGE;
+    const page = doc.addPage([size[0], size[1]]);
     page.node.setFontDictionary(PDFName.of(MATH_FONT), mathFont);
-    let y = PAGE[1];
+    let y = size[1];
     for (const [index, line] of fixture.lines.entries()) {
       y -= line.size * 1.2;
       if (line.mathItalic) {

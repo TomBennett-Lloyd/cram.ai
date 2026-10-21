@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-import { SourceHash, type CourseId, type LectureId, type SlideRecord } from '@cram/shared';
+import {
+  SourceHash,
+  type CourseId,
+  type LectureId,
+  type SlideImage,
+  type SlideRecord,
+} from '@cram/shared';
 
 /** An uploaded deck as every format adapter receives it; a rebuild passes the `storedTitle` (#299). */
 export interface DeckFile {
@@ -10,9 +16,13 @@ export interface DeckFile {
   readonly lectureId: LectureId;
 }
 
-/** `Reason` is the adapter's own vocabulary. */
+/** `Reason` is the adapter's own vocabulary. `images` holds one per slide the adapter renders; PPTX renders none yet (#169). */
 export type IngestResult<Reason extends string> =
-  | { readonly status: 'ingested'; readonly slides: readonly SlideRecord[] }
+  | {
+      readonly status: 'ingested';
+      readonly slides: readonly SlideRecord[];
+      readonly images: readonly SlideImage[];
+    }
   | {
       readonly status: 'unreadable';
       readonly fileName: string;

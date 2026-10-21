@@ -6,6 +6,7 @@ export {
   type PdfIngestResult,
   type PdfUnreadableReason,
 } from './adapters/pdf/ingest-pdf';
+export { SLIDE_IMAGE_LONG_EDGE_PX } from './adapters/pdf/render-page';
 export { ingestPptx, type PptxIngestResult } from './adapters/pptx/ingest-pptx';
 export type { PptxUnreadableReason } from './adapters/pptx/ooxml';
 export {
