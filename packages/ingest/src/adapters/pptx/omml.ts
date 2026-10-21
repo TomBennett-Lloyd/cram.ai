@@ -27,13 +27,6 @@ const argument = (element: Element, name: string, read: Read): string => {
 /** `ST_OnOff`'s false values (ECMA-376 Part 1 § 22.9.2.7). */
 const OFF: ReadonlySet<string> = new Set(['off', 'false', '0']);
 
-/** A math alphanumeric, or a Letterlike Symbol standing in one of that block's reserved holes (#159). */
-const MATH_ALPHANUMERIC = /[\u{1D400}-\u{1D7FF}ℂℊℋℌℍℎℐℑℒℕℙℚℛℜℝℤℨℬℭℯℰℱℳℴ]/gu;
-
-/** A math run's letters as plain letters, so a plain-letter search or quote matches them (#159). */
-const plainLetters = (text: string): string =>
-  text.replace(MATH_ALPHANUMERIC, (letter) => letter.normalize('NFKC'));
-
 /** A run of letters and digits, or one character. */
 const ATOM = /^(?:[\p{L}\p{N}]+|.)$/u;
 
@@ -59,7 +52,7 @@ const script = (element: Element, name: string, operator: string, read: Read): s
  * `m:box` and `m:borderBox`, and properties, which hold no `m:t`.
  */
 const CONSTRUCTS: ReadonlyMap<string, Construct> = new Map<string, Construct>([
-  ['t', (element) => plainLetters(element.textContent ?? '')],
+  ['t', (element) => element.textContent ?? ''],
   ['oMathPara', (element, read) => childrenNamed(element, 'oMath').map(read).join(' ')],
   [
     'f',
@@ -144,7 +137,7 @@ const CONSTRUCTS: ReadonlyMap<string, Construct> = new Map<string, Construct>([
   ],
 ]);
 
-/** An `a14:m` equation as one line of text, NFC-composed so an accent fuses with its base, for a quote to cite verbatim (#126, #159). */
+/** An `a14:m` equation as one line of text, in the characters it was written in (#126); `storedText` folds them. */
 export const linearOmml = (equation: Element): string => {
   /** Each element is read once: an operand is read again to bracket it, which would otherwise compound with depth. */
   const texts = new Map<Element, string>();
@@ -155,5 +148,5 @@ export const linearOmml = (equation: Element): string => {
     texts.set(element, text);
     return text;
   };
-  return sequence(equation, read).normalize('NFC');
+  return sequence(equation, read);
 };

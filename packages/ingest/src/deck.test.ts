@@ -54,6 +54,35 @@ describe('slidesFromPages', () => {
     expect(slide?.speakerNotes).toBe('Say this.');
   });
 
+  it('stores every text of every page as storedText gives it, whichever adapter read it (#194)', () => {
+    const [marked, inferred] = slidesFromPages(
+      [
+        {
+          markedTitle: 'Energy 𝐸',
+          lines: [{ text: 'Rest energy is 𝐸=𝑚𝑐^2 for a body at rest', size: 28 }],
+          notes: 'Derive 𝑎\u0302.',
+        },
+        {
+          lines: [
+            { text: 'Cafe\u0301 kinetics', size: 48 },
+            { text: 'Rate laws relate rate to 𝑘', size: 28 },
+          ],
+          notes: '',
+        },
+      ],
+      source(),
+    );
+    expect(marked).toMatchObject({
+      title: 'Energy E',
+      body: 'Rest energy is E=mc^2 for a body at rest',
+      speakerNotes: 'Derive \u00E2.',
+    });
+    expect(inferred).toMatchObject({
+      title: 'Caf\u00E9 kinetics',
+      body: 'Rate laws relate rate to k',
+    });
+  });
+
   it('takes the lecture title from the filename when the first page has none', () => {
     const [slide] = slidesFromPages(
       [blank, titled('Rate laws')],
