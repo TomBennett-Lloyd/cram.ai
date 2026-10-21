@@ -5,7 +5,6 @@ import type { ServedArtefact } from '../../served-artefact';
 /** `mismatch` is the server naming weights the pin does not: the one outcome that refuses a start. */
 export type ServedCheck = ServedArtefact | { readonly status: 'mismatch'; readonly detail: string };
 
-/** Ollama's model-inspection reply; only the modelfile is read. */
 const ShowReply = z.object({ modelfile: z.string() });
 
 /** Upper case, as `ollama show` prints every directive. */
@@ -35,7 +34,6 @@ const directivesOf = (modelfile: string): readonly Directive[] => {
   return directives;
 };
 
-/** Judges an `ollama show --modelfile` text against the pin's weights. */
 export const modelfileCheck = (modelfile: string, pin: GeneratorPin): ServedCheck => {
   const directives = directivesOf(modelfile);
   const adapter = directives.find(({ keyword }) => keyword === 'ADAPTER');
@@ -53,7 +51,6 @@ export const modelfileCheck = (modelfile: string, pin: GeneratorPin): ServedChec
     : mismatch(`serves blob sha256-${blob}, not the pin's sha256-${pin.sha256}`);
 };
 
-/** `/api/show`'s reply judged against the pin, every reason prefixed with `at`, the request it answers. */
 export const showOutcome = (at: string, body: unknown, pin: GeneratorPin): ServedCheck => {
   const show = ShowReply.safeParse(body);
   if (!show.success)

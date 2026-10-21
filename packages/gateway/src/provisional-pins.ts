@@ -9,8 +9,7 @@ import {
 
 /**
  * The provisional default per role, `docs/adr/0003-model-roles-and-backends.md` § Decision (g);
- * no reranker by default. File digests are A2's commands' output, and the embedder's pooling is its
- * snapshot's `1_Pooling/config.json`; re-pinning is argued by an eval report.
+ * no reranker by default. The embedder's pooling is its snapshot's `1_Pooling/config.json`.
  */
 export const PROVISIONAL_DEFAULT_PINS = {
   generator: GeneratorPin.parse({
@@ -57,8 +56,7 @@ export const PROVISIONAL_DEFAULT_PINS = {
 } as const;
 
 /**
- * The generator's context length in tokens: developer mode's `num_ctx`, and what the installed app's
- * backend is to apply (#7). Qwen3-4B's native length per its model card, until #7 sizes it under
+ * The generator's context length in tokens. Qwen3-4B's native length per its model card, until #7 sizes it under
  * `docs/adr/0003-model-roles-and-backends.md` § Decision (k) A3. Carriers: `.claude/ledgers/generator-context-length.ledger`.
  */
 export const PROVISIONAL_GENERATOR_CONTEXT_LENGTH = 32768;

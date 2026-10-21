@@ -45,7 +45,6 @@ export const EmbeddingResult = z.discriminatedUnion('status', [
 ]);
 export type EmbeddingResult = z.infer<typeof EmbeddingResult>;
 
-/** `EmbeddingResult` as a recording stores it. */
 export const RecordedEmbedding = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('embedded'), vector: z.array(z.number()) }),
   OverLength,

@@ -80,7 +80,6 @@ export const readJson = async <S extends z.ZodType>(
   return parsed.data;
 };
 
-/** The one boundary where `ArtefactRefused` becomes a value; anything else propagates. */
 export const loadedOrRefused = async <T>(
   role: EncoderRole,
   load: () => Promise<T>,
