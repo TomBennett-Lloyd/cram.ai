@@ -1,4 +1,11 @@
-import type { Citation, RetrievedSlide, SourceId, Unit, WithheldUnit } from '@cram/shared';
+import {
+  type Citation,
+  quoteSpan,
+  type RetrievedSlide,
+  type SourceId,
+  type Unit,
+  type WithheldUnit,
+} from '@cram/shared';
 import { slideText } from './slide-text';
 import type { Quotes } from './verifier-input';
 
@@ -12,20 +19,17 @@ export interface Resolution {
   readonly withheld: readonly WithheldUnit[];
 }
 
-/** Whitespace and nothing else (`docs/standards/grounding.md` rule 3). */
-const collapseWhitespace = (text: string): string => text.replace(/\s+/g, ' ').trim();
-
-const resolves = (citation: Citation, textById: ReadonlyMap<SourceId, string>): boolean =>
-  textById.get(citation.sourceId)?.includes(collapseWhitespace(citation.quote)) ?? false;
+const resolves = (citation: Citation, textById: ReadonlyMap<SourceId, string>): boolean => {
+  const text = textById.get(citation.sourceId);
+  return text !== undefined && quoteSpan(text, citation.quote) !== undefined;
+};
 
 /** Mechanical, before any model sees a unit (`docs/standards/grounding.md` rule 3). */
 export const resolveCitations = (
   units: readonly Unit[],
   retrieved: readonly RetrievedSlide[],
 ): Resolution => {
-  const textById = new Map(
-    retrieved.map((slide) => [slide.sourceId, collapseWhitespace(slideText(slide.record))]),
-  );
+  const textById = new Map(retrieved.map((slide) => [slide.sourceId, slideText(slide.record)]));
   const resolved: ResolvedUnit[] = [];
   const withheld: WithheldUnit[] = [];
   for (const unit of units) {
