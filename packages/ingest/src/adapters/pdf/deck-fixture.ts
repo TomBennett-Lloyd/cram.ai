@@ -52,7 +52,7 @@ export interface FixtureDeck {
   readonly metadataTitle?: string;
   /** `password`: a Standard handler whose password is not empty. The others are encryptions pdf.js cannot open. */
   readonly encrypted?: 'password' | 'algorithm-3' | 'custom-handler';
-  /** Break the page tree under the second page, which pdf.js rejects on `getPage`. */
+  /** Break the page tree, which pdf.js rejects on `getPage`. */
   readonly brokenPageTree?: 'kid-not-a-reference' | 'kids-not-an-array' | 'circular';
 }
 

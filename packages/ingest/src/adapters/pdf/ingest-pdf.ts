@@ -36,11 +36,11 @@ const DAMAGED_PAGE_TREE: ReadonlySet<string> = new Set([
   'Pages tree contains circular reference.',
 ]);
 
-/** `UNREADABLE`'s reasons and `reasonOf`'s `damaged`, so every reason has an exception that produces it (#185). */
-export type PdfUnreadableReason = (typeof UNREADABLE)[keyof typeof UNREADABLE] | 'damaged';
-
-const reasonOf = ({ name, message }: z.infer<typeof PdfjsException>): PdfUnreadableReason =>
+const reasonOf = ({ name, message }: z.infer<typeof PdfjsException>) =>
   DAMAGED_PAGE_TREE.has(message) ? 'damaged' : UNREADABLE[name];
+
+/** Derived from `reasonOf`, so every reason has an exception that produces it (#185). */
+export type PdfUnreadableReason = ReturnType<typeof reasonOf>;
 
 export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 

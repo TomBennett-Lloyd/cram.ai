@@ -211,16 +211,16 @@ describe('ingestPdf', () => {
   it.each([
     ['a Buffer', (bytes: Uint8Array): Uint8Array => Buffer.from(bytes)],
     [
-      'a Buffer view at an offset into a larger allocation',
-      (bytes: Uint8Array): Uint8Array =>
-        Buffer.concat([Buffer.from('junk'), bytes, Buffer.from('junk')]).subarray(
-          4,
-          4 + bytes.length,
-        ),
+      'a Buffer view between two other decks',
+      (bytes: Uint8Array, decoy: Uint8Array): Uint8Array =>
+        Buffer.concat([decoy, bytes, decoy]).subarray(decoy.length, decoy.length + bytes.length),
     ],
   ])('reads a deck handed over as %s like its plain bytes', async (_, view) => {
     const bytes = await buildDeck({ pages: [{ lines: [line('Kinetics', TITLE)] }] });
-    expect(await ingest(view(bytes))).toEqual(await ingest(bytes));
+    const decoy = await buildDeck({
+      pages: [{ lines: [line('Decoy', TITLE)] }, { lines: [line('Decoy', TITLE)] }],
+    });
+    expect(await ingest(view(bytes, decoy))).toEqual(await ingest(bytes));
   });
 
   it('reads an annotation with no subtype as no speaker note', async () => {

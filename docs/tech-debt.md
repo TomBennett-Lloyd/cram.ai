@@ -98,3 +98,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/open-course.ts` `handOver` (the `CourseRow` parse); `packages/index/src/rebuild-course.ts` `rebuildCourse` (the older file's `course_id` read)
 - What: a `course` table holding no row makes the row read return `undefined`, so both parses throw a `ZodError`. An older file whose schema was not `strict` can also hold a non-text `course_id`, which throws the same way. This is the same class as #300's: a course file is external input, and the module that reads it should refuse a malformed file as a value (`docs/standards/error-handling.md` rule 1). It predates #300, which only touched those lines.
 - Source: #300 review cycle 1
+
+## 2026-10-21 — the PPTX reader finds parts only by lowercase extension and exact name
+
+- Where: `unzipParts` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`; `readXml` and `resolveTarget` in `packages/ingest/src/adapters/pptx/ooxml.ts`
+- What: only names ending in lowercase `.xml` or `.rels` are inflated, parts are looked up by exact case, and relationship targets are not percent-decoded, though OPC part names compare case-insensitively and may be escaped. A conforming package whose main, slide or notes part is named another way reads as `missing-part`, so `damaged`: a reader limit in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). Predates #301, which made the main part's name come from a relationship and so more reachable.
+- Source: #301 review cycle 1
