@@ -76,30 +76,15 @@ Entry format:
 - Phase: planning
 - Observed: the #231 lane's plan comment described its first design (a stub that returned a `holdAsk()` closure) in detail; review replaced it with a named option under `docs/standards/structure.md` rule 2, and the plan comment then cost two confirmation rounds of prose drift, because struck text beside new text read as still live and only rewriting the sections whole passed. One ticket so far on a plan comment that commits to a shape before review has seen it.
 
-## 2026-10-21 — PR #260
-
-- Phase: implementation
-- Observed: the #194 lane could not bank one file's comment-density drop inside its ticket, because `check-comment-density.sh --ratchet` writes a row for every unbanked file in the repo on the same run (151 here), and the lane reverted the run rather than carry 151 unrelated rows in a feature PR. Second instance of the baseline shaping a lane's choices (PR #73's entry was the first, captured into #187); PR #252 banks every file's row, which removes the unbanked rows a later `--ratchet` would sweep in. Nothing to change while that PR waits for the owner.
-
 ## 2026-10-21 — PR #263
 
 - Phase: implementation
 - Observed: the #233 plan split the shared `IngestStatus` shape change (step 2) from the web consumer that answers it (step 3), and the lane had to land both in one commit because `pnpm verify` is whole-repo and the web package is red between them. A plan step that changes a shared type is not committable on its own; nothing in `.claude/agents/planner.md` asks whether a step's `Verify:` can pass before its consumers move. One ticket so far.
 
-## 2026-10-21 — PR #277
-
-- Phase: review
-- Observed: #254 merged mid-lane and changed stored output, which falsified the #257 plan's "no bump owed"; the reviewer found it by reading `origin/main`, a base the lane may not rebase onto unprompted, so the fact reached the lane at review rather than at the plan, and the rebase round then ran twice because #275 merged during the first. The lane also flagged one message-only `git commit --amend --no-verify`, used to reword a replayed commit whose body line began `#254` and so tripped the `^[#;]` body check; the tree had already passed verify and the final verify and CI ran on it. One ticket so far on each.
-
 ## 2026-10-21 — PR #291
 
 - Phase: implementation
 - Observed: the frontend-gate probe harness compares sets of `line:rule` pairs and merges duplicates, so it cannot see a rule reporting one fault twice; the #280 lane added a counting case for its own rule only. The lane also spent one fix round after removing comment handling on the measurement that postcss strips comments, which holds except for a comment with no whitespace on either side. One ticket so far on each.
-
-## 2026-10-21 — PR #310
-
-- Phase: planning
-- Observed: issue #295, written by the merge owner from the triage pass, placed the `run-issue` skill's DIRTY arm at "step 4"; on disk it is step 5, and the lane found that out by reading the file. An unchecked merge-owner claim reaching a lane in an issue body, the shape #295 itself captures (PRs #86, #246, #266/#269 were in a dispatch note and two bounces). Counts toward #295's measurement, which stays open until three bounces and ten reports have run under PR #310's text.
 
 ## 2026-10-21 — PR #313
 
@@ -109,47 +94,17 @@ Entry format:
 ## 2026-10-21 — PR #313 (merge)
 
 - Phase: process
-- Observed: `merge-pr.sh`'s first run on PR #313 did `gh pr update-branch`, polled the new head green, and then refused at the merge step because the PR was `BEHIND` again: the #310 retro PR had merged during the poll. The merge owner's retro chains and lane-PR merges each serialise behind the merge they queue on, but not behind each other, so two independent chains can land one PR inside another's checks poll and cost it a full second CI round. First instance recorded; PR #235's entry (poll budget) was a different cause.
-
-## 2026-10-21 — PR #315
-
-- Phase: review
-- Observed: the #290 lane's config comment restated the issue's mechanism backwards ("descriptor, not a declaration") at five sites, a claim about parser behaviour written from memory that one stylelint run would have settled; review caught it and the fix touched all five. Counts toward #294 (a claim written before the run that would establish it), as its fifth instance.
-
-## 2026-10-21 — PR #320
-
-- Phase: implementation
-- Observed: the #299 lane's per-package test runs were green before `pnpm verify` refused the tree on `max-lines` and the comment-density ratchet, which forced a test-file split and docblock trims after the work was otherwise done; the lane's footprint grew by two test files and a ledger carrier moved with them. Second instance today of the composite gate's size rules arriving after a package's own tests pass (PR #313's lane split its corpus file for the same reason). One ticket so far on the ordering.
+- Observed: `merge-pr.sh`'s first run on PR #313 did `gh pr update-branch`, polled the new head green, and then refused at the merge step because the PR was `BEHIND` again: the #310 retro PR had merged during the poll. The merge owner's retro chains and lane-PR merges each serialise behind the merge they queue on, but not behind each other, so two independent chains can land one PR inside another's checks poll and cost it a full second CI round. First instance recorded; PR #235's entry (poll budget; deleted as stale by PR #303) was a different cause.
 
 ## 2026-10-21 — PR #324
 
 - Phase: implementation
 - Observed: the #300 lane's first cut used SQLite's read-only open flag and three repair tests failed, because a read-only connection leaves `-wal` and `-shm` beside the file on close and `rebuildCourse` reads a `-wal` as another connection still holding the file; `PRAGMA query_only` on a normal connection was the fix. One ticket so far on a library flag whose side effect is in the file system rather than in the API. Also the first `REBASE` bounce under `run-issue` step 5's pasted form (PR #310): seven shared files, resolved with no correction from the lane.
 
-## 2026-10-21 — PR #331
-
-- Phase: planning
-- Observed: issue #279's body placed the `run-issue` rebase hand-off at "step 4"; PR #310 had renumbered it to step 5 before the lane read it, and the dispatch's overlap note caught it first. Second issue body in one afternoon written by the merge owner with a stale step number (PR #310's lane found the first, in #295); a step number in an issue is a figure that goes stale the moment the skill is edited, so the issue should name the step by its heading or its first words. Counts toward #295's measurement.
-
-## 2026-10-21 — PR #175
-
-- Phase: merge
-- Observed: the #7 lane rebased five times before its ADR merged, and one fill commit (d4526f4) was undone and redone because a neighbour amended an ADR this one cites (PR #174 → ADR 0003 (e)) between the owner's approval and the merge, which only `check:ledgers` on the rebased tree could see. A humanAlways PR waiting on the owner collects every log and ADR merge in the meantime; counts toward #297 (the cascade) and #330 (the ADR 0007 (e) true-up it left behind).
-
-## 2026-10-21 — PR #327
-
-- Phase: rebase
-- Observed: the #301 lane took two log-only DIRTY bounces in one hour (#320, then #324), each a `docs/tech-debt.md` table or append collision, and lost one CI round to the second; PR #331 (#279) landed after, moving a report-time log-only DIRTY to the lane, and #297 is in flight for the merge-time half. Third lane today with two log-only rounds (#302's PR #329 took the same two); counts toward #297.
-
 ## 2026-10-21 — PR #336
 
 - Phase: dispatch
 - Observed: the #296 lane reported no friction of its own, but its merge made PR #337 (#294) DIRTY on the same `.claude/agents/ticket-agent.md` § 4 paragraph, costing that lane a source-conflict rebase round; a third lane (#293, PR #334) edits § 2 of the same file. The merge owner admitted all three in parallel with the overlap named in each dispatch, pricing it as rebase cost; a same-paragraph edit on an agent definition is same-file SOURCE overlap by `run-issue` step 1's own rule and should have been sequenced or batched at dispatch. One ticket so far on agent-definition edits colliding.
-
-## 2026-10-21 — PR #334
-
-- Phase: planning
-- Observed: the #293 lane's first claim-family arm, written for the sweep-shape rule it was itself landing, missed `.claude/agents/planner.md:35` ("the command you ran and the output it returned"); the positive control caught it before the plan went out. The ticket ran into the exact shape it fixes, and the control was what made that visible. No rule change: § 2's three-part sweep now owns it.
 
 ## 2026-10-21 — PR #329
 
@@ -171,92 +126,7 @@ Entry format:
 - Phase: implementation
 - Observed: the #268 lane left two background wait loops of the form `until ! pgrep -f 268-mut/mutate.py; do sleep 15; done` running for 4 h 44 min after the PR merged: `pgrep -f` matched the loop's own command line, so the loop could never see the script finish. The lane read its result file directly and never noticed. The merge owner's `kill` was refused by the permission classifier and the owner killed them by hand. One ticket so far on a self-matching `pgrep -f` wait.
 
-## 2026-10-21 — PR #350
-
-- Phase: implementation
-- Observed: the #338 lane's per-package tests were green before `pnpm verify` refused `course-index.ts` and `upload.test.ts` on `max-lines` at 300, forcing a module extraction and two test-file splits mid-step. Third instance today of the composite gate's size rules arriving after a package's own tests pass (PR #313's corpus split, PR #320's test split, now this); the pattern has reached `/triage`'s threshold and a workflow issue is owed on where the size rules run in a lane's loop.
-
 ## 2026-10-21 — PR #351
 
 - Phase: review
 - Observed: the #276 lane argued away the plan's untracked-file arm during implementation by reasoning about module resolution, and the reviewer refuted the argument with a shadowing counterexample. An argument for deleting a planned guard needs a mutant shape drawn from the grammar list, not reasoning alone; one ticket so far, and ticket-agent § 4's hostile-corpus rule (PR #336) is the nearest home if it recurs.
-
-## 2026-10-21 — PR #355
-
-- Phase: implementation
-- Observed: two gates tightened on `main` while the #171 lane ran — #165's first-party egress census (PR #266) and #269's ledger citation arms — and each surfaced only at `pnpm verify` or CI: a shared HTTP test fixture was extracted to meet `max-lines` and then reverted because the census counts any non-test module that opens a server, and a docblock's mention of a script became an unlisted ledger hit on the unioned head. Nothing at plan time names which gates a ticket's new files will meet. Second instance today of a gate landing mid-flight costing an open lane a round (PR #353 took one from #351's new verify leg).
-
-## 2026-10-21 — PR #269
-
-- Phase: merge
-- Observed: the #179 lane rebased three times as `main` moved under an approved humanAlways PR, and every ledger merged on `main` meanwhile needed a `cite:` line on the branch because the branch itself was landing the rule that requires one. Once merged, its gate then cost PR #355 a fix round for an unlisted hit and PR #204 a pre-warned cite line. A gate that tightens what every open branch must carry lands cheapest when the merge owner names it in the next bounce to each open lane, which this merge owner did for #204 only after #355 had paid. Counts toward #297.
-
-## 2026-10-22 — PR #353
-
-- Phase: verify
-- Observed: the #292 lane's every `pnpm verify` ran the full composite by design (the classifier vouches for no change to itself), about five minutes each, and its 55-mutant loop ran serially for about 50 minutes because `verify-tier.test.sh` has no case filter. Separately, #269's new `sweep-engine.ledger` turned two lines of this branch's existing prose into unlisted hits that only a trial merge against `main` could show; the lane found them by running one before pushing. One ticket so far on a harness case filter; the trial-merge habit is worth a sentence in ticket-agent § 7 if it recurs.
-
-## 2026-10-22 — PR #204
-
-- Phase: review
-- Observed: the #115 lane's paraphrase sweep found `review-loop/SKILL.md:42` and dropped it as "stays true", when `architecture.md` rule 9's test is whether the file carries the value, not whether the sentence is currently true; the reviewer restored it. Also one harness run returned a green rc because the driver's renamed `set` arm fell through to bash's builtin `set` (second instance of a harness whose verdict is not what ran: PR #284's decomposed edit was the first; `evidence.md` form 6 now covers the exit-code half).
-
-## 2026-10-22 — PR #259
-
-- Phase: implementation
-- Observed: the #211 lane's first ledger sweep had no claim arm, which rule 9 requires, and the reviewer caught it: mutating the arms you wrote cannot surface an arm you never wrote, the same blind spot ticket-agent § 4's grammar list exists for, now in a sweep rather than a guard. Main then moved during the bounce round (#204), forcing a second log-only rebase before CI would run; fourth lane today to pay a round purely to a neighbour's log append.
-
-## 2026-10-21 — PR #252
-
-- Phase: merge
-- Observed: the #187 census PR went stale four times while it waited (every merge of a member source file invalidates the baseline it banks), and its last round was blocked by the permission classifier refusing two `excluded:` ledger lines as "Logging/Audit Tampering"; the owner appended them by hand. The baseline lists every source path, so every path-sweeping ledger collides with it (#363). A census PR should merge within the hour it is cut, ahead of source PRs, or re-census as its very last step with nothing queued ahead of it.
-
-## 2026-10-21 — PR #214
-
-- Phase: rebase
-- Observed: an eval-report PR carries a measured commit that ADR 0005 (f) requires reachable, so every rebase and every merged change to the report schema (#355's `servedGenerator`) invalidated its report and cost a five-minute re-run; three extra runs in one lane. Such a PR updates by merge, never rebase, and a report-schema change on `main` should name the open eval-report PRs it re-measures.
-
-## 2026-10-21 — PR #199
-
-- Phase: bounce
-- Observed: the #107 lane's round went `DIRTY` on docs/review-feedback.md three times, because each local full verify (about ten minutes under load) gave `main` time to append another humanAlways entry; and the merge owner's bounce prescribed a rise of the course-file version counter that the stored-output pin gate did not require, which the lane correctly declined with evidence. A bounce states what moved on `main` and what the gates say; it does not guess the fix.
-
-## 2026-10-21 — PR #378
-
-- Phase: review
-- Observed: the #370 trim batch's reviewer found a clause whose deletion removed the only statement of a claim, and the plan's 23-arm restatement sweep carried one positive control, so it proved one arm (#377). The inbound-reference check of `prose.md` § Trim batches rule 3(a) ran after the ledger was written rather than before each deletion was decided.
-
-## 2026-10-21 — PR #381
-
-- Phase: review
-- Observed: the #371 trim batch restored three deletions under review because each was a claim's sole carrier (the `Embedder` order, the ADR 0003 (b) cite, the native-length sentence), and its first draft lowered rows by collapsing docblocks past printWidth, which the density gate counts as fewer physical lines (#379). Second trim batch today re-planned under review for sole-carrier deletions; the ledger's disposition column needs the inbound check filled in before the deletion, which is what rule 3(a) says and what both lanes did after.
-
-## 2026-10-21 — PR #364
-
-- Phase: merge
-- Observed: the #339 ADR lane took five main-side moves between its PROCEED and its merge (#269, #259, #199, #252, #214), two of them ledger conflicts from gates that landed meanwhile and one an approved-at-plan extra under the rule's letter; its filled head then sat DIRTY on the review-feedback log while the lane waited for checks GitHub never runs on a conflicting PR, until the merge owner named the cause. Two tier-2 runs were discarded because the new long synthetic slide competed in keyword search for every question sharing its common words, which no static test showed. Counts toward #297; the DIRTY-then-wait trap is review-loop step 4's "twice silent is a mergeability check", which ticket-agent § 7 could restate in one clause.
-
-## 2026-10-21 — PR #384
-
-- Phase: planning
-- Observed: the #375 trim batch's pasted restatement sweep first came back empty because `git grep -E` on this machine has no `\b`; `-P` fixed it and the positive control caught the blank. Also: `sweep-report.sh` run before `--ratchet` records a stale diff count, and each merged batch lowers the committed median, so the bar for later batches tightens by construction. Third trim batch today; the `-P` spelling belongs in prose.md § Trim batches rule 3 if a fourth lane trips on it.
-
-## 2026-10-21 — PR #386
-
-- Phase: rebase
-- Observed: the #368 lane's every `pnpm verify` ran the full tier for 10–13 minutes because the classifier resolves any apps/* change to everything, and its PR went DIRTY on `.claude/comment-density.baseline.tsv` against the trim batches, a file whose resolution is mechanical (take main's, re-run `--ratchet`) but which is not in `APPEND_ONLY_LOGS`, so the lane waited for a bounce to do what it already knew. Second lane today held by that file (#252's own rounds were the first). Candidate rule for the owner: let a lane clear a baseline-only conflict itself by regeneration, the way it clears the logs.
-
-## 2026-10-21 — PR #389
-
-- Phase: dispatch
-- Observed: the #374 trim batch's dispatch note said nothing else was in flight on apps/server while open PR #386 was editing `course-file.ts` and the density baseline; the lane found the overlap only through `gh pr list --json files`. The merge owner's overlap note came from the lane table, not from the open PRs' file lists. Also, the deletion ledger carried wrong line references that `sweep-report.sh` cannot see, caught by the reviewer (#391).
-
-## 2026-10-21 — PR #390
-
-- Phase: review
-- Observed: the #373 trim batch's pasted `sweep-report.sh` output ran to 125 KB for subjects like `SlideRecord` and `derived`, over GitHub's PR-body limit, so a pre-check had to be posted as three comments; the gate's median moved 769 → 676 → 666 during the lane, so the issue's fixed figure was stale against the live one; and a baseline `.tsv` row in the change set resolves `verify-tier.sh` to the full tier, so a comment-only batch ran every leg. Second batch to note the tier cost; a `baseline` class for the classifier is #292-shaped follow-up work.
-
-## 2026-10-21 — PR #387
-
-- Phase: implementation
-- Observed: the #372 trim batch found that a verbatim one-line collapse of a docblock often exceeds printWidth 100, which prettier does not reflow for comments, so a lane is pushed to reword against rule 1 or keep more lines; #379 is the gate-side half (fewer physical lines lower a row). The issue's "judged median" wording also reads two ways against the gate's printed median. Seventh and last batch of the campaign: median 769 → 645 bp across 183 rows, 39 judged files trimmed or justified, every batch's reviewer object was the ledger, and four of seven batches restored a sole-carrier deletion in review.
