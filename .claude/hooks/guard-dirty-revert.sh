@@ -64,9 +64,12 @@ if (typeof command !== 'string') process.exit(0);
 let dir = typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallbackDir;
 
 // Appends each simple command's words to `commands`; a nested scan is a `"$(...)"`
-// body and returns the index past its closing paren.
+// body and returns the index past the `)` that closes it, the first at paren depth 0 (#241).
+// Only a `(` that opens something counts: one at command position, or after `$`, `<` or
+// `>`. A `(` inside `${...}` or `[...]` opens nothing and has no `)` to close it.
 function scan(src, i, commands, nested) {
   const heredocs = [];
+  let depth = 0;
   let current = [];
   let word = null;
   commands.push(current);
@@ -99,10 +102,12 @@ function scan(src, i, commands, nested) {
       i++;
     } else if (c === '#' && word === null) {
       while (i < src.length && src[i] !== '\n') i++;
-    } else if (c === ')' && nested) {
+    } else if (c === ')' && nested && depth === 0) {
       end();
       return i + 1;
     } else if (';&|()'.includes(c)) {
+      if (c === '(' && (word === null || /[$<>]$/.test(word))) depth++;
+      else if (c === ')') depth--;
       split();
       i++;
     } else if (src.startsWith('<<<', i)) {
