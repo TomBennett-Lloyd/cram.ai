@@ -20,6 +20,7 @@ export {
 } from './quotable-text';
 export { RetrievedSlide } from './retrieved-slide';
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
+export { TopicTag } from './topic-tag';
 export { Unit, UnitKind } from './unit';
 export { PartialPolicy, Verdict, WithheldReason } from './verification';
 export { WithheldUnit } from './withheld';
