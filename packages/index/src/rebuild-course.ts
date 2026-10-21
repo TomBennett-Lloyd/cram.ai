@@ -19,7 +19,6 @@ import {
   storedLectureIds,
 } from './stored-deck';
 
-/** A stored deck read again: its slide records as ingest emits them, or a deck that no longer reads. */
 export type ParsedDeck =
   | { readonly status: 'parsed'; readonly slides: readonly SlideRecord[] }
   | { readonly status: 'unreadable' };
@@ -42,10 +41,6 @@ export type RebuildCourseResult =
       readonly discarded: readonly DiscardedTable[];
     };
 
-/**
- * What a rebuild reproduces: the course row from the spec, the slides from the decks, the decks,
- * and the report of what an earlier rebuild discarded, which the rebuilt file's report adds to.
- */
 const REPRODUCED_TABLES: ReadonlySet<string> = new Set([
   'course',
   'slides',
@@ -96,7 +91,6 @@ const hasTable = (db: Database.Database, name: string): boolean =>
     .pluck()
     .get(name) === 1;
 
-/** The rebuilt file was written whole, or the first stored deck that no longer reads stopped it. */
 type Written =
   | { readonly status: 'written' }
   | { readonly status: 'deck-unreadable'; readonly lectureId: LectureId };

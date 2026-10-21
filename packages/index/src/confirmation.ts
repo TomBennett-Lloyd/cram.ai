@@ -3,12 +3,7 @@ import type { Database } from 'better-sqlite3';
 import { type SlideRecord, slideFields, type SourceId } from '@cram/shared';
 import { z } from 'zod';
 
-/**
- * The student's confirmations of derived text, keyed by source id so one outlives a re-upload
- * that leaves the text as it was. Every slide write drops a row whose hash is no longer its
- * slide's, so a voided confirmation stays void (`docs/adr/0006-image-only-slides.md` § Decision (g)).
- * The table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/confirmations-table.ledger`.
- */
+/** Confirmations of derived text; its ledger: `.claude/ledgers/confirmations-table.ledger`. */
 export const CONFIRMATION_TABLE = `
   create table confirmations (
     source_id text primary key,
@@ -17,10 +12,7 @@ export const CONFIRMATION_TABLE = `
   ) strict;
 `;
 
-/**
- * The fields a quote resolves against, read from `slideFields` and hashed as JSON so a field boundary
- * counts (`.claude/ledgers/quotable-fields.ledger`). The record's `derived` flag does not say which field was read from a picture.
- */
+/** Fields a quote resolves against (`slideFields`), hashed as JSON so a field boundary counts. */
 export const textHashOf = (record: SlideRecord): string =>
   createHash('sha256')
     .update(JSON.stringify(slideFields(record)))

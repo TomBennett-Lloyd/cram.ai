@@ -2,11 +2,7 @@ import type { Database } from 'better-sqlite3';
 import { Deck, LectureId, SlideImage, type SlideNo } from '@cram/shared';
 import { z } from 'zod';
 
-/**
- * The decks and their slide images. Their shape never changes across schema versions:
- * a newer app rebuilds an older file by reading them (`docs/adr/0004-storage.md` § Decision (d);
- * rebuild-course.test.ts pins it).
- */
+/** The decks and their slide images. Their shape never changes across schema versions. */
 export const STORED_DECK_TABLES = `
   create table decks (
     lecture_id text primary key,
@@ -119,7 +115,6 @@ export const readSlideImage = (
   return row === undefined ? undefined : imageFromRow(row);
 };
 
-/** The lecture's slide images, by slide number. */
 export const readSlideImages = (db: Database, lectureId: LectureId): readonly SlideImage[] =>
   db
     .prepare(
@@ -128,7 +123,6 @@ export const readSlideImages = (db: Database, lectureId: LectureId): readonly Sl
     .all(lectureId)
     .map(imageFromRow);
 
-/** Every lecture with a stored deck, in id order. */
 export const storedLectureIds = (db: Database): readonly LectureId[] =>
   z
     .array(LectureId)
