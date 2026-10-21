@@ -11,6 +11,7 @@ import {
 } from './course-fixture';
 import { textHashOf } from './confirmation';
 import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
+import { SCHEMA_VERSION } from './schema';
 import { sourceIdOf } from './slide-row';
 
 let temp: TempCourse;
@@ -56,6 +57,19 @@ describe('textHashOf', () => {
       hashOf({ title: '', speakerNotes: '' }),
     );
     expect(hashOf({ imageCaptions: ['c', ' '] })).toBe(hashOf());
+  });
+
+  it('is the hash SCHEMA_VERSION was cut for, since a course file stores it', () => {
+    const pin = {
+      schemaVersion: 8,
+      hash: 'f85d9975ae374dcf389fbda4960ab042c0523efdd84b8b8caa5e1d793c8f517e',
+    };
+    const live = { schemaVersion: SCHEMA_VERSION, hash: hashOf() };
+    const advice =
+      live.schemaVersion === pin.schemaVersion
+        ? `textHashOf changed, so every stored text_hash mismatches: bump SCHEMA_VERSION in packages/index/src/schema.ts, then record its value and ${live.hash} here.`
+        : `SCHEMA_VERSION moved: record ${JSON.stringify(live)} here.`;
+    expect(live, advice).toEqual(pin);
   });
 
   it('ignores what a quote cannot resolve against', () => {

@@ -10,6 +10,7 @@ carrier: eval/src/report.ts
 carrier: eval/src/run-eval.ts
 carrier: eval/src/run-eval.test.ts
 carrier: eval/src/recording-gateway.test.ts
+carrier: eval/src/timed-gateway.test.ts
 carrier: packages/gateway/src/adapters/openai-http/openai-http-generator.test.ts
 carrier: packages/gateway/src/fake-gateway.test.ts
 excluded: apps/server/src/gateway-config.test.ts
