@@ -10,8 +10,11 @@ import {
 import {
   CourseId,
   type CourseUnavailableProblem,
+  type LectureId,
   type RebuildReportDismissed,
   type RebuildReportRevision,
+  type SlideImage,
+  type SlideNo,
   type StoredLectures,
 } from '@cram/shared';
 import { COURSE_FILE_EXTENSION, courseFilePath, coursesDirectory } from './data-directory';
@@ -36,7 +39,6 @@ const directoryEntries = (path: string): readonly string[] => {
   }
 };
 
-/** The courses with a course file; a file whose name is not a course id is not one. */
 export const storedCourses = (files: CourseFiles): readonly CourseId[] =>
   directoryEntries(coursesDirectory(files.dataDir)).flatMap((name) => {
     if (!name.endsWith(COURSE_FILE_EXTENSION)) return [];
@@ -44,7 +46,6 @@ export const storedCourses = (files: CourseFiles): readonly CourseId[] =>
     return parsed.success ? [parsed.data] : [];
   });
 
-/** Opens the course file, creating it and its directory when absent. */
 export const openForWrite = (files: CourseFiles, courseId: CourseId): OpenCourseResult => {
   const path = courseFilePath(files.dataDir, courseId);
   mkdirSync(dirname(path), { recursive: true });
@@ -74,6 +75,31 @@ export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLe
       lectures: [...course.lectures()],
       report: course.rebuildReport(),
     };
+  } finally {
+    opened.course.close();
+  }
+};
+
+export type StoredSlideImage =
+  | { readonly status: 'found'; readonly image: SlideImage }
+  | { readonly status: 'no-such-course' }
+  | { readonly status: 'no-such-image' }
+  | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
+
+/** The slide's stored rendering; a blank file holds none, and a PPTX deck stores none yet (#169). */
+export const storedSlideImage = (
+  files: CourseFiles,
+  courseId: CourseId,
+  lectureId: LectureId,
+  slideNo: SlideNo,
+): StoredSlideImage => {
+  if (!courseExists(files, courseId)) return { status: 'no-such-course' };
+  const opened = openToRead(files, courseId);
+  if (opened.status === 'blank') return { status: 'no-such-image' };
+  if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
+  try {
+    const image = opened.course.slideImage(lectureId, slideNo);
+    return image === undefined ? { status: 'no-such-image' } : { status: 'found', image };
   } finally {
     opened.course.close();
   }

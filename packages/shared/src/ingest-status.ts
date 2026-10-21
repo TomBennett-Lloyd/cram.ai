@@ -5,7 +5,6 @@ import { CourseId, LectureId, SlideNo } from './slide-record';
 export const UploadId = z.string().min(1).brand<'UploadId'>();
 export type UploadId = z.infer<typeof UploadId>;
 
-/** Each `@cram/index` `OpenCourseResult` status but `open`, which the server assigns here (#299). */
 export const CourseUnavailableProblem = z.enum([
   'newer-schema',
   'older-schema',
@@ -15,18 +14,12 @@ export const CourseUnavailableProblem = z.enum([
 ]);
 export type CourseUnavailableProblem = z.infer<typeof CourseUnavailableProblem>;
 
-/** `unembedded` slides are stored and found by their words only (`CourseIndex.lectures`, #338). */
 const INDEXED_SLIDES = {
   slideCount: z.number().int().nonnegative(),
   imageOnly: z.array(SlideNo),
   unembedded: z.array(SlideNo),
 };
 
-/**
- * Where one uploaded deck has got to in ingest. An `imageOnly` page is reported and never an
- * error (ADR 0006 § Decision (b), proposed in #120). `reason` is `@cram/ingest`'s
- * vocabulary, carried as text to keep one owner.
- */
 export const UploadProgress = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('queued') }),
   z.strictObject({ state: z.literal('ingesting') }),
@@ -45,7 +38,6 @@ export const Upload = z.strictObject({
 });
 export type Upload = z.infer<typeof Upload>;
 
-/** One lecture as its course file holds it, so it is reported after a restart (#146). */
 export const StoredLecture = z.strictObject({
   lectureId: LectureId,
   lectureTitle: NonBlankText,
@@ -67,14 +59,12 @@ export const DiscardedTable = z.strictObject({
 });
 export type DiscardedTable = z.infer<typeof DiscardedTable>;
 
-/** Names one undismissed report by its rows, so a dismissal clears only the report the student saw (#299). */
 export const RebuildReportRevision = z
   .string()
   .regex(/^[0-9a-f]{64}$/)
   .brand<'RebuildReportRevision'>();
 export type RebuildReportRevision = z.infer<typeof RebuildReportRevision>;
 
-/** What rebuilds discarded that the student has not dismissed (#233). */
 export const RebuildReport = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('none') }),
   z.strictObject({
@@ -85,7 +75,6 @@ export const RebuildReport = z.discriminatedUnion('state', [
 ]);
 export type RebuildReport = z.infer<typeof RebuildReport>;
 
-/** The course file's lectures and rebuild report, or why it cannot be opened. */
 export const StoredLectures = z.discriminatedUnion('state', [
   z.strictObject({
     state: z.literal('read'),
@@ -96,10 +85,6 @@ export const StoredLectures = z.discriminatedUnion('state', [
 ]);
 export type StoredLectures = z.infer<typeof StoredLectures>;
 
-/**
- * The course file's start-up repair (#225). `none` is a course with no repair since the server
- * started; `failed` leaves the file as `stored` reports it.
- */
 export const CourseRepair = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('none') }),
   z.strictObject({ state: z.literal('queued') }),

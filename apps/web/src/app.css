@@ -260,8 +260,8 @@ input:not([type='file']) {
 .slide-dialog {
   box-sizing: border-box;
   inline-size: calc(100% - 2 * var(--space-4));
-  /* The slide reads as a page of prose; e2e/layout.spec.ts holds that it fits a phone. */
-  max-inline-size: var(--measure-md);
+  /* Wide enough to read the slide's picture; e2e/layout.spec.ts holds that it fits a phone. */
+  max-inline-size: var(--measure-lg);
   max-block-size: calc(100% - 2 * var(--space-8));
   padding: var(--space-6);
   border: none;
@@ -302,7 +302,44 @@ input:not([type='file']) {
   line-height: var(--leading-tight);
 }
 
-.slide-body,
+.slide-figure {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  box-sizing: border-box;
+  /* Held whatever the picture's shape, or if it fails, so the lines below never move (design.md rule 6). */
+  aspect-ratio: 16 / 9;
+  min-block-size: 0;
+  margin: var(--space-4) 0 0;
+  border-width: var(--line-sm);
+  border-style: solid;
+  border-color: var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.slide-figure img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.slide-derived {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.slide-lines {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slide-lines li + li {
+  margin-block-start: var(--space-2);
+}
+
 .slide-aside p {
   margin: var(--space-3) 0 0;
   white-space: pre-line;

@@ -230,3 +230,18 @@ Entry format:
 
 - Phase: review
 - Observed: the #371 trim batch restored three deletions under review because each was a claim's sole carrier (the `Embedder` order, the ADR 0003 (b) cite, the native-length sentence), and its first draft lowered rows by collapsing docblocks past printWidth, which the density gate counts as fewer physical lines (#379). Second trim batch today re-planned under review for sole-carrier deletions; the ledger's disposition column needs the inbound check filled in before the deletion, which is what rule 3(a) says and what both lanes did after.
+
+## 2026-10-21 — PR #364
+
+- Phase: merge
+- Observed: the #339 ADR lane took five main-side moves between its PROCEED and its merge (#269, #259, #199, #252, #214), two of them ledger conflicts from gates that landed meanwhile and one an approved-at-plan extra under the rule's letter; its filled head then sat DIRTY on the review-feedback log while the lane waited for checks GitHub never runs on a conflicting PR, until the merge owner named the cause. Two tier-2 runs were discarded because the new long synthetic slide competed in keyword search for every question sharing its common words, which no static test showed. Counts toward #297; the DIRTY-then-wait trap is review-loop step 4's "twice silent is a mergeability check", which ticket-agent § 7 could restate in one clause.
+
+## 2026-10-21 — PR #384
+
+- Phase: planning
+- Observed: the #375 trim batch's pasted restatement sweep first came back empty because `git grep -E` on this machine has no `\b`; `-P` fixed it and the positive control caught the blank. Also: `sweep-report.sh` run before `--ratchet` records a stale diff count, and each merged batch lowers the committed median, so the bar for later batches tightens by construction. Third trim batch today; the `-P` spelling belongs in prose.md § Trim batches rule 3 if a fourth lane trips on it.
+
+## 2026-10-21 — PR #386
+
+- Phase: rebase
+- Observed: the #368 lane's every `pnpm verify` ran the full tier for 10–13 minutes because the classifier resolves any apps/* change to everything, and its PR went DIRTY on `.claude/comment-density.baseline.tsv` against the trim batches, a file whose resolution is mechanical (take main's, re-run `--ratchet`) but which is not in `APPEND_ONLY_LOGS`, so the lane waited for a bounce to do what it already knew. Second lane today held by that file (#252's own rounds were the first). Candidate rule for the owner: let a lane clear a baseline-only conflict itself by regeneration, the way it clears the logs.
