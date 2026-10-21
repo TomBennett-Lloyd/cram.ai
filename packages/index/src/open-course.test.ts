@@ -1,5 +1,13 @@
 import Database from 'better-sqlite3';
-import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { CourseId } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,7 +23,7 @@ import {
   type TempCourse,
 } from './course-fixture';
 import { EmbedderIdentity } from './embedder-identity';
-import { openCourse, reembedCourse } from './open-course';
+import { openCourse, openCourseReadOnly, reembedCourse } from './open-course';
 import { SCHEMA_VERSION } from './schema';
 
 const OTHER_EMBEDDER = EmbedderIdentity.parse({ model: 'other-embedder', dimension: 3 });
@@ -41,6 +49,12 @@ const setUserVersion = (path: string, version: number): void => {
   const db = new Database(path);
   db.pragma('journal_mode = delete');
   db.pragma(`user_version = ${String(version)}`);
+  db.close();
+};
+
+const setCourseRow = (path: string, assignment: string): void => {
+  const db = new Database(path);
+  db.exec(`update course set ${assignment}`);
   db.close();
 };
 
@@ -140,6 +154,92 @@ describe('openCourse', () => {
       recorded: EMBEDDER,
     });
     expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
+  });
+});
+
+describe('a stored course row that its schemas would refuse', () => {
+  it('is a course mismatch carrying the stored id, through either open', () => {
+    seed();
+    for (const stored of ['Bio', 'course_b']) {
+      setCourseRow(temp.spec.path, `course_id = '${stored}'`);
+      const refused = { status: 'course-mismatch', recorded: stored };
+      expect(expectNoLeak(() => openCourse(temp.spec))).toEqual(refused);
+      expect(expectNoLeak(() => openCourseReadOnly(temp.spec))).toEqual(refused);
+    }
+  });
+
+  it('is an embedder mismatch, which re-embedding repairs', async () => {
+    seed();
+    setCourseRow(temp.spec.path, 'embedder_dimension = 0');
+    expect(openCourse(temp.spec)).toEqual({
+      status: 'embedder-mismatch',
+      recorded: { model: EMBEDDER.model, dimension: 0 },
+    });
+    setCourseRow(temp.spec.path, `embedder_model = '', embedder_dimension = 4`);
+    expect(openCourseReadOnly(temp.spec)).toEqual({
+      status: 'embedder-mismatch',
+      recorded: { model: '', dimension: 4 },
+    });
+    const embed = () => Promise.resolve([vector(1, 0, 0, 0), vector(0, 1, 0, 0)]);
+    const repaired = await reembedCourse(temp.spec, embed);
+    if (repaired.status === 'open') repaired.course.close();
+    expect(repaired.status).toBe('open');
+    openOrFail(temp.spec).close();
+  });
+});
+
+describe('openCourseReadOnly', () => {
+  it('reads a course file it has no permission to write, and leaves its bytes as they were', () => {
+    seed();
+    chmodSync(temp.spec.path, 0o444);
+    const before = readFileSync(temp.spec.path);
+    const opened = openCourseReadOnly(temp.spec);
+    if (opened.status !== 'open') throw new Error(opened.status);
+    expect(opened.course.slides().map((s) => s.body)).toEqual(['osmosis', 'diffusion']);
+    opened.course.close();
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+  });
+
+  it('reports a blank file as blank and leaves it empty, whether or not it may be written', () => {
+    writeFileSync(temp.spec.path, '');
+    expect(expectNoLeak(() => openCourseReadOnly(temp.spec))).toEqual({ status: 'blank' });
+    chmodSync(temp.spec.path, 0o444);
+    expect(openCourseReadOnly(temp.spec)).toEqual({ status: 'blank' });
+    expect(statSync(temp.spec.path).size).toBe(0);
+    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
+  });
+
+  it('sees what a writer still holding the file open has committed', () => {
+    const writer = openOrFail(temp.spec);
+    indexLectures(writer, [indexed(slide({ body: 'osmosis' }), vector(1, 0, 0, 0))]);
+    const opened = openCourseReadOnly(temp.spec);
+    if (opened.status !== 'open') throw new Error(opened.status);
+    expect(opened.course.slides().map((s) => s.body)).toEqual(['osmosis']);
+    opened.course.close();
+    writer.close();
+  });
+
+  it('refuses every file the writer refuses, the same way', () => {
+    seed();
+    expect(openCourseReadOnly({ ...temp.spec, courseId: CourseId.parse('course-b') })).toEqual({
+      status: 'course-mismatch',
+      recorded: COURSE,
+    });
+    expect(
+      expectNoLeak(() => openCourseReadOnly({ ...temp.spec, embedder: OTHER_EMBEDDER })),
+    ).toEqual({ status: 'embedder-mismatch', recorded: EMBEDDER });
+    setUserVersion(temp.spec.path, SCHEMA_VERSION + 1);
+    expect(expectNoLeak(() => openCourseReadOnly(temp.spec))).toEqual({
+      status: 'newer-schema',
+      fileVersion: SCHEMA_VERSION + 1,
+    });
+    writeFileSync(
+      temp.spec.path,
+      'not a database, only text long enough to fill a header'.repeat(4),
+    );
+    expect(expectNoLeak(() => openCourseReadOnly(temp.spec))).toEqual({
+      status: 'not-a-course-file',
+    });
   });
 });
 
