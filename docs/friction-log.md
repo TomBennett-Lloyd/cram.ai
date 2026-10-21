@@ -143,3 +143,28 @@ Entry format:
 
 - Phase: dispatch
 - Observed: the #296 lane reported no friction of its own, but its merge made PR #337 (#294) DIRTY on the same `.claude/agents/ticket-agent.md` § 4 paragraph, costing that lane a source-conflict rebase round; a third lane (#293, PR #334) edits § 2 of the same file. The merge owner admitted all three in parallel with the overlap named in each dispatch, pricing it as rebase cost; a same-paragraph edit on an agent definition is same-file SOURCE overlap by `run-issue` step 1's own rule and should have been sequenced or batched at dispatch. One ticket so far on agent-definition edits colliding.
+
+## 2026-10-21 — PR #334
+
+- Phase: planning
+- Observed: the #293 lane's first claim-family arm, written for the sweep-shape rule it was itself landing, missed `.claude/agents/planner.md:35` ("the command you ran and the output it returned"); the positive control caught it before the plan went out. The ticket ran into the exact shape it fixes, and the control was what made that visible. No rule change: § 2's three-part sweep now owns it.
+
+## 2026-10-21 — PR #329
+
+- Phase: rebase
+- Observed: in one of the #302 lane's three rebase rounds, a delete script whose assertion failed still reached `rebase --continue`, because the chain used `;` rather than `&&`; a tip commit made the missed deletion. Two of the three rounds were forced by redirect-row deletions on `docs/tech-debt.md` (#324, #327), both log-only. Counts toward a lane-side rule that a scripted rebase step chains with `&&` (`docs/standards/evidence.md` form 8 asserts the edit's count; this is the step after it).
+
+## 2026-10-21 — PR #266
+
+- Phase: implementation
+- Observed: the #165 lane mutated the test-exclusion regex but not the line that applies it to the basename, and review found the surviving mutant. The guard's edges include the site that applies the pattern, not only the pattern's arms; second instance of a mutant list stopping at the regex (PR #278's anchoring mutants were the first, now in ticket-agent § 4's axes rule). One ticket so far on the application site.
+
+## 2026-10-21 — PR #345
+
+- Phase: merge
+- Observed: the #297 lane found that `merge-pr.sh` has unioned a conflict confined to `APPEND_ONLY_LOGS` since #60 (PR #64), so the issue's proposed script change was already shipped; triage wrote the fix direction without reading the script's union step. On the merge owner's side, every log-only `REBASE —` bounce sent today (PRs #266, #269, #275, #324, #327 twice, #329 twice, #334) was avoidable under that union, each costing a lane round and a CI run; PR #345's step 5 now reads the conflicted set first. Second instance today of a triage issue restating shipped behaviour (#332's carrier sweep is the other).
+
+## 2026-10-21 — PR #289
+
+- Phase: implementation
+- Observed: the #268 lane left two background wait loops of the form `until ! pgrep -f 268-mut/mutate.py; do sleep 15; done` running for 4 h 44 min after the PR merged: `pgrep -f` matched the loop's own command line, so the loop could never see the script finish. The lane read its result file directly and never noticed. The merge owner's `kill` was refused by the permission classifier and the owner killed them by hand. One ticket so far on a self-matching `pgrep -f` wait.
