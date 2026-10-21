@@ -303,16 +303,22 @@ input:not([type='file']) {
 }
 
 .slide-figure {
-  display: block;
+  display: grid;
+  place-items: center;
   box-sizing: border-box;
-  inline-size: 100%;
-  /* Held before the picture loads, so the lines below never move (design.md rule 6); 4:3 letterboxes. */
+  /* Held whether the picture loads or fails, so the lines below never move (design.md rule 6). */
   aspect-ratio: 16 / 9;
   margin: var(--space-4) 0 0;
   border-width: var(--line-sm);
   border-style: solid;
   border-color: var(--color-border);
   border-radius: var(--radius-sm);
+}
+
+.slide-figure img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
   object-fit: contain;
 }
 

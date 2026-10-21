@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { ApiRefusal } from '@cram/shared';
+import type { ApiRefusal, SlideImageMediaType } from '@cram/shared';
 
 export type BodyRead =
   { readonly status: 'read'; readonly bytes: Uint8Array } | { readonly status: 'too-large' };
@@ -33,7 +33,11 @@ export const sendJson = (
   response.end(JSON.stringify(body));
 };
 
-export const sendBytes = (response: ServerResponse, mediaType: string, bytes: Uint8Array): void => {
+export const sendBytes = (
+  response: ServerResponse,
+  mediaType: SlideImageMediaType,
+  bytes: Uint8Array,
+): void => {
   response.writeHead(200, {
     'content-type': mediaType,
     'content-length': String(bytes.length),

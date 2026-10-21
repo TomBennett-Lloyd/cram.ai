@@ -65,12 +65,8 @@ const askReply = (question: string) =>
         slides: [HIVE, COMB],
       };
 
-/**
- * A stand-in for a stored slide rendering, at the size ingest renders a 16:9 page
- * (`SLIDE_IMAGE_LONG_EDGE_PX`): an SVG, since what is measured is its box, not its pixels.
- */
-export const SLIDE_IMAGE_SIZE = { width: 1920, height: 1080 } as const;
-const SLIDE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="${String(SLIDE_IMAGE_SIZE.width)}" height="${String(SLIDE_IMAGE_SIZE.height)}"><rect width="100%" height="100%" fill="white"/><text x="80" y="160" font-size="96">Castes</text></svg>`;
+/** A stand-in for a stored slide rendering: an SVG, since what is measured is its box, not its pixels. */
+const SLIDE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="100%" height="100%" fill="white"/><text x="80" y="160" font-size="96">Castes</text></svg>`;
 
 const json = (route: Route, status: number, body: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });

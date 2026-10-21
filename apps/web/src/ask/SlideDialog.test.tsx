@@ -71,10 +71,11 @@ describe('SlideDialog', () => {
     expect(within(panel()).queryByRole('list')).toBeNull();
   });
 
-  it('says no picture is stored when the image cannot be loaded', () => {
+  it('says the picture can’t be shown, in the same frame, when the image fails to load', () => {
     open({ slide: HOLLOWMERE_QUEEN, quotes: [] });
     fireEvent.error(within(panel()).getByRole('img'));
     expect(within(panel()).queryByRole('img')).toBeNull();
+    expect(panel().querySelector('.slide-figure')?.textContent).toBe(SLIDE_IMAGE_MISSING);
     expect(panel().textContent).toContain(SLIDE_IMAGE_MISSING);
     expect(lines()).toHaveLength(4);
   });

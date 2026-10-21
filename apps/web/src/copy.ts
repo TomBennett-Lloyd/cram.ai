@@ -26,7 +26,7 @@ export const CLOSEST_SLIDES = 'Closest slides';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 export const SLIDE_LINES = 'Lines found on this slide';
-export const SLIDE_IMAGE_MISSING = 'No picture of this slide is stored.';
+export const SLIDE_IMAGE_MISSING = 'The picture of this slide can’t be shown.';
 export const DERIVED_TEXT =
   'This text was read from the slide’s picture. Check it against the image.';
 

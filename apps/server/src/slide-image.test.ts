@@ -1,10 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { EmbedderIdentity, openCourse } from '@cram/index';
 import { CourseId, Deck, SlideImage } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
+import { openedUnder } from './repair-fixture';
 import {
   PDF,
   pdfDeck,
@@ -76,12 +76,8 @@ describe('GET /courses/:id/slide-image', () => {
 
   it('sends a JPEG rendering as a JPEG', async () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'cram-server-'));
-    const courseId = CourseId.parse('bio');
-    const path = courseFilePath(dataDir, courseId);
-    mkdirSync(dirname(path), { recursive: true });
-    const { pin } = new WordEmbedder();
-    const embedder = EmbedderIdentity.parse({ model: `${pin.model}@${pin.sha256}`, dimension: 8 });
-    const opened = openCourse({ path, courseId, embedder });
+    mkdirSync(dirname(courseFilePath(dataDir, CourseId.parse('bio'))), { recursive: true });
+    const opened = await openedUnder(dataDir, new WordEmbedder());
     if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
     const content = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
     opened.course.replaceLecture(
