@@ -69,9 +69,9 @@ const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 
 
 // Appends each simple command's words to `commands`; a nested scan is a `"$(...)"` body
 // and returns the index past the `)` that closes it: the first at paren depth 0 (#241)
-// that does not end a `case` pattern (#268). Every unquoted `(` counts, one inside `[…]`
-// included, because the shells' own `$(` readers count it: zsh (the Bash tool's shell
-// here) counts the `(` of `[(]`, and both bash and zsh close at the `)` of `[)]`.
+// that does not end a `case` pattern (#268). A paren inside `[…]` counts, because the
+// shells' own `$(` readers count it: zsh (the Bash tool's shell here) counts the `(` of
+// `[(]`, and both bash and zsh close at the `)` of `[)]`.
 function scan(src, i, commands, nested) {
   const heredocs = [];
   // Open parens, innermost last. Each holds the word and command it opened in (`$(`, `<(`,
@@ -130,7 +130,7 @@ function scan(src, i, commands, nested) {
       i += 2;
     } else if (c === '(') {
       const f = frame();
-      if (word === null && f?.state === 'pattern') f.fresh = false;
+      if (word === null && f?.state === 'pattern' && f.fresh) f.fresh = false;
       else {
         groups.push({ current, word });
         word = null;

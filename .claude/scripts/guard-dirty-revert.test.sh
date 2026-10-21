@@ -197,14 +197,19 @@ passes "echo \"\$(echo \${x%(*}) git checkout -- dirty.txt\""
 passes $'git commit -F - <<\'EOF\'\ngit checkout -- dirty.txt\nEOF'
 
 # --- units inside "$(...)" (#268) -------------------------------------------------------
-# Each refuses row hides its revert behind a construct whose parens, read loosely, end the
-# body early or late; each passes row puts literal text after a body that must close. The
-# rows are a quoted heredoc so that shellcheck does not read their `$` as unexpanded
+# The rows are a quoted heredoc so that shellcheck does not read their `$` as unexpanded
 # (SC2016): one `refuses|passes <command>` per line, `\n` standing for a newline, and every
 # refusal names dirty.txt.
 while read -r verdict row; do
   row=${row//\\n/$'\n'}
-  if [ "$verdict" = refuses ]; then refuses "$row" dirty.txt; else passes "$row"; fi
+  case $verdict in
+    refuses) refuses "$row" dirty.txt ;;
+    passes) passes "$row" ;;
+    *)
+      printf 'FATAL harness row has no verdict: %s %s\n' "$verdict" "$row" >&2
+      exit 2
+      ;;
+  esac
 done <<'ROWS'
 refuses echo "$(echo ${x//(/)}; git checkout -- dirty.txt)"
 refuses echo "$(echo ${x%)}; git checkout -- dirty.txt)"
@@ -252,6 +257,7 @@ passes echo checkout;; true
 refuses echo "$(case x in a|b) true;; c) true;; esac; git checkout -- dirty.txt)"
 refuses echo "$(case x in esac)" && git checkout -- dirty.txt
 refuses echo "$(case x in a|esac) true;; esac; git checkout -- dirty.txt)"
+refuses echo "$(case x in a|(b)) true;; esac; git checkout -- dirty.txt)"
 refuses echo "$(case x in a) echo esac;; b) true;; esac; git checkout -- dirty.txt)"
 refuses echo "$(case x in a) true\nesac; git checkout -- dirty.txt)"
 refuses echo "$(case x\nin a) true;; esac; git checkout -- dirty.txt)"
