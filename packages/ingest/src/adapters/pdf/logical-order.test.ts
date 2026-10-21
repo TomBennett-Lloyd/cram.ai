@@ -19,6 +19,16 @@ const STAND_IN = new Map([
   ['\ufb4f', '\u05d8'],
 ]);
 
+/** Lines at the edges of `bidi`'s paragraph rule (a share of R of exactly and just under 0.3, four units) and its neutrals. */
+const EDGES = [
+  'ab cd e\ufb31\ufb4b\u05e8',
+  'ab cd ef\ufb31\ufb4b\u05e8',
+  'abc\ufb31',
+  '. ab \ufb31\ufb4b\u05e8',
+  '. \ufb31\ufb4b\u05e8 ab .',
+  '\ufb31\ufb4b\u05e8 \u00d7 ab',
+];
+
 /** Seeded, so a failing line reproduces: words of up to four units, single spaces between. */
 const linesOf = (alphabet: readonly string[], count: number, seed: number): string[] => {
   let state = seed;
@@ -60,7 +70,10 @@ describe('logicalOrder', () => {
   });
 
   it('orders Hebrew presentation forms as pdf.js orders a plain Hebrew letter drawn in their place', async () => {
-    const lines = linesOf([...PLAIN, ...STAND_IN.keys(), ...STAND_IN.keys()], 120, 256);
+    const lines = [
+      ...EDGES,
+      ...linesOf([...PLAIN, ...STAND_IN.keys(), ...STAND_IN.keys()], 120, 256),
+    ];
     const read = await pdfjsItems(lines);
     const standIns = await pdfjsItems(lines.map((text) => swapped(text, STAND_IN)));
     const back = new Map([...STAND_IN].map(([form, letter]) => [letter, form]));
