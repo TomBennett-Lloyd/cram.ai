@@ -14,10 +14,6 @@ export const Pending = ({ label }: { readonly label: string }) => (
   </div>
 );
 
-/**
- * Mounted in answer to something, so the alert is a change and is announced. One per panel: every
- * message the panel owes goes in it, with a retry only where retrying can work.
- */
 export const Failed = ({
   messages,
   dismissible,

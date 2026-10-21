@@ -11,10 +11,6 @@ import { courseFilePath } from './data-directory';
 import { type IngestDeps, ingestFile } from './ingest-deck';
 import { embedSlides } from './slide-embedding';
 
-/**
- * A stored deck read again, titled by its stored title when its first slide has none
- * (`slidesFromPages`).
- */
 const parseStored: ParseDeck = async (deck, courseId) => {
   const ingested = await ingestFile(deck.mediaType, {
     bytes: deck.content,
@@ -38,10 +34,6 @@ const embedStored =
 export type RepairOutcome =
   RebuildCourseResult['status'] | OpenCourseResult['status'] | 'reembedded';
 
-/**
- * Brings a course file to the running schema and embedder. A rebuild discards what it cannot
- * carry over and records it in the rebuilt file (`docs/adr/0004-storage.md` § Decision (d)).
- */
 export const repairCourse = async (
   courseId: CourseId,
   deps: IngestDeps,
