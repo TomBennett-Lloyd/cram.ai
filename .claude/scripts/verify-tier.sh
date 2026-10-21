@@ -180,9 +180,8 @@
 # closure starts at the changed basenames and adds any file under .claude/scripts
 # or .claude/hooks that names a member, until nothing more joins: a lib is
 # observed by whatever observes the scripts sourcing it, and harness-lib.sh,
-# which every harness names, selects them all. Harnesses observe and never
-# propagate; this script runs none of the scripts it names, so it does not
-# propagate either. A change to this script is a change to which legs run, and
+# which every harness names, selects them all. This script runs none of the
+# scripts it names, so it is the one file that never joins. A change to this script is a change to which legs run, and
 # only the full composite can vouch for that.
 #
 # check-ledgers.sh is a ledger's only reader, so the ledger class runs
@@ -575,7 +574,7 @@ owning_package_dir() {
 # class (see NEW PACKAGES above), 1 with $reason set otherwise.
 package_admits() {
   local pkg="$1" f="$2" name
-  if [ "$f" = "$pkg/package.json" ] || grep -qxF -- "$pkg/package.json" "$CHANGED"; then
+  if [ "$f" = "$pkg/package.json" ]; then
     reason="new package $pkg has its manifest in the change set, so its dependency tree moved since $BASE_LABEL — $f"
     return 1
   fi
@@ -618,7 +617,7 @@ script_closure() {
     reason="could not list the scripts and hooks a changed script can be observed through"
     return 1
   fi
-  grep -v -E '\.test\.sh$|^\.claude/scripts/verify-tier\.sh$' "$TMP/pool-raw" >"$TMP/pool"
+  grep -v -x -F .claude/scripts/verify-tier.sh "$TMP/pool-raw" >"$TMP/pool"
   grown=1
   while [ "$grown" = 1 ]; do
     grown=0
@@ -646,7 +645,7 @@ for (const [name, command] of Object.entries(scripts)) console.log(name + "\t" +
 # with $reason set at the first path no class admits.
 classify_paths() {
   local f pkg loader c
-  for c in md comment type pkg pkgdirs script ledger; do
+  for c in md src comment type pkg pkgdirs script ledger; do
     : >"$TMP/c-$c"
   done
   : >"$TMP/pkg-ok"
@@ -690,6 +689,7 @@ classify_paths() {
       reason="$proof_reason"
       return 1
     fi
+    printf '%s\n' "$f" >>"$TMP/c-src"
     if types_unchanged "$f" "$loader"; then
       printf '%s\n' "$f" >>"$TMP/c-comment"
     else
@@ -724,7 +724,7 @@ select_observing_tests() {
   done <"$TMP/runnable"
 
   if [ "${#files[@]}" -gt 0 ]; then
-    if [ -s "$TMP/c-comment" ] || [ -s "$TMP/c-type" ] || [ -s "$TMP/c-pkg" ]; then
+    if [ -s "$TMP/c-src" ] || [ -s "$TMP/c-pkg" ]; then
       grep -lE "$DATA_READING" -- "${files[@]}" >>"$TMP/observing-raw" 2>/dev/null
       grc=$?
       if [ "$grc" -gt 1 ]; then
@@ -792,7 +792,7 @@ slot_runs_closure() {
 # build_legs -> fills $legs by walking LEG_ORDER (see LEG ORDER above), and $name
 # with the tier's name.
 build_legs() {
-  local f pkg prev args slot whole has_md=0 has_src=0 has_pkg=0 has_script=0 has_deleted=0
+  local f pkg prev args slot has_md=0 has_src=0 has_pkg=0 has_script=0 has_deleted=0
 
   : >"$TMP/present"
   : >"$TMP/css"
@@ -808,9 +808,9 @@ build_legs() {
       *.sh) printf '%s\n' "$f" >>"$TMP/sh" ;;
     esac
   done <"$CHANGED"
-  grep -hE '\.(ts|tsx|js|mjs|cjs)$' "$TMP/c-comment" "$TMP/c-type" >"$TMP/lintable"
+  grep -v '\.css$' "$TMP/c-src" >"$TMP/lintable"
   [ -s "$TMP/c-md" ] && has_md=1
-  { [ -s "$TMP/c-comment" ] || [ -s "$TMP/c-type" ]; } && has_src=1
+  [ -s "$TMP/c-src" ] && has_src=1
   [ -s "$TMP/c-pkg" ] && has_pkg=1
   [ -s "$TMP/c-script" ] && has_script=1
 
@@ -838,13 +838,13 @@ build_legs() {
 
   legs=""
   for slot in $LEG_ORDER; do
-    whole=0
-    if [ "$has_script" = 1 ] && slot_runs_closure "$slot"; then
-      whole=1
+    if slot_runs_closure "$slot"; then
+      append_leg "pnpm $slot"
+      continue
     fi
     case "$slot" in
       lint:js)
-        if [ "$whole" = 1 ] || [ -s "$TMP/lintable" ]; then
+        if [ -s "$TMP/lintable" ]; then
           append_leg "pnpm lint:js"
         else
           while IFS= read -r pkg; do
@@ -853,55 +853,47 @@ build_legs() {
         fi
         ;;
       lint:css)
-        if [ "$whole" = 1 ]; then
-          append_leg "pnpm lint:css"
-        else
-          append_file_leg "pnpm exec stylelint --max-warnings 0 --" "$TMP/css"
-        fi
+        append_file_leg "pnpm exec stylelint --max-warnings 0 --" "$TMP/css"
         ;;
       lint:sh)
-        if [ "$whole" = 1 ] || [ "$has_script" = 1 ] || [ -s "$TMP/sh" ]; then
+        if [ "$has_script" = 1 ] || [ -s "$TMP/sh" ]; then
           append_leg "pnpm lint:sh"
         fi
         ;;
       typecheck)
-        if [ "$whole" = 1 ] || [ "$has_src" = 1 ]; then
+        if [ "$has_src" = 1 ]; then
           append_leg "pnpm typecheck"
         else
           append_package_legs typecheck
         fi
         ;;
       check:comment-density)
-        if [ "$whole" = 1 ] || [ "$has_src" = 1 ] || [ "$has_pkg" = 1 ]; then
+        if [ "$has_src" = 1 ] || [ "$has_pkg" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
       test)
-        if [ "$whole" = 1 ]; then
-          append_leg "pnpm test"
-        else
-          # One vitest per package, its files named RELATIVE to that package:
-          # vitest matches a positional against paths from its own working
-          # directory, so a repo-relative path matches nothing and exits 1 with
-          # "No test files found".
-          prev=""
-          args=""
-          while IFS=$'\t' read -r pkg f; do
-            if [ "$pkg" != "$prev" ]; then
-              [ -z "$prev" ] ||
-                append_leg "pnpm --filter $(printf '%q' "./$prev") --fail-if-no-match exec vitest run$args"
-              prev="$pkg"
-              args=""
-            fi
-            args="$args $(printf '%q' "${f#"$pkg"/}")"
-          done <"$TMP/vitest-jobs"
-          [ -z "$prev" ] ||
-            append_leg "pnpm --filter $(printf '%q' "./$prev") --fail-if-no-match exec vitest run$args"
-          append_package_legs test
-        fi
+        # One vitest per package, its files named RELATIVE to that package:
+        # vitest matches a positional against paths from its own working
+        # directory, so a repo-relative path matches nothing and exits 1 with
+        # "No test files found".
+        prev=""
+        args=""
+        while IFS=$'\t' read -r pkg f; do
+          if [ "$pkg" != "$prev" ]; then
+            [ -z "$prev" ] ||
+              append_leg "pnpm --filter $(printf '%q' "./$prev") --fail-if-no-match exec vitest run$args"
+            prev="$pkg"
+            args=""
+          fi
+          args="$args $(printf '%q' "${f#"$pkg"/}")"
+        done <"$TMP/vitest-jobs"
+        [ -z "$prev" ] ||
+          append_leg "pnpm --filter $(printf '%q' "./$prev") --fail-if-no-match exec vitest run$args"
+        append_package_legs test
         ;;
       check:adr-index)
-        if [ "$whole" = 1 ] || [ "$has_md" = 1 ]; then
+        if [ "$has_md" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
@@ -909,43 +901,33 @@ build_legs() {
         append_leg "pnpm $slot"
         ;;
       check:module-names)
-        if [ "$whole" = 1 ] || [ "$has_pkg" = 1 ]; then
+        if [ "$has_pkg" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
       check:no-course-content)
-        if [ "$whole" = 1 ] || [ "$has_md" = 1 ] || [ "$has_pkg" = 1 ]; then
+        if [ "$has_md" = 1 ] || [ "$has_pkg" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
       check:markdown-links)
-        if [ "$whole" = 1 ] || [ "$has_md" = 1 ] || [ "$has_deleted" = 1 ]; then
+        if [ "$has_md" = 1 ] || [ "$has_deleted" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
       test:scripts)
-        if [ "$whole" = 1 ]; then
-          append_leg "pnpm test:scripts"
-        else
-          while IFS= read -r f; do
-            append_leg "bash $(printf '%q' "$f")"
-          done <"$TMP/harness-jobs"
-        fi
+        while IFS= read -r f; do
+          append_leg "bash $(printf '%q' "$f")"
+        done <"$TMP/harness-jobs"
         ;;
       format:check)
-        if [ "$whole" = 1 ]; then
-          append_leg "pnpm format:check"
-        else
-          # --ignore-unknown: the same contract as the lint-staged `*` entry — a
-          # path prettier has no parser for is skipped, not failed.
-          append_file_leg "pnpm exec prettier --check --ignore-unknown --" "$TMP/present"
-        fi
+        # --ignore-unknown: the same contract as the lint-staged `*` entry — a
+        # path prettier has no parser for is skipped, not failed.
+        append_file_leg "pnpm exec prettier --check --ignore-unknown --" "$TMP/present"
         ;;
-      lint:workflows | check:no-network-egress | check:node-types | check:supply-chain-policy)
-        if [ "$whole" = 1 ]; then
-          append_leg "pnpm $slot"
-        fi
-        ;;
+      # Run only through the closure above: they read manifests, the installed
+      # tree or workflow files, which no admitted class changes.
+      lint:workflows | check:no-network-egress | check:node-types | check:supply-chain-policy) ;;
       *)
         append_leg "pnpm $slot"
         ;;
@@ -1033,31 +1015,20 @@ describe() {
   esac
 }
 
-# current_tree -> the tree object of the working tree as `git add -A` sees it,
-# built in a scratch index so the real one is never touched.
+# current_tree -> the tree object of the working tree as `git add -A` sees it.
+# The scratch index starts EMPTY, so every file is hashed from its content: a
+# copy of the real index carries its stat cache under a newer mtime, which
+# defeats git's racy-entry check, and a same-size edit made in the same second
+# as the last index write then hashes as unchanged.
 current_tree() {
-  local index
   rm -f "$TMP/tree-index"
-  index=$(git_at rev-parse --git-path index 2>/dev/null) || return 1
-  case "$index" in
-    /*) ;;
-    *) index="$ROOT/$index" ;;
-  esac
-  if [ -f "$index" ]; then
-    cp "$index" "$TMP/tree-index" || return 1
-  fi
   GIT_INDEX_FILE="$TMP/tree-index" git_at add -A >/dev/null 2>&1 || return 1
   GIT_INDEX_FILE="$TMP/tree-index" git_at write-tree 2>/dev/null
 }
 
 # bank_path -> where this worktree's banked green tree lives.
 bank_path() {
-  local p
-  p=$(git_at rev-parse --git-path verify-tier-green 2>/dev/null) || return 1
-  case "$p" in
-    /*) printf '%s\n' "$p" ;;
-    *) printf '%s\n' "$ROOT/$p" ;;
-  esac
+  git_at rev-parse --git-path verify-tier-green 2>/dev/null
 }
 
 # banked_tree -> the tree banked for the current merge-base, or 1.
@@ -1096,7 +1067,7 @@ narrow() {
   reason=""
   classify_tier
   if [ "$tier" = full ]; then
-    printf 'verify tier: not narrowed — %s since banked tree %s\n' "$(describe)" "$short"
+    printf 'verify tier: not narrowed since banked tree %s — %s\n' "$short" "$(describe)"
     return 0
   fi
   printf 'verify tier: narrowed to %s since banked tree %s — %s\n' "$tier" "$short" "$(describe)"
