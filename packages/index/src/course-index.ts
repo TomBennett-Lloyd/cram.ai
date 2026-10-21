@@ -9,9 +9,8 @@ import {
   type SlideImage,
   type SlideNo,
   type SlideRecord,
-  SlideKind,
   type SourceId,
-  StoredLecture,
+  type StoredLecture,
   type TopicTag,
 } from '@cram/shared';
 import { z } from 'zod';
@@ -29,6 +28,7 @@ import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
 import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
+import { storedLectures } from './stored-lectures';
 import {
   ftsValues,
   SLIDE_COLUMNS,
@@ -51,9 +51,13 @@ export const RETRIEVAL_K = 8;
 /** Depth of each ranked list fed to fusion; provisional on the same terms as `RETRIEVAL_K`. */
 export const CANDIDATES_PER_LIST = 50;
 
+/**
+ * A slide and its vector. `undefined` stores the slide for listing, citation and BM25, outside the
+ * vector list: a slide the embedder does not take whole is never truncated (#338).
+ */
 export interface IndexedSlide {
   readonly record: SlideRecord;
-  readonly embedding: Float32Array;
+  readonly embedding: Float32Array | undefined;
 }
 
 export interface SearchQuery {
@@ -81,18 +85,6 @@ export type RemoveLectureResult =
 
 const RowId = z.number().int();
 const RowIds = z.array(RowId);
-
-/** A deck and one of its slides; a deck with no slides is one row with no slide. */
-const LectureSlideRow = z.object({
-  lecture_id: z.string(),
-  lecture_title: z.string(),
-  slide_no: z.number().nullable(),
-  kind: SlideKind.nullable(),
-});
-
-const LECTURE_SLIDES = `select decks.lecture_id, decks.lecture_title, slides.slide_no, slides.kind
-  from decks left join slides on slides.lecture_id = decks.lecture_id
-  order by decks.lecture_id, slides.slide_no`;
 
 const requireDimension = (
   operation: string,
@@ -144,11 +136,12 @@ export class CourseIndex {
       if (seen.has(sourceId))
         throw new Error(`${operation}: ${sourceId} appears twice in one batch`);
       seen.add(sourceId);
-      requireDimension(`${operation}(${sourceId})`, embedding, this.#embedder);
+      if (embedding !== undefined)
+        requireDimension(`${operation}(${sourceId})`, embedding, this.#embedder);
     }
   }
 
-  /** Text and vector together; the caller holds the transaction and has dropped the lecture's rows. */
+  /** Text, and the vector when there is one; the caller holds the transaction and has dropped the lecture's rows. */
   #writeSlides(slides: readonly IndexedSlide[]): void {
     const insert = this.#db.prepare(INSERT_SLIDE).pluck();
     const writeText = this.#db.prepare(
@@ -157,7 +150,7 @@ export class CourseIndex {
     for (const { record, embedding } of slides) {
       const id = RowId.parse(insert.get(...slideRowValues(record)));
       writeText.run(id, ...ftsValues(record));
-      this.#writeVector(id, embedding);
+      if (embedding !== undefined) this.#writeVector(id, embedding);
     }
   }
 
@@ -295,18 +288,22 @@ export class CourseIndex {
     ).map((slide) => slide.record);
   }
 
-  /** Swaps every vector and the recorded embedder in one transaction; `embeddings` must cover every slide. */
+  /**
+   * Swaps every vector and the recorded embedder in one transaction. `embeddings` names every slide;
+   * one named `undefined` keeps its row and has no vector (`IndexedSlide`).
+   */
   replaceEmbedder(
     embedder: EmbedderIdentity,
-    embeddings: ReadonlyMap<SourceId, Float32Array>,
+    embeddings: ReadonlyMap<SourceId, Float32Array | undefined>,
   ): void {
     const stored = this.#storedSlides('');
-    const vectors = stored.map((slide) => {
-      const embedding = embeddings.get(slide.sourceId);
-      if (embedding === undefined)
+    const vectors = stored.flatMap((slide) => {
+      if (!embeddings.has(slide.sourceId))
         throw new Error(`replaceEmbedder: no embedding for ${slide.sourceId}`);
+      const embedding = embeddings.get(slide.sourceId);
+      if (embedding === undefined) return [];
       requireDimension(`replaceEmbedder(${slide.sourceId})`, embedding, embedder);
-      return { id: slide.id, embedding };
+      return [{ id: slide.id, embedding }];
     });
     if (embeddings.size !== stored.length)
       throw new Error('replaceEmbedder: embeddings name slides the course lacks');
@@ -321,23 +318,9 @@ export class CourseIndex {
     this.#embedder = embedder;
   }
 
-  /** Every lecture with a deck, by lecture id: its title, slide count and `image-only` slides. */
+  /** Every lecture with a deck (`storedLectures`). */
   lectures(): readonly StoredLecture[] {
-    const lectures = new Map<string, z.input<typeof StoredLecture>>();
-    for (const row of this.#db.prepare(LECTURE_SLIDES).all()) {
-      const { lecture_id, lecture_title, slide_no, kind } = LectureSlideRow.parse(row);
-      const lecture = lectures.get(lecture_id) ?? {
-        lectureId: lecture_id,
-        lectureTitle: lecture_title,
-        slideCount: 0,
-        imageOnly: [],
-      };
-      lectures.set(lecture_id, lecture);
-      if (slide_no === null) continue;
-      lecture.slideCount += 1;
-      if (kind === SlideKind.enum['image-only']) lecture.imageOnly.push(slide_no);
-    }
-    return [...lectures.values()].map((lecture) => StoredLecture.parse(lecture));
+    return storedLectures(this.#db);
   }
 
   /** What a rebuild discarded that the student has not dismissed (#233). */

@@ -28,15 +28,11 @@ const parseStored: ParseDeck = async (deck, courseId) => {
     : { status: 'parsed', slides: ingested.slides };
 };
 
-/** Rejects on an over-length slide: `EmbedSlides` has no value arm for it yet (#184). */
-const embedOrReject =
+/** A stored deck's slides embedded as an upload embeds them, so a rebuild reproduces what it stored (#338). */
+const embedStored =
   (deps: IngestDeps): EmbedSlides =>
-  async (slides) => {
-    const embedded = await embedSlides(deps.embedder, slides);
-    if (embedded.status === 'over-length')
-      throw new Error(`repairCourse: slides ${embedded.slideNos.join(', ')} are over-length`);
-    return embedded.slides.map(({ embedding }) => embedding);
-  };
+  async (slides) =>
+    (await embedSlides(deps.embedder, slides)).map(({ embedding }) => embedding);
 
 /** What one repair did, for the log; `open` is a file that needed nothing. */
 export type RepairOutcome =
@@ -55,7 +51,7 @@ export const repairCourse = async (
     courseId,
     embedder: deps.files.embedder,
   };
-  const embed = embedOrReject(deps);
+  const embed = embedStored(deps);
   const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed });
   if (rebuilt.status !== 'embedder-mismatch') {
     if ('course' in rebuilt) rebuilt.course.close();

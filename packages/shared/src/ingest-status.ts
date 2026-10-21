@@ -15,27 +15,23 @@ export const CourseUnavailableProblem = z.enum([
 ]);
 export type CourseUnavailableProblem = z.infer<typeof CourseUnavailableProblem>;
 
+/** `unembedded` slides are stored and found by their words only (`CourseIndex.lectures`, #338). */
 const INDEXED_SLIDES = {
   slideCount: z.number().int().nonnegative(),
   imageOnly: z.array(SlideNo),
+  unembedded: z.array(SlideNo),
 };
 
 /**
  * Where one uploaded deck has got to in ingest. An `imageOnly` page is reported and never an
- * error (ADR 0006 § Decision (b), proposed in #120). An `over-length` deck has slides longer than
- * the embedder takes, which are never truncated, so nothing of it is indexed (#77 splits them). `reason` is
- * `@cram/ingest`'s vocabulary, carried as text to keep one owner.
+ * error (ADR 0006 § Decision (b), proposed in #120). `reason` is `@cram/ingest`'s
+ * vocabulary, carried as text to keep one owner.
  */
 export const UploadProgress = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('queued') }),
   z.strictObject({ state: z.literal('ingesting') }),
   z.strictObject({ state: z.literal('indexed'), ...INDEXED_SLIDES }),
   z.strictObject({ state: z.literal('unreadable'), reason: NonBlankText, detail: z.string() }),
-  z.strictObject({
-    state: z.literal('over-length'),
-    slides: z.array(SlideNo).min(1),
-    maxInputTokens: z.number().int().positive(),
-  }),
   z.strictObject({ state: z.literal('course-unavailable'), problem: CourseUnavailableProblem }),
   z.strictObject({ state: z.literal('failed') }),
 ]);

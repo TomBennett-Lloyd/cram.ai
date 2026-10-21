@@ -100,3 +100,18 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `unzipParts` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`; `readXml` and `resolveTarget` in `packages/ingest/src/adapters/pptx/ooxml.ts`
 - What: only names ending in lowercase `.xml` or `.rels` are inflated, parts are looked up by exact case, and relationship targets are not percent-decoded, though OPC part names compare case-insensitively and may be escaped. A conforming package whose main, slide or notes part is named another way reads as `missing-part`, so `damaged`: a reader limit in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). Predates #301, which made the main part's name come from a relationship and so more reachable.
 - Source: #301 review cycle 1
+
+## 2026-10-21 — which slides get a vector is decided twice, once by the server and once by eval
+- Where: `apps/server/src/slide-embedding.ts` `embedSlides`; `eval/src/index-retriever.ts` `embedAll`
+- What: the server embeds no `references` slide and stores an over-length slide with no vector. Eval's `IndexRetriever` cannot import that rule, so it embeds every slide and rejects an over-length text. Default search leaves references out of both lists, and an over-length text fails loudly, so recall@k is unaffected today. But `.claude/ledgers/slide-embed-text.ledger`'s "recall@k measures the retrieval the app runs" now rests on two copies of one rule. Suspected root cause: the rule lives in an app, where eval cannot reach it; it belongs in a package both import, next to `embedText`.
+- Source: PR for #338 (review); #184
+
+## 2026-10-21 — an over-length slide's whole text now reaches the generator prompt
+- Where: `packages/index/src/course-index.ts` `search` → the generator's retrieved context
+- What: until #338 the embedder's input limit capped every stored slide's length. A slide stored with no vector is still returned by BM25 and sent whole. Grounding holds, because resolution and verification judge quotes. The risk is quality, through #184's open "context trimmed silently" entry. #339 removes the case by splitting long slides.
+- Source: PR for #338 (review)
+
+## 2026-10-21 — "has no text, so it can't be cited yet" is false for an image-only PPTX slide with speaker notes
+- Where: `apps/web/src/copy.ts` `indexedMessage`; `packages/ingest/src/slide-text.ts` (an `image-only` slide is classed from its title and body only)
+- What: `slideFields` quotes `speakerNotes`, and BM25 finds the slide by them, so such a slide can be found and cited. The copy reads the `image-only` kind as "no text". Suspected root cause: one kind is doing two jobs, "derive text from the image" and "nothing to cite".
+- Source: PR for #338 (review; this was already true before #338)

@@ -36,8 +36,15 @@ export const lecture = (
   lectureId: string,
   slideCount: number,
   imageOnly: number[],
+  unembedded: number[] = [],
 ): StoredLecture =>
-  StoredLecture.parse({ lectureId, lectureTitle: `Title of ${lectureId}`, slideCount, imageOnly });
+  StoredLecture.parse({
+    lectureId,
+    lectureTitle: `Title of ${lectureId}`,
+    slideCount,
+    imageOnly,
+    unembedded,
+  });
 
 export const rows = () =>
   [...document.querySelectorAll('.upload')].map((row) =>
