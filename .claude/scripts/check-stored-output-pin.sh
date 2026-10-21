@@ -59,7 +59,7 @@ pin_digest() {
 # schema_version -> the integer SCHEMA_VERSION is declared as in the module on stdin.
 schema_version() {
   local found
-  found=$(sed -nE 's/^export const SCHEMA_VERSION(: number)? = ([0-9]+);?$/\2/p')
+  found=$(sed -nE 's/^export const SCHEMA_VERSION(: number)? = ([0-9]+);?/\2/p')
   [[ $found =~ ^[0-9]+$ ]] || return 1
   printf '%s\n' "$found"
 }

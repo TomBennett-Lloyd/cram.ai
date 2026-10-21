@@ -107,6 +107,7 @@ fixture corpus_only
 put packages/ingest/src/deck-fixture.ts "export const deck = ' b ';"
 put packages/ingest/src/read.test.ts "it('reads again', () => {});"
 put packages/ingest/src/read.ts.orig 'a merge leftover'
+put packages/ingest/src/read_ts 'a name that matches read.ts only as a regex'
 pin b
 commit corpus
 run_check "$DIR"
@@ -165,6 +166,7 @@ begin "a moved digest with no corpus change fails, even when only a test file ch
 fixture no_corpus
 put packages/ingest/src/read.test.ts "it('reads again', () => {});"
 put packages/ingest/src/deck-fixture.ts.orig 'a merge leftover'
+put packages/ingest/src/deck-fixture_ts 'a name that matches deck-fixture.ts only as a regex'
 pin b
 commit edit
 run_check "$DIR"
@@ -340,6 +342,12 @@ pin b
 run_check "$DIR"
 expect_rc 2 "$rc"
 expect_stderr "cannot read SCHEMA_VERSION from $SCHEMA in the working tree"
+end
+
+begin "a root that is not a directory is no verdict"
+run_check "$TMP_ROOT/absent"
+expect_rc 2 "$rc"
+expect_stderr "not a directory: $TMP_ROOT/absent"
 end
 
 begin "no origin/main is no verdict"
