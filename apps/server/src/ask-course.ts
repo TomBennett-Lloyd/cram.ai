@@ -2,7 +2,7 @@ import type { ModelGateway } from '@cram/gateway';
 import { ask, PROVISIONAL_NLI_THRESHOLDS, PROVISIONAL_VERIFIER_STRATEGY } from '@cram/grounding';
 import type { CourseIndex, SearchQuery } from '@cram/index';
 import type { AskReply, CourseId, RetrievedSlide } from '@cram/shared';
-import { type CourseFiles, courseExists, openForRead } from './course-file';
+import { type CourseFiles, courseExists, openExisting } from './course-file';
 import type { ServerLog } from './server-log';
 import { embedQuestion } from './slide-embedding';
 
@@ -36,7 +36,7 @@ export const askCourse = async (
   const embedded = await embedQuestion(deps.gateway.embedder, question);
   if (embedded.status === 'over-length')
     return { status: 'question-over-length', maxInputTokens: embedded.maxInputTokens };
-  const opened = openForRead(deps.files, courseId);
+  const opened = openExisting(deps.files, courseId);
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   const slides = retrieve(opened.course, { text: question, embedding: embedded.vector });
   const result = await ask(question, slides, {

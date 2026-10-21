@@ -82,6 +82,23 @@ export class FailingEmbedder extends WordEmbedder {
   }
 }
 
+/** Answers its start-up probe, and holds every other text until `open` is called. */
+export class GatedEmbedder extends WordEmbedder {
+  #open: () => void = () => undefined;
+  readonly #gate = new Promise<void>((resolve) => {
+    this.#open = resolve;
+  });
+
+  open(): void {
+    this.#open();
+  }
+
+  override async embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+    if (request.texts[0] !== PROBE_TEXT) await this.#gate;
+    return super.embed(request);
+  }
+}
+
 const sampling = { temperature: 0, seed: 0 };
 
 export const gatewayOf = (

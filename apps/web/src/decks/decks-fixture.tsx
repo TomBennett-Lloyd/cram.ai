@@ -10,7 +10,7 @@ import { DecksScreen } from './DecksScreen';
 export const upload = (fileName: string, progress: unknown): Upload =>
   Upload.parse({ uploadId: fileName, lectureId: fileName, fileName, progress });
 
-const NOTHING_STORED = StoredLectures.parse({ state: 'read', lectures: [] });
+const NOTHING_STORED = StoredLectures.parse({ state: 'read', lectures: [], discarded: [] });
 
 const NO_REPAIR = CourseRepair.parse({ state: 'none' });
 

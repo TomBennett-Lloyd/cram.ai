@@ -5,6 +5,7 @@ sweep: create table topics\b|'topics'|\.claude/ledgers/topics-table\.ledger
 carrier: apps/web/src/copy.ts
 carrier: apps/web/src/copy.test.ts
 carrier: apps/web/src/decks/DecksRepair.test.tsx
+carrier: apps/web/e2e/hermetic-api.ts
 carrier: apps/server/src/repair.test.ts
 carrier: packages/index/src/rebuild-course.test.ts
 excluded: packages/shared/src/ingest-status.test.ts
