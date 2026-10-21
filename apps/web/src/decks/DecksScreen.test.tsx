@@ -1,4 +1,4 @@
-import { CourseId, Upload } from '@cram/shared';
+import { CourseId, StoredLecture, StoredLectures, Upload } from '@cram/shared';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../api/api-client';
@@ -12,10 +12,22 @@ import { POLL_INTERVAL_MS } from './use-ingest-status';
 const upload = (fileName: string, progress: unknown): Upload =>
   Upload.parse({ uploadId: fileName, lectureId: fileName, fileName, progress });
 
-const status = (...uploads: Upload[]): Reply => ({
+const NOTHING_STORED = StoredLectures.parse({ state: 'read', lectures: [] });
+
+const storedStatus = (stored: StoredLectures, ...uploads: Upload[]): Reply => ({
   status: 200,
-  body: { courseId: 'bio', uploads },
+  body: { courseId: 'bio', stored, uploads },
 });
+
+const status = (...uploads: Upload[]): Reply => storedStatus(NOTHING_STORED, ...uploads);
+
+const lecture = (lectureId: string, slideCount: number, imageOnly: number[]): StoredLecture =>
+  StoredLecture.parse({ lectureId, lectureTitle: `Title of ${lectureId}`, slideCount, imageOnly });
+
+const rows = () =>
+  [...document.querySelectorAll('.upload')].map((row) =>
+    [...row.children].map((node) => node.textContent),
+  );
 
 const renderDecks = (api: ApiClient) =>
   render(
@@ -174,5 +186,58 @@ describe('DecksScreen', () => {
     const second = await pick('a.key', 'b.key');
     expect(second).not.toBe(first);
     expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('lists the course file’s lectures after a restart, with no uploads since', async () => {
+    const stored = StoredLectures.parse({ state: 'read', lectures: [lecture('l1', 1, [1])] });
+    const { api, sent } = fakeApi(() => storedStatus(stored));
+    renderDecks(api);
+    await settle();
+    expect(rows()).toEqual([
+      ['Title of l1', '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.'],
+    ]);
+    expect(screen.queryByText(/No decks yet/)).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 5);
+    });
+    expect(reads(sent)).toBe(1);
+  });
+
+  it('lists the lectures the course file holds, leaving one this session re-indexed to its upload', async () => {
+    const stored = StoredLectures.parse({
+      state: 'read',
+      lectures: [lecture('l1', 12, [3, 9]), lecture('l2', 1, []), lecture('l3', 4, [])],
+    });
+    const { api } = fakeApi(() =>
+      storedStatus(
+        stored,
+        upload('l2', { state: 'indexed', slideCount: 2, imageOnly: [] }),
+        upload('l3', { state: 'unreadable', reason: 'encrypted', detail: '' }),
+      ),
+    );
+    renderDecks(api);
+    await settle();
+    expect(rows()).toEqual([
+      ['Title of l1', '12 slides indexed. Slides 3, 9 have no text, so they can’t be cited yet.'],
+      ['Title of l3', '4 slides indexed.'],
+      ['l2', '2 slides indexed.'],
+      ['l3', 'This deck couldn’t be read (encrypted).'],
+    ]);
+  });
+
+  it('says why stored lectures are missing when the course file cannot be opened', async () => {
+    const unavailable = StoredLectures.parse({
+      state: 'course-unavailable',
+      problem: 'embedder-mismatch',
+    });
+    const { api } = fakeApi(() => storedStatus(unavailable));
+    renderDecks(api);
+    await settle();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'This course’s file can’t be opened (embedder-mismatch), so its stored decks can’t be listed.',
+    );
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.queryByText(/No decks yet/)).toBeNull();
+    expect(rows()).toEqual([]);
   });
 });

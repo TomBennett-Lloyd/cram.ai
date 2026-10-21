@@ -1,4 +1,4 @@
-import type { CourseId, Upload } from '@cram/shared';
+import type { CourseId, IngestStatus, Upload } from '@cram/shared';
 import { useEffect, useState } from 'react';
 import type { ApiClient } from '../api/api-client';
 import type { ApiFailure } from '../api/api-result';
@@ -8,7 +8,7 @@ export const POLL_INTERVAL_MS = 1000;
 
 export type IngestState =
   | { readonly status: 'pending' }
-  | { readonly status: 'ready'; readonly uploads: readonly Upload[] }
+  | { readonly status: 'ready'; readonly ingest: Omit<IngestStatus, 'courseId'> }
   | { readonly status: 'failed'; readonly failure: ApiFailure };
 
 const inFlight = (uploads: readonly Upload[]): boolean =>
@@ -16,9 +16,9 @@ const inFlight = (uploads: readonly Upload[]): boolean =>
 
 /** A course nobody has uploaded to is `no-such-course`, which on this screen is an empty list. */
 const stateOf = (result: Awaited<ReturnType<ApiClient['ingestStatus']>>): IngestState => {
-  if (result.status === 'ok') return { status: 'ready', uploads: result.value.uploads };
+  if (result.status === 'ok') return { status: 'ready', ingest: result.value };
   if (result.status === 'refused' && result.refusal.status === 'no-such-course')
-    return { status: 'ready', uploads: [] };
+    return { status: 'ready', ingest: { stored: { state: 'read', lectures: [] }, uploads: [] } };
   return { status: 'failed', failure: result };
 };
 
@@ -36,7 +36,7 @@ export const useIngestStatus = (
       const next = stateOf(await api.ingestStatus(courseId));
       if (!current) return;
       setState(next);
-      if (next.status === 'ready' && inFlight(next.uploads))
+      if (next.status === 'ready' && inFlight(next.ingest.uploads))
         timer = setTimeout(() => void read(), POLL_INTERVAL_MS);
     };
     void read();

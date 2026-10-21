@@ -1,4 +1,10 @@
-import type { ApiRefusal, PartialPolicy, UploadProgress, WithheldUnit } from '@cram/shared';
+import type {
+  ApiRefusal,
+  PartialPolicy,
+  StoredLecture,
+  UploadProgress,
+  WithheldUnit,
+} from '@cram/shared';
 import type { ApiFailure } from './api/api-result';
 
 /** The app's async-state and failure wording, in one place (`docs/standards/react.md` § Async surface convention). */
@@ -57,19 +63,29 @@ export const failureMessage = (failure: ApiFailure): string => {
 const slidesThat = (slides: readonly number[], one: string, many: string): string =>
   slides.length === 1 ? `Slide ${String(slides[0])} ${one}` : `Slides ${slides.join(', ')} ${many}`;
 
+/** What an indexed deck holds, whether this session's upload or a stored lecture. */
+export const indexedMessage = ({
+  slideCount,
+  imageOnly,
+}: Pick<StoredLecture, 'slideCount' | 'imageOnly'>): string => {
+  const indexed = `${String(slideCount)} ${slideCount === 1 ? 'slide' : 'slides'} indexed.`;
+  return imageOnly.length === 0
+    ? indexed
+    : `${indexed} ${slidesThat(imageOnly, 'has no text, so it', 'have no text, so they')} can’t be cited yet.`;
+};
+
+/** Why the course file's lectures are not listed; this session's uploads still are. */
+export const storedUnavailableMessage = (problem: string): string =>
+  `This course’s file can’t be opened (${problem}), so its stored decks can’t be listed.`;
+
 export const progressMessage = (progress: UploadProgress): string => {
   switch (progress.state) {
     case 'queued':
       return 'Waiting to be read…';
     case 'ingesting':
       return 'Reading slides…';
-    case 'indexed': {
-      const { slideCount } = progress;
-      const indexed = `${String(slideCount)} ${slideCount === 1 ? 'slide' : 'slides'} indexed.`;
-      return progress.imageOnly.length === 0
-        ? indexed
-        : `${indexed} ${slidesThat(progress.imageOnly, 'has no text, so it', 'have no text, so they')} can’t be cited yet.`;
-    }
+    case 'indexed':
+      return indexedMessage(progress);
     case 'unreadable':
       return `This deck couldn’t be read (${progress.reason}${progress.detail === '' ? '' : `: ${progress.detail}`}).`;
     case 'over-length':

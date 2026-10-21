@@ -5,6 +5,12 @@ import { CourseId, LectureId, SlideNo } from './slide-record';
 export const UploadId = z.string().min(1).brand<'UploadId'>();
 export type UploadId = z.infer<typeof UploadId>;
 
+/** What an indexed lecture holds: its slide count and its `image-only` slides by number. */
+const INDEXED_SLIDES = {
+  slideCount: z.number().int().nonnegative(),
+  imageOnly: z.array(SlideNo),
+};
+
 /**
  * Where one uploaded deck has got to in ingest. An `imageOnly` page is reported and never an
  * error (ADR 0006 § Decision (b), proposed in #120). An `over-length` deck has slides longer than
@@ -14,11 +20,7 @@ export type UploadId = z.infer<typeof UploadId>;
 export const UploadProgress = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('queued') }),
   z.strictObject({ state: z.literal('ingesting') }),
-  z.strictObject({
-    state: z.literal('indexed'),
-    slideCount: z.number().int().nonnegative(),
-    imageOnly: z.array(SlideNo),
-  }),
+  z.strictObject({ state: z.literal('indexed'), ...INDEXED_SLIDES }),
   z.strictObject({ state: z.literal('unreadable'), reason: NonBlankText, detail: z.string() }),
   z.strictObject({
     state: z.literal('over-length'),
@@ -38,5 +40,25 @@ export const Upload = z.strictObject({
 });
 export type Upload = z.infer<typeof Upload>;
 
-export const IngestStatus = z.strictObject({ courseId: CourseId, uploads: z.array(Upload) });
+/** One lecture as its course file holds it, so it is reported after a restart (#146). */
+export const StoredLecture = z.strictObject({
+  lectureId: LectureId,
+  lectureTitle: NonBlankText,
+  ...INDEXED_SLIDES,
+});
+export type StoredLecture = z.infer<typeof StoredLecture>;
+
+/** The course file's lectures, or why it cannot be opened; `problem` is `@cram/index`'s vocabulary. */
+export const StoredLectures = z.discriminatedUnion('state', [
+  z.strictObject({ state: z.literal('read'), lectures: z.array(StoredLecture) }),
+  z.strictObject({ state: z.literal('course-unavailable'), problem: NonBlankText }),
+]);
+export type StoredLectures = z.infer<typeof StoredLectures>;
+
+/** `stored` is what the course file holds; `uploads` are those since the server started. */
+export const IngestStatus = z.strictObject({
+  courseId: CourseId,
+  stored: StoredLectures,
+  uploads: z.array(Upload),
+});
 export type IngestStatus = z.infer<typeof IngestStatus>;
