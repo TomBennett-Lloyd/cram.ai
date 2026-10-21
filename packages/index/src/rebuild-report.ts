@@ -5,13 +5,13 @@ import { z } from 'zod';
 export const REBUILD_REPORT_TABLE_NAME = 'rebuild_report';
 
 /**
- * What the last rebuild discarded, kept in the rebuilt file until the student dismisses it, so a
- * restart before they see it does not lose it (`docs/adr/0004-storage.md` § Decision (d); #233).
+ * What rebuilds discarded, kept in the rebuilt file until the student dismisses it, so a restart
+ * before they see it does not lose it (`docs/adr/0004-storage.md` § Decision (d); #233).
  */
 export const REBUILD_REPORT_TABLE = `
   create table ${REBUILD_REPORT_TABLE_NAME} (
     table_name text primary key,
-    rows integer not null
+    rows integer not null check (rows > 0)
   ) strict;
 `;
 

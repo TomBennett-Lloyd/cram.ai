@@ -75,14 +75,21 @@ const questionOf = (body: string | null): string => {
     : '';
 };
 
+/** The rebuild report `stubApi` serves when asked for one, until the app dismisses it. */
+const REBUILD_REPORT = [{ table: 'topics', rows: 3 }];
+
 export interface StubOptions {
   /** Every ask reply waits for this; without it, an ask replies at once (#231). */
   readonly askReplyAfter?: Promise<void>;
+  /** The course holds `REBUILD_REPORT` and no upload, instead of one upload in flight (#233). */
+  readonly rebuildReport?: boolean;
 }
 
 /** Answers the app's API calls from the fixtures above, holding one upload's ingest in flight once. */
 export const stubApi = async (page: Page, options: StubOptions = {}): Promise<void> => {
+  const { rebuildReport = false } = options;
   let ingestReads = 0;
+  let discarded = rebuildReport ? REBUILD_REPORT : [];
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
   await page.route('**/courses/*/ask', async (route) => {
     await options.askReplyAfter;
@@ -96,15 +103,21 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
       progress: { state: 'queued' },
     }),
   );
+  await page.route('**/courses/*/rebuild-report', (route) => {
+    discarded = [];
+    return json(route, 200, { status: 'dismissed' });
+  });
   await page.route('**/courses/*/ingest', (route) => {
     ingestReads += 1;
     const progress =
       ingestReads < 2 ? { state: 'ingesting' } : { state: 'indexed', slideCount: 2, imageOnly: [] };
     return json(route, 200, {
       courseId: 'bio',
-      stored: { state: 'read', lectures: [], discarded: [] },
+      stored: { state: 'read', lectures: [], discarded },
       repair: { state: 'none' },
-      uploads: [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
+      uploads: rebuildReport
+        ? []
+        : [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
     });
   });
 };

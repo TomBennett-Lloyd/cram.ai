@@ -103,7 +103,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 ## 2026-10-21 — opening a course file to read it can write to it
 
-- Where: `apps/server/src/course-file.ts` `openForRead`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
+- Where: `apps/server/src/course-file.ts` `openExisting`, `storedLectures`; `packages/index/src/open-course.ts` `openCourse`
 - What: `openCourse` sets `journal_mode = WAL` and creates the schema in a blank file, so a 0-byte course file (a crash between creating the file and committing its schema) is initialised by a GET: the ask path, and since #146 the ingest status `useIngestStatus` polls (`apps/web/src/decks/use-ingest-status.ts`). Root cause: `@cram/index` has no read-only open that classifies a blank file instead of creating its schema.
 - Source: #146 review cycle 1
 
@@ -144,6 +144,13 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/copy.ts` `DISCARDED_ROW`, `discardedMessage`; `packages/index/src/rebuild-course.ts` `discardedTables`
 - What: `docs/adr/0004-storage.md` § Decision (d) requires a rebuild to tell the user which derived data did not survive. The web names only the tables it has words for. A table added later, such as attempts or notes, is summed as `OTHER_ROW` with every test green. The `topics-table` and `confirmations-table` ledgers only notice a rename, not an addition. Root cause: nothing shared lists the tables a rebuild can discard, so no gate asks for the new table's student words.
 - Source: #225 review cycle 1
+- Update 2026-10-21 (#233): a rebuild now keeps its report in the course file until the student dismisses it, and adds an undismissed report to the next rebuild's (`packages/index/src/rebuild-report.ts`, `rebuildCourse`'s carry-over). So the table names are now persisted data that crosses app versions: a later rename of `topics` or `confirmations` leaves an undismissed report under the old name, which `DISCARDED_ROW` counts as `OTHER_ROW`. `readRebuildReport` also reads an older file's `rebuild_report` with the current reader, fixing that table's shape across versions, the coupling `readDeck` already has.
+
+## 2026-10-21 — a dismissal clears the rebuild report the file holds, not the one the student saw
+
+- Where: `apps/server/src/course-file.ts` `dismissRebuildReport`; `apps/web/src/decks/DecksScreen.tsx` `dismiss`
+- What: `DELETE /courses/:id/rebuild-report` carries nothing that identifies the report the student was shown. A decks screen left open across a restart that brings a schema bump stops polling, so it never sees the second rebuild's discards, which are summed into the file's report. A press on its stale Dismiss button then deletes discards the student was never told of, the duty `docs/adr/0004-storage.md` § Decision (d) states. Unlikely while schema bumps are rare. Root cause: the report has no revision, so the dismissal cannot be made conditional on the one shown.
+- Source: #233 review cycle 1
 
 ## 2026-10-21 — ADR 0006's carrier ledger names the old home of the quotable field list
 

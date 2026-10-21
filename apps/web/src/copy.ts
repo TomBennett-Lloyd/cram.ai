@@ -14,6 +14,7 @@ export const PENDING = {
   decks: 'Loading decks…',
   answer: 'Checking your slides…',
   repair: 'Updating this course’s stored decks…',
+  dismissal: 'Dismissing…',
 } as const;
 
 /** The fixed system string for a question no surviving unit answers (`docs/standards/grounding.md` rule 5). */

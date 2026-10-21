@@ -75,6 +75,15 @@ describe('the rebuild report', () => {
     course.close();
   });
 
+  it('refuses to record a table with no rows lost', () => {
+    const course = openOrFail(temp.spec);
+    expect(() => {
+      course.recordRebuildReport([{ table: 'notes', rows: 0 }]);
+    }).toThrow(/CHECK constraint/);
+    expect(course.rebuildReport()).toEqual([]);
+    course.close();
+  });
+
   it('records nothing for a rebuild that discarded nothing', async () => {
     olderFileWithNotes(0);
     const { course } = await rebuilt();

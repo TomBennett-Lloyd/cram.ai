@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { DISMISS, RETRY } from '../copy';
 
-/** A message the reader can say they have read, which then goes for good. */
+/** A message the reader can say they have read; `onDismiss` is absent while a dismissal is under way. */
 export interface Dismissible {
   readonly message: string;
-  readonly onDismiss: () => void;
+  readonly onDismiss: (() => void) | undefined;
 }
 
 /** A visible label in an `aria-busy` container, never a live region (`docs/standards/react.md` § Async surface convention). */
@@ -34,7 +34,11 @@ export const Failed = ({
     {dismissible !== undefined && (
       <>
         <p>{dismissible.message}</p>
-        <button type="button" onClick={dismissible.onDismiss}>
+        <button
+          type="button"
+          aria-disabled={dismissible.onDismiss === undefined}
+          onClick={dismissible.onDismiss}
+        >
           {DISMISS}
         </button>
       </>

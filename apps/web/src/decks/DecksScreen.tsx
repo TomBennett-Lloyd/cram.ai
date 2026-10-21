@@ -17,7 +17,11 @@ import { type Dismissible, Empty, Failed, Pending } from '../shell/async-states'
 import { repairing, useIngestStatus } from './use-ingest-status';
 
 /** Where dismissing the rebuild report has got to; a refused or failed call is reported in the alert. */
-type Dismissal = { readonly status: 'idle' } | { readonly status: 'dismissed' } | ApiFailure;
+type Dismissal =
+  | { readonly status: 'idle' }
+  | { readonly status: 'pending' }
+  | { readonly status: 'dismissed' }
+  | ApiFailure;
 
 interface Refused {
   readonly fileName: string;
@@ -103,18 +107,26 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   /**
    * The server's report is empty once it answers, so the notice is hidden rather than re-read: a
    * re-read remounts the alert, which would announce the notice again. Its button goes with it, so
-   * the focus lands on the screen's next act, the picker (`docs/standards/design.md` rule 11).
+   * the focus lands on the screen's next act, the picker, unless the reader has moved it since the
+   * press (`docs/standards/design.md` rule 11). The answer waits behind every queued upload.
    */
   const dismiss = (): void => {
+    const pressed = document.activeElement;
+    setDismissal({ status: 'pending' });
     void api.dismissRebuildReport(courseId).then((result) => {
+      const held = document.activeElement;
+      if (result.status === 'ok' && (held === pressed || held === document.body))
+        picker.current?.focus();
       setDismissal(result.status === 'ok' ? { status: 'dismissed' } : result);
-      if (result.status === 'ok') picker.current?.focus();
     });
   };
   const stored = state.status === 'ready' ? state.ingest.stored : undefined;
   const lost: Dismissible | undefined =
     dismissal.status !== 'dismissed' && stored?.state === 'read' && stored.discarded.length > 0
-      ? { message: discardedMessage(stored.discarded), onDismiss: dismiss }
+      ? {
+          message: discardedMessage(stored.discarded),
+          onDismiss: dismissal.status === 'pending' ? undefined : dismiss,
+        }
       : undefined;
   const onChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const input = event.currentTarget;
@@ -128,7 +140,9 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const messages = [
     ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
     ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
-    ...(dismissal.status === 'idle' || dismissal.status === 'dismissed'
+    ...(dismissal.status === 'idle' ||
+    dismissal.status === 'pending' ||
+    dismissal.status === 'dismissed'
       ? []
       : [failureMessage(dismissal)]),
     ...(state.status === 'ready' ? storedMessages(state.ingest) : []),
@@ -154,6 +168,7 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
           onRetry={state.status === 'failed' ? reread : undefined}
         />
       )}
+      {dismissal.status === 'pending' && <Pending label={PENDING.dismissal} />}
       {state.status === 'ready' && awaitingRepair(state.ingest) && (
         <Pending label={PENDING.repair} />
       )}
