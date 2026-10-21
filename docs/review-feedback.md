@@ -413,11 +413,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-21 — PR #214 — eval-measured-commit-egress-entry
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to decide one extra beyond the owner's "214 yeah lets land it and iterate from there" (chat, 2026-10-21). That approval came before #165's first-party census (4cea3a2) reached `main`, and the census flags `eval/src/measured-commit.ts`, which imports `node:child_process`. The ask is to grant it an entry in `.claude/network-egress.allowlist`:
   - what the file does: `measuredCommit` runs `git status --porcelain` and `git rev-parse --short HEAD` in the local checkout, so that a tier-2 report names the commit it measured (`docs/adr/0005-evaluation-as-gate.md` § Decision (f));
   - why the entry is safe: neither subcommand opens a connection;
   - who imports it: only `eval/src/live-run.measure.test.ts` (the `pnpm eval` entry) and the file's own test.
 - **Why**: `.claude/network-egress.allowlist` is a `humanAlways` path, and each entry is an owner decision under `CLAUDE.md` § Hard constraints. The census header allow-lists a false positive with a reason that says so. The alternative is to move the git calls into a `.test.` file or a package.json one-liner. That would only dodge the census, and it would drop the guard's tests.
 - **How applied**: the PR as proposed, with the one allow-list line. It is revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: Owner, chat, 2026-10-21: "approve 214 and 252" — accepts the allow-list line for eval/src/measured-commit.ts; earlier "214 yeah lets land it and iterate from there". Approved, no changes.
