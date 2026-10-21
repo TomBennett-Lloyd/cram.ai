@@ -65,6 +65,8 @@ let dir = typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallba
 
 // Appends each simple command's words to `commands`; a nested scan is a `"$(...)"`
 // body and returns the index past the `)` that closes it, the first at paren depth 0 (#241).
+// Only a `(` that opens something counts: one at command position, or after `$`, `<` or
+// `>`. A `(` inside `${...}` or `[...]` opens nothing and has no `)` to close it.
 function scan(src, i, commands, nested) {
   const heredocs = [];
   let depth = 0;
@@ -104,7 +106,7 @@ function scan(src, i, commands, nested) {
       end();
       return i + 1;
     } else if (';&|()'.includes(c)) {
-      if (c === '(') depth++;
+      if (c === '(' && (word === null || /[$<>]$/.test(word))) depth++;
       else if (c === ')') depth--;
       split();
       i++;
