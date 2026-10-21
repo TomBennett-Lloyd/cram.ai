@@ -158,3 +158,8 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #233 plan split the shared `IngestStatus` shape change (step 2) from the web consumer that answers it (step 3), and the lane had to land both in one commit because `pnpm verify` is whole-repo and the web package is red between them. A plan step that changes a shared type is not committable on its own; nothing in `.claude/agents/planner.md` asks whether a step's `Verify:` can pass before its consumers move. One ticket so far.
+
+## 2026-10-21 — PR #264
+
+- Phase: verify
+- Observed: `pnpm verify` in the #209 lane went red twice on the gateway clock assertion #243 owns, with a rerun green each time, on a diff that cannot reach `packages/gateway`. Third rerun that flake has cost today (PR #255 took one), about ten minutes each under load; #243 is dispatched.
