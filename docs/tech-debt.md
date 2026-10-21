@@ -38,7 +38,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
 | grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
 | ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
-| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                  | #292         |
 | ADR 0003's restatement ledger does not list #20's new carriers                               | #298         |
 | ADR 0006's carrier ledger names the old home of the quotable field list                      | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                         | #298         |
@@ -130,3 +129,21 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-ledgers.sh`'s unlisted-hit loop
 - What: every path under `.claude/ledgers/` is exempt from the unlisted-hit check, so another ledger's `claim:` or `#` line restating a value is never returned. Only the lines the gate itself checks (`owner:`, `cite:`, `carrier:`, `excluded:`) need the exemption. No hidden restatement exists today (#179's review sweep).
 - Source: #179 review
+
+## 2026-10-21 — `describeError` is copied in each gateway adapter
+
+- Where: `describeError` in `packages/gateway/src/adapters/onnx/encoder-artefact.ts` and in `packages/gateway/src/adapters/openai-http/http-failure.ts`
+- What: two adapters each write their own copy of the one-line description of a caught error. #171 merged the two copies inside the HTTP adapter into `http-failure.ts`. Merging across adapters belongs to the adapters root (`docs/standards/structure.md` rule 5), which is a change of its own.
+- Source: #171 review cycle 1
+
+## 2026-10-21 — `LoopbackEndpoint` is unbranded, so every generator entry point re-parses its config
+
+- Where: `LoopbackEndpoint` and `HttpGeneratorConfig` in `packages/gateway/src/role-config.ts`; `OpenAiHttpGenerator`'s constructor and `loadOpenAiHttpGenerator` in `packages/gateway/src/adapters/openai-http/openai-http-generator.ts`
+- What: a value of type `HttpGeneratorConfig` does not prove its endpoint is on loopback, so each entry point must parse it again before any request, and throw if it is not. #171's loader needed its own parse before `/api/show`, and a test now guards that parse. Branding the schema would move the proof into the type (`docs/standards/typing.md` rules 1 and 3), but it touches every consumer of the config.
+- Source: #171 review cycle 1
+
+## 2026-10-21 — the trim-batch trigger does not say whether a `+`-joined tier counts
+
+- Where: `docs/standards/prose.md` § Trim batches (first paragraph); `.claude/skills/review-loop/SKILL.md` **Trim-batch lane**
+- What: both say a PR whose diff `.claude/scripts/verify-tier.sh` classifies `source-prose` or `docs` is a trim batch. #292 made composite tier names reachable, so a trim batch that writes the restatement ledger prose.md rule 1 asks for now classifies `source-prose+ledgers`, and neither text says whether that counts. Nothing regressed: before #292 a diff touching a ledger classified `full`, which was never a trim batch. The fix is a standards decision.
+- Source: #292 review cycle 1

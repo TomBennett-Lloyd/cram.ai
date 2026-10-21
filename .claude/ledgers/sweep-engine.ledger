@@ -12,3 +12,5 @@ excluded: docs/standards/architecture.md
 excluded: docs/standards/evidence.md
 excluded: package.json
 excluded: docs/tech-debt.md
+excluded: .claude/scripts/verify-tier.sh
+excluded: .claude/scripts/verify-tier.test.sh

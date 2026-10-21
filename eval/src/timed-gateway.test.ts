@@ -50,6 +50,15 @@ describe('TimedGateway', () => {
     expect(gateway.durations('reranker')).toEqual([3]);
   });
 
+  it('carries the inner generator’s pin and served-weights record', () => {
+    const inner = new ScriptedGateway(() => ({ status: 'content', content: '1' }));
+    const { generator } = new TimedGateway(inner, steppingClock(1));
+    expect([generator.pin, generator.served]).toEqual([
+      inner.generator.pin,
+      inner.generator.served,
+    ]);
+  });
+
   it('has no reranker when the inner gateway has none', () => {
     const inner = new ScriptedGateway(() => ({ status: 'content', content: '1' }));
     expect(new TimedGateway(inner, steppingClock(1)).reranker).toBeNull();
