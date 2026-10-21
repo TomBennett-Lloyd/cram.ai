@@ -55,10 +55,7 @@ import {
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
 
-/**
- * Chunks each ranked list reads before it is deduplicated to slides and fused; provisional on the
- * same terms as `RETRIEVAL_K` (`docs/adr/0008-slide-chunking.md` § Decision (f)).
- */
+/** Chunks each ranked list reads before its dedupe to slides (`docs/adr/0008-slide-chunking.md` § Decision (f)); provisional as `RETRIEVAL_K` is. */
 export const CANDIDATES_PER_LIST = 50;
 
 export interface SearchQuery {

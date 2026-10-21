@@ -1,11 +1,7 @@
 import { embedText } from './embed-text';
 import type { QuotableFields } from './slide-chunk';
 
-/**
- * The share of the embedder's window a piece is cut to, measured at its parent's density, so a
- * piece up to a third denser than its parent still fits in one round. Tuned against
- * `split-chunk.test.ts`; carriers: `.claude/ledgers/slide-chunking.ledger`.
- */
+/** Share of the window a piece is cut to at its parent's density; tuned by `split-chunk.test.ts`, carriers `.claude/ledgers/slide-chunking.ledger`. */
 export const CHUNK_WINDOW_FILL = 0.75;
 
 /** What the embedder reported for text it would not embed whole (`packages/gateway/src/encoder-requests.ts`, #66). */
@@ -75,11 +71,7 @@ const packed = (
   return groups;
 };
 
-/**
- * Cuts text the embedder reported over-length between its lines, into pieces sized from the density
- * it measured (`docs/adr/0008-slide-chunking.md` § Decision (d) and (e)). A piece may itself still
- * be over-length; the caller measures it again.
- */
+/** Cuts over-length text between its lines into pieces sized from the measured density (`docs/adr/0008-slide-chunking.md` § Decision (d), (e)); a piece may still be over-length. */
 export const splitChunk = (chunk: QuotableFields, measured: OverLengthMeasure): ChunkSplit => {
   const lines = chunkLines(chunk);
   const middle = Math.ceil(lines.length / 2);

@@ -7,23 +7,17 @@ import {
 } from '@cram/shared';
 import type { EmbedderIdentity } from './embedder-identity';
 
-/** One chunk and its vector; `undefined` is a chunk found by its words only. */
 export interface IndexedChunk {
   readonly chunk: SlideChunk;
   readonly embedding: Float32Array | undefined;
 }
 
-/**
- * A slide and the chunks it is indexed as (`docs/adr/0008-slide-chunking.md` § Decision (a), (b)).
- * One whole-slide chunk with no vector stores the slide for listing, citation and BM25 outside the
- * vector list: a slide the embedder does not take is never truncated (#338).
- */
+/** A slide and its chunks (`docs/adr/0008-slide-chunking.md` § Decision (a), (b)); one whole chunk with no vector is #338's words-only slide. */
 export interface IndexedSlide {
   readonly record: SlideRecord;
   readonly chunks: readonly [IndexedChunk, ...IndexedChunk[]];
 }
 
-/** The slide as one chunk, with `embedding` as its vector. */
 export const wholeSlide = (
   record: SlideRecord,
   embedding: Float32Array | undefined,
@@ -46,11 +40,7 @@ export const requireDimension = (
 
 const lineKey = ({ field, text }: { field: string; text: string }): string => `${field}\n${text}`;
 
-/**
- * Refuses chunks that are not numbered 1..n in order, that carry a title other than their slide's,
- * that leave a split slide partly outside the vector list, or that do not hold exactly their slide's
- * lines in order: the indexes cover every line of every slide (`docs/adr/0008-slide-chunking.md` § Context).
- */
+/** Refuses chunks misnumbered, mistitled, partly without vectors, or not exactly their slide's lines in order (`docs/adr/0008-slide-chunking.md` § Context). */
 export const requireSlideChunks = (
   operation: string,
   record: SlideRecord,

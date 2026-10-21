@@ -14,7 +14,6 @@ export type EmbedTextResult =
   | { readonly status: 'embedded'; readonly vector: Float32Array }
   | ({ readonly status: 'over-length' } & OverLengthMeasure);
 
-/** Embeds texts in one call, one result per text in order. */
 export type EmbedTexts = (texts: readonly string[]) => Promise<readonly EmbedTextResult[]>;
 
 interface Piece {
@@ -34,7 +33,6 @@ const resultsFor = async (
   return results;
 };
 
-/** The pieces after a round, or `undefined` once one of them could not be split. */
 const replacedPieces = (
   pieces: readonly Piece[],
   next: ReadonlyMap<Piece, readonly Piece[] | undefined>,
@@ -55,10 +53,8 @@ const indexedChunks = (pieces: readonly Piece[]): readonly IndexedChunk[] =>
   }));
 
 /**
- * Embeds each slide whole, splits any the embedder reports over-length, and embeds the pieces
- * again until every one fits, one embed call per round (`docs/adr/0008-slide-chunking.md`
- * § Decision (c)–(e)). Every split leaves each piece fewer lines than its parent, so the rounds
- * end. A slide holding a line too long to embed alone keeps one whole-slide chunk with no vector.
+ * Embeds each slide whole, then splits and re-embeds what the embedder reports over-length, one call per round (`docs/adr/0008-slide-chunking.md` § Decision (c)–(e)).
+ * Each split leaves every piece fewer lines than its parent, so the rounds end.
  */
 export const embedSlideChunks = async (
   embed: EmbedTexts,

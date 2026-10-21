@@ -54,11 +54,9 @@ export const text = (bytes: Uint8Array | undefined): string | undefined =>
 
 export const vector = (...values: number[]): Float32Array => new Float32Array(values);
 
-/** The slide as one whole chunk. */
 export const indexed = (record: SlideRecord, embedding: Float32Array | undefined): IndexedSlide =>
   wholeSlide(record, embedding);
 
-/** The slide indexed as one chunk per embedding: its body lines dealt out in order as evenly as they go, its notes and captions in the last chunk. */
 export const chunked = (
   record: SlideRecord,
   first: Float32Array,
@@ -81,7 +79,6 @@ export const chunked = (
   return { record, chunks: [head, ...tail] };
 };
 
-/** An `EmbedSlides` that indexes each slide whole, with the vector `vectors` gives it in order. */
 export const embedWhole =
   (
     vectors: (slides: readonly SlideRecord[]) => Promise<readonly (Float32Array | undefined)[]>,
