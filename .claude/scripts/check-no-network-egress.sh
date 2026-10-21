@@ -13,7 +13,8 @@
 # dependencies are. A listed dependency the installed tree lacks is exit 2 — an uninstalled
 # tree scans clean, and that is a broken check, not a verdict — unless its parent declares it
 # optional: pnpm lists every platform variant of an optional binary and installs one, so the
-# others are absent, unscanned, and an entry naming one is not stale.
+# others are absent, unscanned, and an entry naming one is not stale — unless the same name
+# is installed under another parent, where that instance's scan decides (#182).
 #
 # DETECTION is a static scan of each package's .js/.mjs/.cjs, bundled node_modules included,
 # one arm per way in:
@@ -230,12 +231,13 @@ while IFS="$(printf '\t')" read -r name version arm hit; do
   fi
 done <"$SCRATCH/detected.tsv"
 
+awk -F'\t' '$3 != "-" { print $1 }' "$SCRATCH/census.tsv" >"$SCRATCH/installed.names" || exit 2
 while IFS= read -r name; do
   if ! cut -f1 "$SCRATCH/detected.tsv" | grep -qxF -- "$name"; then
-    if grep -qxF -- "$name" "$SCRATCH/absent.names"; then
-      absent+=("  absent $name — an optional dependency not installed on this platform")
-    elif cut -f1 "$SCRATCH/census.tsv" | grep -qxF -- "$name"; then
+    if grep -qxF -- "$name" "$SCRATCH/installed.names"; then
       errors+=("$name is allow-listed but the scan no longer detects it — strike the entry")
+    elif grep -qxF -- "$name" "$SCRATCH/absent.names"; then
+      absent+=("  absent $name — an optional dependency not installed on this platform")
     else
       errors+=("$name is allow-listed but is not a production dependency — strike the entry")
     fi

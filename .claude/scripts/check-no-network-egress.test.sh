@@ -329,6 +329,22 @@ expect_stdout "absent top-linux-x64 — an optional dependency not installed on 
 expect_stdout "OK — 0 production package(s) scanned, 0 network-capable"
 end
 
+# The absent instance sits at another version's path, as pnpm would lay it out.
+begin "an entry whose name is absent under one parent but installed and clean under another is stale"
+fixture variant_two_parents
+pkg parent-a package.json '{"optionalDependencies":{"variant":"2.0.0"}}'
+pkg parent-a index.js 'module.exports = 1;'
+pkg parent-b index.js 'module.exports = 2;'
+pkg variant index.js 'module.exports = 3;'
+absent_variant="\"variant\":{\"from\":\"variant\",\"version\":\"2.0.0\",\"path\":\"$DIR/node_modules/.pnpm/variant@2.0.0/node_modules/variant\"}"
+tree "$(dep parent-a "$absent_variant"),$(dep parent-b "$(dep variant)")" parent-a parent-b
+allow "variant ships a native addon on one platform only"
+run_check
+expect_rc 1 "$rc"
+expect_stderr "ERROR variant is allow-listed but the scan no longer detects it"
+expect_not_stdout "absent variant"
+end
+
 # chmod 000 does not stop root reading the file, so under root the case cannot be built.
 begin "a package file the scan cannot read is exit 2, not a clean scan"
 if [ "$(id -u)" -eq 0 ]; then
