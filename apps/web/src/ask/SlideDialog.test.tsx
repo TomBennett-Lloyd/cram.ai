@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { QUEEN, COMB_CHART } from '../api/api-fixture';
+import { HOLLOWMERE_QUEEN, HOLLOWMERE_COMB_CHART } from '../api/api-fixture';
 import { DERIVED_TEXT, SLIDE_HAS_NO_TEXT, SLIDE_IMAGE_MISSING, SLIDE_LINES } from '../copy';
 import type { CitedSlide } from './cited-slide';
 import { SlideDialog } from './SlideDialog';
@@ -23,7 +23,7 @@ const lines = () =>
 
 describe('SlideDialog', () => {
   it('shows the slide’s stored image, read from its own route', () => {
-    open({ slide: QUEEN, quotes: [] });
+    open({ slide: HOLLOWMERE_QUEEN, quotes: [] });
     const image = within(panel()).getByRole('img');
     expect(image.getAttribute('src')).toBe(
       '/courses/hollowmere/slide-image?lectureId=lecture-01&slideNo=2',
@@ -34,7 +34,7 @@ describe('SlideDialog', () => {
   });
 
   it('lists each line ingest separated, with the quoted ones marked', () => {
-    open({ slide: QUEEN, quotes: ["The queen is the colony's only female"] });
+    open({ slide: HOLLOWMERE_QUEEN, quotes: ["The queen is the colony's only female"] });
     expect(lines()).toEqual([
       'One queen per colony',
       "[The queen is the colony's only female]",
@@ -44,32 +44,35 @@ describe('SlideDialog', () => {
   });
 
   it('marks both parts of a quote that runs across a line break', () => {
-    open({ slide: QUEEN, quotes: ['per colony The queen'] });
+    open({ slide: HOLLOWMERE_QUEEN, quotes: ['per colony The queen'] });
     expect(lines().slice(0, 2)).toEqual([
       'One queen [per colony]',
       "[The queen] is the colony's only female",
     ]);
   });
 
-  it('labels derived text, and no typed text', () => {
-    open({ slide: { ...QUEEN, record: { ...QUEEN.record, derived: true } }, quotes: [] });
+  it('labels derived text where it is shown beside its image (ADR 0006 § Decision (f))', () => {
+    open({
+      slide: { ...HOLLOWMERE_QUEEN, record: { ...HOLLOWMERE_QUEEN.record, derived: true } },
+      quotes: [],
+    });
     expect(within(panel()).getByText(DERIVED_TEXT)).toBeDefined();
   });
 
   it('labels no typed slide derived', () => {
-    open({ slide: QUEEN, quotes: [] });
+    open({ slide: HOLLOWMERE_QUEEN, quotes: [] });
     expect(within(panel()).queryByText(DERIVED_TEXT)).toBeNull();
   });
 
-  it('shows an image-only slide’s image and says it has no text', () => {
-    open({ slide: COMB_CHART, quotes: [] });
+  it('shows an image-only slide of the synthetic deck, as ingest stores it with no OCR, and says it has no text', () => {
+    open({ slide: HOLLOWMERE_COMB_CHART, quotes: [] });
     expect(within(panel()).getByRole('img')).toBeDefined();
     expect(panel().textContent).toContain(SLIDE_HAS_NO_TEXT);
     expect(within(panel()).queryByRole('list')).toBeNull();
   });
 
   it('says no picture is stored when the image cannot be loaded', () => {
-    open({ slide: QUEEN, quotes: [] });
+    open({ slide: HOLLOWMERE_QUEEN, quotes: [] });
     fireEvent.error(within(panel()).getByRole('img'));
     expect(within(panel()).queryByRole('img')).toBeNull();
     expect(panel().textContent).toContain(SLIDE_IMAGE_MISSING);

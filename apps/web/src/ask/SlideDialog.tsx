@@ -42,8 +42,7 @@ const FieldText = ({ field, segments }: MarkedField) => {
 };
 
 /**
- * The cited slide as stored: its rendering, then each line ingest separated, with the citations'
- * quotes marked. `CitedSlide` is the whole opening contract, so any list of sources can open it.
+ * The cited slide's rendering and lines, quotes marked, as a modal opened by a `CitedSlide` alone.
  * Focus lands on the heading and returns to the opener from the effect cleanup
  * (`docs/standards/react.md`, the modal paragraph).
  */
@@ -88,7 +87,7 @@ export const SlideDialog = ({
           ×
         </button>
       </header>
-      <SlideFigure key={slide.sourceId} record={record} />
+      <SlideFigure record={record} />
       {fields.length === 0 ? (
         <Empty>{SLIDE_HAS_NO_TEXT}</Empty>
       ) : (

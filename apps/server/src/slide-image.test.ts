@@ -1,6 +1,8 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { CourseId } from '@cram/shared';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { EmbedderIdentity, openCourse } from '@cram/index';
+import { CourseId, Deck, SlideImage } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
@@ -12,6 +14,7 @@ import {
   stopTestServer,
   type TestServer,
   uploadPath,
+  WordEmbedder,
 } from './server-fixture';
 
 /** Lecture 1 of the synthetic deck (`eval/decks/hollowmere/lecture-01.json`), two slides of it. */
@@ -46,7 +49,7 @@ const withColony = async (): Promise<TestServer> => {
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 describe('GET /courses/:id/slide-image', () => {
-  it('sends a stored slide’s rendering under its media type, to this origin only', async () => {
+  it('sends a stored slide’s rendering, same-origin only: an <img> from another site sends no Origin to refuse', async () => {
     const server = await withColony();
     const response = await fetchImage(server, imagePath('lecture-01', '2'));
     expect(response.status).toBe(200);
@@ -69,6 +72,33 @@ describe('GET /courses/:id/slide-image', () => {
       ),
     );
     expect(one?.equals(two ?? Buffer.alloc(0))).toBe(false);
+  });
+
+  it('sends a JPEG rendering as a JPEG', async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'cram-server-'));
+    const courseId = CourseId.parse('bio');
+    const path = courseFilePath(dataDir, courseId);
+    mkdirSync(dirname(path), { recursive: true });
+    const { pin } = new WordEmbedder();
+    const embedder = EmbedderIdentity.parse({ model: `${pin.model}@${pin.sha256}`, dimension: 8 });
+    const opened = openCourse({ path, courseId, embedder });
+    if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
+    const content = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    opened.course.replaceLecture(
+      Deck.parse({
+        lectureId: 'lecture-01',
+        lectureTitle: 'The colony and its castes',
+        mediaType: 'application/pdf',
+        content: new Uint8Array([1]),
+      }),
+      [SlideImage.parse({ slideNo: 1, mediaType: 'image/jpeg', content })],
+      [],
+    );
+    opened.course.close();
+    test = await startTestServer(undefined, dataDir);
+    const response = await fetchImage(test, imagePath('lecture-01', '1'));
+    expect(response.headers.get('content-type')).toBe('image/jpeg');
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(content);
   });
 
   it('answers not-found for a slide or lecture with no stored image', async () => {

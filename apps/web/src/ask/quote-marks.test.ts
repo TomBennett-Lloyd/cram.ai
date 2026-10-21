@@ -96,7 +96,7 @@ const bracketedLines = (body: string, quotes: readonly string[]) =>
   ).map((line) => line.map(({ text, marked }) => (marked ? `[${text}]` : text)).join(''));
 
 describe('markedLines', () => {
-  it('gives one entry per line, with a quote marked at the start, middle or end of one', () => {
+  it('gives one entry per line ingest separated (`bodyOf` in packages/ingest/src/slide-text.ts), a quote marked at a line’s start, middle or end', () => {
     expect(bracketedLines('ab cd ef\ngh ij kl', ['ab', 'ij', 'ef'])).toEqual([
       '[ab] cd [ef]',
       'gh [ij] kl',

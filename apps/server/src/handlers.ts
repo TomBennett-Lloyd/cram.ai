@@ -130,7 +130,6 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
   sendJson(route.response, 200, status);
 };
 
-/** A slide number as a page number is written: `01`, `1.0` and `1e0` name no page. */
 const SlideNoParam = z
   .string()
   .regex(/^[1-9][0-9]*$/, 'a page number counted from 1')

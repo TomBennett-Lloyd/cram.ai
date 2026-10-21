@@ -33,10 +33,6 @@ const segmentsOf = (text: string, offset: number, ranges: readonly QuoteSpan[]):
   return segments;
 };
 
-/**
- * A field's runs cut at each `\n`, one entry per line ingest separated
- * (`packages/ingest/src/slide-text.ts`'s `bodyOf`); a line holding only whitespace is left out.
- */
 export const markedLines = (segments: readonly Segment[]): Segment[][] => {
   const lines: Segment[][] = [];
   let line: Segment[] = [];
@@ -47,7 +43,7 @@ export const markedLines = (segments: readonly Segment[]): Segment[][] => {
         lines.push(line);
         line = [];
       }
-      if (part !== '') line.push({ text: part, marked });
+      line.push({ text: part, marked });
     }
   }
   lines.push(line);

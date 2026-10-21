@@ -37,8 +37,7 @@ export const retrievedSlide = (
   };
 };
 
-/** Lecture 1 slide 2 of the synthetic deck (`eval/decks/hollowmere/lecture-01.json`). */
-export const QUEEN = retrievedSlide('h1-2', {
+export const HOLLOWMERE_QUEEN = retrievedSlide('h1-2', {
   courseId: CourseId.parse('hollowmere'),
   lectureId: LectureId.parse('lecture-01'),
   lectureTitle: 'The colony and its castes',
@@ -52,8 +51,7 @@ export const QUEEN = retrievedSlide('h1-2', {
   ].join('\n'),
 });
 
-/** Lecture 3 slide 3 of the synthetic deck, its `imageOnly` chart, as ingest stores it with no OCR. */
-export const COMB_CHART = retrievedSlide('h3-3', {
+export const HOLLOWMERE_COMB_CHART = retrievedSlide('h3-3', {
   courseId: CourseId.parse('hollowmere'),
   lectureId: LectureId.parse('lecture-03'),
   lectureTitle: 'Wax and comb',

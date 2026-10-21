@@ -36,7 +36,6 @@ const parsedBody = async <T>(response: Response, schema: z.ZodType<T>): Promise<
   return refusal.success ? { status: 'refused', refusal: refusal.data } : { status: 'malformed' };
 };
 
-/** Where the server sends a slide's stored rendering; an `<img>` reads it, so no client call wraps it. */
 export const slideImagePath = ({
   courseId,
   lectureId,
