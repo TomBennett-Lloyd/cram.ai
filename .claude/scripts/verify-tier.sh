@@ -109,9 +109,9 @@
 #     on this rung changes (cumulo#553).
 #   * check:ledgers — sweeps prose for declared carriers, and a comment-only edit
 #     can add or lose one (cumulo#535).
-#   * check:no-network-egress, when the set holds a .ts/.tsx/.js/.mjs/.cjs file —
-#     its first-party census reads source text, comments included, so a comment
-#     naming `fetch(` changes its verdict (#165).
+#   * check:no-network-egress, whenever the eslint leg runs — its first-party
+#     census reads source text, comments included, so a comment naming `fetch(`
+#     changes its verdict (#165).
 #   * check:adr-index, check:no-course-content and check:markdown-links, when the
 #     set also holds .md — the one type this rung admits without an emit proof.
 #   * the observing tests, below.

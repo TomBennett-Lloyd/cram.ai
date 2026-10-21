@@ -83,7 +83,7 @@ end
 # An allow-listed name no tracked manifest declares is reachable only transitively, so it is
 # in the census only while the shipped call walks past depth 0 (#182); a path entry is in it
 # only while the first-party census reads the real tree (#165). The case refuses an allow-list
-# with no entry of either kind rather than let the pin go vacuous.
+# with no such entry, of each kind, rather than let the pin go vacuous.
 begin "the repo's own tree passes with no arguments, transitive and first-party entries included"
 REPO=$(cd "$SCRIPTS/../.." && pwd -P) || exit 2
 listed=$(git -C "$REPO" ls-files -z -- package.json '*/package.json' |
@@ -462,13 +462,15 @@ printf 'dist/\n' >"$DIR/packages/app/src/.gitignore" || exit 2
 src src/member.ts 'const reply = this.#fetch(request);'
 src src/latest.ts 'fetch(url);'
 src src/a.testing.ts 'fetch(url);'
+src src/fixtures.test.d/x.ts 'fetch(url);'
 src src/gone.ts 'fetch(url);'
 must git -C "$DIR" add packages/app/src/gone.ts
 must rm "$DIR/packages/app/src/gone.ts"
 tree ""
 run_check
 expect_rc 1 "$rc"
-expect_stderr "2 problem(s)"
+expect_stderr "3 problem(s)"
+expect_stderr "ERROR packages/app/src/fixtures.test.d/x.ts can reach the network"
 expect_stderr "ERROR packages/app/src/latest.ts can reach the network"
 expect_stderr "ERROR packages/app/src/a.testing.ts can reach the network"
 end
