@@ -129,8 +129,10 @@ export default {
       ],
       {
         ignoreFunctions: false,
+        // CSS keywords are ASCII case-insensitive, so `currentcolor` is the
+        // same keyword as `currentColor` (#273).
         ignoreValues: [
-          'currentColor',
+          'currentcolor',
           'inherit',
           'transparent',
           'none',
@@ -138,7 +140,7 @@ export default {
           'auto',
           'initial',
           'unset',
-        ],
+        ].map((keyword) => `/^${keyword}$/i`),
       },
     ],
 
@@ -153,6 +155,11 @@ export default {
      * they are ordinary keywords, indistinguishable from `solid` or `auto` by
      * pattern — which is why every colour-bearing shorthand is on the list
      * above instead.
+     *
+     * The third pattern is a `var()` fallback. The plugin above accepts any
+     * `var()` whole, so `color: var(--a, red)` would launder `red`; here a
+     * fallback must be empty or another `var()` (#273). A fallback that goes on
+     * after its first `var()` — `var(--a, var(--b), serif)` — is not seen (#280).
      *
      * Residual, deliberately open: the *length* half of the frontend gate is
      * still allow-list-shaped, so a raw size reaches the page through any
@@ -178,7 +185,7 @@ export default {
      * syntax everywhere.
      */
     'declaration-property-value-disallowed-list': [
-      { '/.*/': [HEX_COLOUR, COLOUR_FUNCTION] },
+      { '/.*/': [HEX_COLOUR, COLOUR_FUNCTION, '/var\\([^,)]*,(?!\\s*(?:var\\(|\\)))/i'] },
       { reportDisables: true },
     ],
 

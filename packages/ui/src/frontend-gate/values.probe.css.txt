@@ -95,6 +95,10 @@
 
   /* declaration-strict-value: ignoreValues, and ignoreFunctions: false */
   color: currentColor;
+  color: currentcolor;
+  background: TRANSPARENT;
+  font-weight: 400; /* refused-by: scale-unlimited/declaration-strict-value */
+  line-height: 0.5; /* refused-by: scale-unlimited/declaration-strict-value */
   color: inherit;
   background: transparent;
   box-shadow: none;
@@ -137,6 +141,19 @@
   border-image-source: linear-gradient(#abc, transparent); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 var(--color-ink));
   grid-area: lab;
+
+  /* declaration-property-value-disallowed-list: a var() fallback is a token or empty */
+  color: var(--color-ink, red); /* refused-by: declaration-property-value-disallowed-list */
+  padding: var(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
+  width: var(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
+  width: VAR(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
+  color: var( --color-ink , red); /* refused-by: declaration-property-value-disallowed-list */
+  color: var(--color-ink, var(--color-surface, red)); /* refused-by: declaration-property-value-disallowed-list */
+  --probe-fallback: var(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
+  color: var(--color-ink, var(--color-surface));
+  color: var(--color-ink,);
+  color: var(--color-ink, );
+  transition-property: var(--probe-a), opacity;
 
   /* declaration-property-value-allowed-list: a custom property only aliases */
   --probe-alias: var(--space-1);
