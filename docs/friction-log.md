@@ -128,3 +128,18 @@ Entry format:
 
 - Phase: process
 - Observed: `merge-pr.sh`'s first run on PR #222 and again on PR #232 exited 1 without merging, and the idempotent re-run merged each at once. Both times the first run had just done `gh pr update-branch` and polled the new head's checks within the 540 s the caller allowed, while CI runs were taking three to four minutes to queue under the evening's load; the second run found the checks complete. Two merges so far; the poll budget is the caller's environment variable, not the script's, so this is a merge-owner habit to measure before it is a script change.
+
+## 2026-10-21 — PR #248
+
+- Phase: planning
+- Observed: the #231 lane's plan comment described its first design (a stub that returned a `holdAsk()` closure) in detail; review replaced it with a named option under `docs/standards/structure.md` rule 2, and the plan comment then cost two confirmation rounds of prose drift, because struck text beside new text read as still live and only rewriting the sections whole passed. One ticket so far on a plan comment that commits to a shape before review has seen it.
+
+## 2026-10-21 — PR #246
+
+- Phase: process
+- Observed: the merge owner's dispatch note for #234 named `docs/standards/structure.md` as the authority for a rule it does not state (nothing forbids keeping an unused branch for a future caller); the lane's first plan draft cited it before checking and corrected itself before the first edit. Second instance of a claim in a dispatch note reaching a lane unchecked (PR #86's precedent was the first, consumed into the four-field rule); this one rode in the overlap note, which the four-field rule allows.
+
+## 2026-10-21 — PR #255
+
+- Phase: implementation
+- Observed: every `pnpm verify` in the #183 lane ran the full tier because a `.ledger` file in the change set is a type `verify-tier.sh` cannot classify, and one run was re-run whole after the gateway timing flake #243 owns. A ledger line is the cheapest edit in the repo and buys the most expensive tier. One ticket so far; the classifier's docblock owns which extensions resolve to which rungs.
