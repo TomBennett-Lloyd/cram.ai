@@ -443,8 +443,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-21 — issue #339 — adr-0008-slide-chunking
 
-- **Category**: pending — filled at merge
+- **Category**: approved-at-plan
 - **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/339#issuecomment-6315418361 in chat on 2026-10-21, verbatim: "approve with both reccomendations for 339". After the rule 5(b) stop the owner gave a REVISE then PROCEED: "339 new adr (as long as it wont introduce a contradiction?)". `docs/adr/0008-slide-chunking.md` § Decision (a)–(j) maps one to one onto that plan's Decision outline and its ledger, and the PR body pastes the mapping. The plan comment's S0 sweep found no existing ADR sentence that the decision makes false. The PR carries nothing beyond the plan.
 - **Why**: `docs/adr/**` is a `humanAlways` path. Under `.claude/workflow.json` → `merge.approvedAtPlanRule`, an ADR PR that carries nothing beyond its approved plan merges on the owner's plan-time approval.
 - **How applied**: ADR 0008 added, its `docs/adr/README.md` index row, `docs/plan.md` § 3.1's shipped rule, and the code and eval slide the plan names. `docs/adr/0004-storage.md` is untouched.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved at plan 2026-10-21 — "approve with both reccomendations for 339"; REVISE then PROCEED: "339 new adr (as long as it wont introduce a contradiction?)"
