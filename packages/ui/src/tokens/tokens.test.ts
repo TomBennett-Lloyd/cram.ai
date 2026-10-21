@@ -73,7 +73,7 @@ describe('light and dark colour blocks', () => {
     expect(dark).toEqual(light);
   });
 
-  it('leaves spacing, type and radius tokens mode-invariant', () => {
+  it('leaves every non-colour token mode-invariant', () => {
     const darkNonColour = [...declaredProperties(DARK_SELECTOR)].filter(
       (name) => !name.startsWith('--color-'),
     );
