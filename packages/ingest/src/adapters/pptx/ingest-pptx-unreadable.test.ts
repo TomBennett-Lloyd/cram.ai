@@ -48,9 +48,14 @@ describe('ingestPptx unreadable decks', () => {
     expect(reasonOf(buildDeck(deck))).toBe('not-a-pptx');
   });
 
-  it('reports a presentation outside the transitional namespace as not a pptx', () => {
+  it('reports a Strict presentation as a limit of this reader, not of the deck', () => {
     const strict = 'http://purl.oclc.org/ooxml/presentationml/main';
     const deck = { slides: [titled('Rate laws')], presentationNamespace: strict };
+    expect(reasonOf(buildDeck(deck))).toBe('reader-limit');
+  });
+
+  it('reports a presentation part outside PresentationML as not a pptx', () => {
+    const deck = { slides: [titled('Rate laws')], presentationNamespace: NS.a };
     expect(reasonOf(buildDeck(deck))).toBe('not-a-pptx');
   });
 
