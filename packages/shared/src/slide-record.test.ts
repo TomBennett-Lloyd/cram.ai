@@ -54,7 +54,19 @@ describe('SlideRecord', () => {
 
 describe('CourseId', () => {
   it('accepts lowercase letters and digits with inner hyphens, up to the maximum length', () => {
-    for (const id of ['a', '7', 'bio-101', 'a-b-c', 'x'.repeat(MAX), 'com0', 'lpt10', 'console'])
+    for (const id of [
+      'a',
+      '7',
+      'bio-101',
+      'a-b-c',
+      'x'.repeat(MAX),
+      'com0',
+      'lpt0',
+      'lpt10',
+      'console',
+      'falcon',
+      'telecom1',
+    ])
       expect(CourseId.safeParse(id).success, id).toBe(true);
   });
 
