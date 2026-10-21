@@ -80,7 +80,8 @@ type Connected =
  * A connection to a file holding a blank or current schema; a file holding any other is closed and refused.
  * Read-only is `query_only` rather than SQLite's read-only flag, because a read-only connection cannot
  * remove the WAL files it opens beside a course file, and a closed course file holds none
- * (`rebuildCourse`; `apps/server/src/repair.test.ts`, "leaves it closed").
+ * (`rebuildCourse`; `apps/server/src/repair.test.ts`, "leaves it closed"). The cost: closing the
+ * last connection checkpoints the WAL, which rewrites committed pages but not what the file holds.
  */
 const connect = (path: string, mode: Mode): Connected => {
   const db = new Database(path, mode === 'read-only' ? { fileMustExist: true } : undefined);
@@ -151,7 +152,7 @@ const underSpecEmbedder = (file: OpenedFile, spec: OpenCourseSpec): OpenCourseRe
 export const openCourse = (spec: OpenCourseSpec): OpenCourseResult =>
   underSpecEmbedder(openFile(spec), spec);
 
-/** Opens the course file at `spec.path`, which must exist, without writing to it. */
+/** Opens the course file at `spec.path`, which must exist, without changing what it holds. */
 export const openCourseReadOnly = (spec: OpenCourseSpec): ReadCourseResult => {
   const connected = connect(spec.path, 'read-only');
   if (connected.status !== 'connected') return connected;
