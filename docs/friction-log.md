@@ -190,3 +190,18 @@ Entry format:
 
 - Phase: merge
 - Observed: the #179 lane rebased three times as `main` moved under an approved humanAlways PR, and every ledger merged on `main` meanwhile needed a `cite:` line on the branch because the branch itself was landing the rule that requires one. Once merged, its gate then cost PR #355 a fix round for an unlisted hit and PR #204 a pre-warned cite line. A gate that tightens what every open branch must carry lands cheapest when the merge owner names it in the next bounce to each open lane, which this merge owner did for #204 only after #355 had paid. Counts toward #297.
+
+## 2026-10-22 — PR #353
+
+- Phase: verify
+- Observed: the #292 lane's every `pnpm verify` ran the full composite by design (the classifier vouches for no change to itself), about five minutes each, and its 55-mutant loop ran serially for about 50 minutes because `verify-tier.test.sh` has no case filter. Separately, #269's new `sweep-engine.ledger` turned two lines of this branch's existing prose into unlisted hits that only a trial merge against `main` could show; the lane found them by running one before pushing. One ticket so far on a harness case filter; the trial-merge habit is worth a sentence in ticket-agent § 7 if it recurs.
+
+## 2026-10-22 — PR #204
+
+- Phase: review
+- Observed: the #115 lane's paraphrase sweep found `review-loop/SKILL.md:42` and dropped it as "stays true", when `architecture.md` rule 9's test is whether the file carries the value, not whether the sentence is currently true; the reviewer restored it. Also one harness run returned a green rc because the driver's renamed `set` arm fell through to bash's builtin `set` (second instance of a harness whose verdict is not what ran: PR #284's decomposed edit was the first; `evidence.md` form 6 now covers the exit-code half).
+
+## 2026-10-22 — PR #259
+
+- Phase: implementation
+- Observed: the #211 lane's first ledger sweep had no claim arm, which rule 9 requires, and the reviewer caught it: mutating the arms you wrote cannot surface an arm you never wrote, the same blind spot ticket-agent § 4's grammar list exists for, now in a sweep rather than a guard. Main then moved during the bounce round (#204), forcing a second log-only rebase before CI would run; fourth lane today to pay a round purely to a neighbour's log append.
