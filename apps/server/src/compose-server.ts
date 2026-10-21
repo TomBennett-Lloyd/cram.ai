@@ -1,4 +1,7 @@
 import {
+  type Embedder,
+  type EmbedderConfig,
+  type EncoderLoad,
   type EncoderLoadFailure,
   type GatewayConfig,
   loadOnnxEmbedder,
@@ -6,6 +9,10 @@ import {
   loadOnnxVerifier,
   type ModelGateway,
   OpenAiHttpGenerator,
+  type Reranker,
+  type RerankerConfig,
+  type Verifier,
+  type VerifierConfig,
 } from '@cram/gateway';
 import { type DataDirectoryHost, resolveDataDir } from './data-directory';
 import { readGatewayConfig } from './gateway-config';
@@ -16,12 +23,27 @@ export type GatewayBuild =
   | { readonly status: 'built'; readonly gateway: ModelGateway }
   | { readonly status: 'load-failed'; readonly failures: readonly EncoderLoadFailure[] };
 
+export interface EncoderLoaders {
+  readonly verifier: (config: VerifierConfig) => Promise<EncoderLoad<Verifier>>;
+  readonly embedder: (config: EmbedderConfig) => Promise<EncoderLoad<Embedder>>;
+  readonly reranker: (config: RerankerConfig) => Promise<EncoderLoad<Reranker>>;
+}
+
+export const ONNX_LOADERS: EncoderLoaders = {
+  verifier: loadOnnxVerifier,
+  embedder: loadOnnxEmbedder,
+  reranker: loadOnnxReranker,
+};
+
 /** Every encoder is loaded before any refusal, so one start names every snapshot to fix. */
-export const buildGateway = async (config: GatewayConfig): Promise<GatewayBuild> => {
+export const buildGateway = async (
+  config: GatewayConfig,
+  loaders: EncoderLoaders = ONNX_LOADERS,
+): Promise<GatewayBuild> => {
   const [verifier, embedder, reranker] = await Promise.all([
-    loadOnnxVerifier(config.verifier),
-    loadOnnxEmbedder(config.embedder),
-    config.reranker === undefined ? null : loadOnnxReranker(config.reranker),
+    loaders.verifier(config.verifier),
+    loaders.embedder(config.embedder),
+    config.reranker === undefined ? null : loaders.reranker(config.reranker),
   ]);
   if (
     verifier.status === 'loaded' &&

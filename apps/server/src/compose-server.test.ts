@@ -1,18 +1,25 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { GatewayConfig } from '@cram/gateway';
+import type {
+  EncoderLoad,
+  EncoderLoadFailure,
+  EncoderRole,
+  GatewayConfig,
+  Reranker,
+} from '@cram/gateway';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildGateway,
   type Composition,
+  type EncoderLoaders,
   type CompositionSpec,
   composeServer,
   type GatewayBuild,
   refusalMessage,
 } from './compose-server';
 import { developerDefaults, GATEWAY_CONFIG_FILE } from './gateway-config';
-import { gatewayOf } from './server-fixture';
+import { gatewayOf, WordEmbedder } from './server-fixture';
 
 let root: string;
 let built: GatewayConfig[];
@@ -91,17 +98,69 @@ describe('composeServer', () => {
   });
 });
 
+const failed = (role: EncoderRole): EncoderLoadFailure => ({
+  status: 'load-failed',
+  role,
+  reason: 'unreadable-file',
+  detail: role,
+});
+const loaded = <T>(encoder: T): Promise<EncoderLoad<T>> =>
+  Promise.resolve({ status: 'loaded', encoder });
+
 describe('buildGateway', () => {
-  it('names every encoder that did not load, the optional reranker included', async () => {
-    const config = defaults(join(root, 'models'));
-    const pin = { ...config.verifier.pin, role: 'reranker' as const };
-    const build = await buildGateway({ ...config, reranker: { pin, directory: '/absent' } });
+  const config = () => defaults(join(root, 'models'));
+  const withReranker = (): GatewayConfig => {
+    const base = config();
+    const pin = { ...base.verifier.pin, role: 'reranker' as const };
+    return { ...base, reranker: { pin, directory: '/absent' } };
+  };
+  const fake = gatewayOf([]);
+  const reranker: Reranker = {
+    pin: { ...fake.verifier.pin, role: 'reranker' },
+    rerank: () => Promise.resolve([]),
+  };
+  const loaders: EncoderLoaders = {
+    verifier: () => loaded(fake.verifier),
+    embedder: () => loaded(new WordEmbedder()),
+    reranker: () => loaded(reranker),
+  };
+
+  it('assembles the gateway when every encoder loads, the reranker only when configured', async () => {
+    const without = await buildGateway(config(), loaders);
+    expect(without.status === 'built' && without.gateway.reranker).toBeNull();
+    const built = await buildGateway(withReranker(), loaders);
+    expect(built.status === 'built' && built.gateway.reranker).toBe(reranker);
+    expect(built.status === 'built' && built.gateway.verifier).toBe(fake.verifier);
+    expect(built.status === 'built' && built.gateway.generator.pin).toEqual(config().generator.pin);
+  });
+
+  it('names only the encoders that failed, whichever they are', async () => {
+    const roles = async (overrides: Partial<EncoderLoaders>, gateway = withReranker()) => {
+      const build = await buildGateway(gateway, { ...loaders, ...overrides });
+      return build.status === 'load-failed' ? build.failures.map(({ role }) => role) : build.status;
+    };
+    expect(await roles({ embedder: () => Promise.resolve(failed('embedder')) })).toEqual([
+      'embedder',
+    ]);
+    expect(await roles({ verifier: () => Promise.resolve(failed('verifier')) })).toEqual([
+      'verifier',
+    ]);
+    expect(await roles({ reranker: () => Promise.resolve(failed('reranker')) })).toEqual([
+      'reranker',
+    ]);
+    expect(await roles({ reranker: () => Promise.resolve(failed('reranker')) }, config())).toEqual(
+      'built',
+    );
+  });
+
+  it('names every ONNX snapshot that did not load, the optional reranker included', async () => {
+    const build = await buildGateway(withReranker());
     expect(build.status === 'load-failed' && build.failures.map(({ role }) => role)).toEqual([
       'verifier',
       'embedder',
       'reranker',
     ]);
-    const without = await buildGateway(config);
+    const without = await buildGateway(config());
     expect(without.status === 'load-failed' && without.failures.map(({ role }) => role)).toEqual([
       'verifier',
       'embedder',

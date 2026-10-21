@@ -99,7 +99,8 @@ describe('readGatewayConfig', () => {
     writeOverrides(JSON.stringify({ generatr: defaults.generator }));
     expect(await readGatewayConfig(dataDir, defaults)).toMatchObject({ status: 'invalid' });
     writeOverrides('{');
-    expect(await readGatewayConfig(dataDir, defaults)).toMatchObject({ status: 'invalid' });
+    const read = await readGatewayConfig(dataDir, defaults);
+    expect(read.status === 'invalid' && read.issues).toMatch(/JSON/);
   });
 
   it('refuses an override the role schema refuses, such as a non-loopback endpoint', async () => {
