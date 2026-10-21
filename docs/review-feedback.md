@@ -378,3 +378,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/network-egress.allowlist` and `CLAUDE.md` are `humanAlways` paths, and #165 is a gate change the owner decides.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: Owner, chat, 2026-10-21: "approve 252, 266, 296". Approved, no changes.
+
+## 2026-10-21 — issue #179 — review-feedback-path-ledger
+
+- **Category**: pending — filled at merge
+- **Feedback**: the PR asks the owner to decide:
+  - accept `.claude/workflow.json` → `feedbackLogLedger` becoming a pointer to the declared `.claude/ledgers/review-feedback-path.ledger`. The key keeps its name. The prose floor's carriers move into the ledger, where `check:ledgers` re-runs them, and the ledger's header lists the workflow.json keys that state the path;
+  - accept that fix direction (1b) of #179, the recorded-commit check, moves to #245 rather than ship here. A declared ledger has no recorded commit, and a recorded sha that contains a new ledger file has to be a branch commit, which a squash merge never brings to `main`;
+  - accept that the ADR 0001 (d) TypeScript-form and citation arms are handed to #29, whose humanAlways ADR prose holds that ledger (sweep in the PR body).
+- **Why**: `.claude/workflow.json` is a `humanAlways` path. The other two items narrow the issue's acceptance, which only the owner can do.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
