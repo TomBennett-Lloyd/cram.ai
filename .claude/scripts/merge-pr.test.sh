@@ -3046,9 +3046,8 @@ end
 # ==========================================================================================
 # 22. a humanAlways PR, filled and labelled, DIRTY on one log alone, merges in one run
 # ==========================================================================================
-# The state #297 counted on PRs #252 and #266: the entry filled, the label on, and main
-# appending to a log while the owner reviewed. run-issue step 5 owes such a PR no
-# bounce, because this one invocation unions it. One case per log.
+# .claude/skills/run-issue/SKILL.md ticket-agent lane step 5 owes such a PR no bounce,
+# because this one invocation unions it (#297). One case per log.
 RF_FILLED_ENTRY='
 ## 2026-10-21 — PR #490 — the entry the owner approved
 
