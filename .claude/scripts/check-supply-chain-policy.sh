@@ -268,7 +268,7 @@ if [ ${#offenders[@]} -ne 0 ]; then
     printf '  ERROR %s\n' "$offender" >&2
   done
   printf '\npnpm writes these entries itself. An entry with no comment directly above it is\n' >&2
-  printf 'one nobody decided on: revert it (git checkout -- %s) and resolve to\n' "$MANIFEST_NAME" >&2
+  printf 'one nobody decided on: delete it from %s and resolve to\n' "$MANIFEST_NAME" >&2
   printf 'a version that satisfies the policy, or keep it and write down why it is safe.\n' >&2
   exit 1
 fi
