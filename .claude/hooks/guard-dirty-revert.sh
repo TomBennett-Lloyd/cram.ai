@@ -11,9 +11,8 @@
 # refusing failure would block all of them (hook-context.sh's header).
 #
 # The scan is lexical: the first word of each simple command after its `NAME=value`
-# words, with `cd <dir>` and `git -C <dir>` followed, and into `"$(...)"`. A command
-# reached through an expansion, `xargs` or a shell keyword is not seen, and neither
-# `$'…'` nor a backtick is read as a unit.
+# words, with `cd <dir>` and `git -C <dir>` followed, and into `"$(...)"` and `` `…` ``
+# bodies. A command reached through an expansion, `xargs` or a shell keyword is not seen.
 # Cases: .claude/scripts/guard-dirty-revert.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -187,6 +186,13 @@ function scan(src, i, commands, nested) {
       const j = param(src, i, commands, false);
       word = (word ?? '') + src.slice(i, j);
       i = j;
+    } else if (src.startsWith("$'", i)) {
+      const quoted = ansi(src, i);
+      word = (word ?? '') + quoted.text;
+      i = quoted.end;
+    } else if (c === '`') {
+      word ??= '';
+      i = backtick(src, i, commands);
     } else if (c === '\\') {
       if (src[i + 1] !== '\n') word = (word ?? '') + (src[i + 1] ?? '');
       i += 2;
@@ -200,13 +206,17 @@ function scan(src, i, commands, nested) {
 }
 
 // Reads the `"…"` at `i`: returns its text and the index past the closing quote. A `$(`
-// inside is scanned as a body; `\$` and `\``, like `\"` and `\\`, are escapes there.
+// or backtick inside is scanned as a body; `\$` and `\``, like `\"` and `\\`, are escapes there.
 function dquote(src, i, commands) {
   let text = '';
   i++;
   while (i < src.length && src[i] !== '"') {
     if (src.startsWith('$(', i)) {
       i = scan(src, i + 2, commands, true);
+      continue;
+    }
+    if (src[i] === '`') {
+      i = backtick(src, i, commands);
       continue;
     }
     if (src.startsWith('${', i)) {
@@ -222,7 +232,7 @@ function dquote(src, i, commands) {
 }
 
 // Reads the `${…}` at `i` as one unit and returns the index past its first unquoted `}`.
-// Its parens never reach the counter, but a `$(` inside is still scanned, so
+// Its parens never reach the counter, but a `$(` or backtick inside is still scanned, so
 // `${x:-$(git checkout …)}` is seen (#268). `'…'` quotes only outside `"…"` (`dq`), as zsh
 // reads `"${x:-'}"`; a bare `{` does not nest, which is bash's reading and the shorter unit.
 function param(src, i, commands, dq) {
@@ -230,11 +240,57 @@ function param(src, i, commands, dq) {
   while (i < src.length && src[i] !== '}') {
     if (src.startsWith('${', i)) i = param(src, i, commands, dq);
     else if (src.startsWith('$(', i)) i = scan(src, i + 2, commands, true);
+    else if (src[i] === '`') i = backtick(src, i, commands);
+    else if (src.startsWith("$'", i) && !dq) i = ansi(src, i).end;
     else if (src[i] === '"') i = dquote(src, i, commands).end;
     else if (src[i] === "'" && !dq) i = src.indexOf("'", i + 1) + 1 || src.length;
     else i += src[i] === '\\' ? 2 : 1;
   }
   return i + 1;
+}
+
+const ANSI_ESCAPES = {
+  a: '\x07',
+  b: '\b',
+  e: '\x1b',
+  E: '\x1b',
+  f: '\f',
+  n: '\n',
+  r: '\r',
+  t: '\t',
+  v: '\v',
+};
+const ANSI_ESCAPE = /\\(?:([0-7]{1,3})|x([\da-fA-F]{1,2})|u([\da-fA-F]{1,4})|U([\da-fA-F]{1,8})|(.))/gs;
+
+// Reads the `$'…'` at `i`: returns its decoded text and the index past the closing quote.
+// An escaped quote never ends it; an unknown escape drops its backslash, as in zsh (#282).
+function ansi(src, i) {
+  let j = i + 2;
+  while (j < src.length && src[j] !== "'") j += src[j] === '\\' ? 2 : 1;
+  const text = src.slice(i + 2, j).replace(ANSI_ESCAPE, (all, oct, x, u, U, other) => {
+    if (other !== undefined) return ANSI_ESCAPES[other] ?? other;
+    const cp = oct === undefined ? parseInt(x ?? u ?? U, 16) : parseInt(oct, 8);
+    return cp <= 0x10ffff ? String.fromCodePoint(cp) : all;
+  });
+  return { text, end: j + 1 };
+}
+
+// Bracket, in `commands`, the commands of a body the shell runs in a subshell, so a `cd` among
+// them ends with the body. Markers rather than index ranges, so a rescan's truncation drops
+// them with the commands they bracket. Backtick bodies only (#282); `$(…)` and `(…)` are #357.
+const ENTER_SUBSHELL = Symbol('enter subshell');
+const LEAVE_SUBSHELL = Symbol('leave subshell');
+
+// Scans the `` `…` `` at `i` as a command body and returns the index past its closing backtick.
+// The body is delimited before it is scanned, the shells' order, so a quote inside never holds
+// the closing backtick (#282).
+function backtick(src, i, commands) {
+  let j = i + 1;
+  while (j < src.length && src[j] !== '`') j += src[j] === '\\' ? 2 : 1;
+  commands.push(ENTER_SUBSHELL);
+  scan(src.slice(i + 1, j).replace(/\\([$`\\])/g, '$1'), 0, commands, false);
+  commands.push(LEAVE_SUBSHELL);
+  return j + 1;
 }
 
 function checkoutOperands(args) {
@@ -284,7 +340,16 @@ const git = (cwd, ...args) => {
 
 const commands = [];
 scan(command, 0, commands, false);
+const outerDirs = [];
 for (const simple of commands) {
+  if (simple === ENTER_SUBSHELL) {
+    outerDirs.push(dir);
+    continue;
+  }
+  if (simple === LEAVE_SUBSHELL) {
+    dir = outerDirs.pop();
+    continue;
+  }
   // `NAME=value` words lead a command without being it.
   let a = 0;
   while (a < simple.length && /^[A-Za-z_]\w*\+?=/.test(simple[a])) a++;
