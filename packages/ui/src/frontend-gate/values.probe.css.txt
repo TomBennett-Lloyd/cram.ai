@@ -200,6 +200,16 @@
   --probe-bare-word: var; /* refused-by: cram/var-references-only */
 }
 
+/* at-rule-disallowed-list: @property, whose initial-value no value rule reads */
+@property --probe-size { syntax: '<length>'; inherits: false; initial-value: 4px; } /* refused-by: at-rule-disallowed-list */
+@property --probe-colour { syntax: '<color>'; inherits: false; initial-value: red; } /* refused-by: at-rule-disallowed-list */
+@PROPERTY --probe-case { syntax: '<length>'; inherits: false; initial-value: 4px; } /* refused-by: at-rule-disallowed-list */
+@supports (display: grid) { @property --probe-nested { syntax: '*'; inherits: false; } } /* refused-by: at-rule-disallowed-list */
+.p { padding: var(--probe-size); color: var(--probe-colour); }
+/* The name is anchored: an at-rule whose name only contains it is not refused. */
+@xproperty --probe-prefixed {}
+@property-x --probe-suffixed {}
+
 /* selector-pseudo-class-disallowed-list: bare :focus only */
 .p:focus { color: var(--color-ink); } /* refused-by: selector-pseudo-class-disallowed-list */
 .p:focus-visible { color: var(--color-ink); }

@@ -35,6 +35,9 @@
 /* stylelint-disable-next-line selector-pseudo-class-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
 .s:focus { color: var(--color-ink); }
 
+/* stylelint-disable-next-line at-rule-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
+@property --probe-size { syntax: '<length>'; inherits: false; initial-value: 4px; }
+
 /* A disable with no scope at all. */
 /* stylelint-disable -- probe */ /* refused-by: --report-unscoped-disables reportDisables */
 .u { color: red; }
