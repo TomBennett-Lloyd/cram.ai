@@ -2,7 +2,6 @@ import type { Element } from '@xmldom/xmldom';
 import { NS } from './ooxml';
 
 type Read = (element: Element) => string;
-/** A construct's linear form, given the reader for its arguments. */
 type Construct = (element: Element, read: Read) => string;
 
 const childrenOf = (element: Element): Element[] => [...element.children];
@@ -27,22 +26,18 @@ const argument = (element: Element, name: string, read: Read): string => {
 /** `ST_OnOff`'s false values (ECMA-376 Part 1 § 22.9.2.7). */
 const OFF: ReadonlySet<string> = new Set(['off', 'false', '0']);
 
-/** A run of letters and digits, or one character. */
 const ATOM = /^(?:[\p{L}\p{N}]+|.)$/u;
 
-/** One delimiter group alone needs no brackets of its own. */
 const isDelimited = (child: Element | undefined, read: Read): boolean => {
   const shown = child === undefined ? [] : childrenOf(child).filter((c) => read(c) !== '');
   return shown.length === 1 && shown[0]?.localName === 'd';
 };
 
-/** An operand is bracketed unless it is an atom or one delimiter group. */
 const operand = (element: Element, name: string, read: Read): string => {
   const text = argument(element, name, read);
   return ATOM.test(text) || isDelimited(childNamed(element, name), read) ? text : `(${text})`;
 };
 
-/** An empty script is omitted with its operator. */
 const script = (element: Element, name: string, operator: string, read: Read): string =>
   argument(element, name, read) === '' ? '' : `${operator}${operand(element, name, read)}`;
 

@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval": "CRAM_EVAL=1 vitest run src/live-run.measure.test.ts --silent=false"
   },
   "dependencies": {
     "@cram/gateway": "workspace:*",

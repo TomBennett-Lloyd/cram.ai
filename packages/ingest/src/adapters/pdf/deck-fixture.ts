@@ -20,7 +20,6 @@ import {
 export interface FixtureLine {
   readonly text: string;
   readonly size: number;
-  /** Draw through a scaled graphics state, so pdf.js recovers `size` in floating point. */
   readonly scaled?: true;
   /**
    * Draw ASCII `text` through a font whose `/ToUnicode` maps its letters to math italic: assumed to be how a
@@ -44,7 +43,6 @@ export interface FixtureAnnotation {
 
 export interface FixturePage {
   readonly lines: readonly FixtureLine[];
-  /** Width and height in points; a landscape slide when omitted. */
   readonly size?: readonly [number, number];
   readonly annotations?: readonly FixtureAnnotation[];
 }
@@ -52,9 +50,7 @@ export interface FixturePage {
 export interface FixtureDeck {
   readonly pages: readonly FixturePage[];
   readonly metadataTitle?: string;
-  /** `password`: a Standard handler whose password is not empty. The others are encryptions pdf.js cannot open. */
   readonly encrypted?: 'password' | 'algorithm-3' | 'custom-handler';
-  /** Break the page tree, which pdf.js rejects on `getPage`. */
   readonly brokenPageTree?: 'kid-not-a-reference' | 'kids-not-an-array' | 'circular';
 }
 
@@ -63,13 +59,11 @@ const SCALE = 0.3;
 const MATH_FONT = 'MathItalic';
 const TO_UNICODE_FONT = 'ToUnicode';
 
-/** U+1D434 is math italic `A`, U+1D44E `a`; italic `h` is the Letterlike U+210E. */
 const mathItalicOf = (code: number): number => {
   if (code === 0x68) return 0x210e;
   return code < 0x61 ? 0x1d434 + code - 0x41 : 0x1d44e + code - 0x61;
 };
 
-/** Each UTF-16 code unit of `text` as `width` hex digits. */
 const hex = (text: string, width: number): string =>
   Array.from({ length: text.length }, (_, index) =>
     text.charCodeAt(index).toString(16).padStart(width, '0'),

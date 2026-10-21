@@ -1,0 +1,9 @@
+# gitleaks: the default rules, less one false positive (#134).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "an encoder pin manifest's file digest, a sha256 keyed by a tokenizer file name (packages/gateway/src/pin.ts), which generic-api-key reads as a token"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''tokenizer(_config)?\.json"\s*:\s*"[0-9a-f]{64}''']

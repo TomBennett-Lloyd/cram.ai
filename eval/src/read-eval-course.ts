@@ -1,14 +1,17 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CourseId } from '@cram/shared';
 import type { z } from 'zod';
 import type { EvalCourse } from './audit';
 import { parseDeck, type DeckFile } from './deck';
+import { attempt } from './file-attempt';
 import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { parseJsonLines } from './json-text';
 
-/** The `eval/` directory of this checkout. */
+export const EVAL_COURSE_ID = CourseId.parse('hollowmere');
+
 export const EVAL_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 export const DECK_DIR = 'decks/hollowmere';
@@ -22,22 +25,6 @@ interface Invalid {
 }
 
 export type EvalCourseRead = { readonly status: 'read'; readonly course: EvalCourse } | Invalid;
-
-type Attempt<T> = { readonly ok: true; readonly value: T } | { readonly ok: false };
-
-const isMissing = (error: unknown): boolean =>
-  error instanceof Error &&
-  'code' in error &&
-  (error.code === 'ENOENT' || error.code === 'ENOTDIR');
-
-const attempt = <T>(read: () => T): Attempt<T> => {
-  try {
-    return { ok: true, value: read() };
-  } catch (error) {
-    if (isMissing(error)) return { ok: false };
-    throw error;
-  }
-};
 
 const missing = (where: string): Invalid => ({ status: 'invalid', where, message: 'not found' });
 

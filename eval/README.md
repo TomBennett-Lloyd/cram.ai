@@ -14,4 +14,10 @@ The synthetic evaluation course: its deck, golden questions and hand labels. Wha
 
 `runEval` (`eval/src/run-eval.ts`) runs the whole pipeline over a course through any `ModelGateway` and returns an `EvalReport` (`eval/src/report.ts`), the report `docs/adr/0005-evaluation-as-gate.md` § Decision (f) describes. `RecordingGateway` (`eval/src/recording-gateway.ts`) records a run's model calls in the form `FakeGateway` replays. `eval/src/run-eval.test.ts` records one run and replays it to the same report.
 
-The `pnpm eval` command, the live gateway, and the committed `eval/recordings/` and `eval/reports/` are #134's.
+## The live run
+
+`pnpm eval` is tier 2 (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), and its entry is `eval/src/live-run.measure.test.ts`, whose header names the environment it reads. It runs `runEval` over the course as ingest makes it (`ingestedCourse`, `eval/src/ingested-course.ts`), through the backends `liveConfig` (`eval/src/live-config.ts`) configures and `openLiveGateway` (`eval/src/live-gateway.ts`) opens, and refuses to run unless `measuredCommit` (`eval/src/measured-commit.ts`) finds the tree at `HEAD`.
+
+`writeRun` (`eval/src/run-files.ts`) writes the report to `eval/reports/<short-sha>.json` and the run's recordings to `eval/recordings/<short-sha>.jsonl`.
+
+Tier 1 is `eval/src/committed-run.test.ts`: under `pnpm test` it replays the committed recordings through `replayRun` (`eval/src/replay-run.ts`) and expects the committed report back, less wall-clock time (`untimed`). A recording miss fails it, so a change to a prompt, a pin or the sampling owes a new `pnpm eval` run.
