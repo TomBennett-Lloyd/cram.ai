@@ -23,7 +23,10 @@
 import { COLOUR_FUNCTION, HEX_COLOUR } from './packages/ui/src/frontend-gate/colour-patterns.mjs';
 
 export default {
-  plugins: ['stylelint-declaration-strict-value'],
+  plugins: [
+    'stylelint-declaration-strict-value',
+    './packages/ui/src/frontend-gate/var-references.mjs',
+  ],
 
   /*
    * Suppression comments are themselves errors — the CSS mirror of
@@ -156,10 +159,8 @@ export default {
      * pattern — which is why every colour-bearing shorthand is on the list
      * above instead.
      *
-     * The third pattern is a `var()` fallback. The plugin above accepts any
-     * `var()` whole, so `color: var(--a, red)` would launder `red`; here a
-     * fallback must be empty or another `var()` (#273). A fallback that goes on
-     * after its first `var()` — `var(--a, var(--b), serif)` — is not seen (#280).
+     * A raw value inside a `var()` fallback is `cram/var-references-only`'s,
+     * below: the plugin above accepts any `var()` whole.
      *
      * Residual, deliberately open: the *length* half of the frontend gate is
      * still allow-list-shaped, so a raw size reaches the page through any
@@ -186,17 +187,14 @@ export default {
      */
     'declaration-property-value-disallowed-list': [
       {
-        '/.*/': [HEX_COLOUR, COLOUR_FUNCTION, '/(?<![\\w-])var\\([^,)]*,(?!\\s*(?:var\\(|\\)))/i'],
+        '/.*/': [HEX_COLOUR, COLOUR_FUNCTION],
       },
       { reportDisables: true },
     ],
 
-    // A local custom property may only alias a token — never introduce a raw
-    // value under a new name, which would launder it past the rule above.
-    'declaration-property-value-allowed-list': [
-      { '/^--/': ['/^var\\(/'] },
-      { reportDisables: true },
-    ],
+    // packages/ui/src/frontend-gate/var-references.mjs's header owns what this
+    // refuses (#273, #280).
+    'cram/var-references-only': [true, { reportDisables: true }],
 
     /*
      * A ring is for the reader who is navigating by keyboard, never for the one
@@ -262,7 +260,7 @@ export default {
       files: ['packages/ui/src/tokens/*.css'],
       rules: {
         'scale-unlimited/declaration-strict-value': null,
-        'declaration-property-value-allowed-list': null,
+        'cram/var-references-only': null,
         'declaration-property-value-disallowed-list': null,
       },
     },

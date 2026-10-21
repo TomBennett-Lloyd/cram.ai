@@ -95,6 +95,19 @@ describe('stylelint.config.mjs', () => {
     expect(await stylelintRefusals(values, virtualPath)).toEqual(expectedRefusals(values));
   });
 
+  // The probes compare sets of `line:rule`, so a rule reporting one fault twice
+  // passes them; this counts instead.
+  it('reports a raw custom property once', async () => {
+    const { results } = await stylelint.lint({
+      code: '.p { --probe-raw: 4px; }',
+      codeFilename: join(ROOT, 'apps/web/src/__gate_probe__.css'),
+      configFile: join(ROOT, 'stylelint.config.mjs'),
+    });
+    expect(results[0]?.warnings.map((warning) => warning.rule)).toEqual([
+      'cram/var-references-only',
+    ]);
+  });
+
   it('exempts tokens/ from the raw-value rules and not from the :focus ban', async () => {
     const tokens = readProbe('tokens-exemption.probe.css.txt');
     expect(await stylelintRefusals(tokens, 'packages/ui/src/tokens/__gate_probe__.css')).toEqual(
