@@ -3,7 +3,8 @@
 #
 # Fixtures are fake installed trees under the temp tree `harness_init_tmp` makes: package
 # directories laid out as pnpm lays them out, and a `pnpm ls --json` document describing
-# them, handed to the gate through --ls-json. One case runs the gate with no arguments, so
+# them, handed to the gate through --ls-json. Each fixture root is a git work tree, which the
+# first-party census lists sources from. One case runs the gate with no arguments, so
 # the shipped `pnpm ls` call is exercised against the real repo (docs/standards/testing.md
 # rule 7).
 #
@@ -20,11 +21,17 @@ harness_init_tmp
 
 # --- fixtures ----------------------------------------------------------------------------
 
-# fixture <name> -> sets DIR to a fresh root holding an allow-list with no entries.
+# fixture <name> -> sets DIR to a fresh git work tree holding an allow-list with no entries.
 fixture() {
   DIR="$TMP_ROOT/$1"
   must mkdir -p "$DIR/.claude" "$DIR/packages/app"
+  must git init -q "$DIR"
   printf '# no entries\n' >"$DIR/.claude/network-egress.allowlist" || exit 2
+}
+
+src() { # src <path under packages/app> <content> — one first-party source of the fixture's app
+  must mkdir -p "$(dirname "$DIR/packages/app/$1")"
+  printf '%s\n' "$2" >"$DIR/packages/app/$1" || exit 2
 }
 
 pkg_dir() { # pkg_dir <name> -> where pnpm would install it
@@ -74,9 +81,10 @@ end
 # 2. the real repo, via the shipped default path (no arguments, a real `pnpm ls`)
 # ==========================================================================================
 # An allow-listed name no tracked manifest declares is reachable only transitively, so it is
-# in the census only while the shipped call walks past depth 0 (#182). The case refuses an
-# allow-list with no such entry rather than let the pin go vacuous.
-begin "the repo's own production tree passes with no arguments, transitive entries included"
+# in the census only while the shipped call walks past depth 0 (#182); a path entry is in it
+# only while the first-party census reads the real tree (#165). The case refuses an allow-list
+# with no entry of either kind rather than let the pin go vacuous.
+begin "the repo's own tree passes with no arguments, transitive and first-party entries included"
 REPO=$(cd "$SCRIPTS/../.." && pwd -P) || exit 2
 listed=$(git -C "$REPO" ls-files -z -- package.json '*/package.json' |
   (cd "$REPO" && xargs -0 node -e '
@@ -88,14 +96,24 @@ listed=$(git -C "$REPO" ls-files -z -- package.json '*/package.json' |
     }));
     const listed = fs.readFileSync(".claude/network-egress.allowlist", "utf8").split("\n")
       .filter((line) => line && !line.startsWith("#")).map((line) => line.split(/\s/)[0]);
-    for (const name of listed) if (!direct.has(name)) console.log(name);
+    const isPath = (key) => !key.startsWith("@") && key.includes("/");
+    for (const key of listed) {
+      if (isPath(key)) console.log("path\t" + key);
+      else if (!direct.has(key)) console.log("transitive\t" + key);
+    }
   ')) || exit 2
 transitive=()
-while IFS= read -r name; do
-  [ -z "$name" ] || transitive+=("$name")
+paths=()
+while IFS="$(printf '\t')" read -r kind key; do
+  case "$kind" in
+    transitive) transitive+=("$key") ;;
+    path) paths+=("$key") ;;
+  esac
 done <<<"$listed"
 [ ${#transitive[@]} -gt 0 ] ||
   bad "the allow-list names no transitive-only package, so nothing pins the walk past depth 0"
+[ ${#paths[@]} -gt 0 ] ||
+  bad "the allow-list names no first-party source, so nothing pins the first-party census"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   capture "$interpreter" "$CHECK"
@@ -106,6 +124,10 @@ for interpreter in $BASHES; do
     printf '%s\n' "$out" | grep -qF -e "  allowed $name@" -e "  absent $name " ||
       bad "transitive entry $name is not in the scan: $out"
   done
+  for key in ${paths[@]+"${paths[@]}"}; do
+    printf '%s\n' "$out" | grep -qF -e "  allowed $key — " ||
+      bad "first-party entry $key is not in the scan: $out"
+  done
 done
 case_ctx=""
 end
@@ -115,7 +137,7 @@ end
 # ==========================================================================================
 begin "member calls, string literals, lookalike names and non-JS files pass"
 fixture near_miss
-pkg clean index.js 'const hit = cache.fetch(key); prefetch(a); fetcher(b);
+pkg clean index.js 'const hit = cache.fetch(key); this.#fetch(request); prefetch(a); fetcher(b);
 const scheme = "https"; const WebSocketish = 1;
 const errors = require("http-errors"); const local = require("./http");'
 pkg clean index.d.ts 'import "http"; declare function fetch(u: string): void;'
@@ -125,7 +147,7 @@ for interpreter in $BASHES; do
   case_ctx="$interpreter"
   capture "$interpreter" "$CHECK" --ls-json "$DIR/ls.json" "$DIR"
   expect_rc 0 "$rc"
-  expect_stdout "OK — 1 production package(s) scanned, 0 network-capable"
+  expect_stdout "OK — 1 production package(s) and 0 first-party source(s) scanned, 0 network-capable"
   expect_not_out "ERROR"
 done
 case_ctx=""
@@ -232,7 +254,7 @@ expect_rc 1 "$rc"
 expect_stderr "ERROR host@1.0.0 can reach the network and is not allow-listed — builtin: node_modules/bundled/index.js"
 end
 
-begin "a workspace link is not scanned, its dependencies are; unsaved entries are ignored"
+begin "a workspace link is not scanned as a package, its dependencies are; unsaved entries are ignored"
 fixture links
 must mkdir -p "$DIR/packages/lib"
 printf 'fetch(url);\n' >"$DIR/packages/lib/index.js" || exit 2
@@ -273,7 +295,7 @@ allow "@scope/backend the local model backend adapter, bound to localhost"
 run_check
 expect_rc 0 "$rc"
 expect_stdout "allowed @scope/backend@1.0.0 — global: index.js:1:"
-expect_stdout "OK — 1 production package(s) scanned, 1 network-capable, all allow-listed"
+expect_stdout "OK — 1 production package(s) and 0 first-party source(s) scanned, 1 network-capable, all allow-listed"
 end
 
 begin "an entry with no reason fails"
@@ -340,7 +362,7 @@ pkg native-host index.js 'module.exports = 1;'
 tree "$(dep native-host "$(dep native-host-linux-x64)")" native-host
 run_check
 expect_rc 0 "$rc"
-expect_stdout "OK — 1 production package(s) scanned"
+expect_stdout "OK — 1 production package(s) and 0 first-party source(s) scanned"
 end
 
 begin "an absent optional dependency of the project itself is skipped, and its entry is not stale"
@@ -352,7 +374,7 @@ allow "top-linux-x64 ships a native addon on linux-x64 only"
 run_check
 expect_rc 0 "$rc"
 expect_stdout "absent top-linux-x64 — an optional dependency not installed on this platform"
-expect_stdout "OK — 0 production package(s) scanned, 0 network-capable"
+expect_stdout "OK — 0 production package(s) and 0 first-party source(s) scanned, 0 network-capable"
 end
 
 # The absent instance sits at another version's path, as pnpm would lay it out.
@@ -406,6 +428,149 @@ expect_stderr "not a directory"
 capture bash "$CHECK" --ls-json
 expect_rc 2 "$rc"
 expect_stderr "--ls-json needs a file"
+end
+
+# ==========================================================================================
+# 9. the first-party census (#165)
+# ==========================================================================================
+begin "a first-party source of every scanned extension is detected, untracked or staged"
+fixture fp_extensions
+exts=(ts tsx mts cts js jsx mjs cjs)
+for ext in "${exts[@]}"; do
+  src "src/a.$ext" 'fetch(url);'
+done
+must git -C "$DIR" add packages/app/src/a.ts
+tree ""
+for interpreter in $BASHES; do
+  case_ctx="$interpreter"
+  capture "$interpreter" "$CHECK" --ls-json "$DIR/ls.json" "$DIR"
+  expect_rc 1 "$rc"
+  expect_stderr "8 problem(s)"
+  for ext in "${exts[@]}"; do
+    expect_stderr "ERROR packages/app/src/a.$ext can reach the network and is not allow-listed — global: line 1: fetch(url);"
+  done
+done
+case_ctx=""
+end
+
+begin "tests, ignored files, other extensions and member calls are not detected; lookalikes are"
+fixture fp_skipped
+for file in a.test.ts b.spec.tsx a.ts.orig parts README.md dist/built.js; do
+  src "src/$file" 'fetch(url);'
+done
+printf 'dist/\n' >"$DIR/packages/app/src/.gitignore" || exit 2
+src src/member.ts 'const reply = this.#fetch(request);'
+src src/latest.ts 'fetch(url);'
+src src/a.testing.ts 'fetch(url);'
+src src/gone.ts 'fetch(url);'
+must git -C "$DIR" add packages/app/src/gone.ts
+must rm "$DIR/packages/app/src/gone.ts"
+tree ""
+run_check
+expect_rc 1 "$rc"
+expect_stderr "2 problem(s)"
+expect_stderr "ERROR packages/app/src/latest.ts can reach the network"
+expect_stderr "ERROR packages/app/src/a.testing.ts can reach the network"
+end
+
+begin "the root importer is not scanned, and a tree with no other importer lists nothing"
+fixture fp_root
+printf 'fetch(url);\n' >"$DIR/tool.js" || exit 2
+printf '{"name":"root"}\n' >"$DIR/package.json" || exit 2
+src src/clean.ts 'export const a = 1;'
+printf '{"name":"app"}\n' >"$DIR/packages/app/package.json" || exit 2
+printf '[{"name":"root","path":"%s"},{"name":"app","path":"%s"}]\n' "$DIR" "$DIR/packages/app" \
+  >"$DIR/ls.json" || exit 2
+run_check
+expect_rc 0 "$rc"
+expect_stdout "OK — 0 production package(s) and 1 first-party source(s) scanned, 0 network-capable"
+printf '[{"name":"root","path":"%s"}]\n' "$DIR" >"$DIR/ls.json" || exit 2
+run_check
+expect_rc 0 "$rc"
+expect_stdout "OK — 0 production package(s) and 0 first-party source(s) scanned, 0 network-capable"
+end
+
+begin "type-only imports and re-exports are not detected"
+fixture fp_type_only
+src src/types.ts "import type { A } from 'node:http';
+import type {
+  B,
+  C,
+} from \"node:net\";
+export type { D } from 'node:tls';
+import type * as http from 'node:http';
+import type http2 from 'node:http2';
+export type * from 'node:dgram';"
+tree ""
+run_check
+expect_rc 0 "$rc"
+expect_stdout "OK — 0 production package(s) and 1 first-party source(s) scanned, 0 network-capable"
+end
+
+begin "a value import is detected beside a type-only one, at its own line"
+fixture fp_value_imports
+src src/lines.ts "import type {
+  A,
+} from 'node:http';
+export const go = () =>
+  fetch(url);"
+src src/inline.ts "import { type A, request } from 'node:http';"
+src src/no-semicolons.ts "export type Foo = string
+import { request } from 'node:http'"
+src src/types-named.ts "import types from 'node:http';"
+tree ""
+run_check
+expect_rc 1 "$rc"
+expect_stderr "4 problem(s)"
+expect_stderr "ERROR packages/app/src/lines.ts can reach the network and is not allow-listed — global: line 5: fetch(url);"
+expect_stderr "ERROR packages/app/src/inline.ts can reach the network and is not allow-listed — builtin: line 1:"
+expect_stderr "ERROR packages/app/src/no-semicolons.ts can reach the network and is not allow-listed — builtin: line 2:"
+expect_stderr "ERROR packages/app/src/types-named.ts can reach the network and is not allow-listed — builtin: line 1:"
+end
+
+begin "a path entry allows its source, and fails stale when the source is clean, skipped or gone"
+fixture fp_entries
+src src/client.ts 'await fetch(url);'
+src src/clean.ts 'export const a = 1;'
+src src/client.test.ts 'await fetch(url);'
+tree ""
+allow "packages/app/src/client.ts the loopback client"
+allow "packages/app/src/clean.ts once fetched"
+allow "packages/app/src/client.test.ts a test"
+allow "packages/app/src/removed.ts since deleted"
+run_check
+expect_rc 1 "$rc"
+expect_stderr "3 problem(s)"
+expect_stderr "ERROR packages/app/src/clean.ts is allow-listed but the scan no longer detects it"
+expect_stderr "ERROR packages/app/src/client.test.ts is allow-listed but is not a first-party source the census reads"
+expect_stderr "ERROR packages/app/src/removed.ts is allow-listed but is not a first-party source the census reads"
+expect_not_stderr "client.ts can reach"
+fixture fp_allowed
+src src/client.ts 'await fetch(url);'
+tree ""
+allow "packages/app/src/client.ts the loopback client"
+run_check
+expect_rc 0 "$rc"
+expect_stdout "allowed packages/app/src/client.ts — global: line 1: await fetch(url);"
+expect_stdout "OK — 0 production package(s) and 1 first-party source(s) scanned, 1 network-capable, all allow-listed"
+fixture fp_no_reason
+src src/client.ts 'await fetch(url);'
+tree ""
+allow "packages/app/src/client.ts"
+run_check
+expect_rc 1 "$rc"
+expect_stderr "ERROR packages/app/src/client.ts is allow-listed with no reason"
+end
+
+begin "a root that is not a git work tree is exit 2"
+fixture fp_no_git
+must rm -rf "$DIR/.git"
+src src/client.ts 'await fetch(url);'
+tree ""
+run_check
+expect_rc 2 "$rc"
+expect_stderr "git ls-files failed"
+expect_not_stdout "OK"
 end
 
 finish

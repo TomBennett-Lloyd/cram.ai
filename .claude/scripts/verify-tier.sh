@@ -109,6 +109,9 @@
 #     on this rung changes (cumulo#553).
 #   * check:ledgers — sweeps prose for declared carriers, and a comment-only edit
 #     can add or lose one (cumulo#535).
+#   * check:no-network-egress, when the set holds a .ts/.tsx/.js/.mjs/.cjs file —
+#     its first-party census reads source text, comments included, so a comment
+#     naming `fetch(` changes its verdict (#165).
 #   * check:adr-index, check:no-course-content and check:markdown-links, when the
 #     set also holds .md — the one type this rung admits without an emit proof.
 #   * the observing tests, below.
@@ -119,8 +122,8 @@
 # Skipped, provably unaffected: every other package's vitest; stylelint when no
 # .css changed; the shell harnesses when none is selected; and the check:* gates
 # that read code SHAPE — module-names reads filenames, node-types and
-# supply-chain-policy read manifests, no-network-egress reads the installed
-# dependency tree. None of them can change under an unchanged emit.
+# supply-chain-policy read manifests. None of them can change under an unchanged
+# emit.
 #
 # THE OBSERVING TESTS, selected mechanically. A test can observe a comment in
 # exactly two ways, and each gets an arm: it reads files as data (readFileSync,
@@ -566,6 +569,9 @@ build_source_prose_legs() {
   append_leg "pnpm typecheck"
   append_leg "pnpm check:comment-density"
   append_leg "pnpm check:ledgers"
+  if [ -s "$TMP/lintable" ]; then
+    append_leg "pnpm check:no-network-egress"
+  fi
   if grep -qE '\.md$' "$CHANGED"; then
     append_leg "pnpm check:adr-index"
     append_leg "pnpm check:no-course-content"
