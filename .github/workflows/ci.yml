@@ -237,9 +237,9 @@ jobs:
   #     fixed on the branch, while the failed-read messages in comment (d) mean
   #     the gate reached no verdict at all and are fixed by re-running the job.
   #     The cost, stated rather than left to be rediscovered: `on:` is
-  #     workflow-level, so each label event re-runs every job in this file —
-  #     ~2–3 min of wall time, in parallel, $0 on a public repo. Accepted as it
-  #     stands; a `concurrency` group is the lever if label traffic ever grows.
+  #     workflow-level, so each label event re-runs every job in this file, in
+  #     parallel, $0 on a public repo. Accepted as it stands; a `concurrency`
+  #     group is the lever if label traffic ever grows.
   #     One known-harmless edge worth recognising in the logs: taking the label
   #     off at merge time fires a run against a just-merged PR.
   # (c) The diff is read from `pulls/{n}/files` with `--paginate`, not from a
