@@ -1,0 +1,13 @@
+# The engine every ledger sweep runs on (docs/standards/architecture.md rule 9; #179).
+owner: .claude/scripts/check-ledgers.sh
+claim: a ledger sweep is a PCRE run by git grep -P, because git grep -E on macOS reads \b as the letter b
+cite: .claude/scripts/check-ledgers.sh
+sweep: check-ledgers\.sh|grep\b[^\n]{0,60} -P\b|(?i:\bpcre2?\b)|\.claude/ledgers/sweep-engine\.ledger
+scope: :!pnpm-lock.yaml
+carrier: .claude/scripts/check-ledgers.test.sh
+carrier: .claude/scripts/sweep-report.sh
+carrier: .claude/scripts/sweep-report.test.sh
+excluded: .claude/scripts/check-no-network-egress.sh
+excluded: docs/standards/architecture.md
+excluded: docs/standards/evidence.md
+excluded: package.json
