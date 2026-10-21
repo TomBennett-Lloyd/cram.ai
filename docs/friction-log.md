@@ -118,3 +118,13 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #16 lane ran `pnpm verify` eleven times, each taking 9 to 15 minutes, while fourteen to sixteen lanes shared the machine at a load average of 90 to 100; one run was a re-run after #152's time-box signature (fixed since by PR #197). The lane's work (86 files, four review passes, a browser-smoke pass) was not the cost; the verify runs were, and most of that was waiting on the other lanes' runs. The parallelism bought wall-clock across tickets and paid it back inside each. One lane's figures so far; the effort pilot (#140) records tokens and duration per lane and is where the trade-off becomes visible.
+
+## 2026-10-21 — PR #222
+
+- Phase: implementation
+- Observed: the #146 lane's local browser lane failed `apps/web/e2e/focus.spec.ts` ("a keyboard reader sees the ring on a slide card") on three runs of three with the element reported inactive, while the same spec passed in CI's `web-e2e` and the PR did not touch it; the lane read it as the local browser window not being frontmost on a machine running other lanes' browsers. One lane so far on a focus assertion that depends on window activation.
+
+## 2026-10-21 — PR #224
+
+- Phase: planning
+- Observed: the #145 lane's planning sweep covered `main` only, so it did not see that open PR #214 (#134) builds the same live gateway in `eval/src/live-gateway.ts`; it found that through an issue search partway through the lane. The dispatch note names in-flight lanes by footprint, and `.claude/agents/ticket-agent.md` § 2's sweep runs over the tree, so an open PR's duplicate of a planned helper is visible only to whoever greps the open branches. One ticket so far; #223 holds the merge of the two assemblies.

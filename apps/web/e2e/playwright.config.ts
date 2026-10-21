@@ -8,8 +8,7 @@ const DEV_SPEC = 'dev-server.spec.ts';
 
 /**
  * The browser lane: the production build under `vite preview`, plus one dev-server spec, with the
- * server's API stubbed at the network boundary (`hermetic-api.ts`), since no server entrypoint
- * exists yet (#145).
+ * server's API stubbed at the network boundary (`hermetic-api.ts`), so the lane needs no models.
  */
 export default defineConfig({
   testDir: '.',
