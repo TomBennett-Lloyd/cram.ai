@@ -15,6 +15,7 @@ carrier: apps/server/src/repair-outcome.test.ts
 carrier: docs/adr/0004-storage.md
 carrier: docs/standards/testing.md
 carrier: .claude/scripts/check-stored-output-pin.sh
+carrier: docs/adr/0008-slide-chunking.md
 excluded: packages/index/src/stored-deck.ts
 excluded: docs/tech-debt.md
 excluded: .claude/scripts/check-stored-output-pin.test.sh

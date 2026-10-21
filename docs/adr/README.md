@@ -116,3 +116,4 @@ shape a sweep that reaches it.
 - [0003 — Model roles and backends: four roles, each configured alone; encoders in-process, the generator in-process or over private HTTP; candidates measured, not pinned](0003-model-roles-and-backends.md)
 - [0006 — Image-only slides: OCR and captions as derived text, flagged and shown with the original](0006-image-only-slides.md)
 - [0007 — Desktop packaging: an Electron shell around the one server; an unsigned NSIS installer from CI; weights downloaded at first launch by digest; OCR data inside](0007-desktop-packaging.md)
+- [0008 — Slide chunking: a slide is indexed as one or more chunks; citations stay on the slide](0008-slide-chunking.md)

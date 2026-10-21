@@ -31,7 +31,7 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 ### 3.1 Ingest
 
 - Inputs: PDF and PPTX lecture decks; a text/PDF file of sample exam questions (and, ideally, a full sample paper so the exam _format_ can be mirrored — see §3.5).
-- Output: one **slide record** per slide, shaped by `SlideRecord` (`packages/shared/src/slide-record.ts`). The slide is the chunk. `body` holds one bullet or line per `\n` (`slideText`, `packages/ingest/src/slide-text.ts`), so a later split cuts between lines, never mid-bullet. Splitting a slide by heading waits for a content slide too long to embed whole, which the embedder reports as `over-length` (#66); the owner's sample deck has none (#77).
+- Output: one **slide record** per slide, shaped by `SlideRecord` (`packages/shared/src/slide-record.ts`). The index stores a slide as one or more chunks: a slide the embedder reports `over-length` (#66) is cut between the lines of its text, never mid-bullet (`body` holds one bullet or line per `\n`, `slideText`, `packages/ingest/src/slide-text.ts`), and citations still name the slide (`docs/adr/0008-slide-chunking.md`).
 - Image-only slides are owned by `docs/adr/0006-image-only-slides.md` (what triggers derivation, the `derived` flag, OCR as an ingest adapter, opt-in captions, who may cite derived text and with what shown beside it, the confirmation state and the derived-text metric); this bullet carries no restatement.
 - Sample exam questions are parsed into **style exemplars**: `{type: mcq | short | essay | case, stem, options?, marks?, sectionOf?}`. They are never used as a source of facts.
 
