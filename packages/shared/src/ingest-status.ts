@@ -47,19 +47,23 @@ export const StoredLecture = z.strictObject({
 });
 export type StoredLecture = z.infer<typeof StoredLecture>;
 
-/** The course file's lectures, or why it cannot be opened; `problem` is `@cram/index`'s vocabulary. */
-export const StoredLectures = z.discriminatedUnion('state', [
-  z.strictObject({ state: z.literal('read'), lectures: z.array(StoredLecture) }),
-  z.strictObject({ state: z.literal('course-unavailable'), problem: NonBlankText }),
-]);
-export type StoredLectures = z.infer<typeof StoredLectures>;
-
 /** A table of an older course file whose rows a rebuild did not carry over; `table` is `@cram/index`'s name. */
 export const DiscardedTable = z.strictObject({
   table: NonBlankText,
   rows: z.number().int().positive(),
 });
 export type DiscardedTable = z.infer<typeof DiscardedTable>;
+
+/** The course file's lectures and undismissed rebuild report (#233), or why it cannot be opened. */
+export const StoredLectures = z.discriminatedUnion('state', [
+  z.strictObject({
+    state: z.literal('read'),
+    lectures: z.array(StoredLecture),
+    discarded: z.array(DiscardedTable),
+  }),
+  z.strictObject({ state: z.literal('course-unavailable'), problem: NonBlankText }),
+]);
+export type StoredLectures = z.infer<typeof StoredLectures>;
 
 /**
  * The course file's start-up repair (#225). `none` is a course with no repair since the server
@@ -69,7 +73,7 @@ export const CourseRepair = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('none') }),
   z.strictObject({ state: z.literal('queued') }),
   z.strictObject({ state: z.literal('running') }),
-  z.strictObject({ state: z.literal('done'), discarded: z.array(DiscardedTable) }),
+  z.strictObject({ state: z.literal('done') }),
   z.strictObject({ state: z.literal('failed') }),
 ]);
 export type CourseRepair = z.infer<typeof CourseRepair>;
@@ -82,3 +86,6 @@ export const IngestStatus = z.strictObject({
   uploads: z.array(Upload),
 });
 export type IngestStatus = z.infer<typeof IngestStatus>;
+
+export const RebuildReportDismissed = z.strictObject({ status: z.literal('dismissed') });
+export type RebuildReportDismissed = z.infer<typeof RebuildReportDismissed>;

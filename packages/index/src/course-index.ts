@@ -2,6 +2,7 @@ import type { Database } from 'better-sqlite3';
 import {
   type CourseId,
   type Deck,
+  type DiscardedTable,
   type LectureId,
   type RetrievedSlide,
   type SlideImage,
@@ -25,6 +26,7 @@ import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
 import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
+import { clearRebuildReport, readRebuildReport, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
 import {
   ftsValues,
@@ -335,6 +337,20 @@ export class CourseIndex {
       if (kind === SlideKind.enum['image-only']) lecture.imageOnly.push(slide_no);
     }
     return [...lectures.values()].map((lecture) => StoredLecture.parse(lecture));
+  }
+
+  /** What a rebuild discarded that the student has not dismissed (#233). */
+  rebuildReport(): readonly DiscardedTable[] {
+    return readRebuildReport(this.#db);
+  }
+
+  /** Written by `rebuildCourse` into the file it rebuilt. */
+  recordRebuildReport(discarded: readonly DiscardedTable[]): void {
+    recordRebuildReport(this.#db, discarded);
+  }
+
+  dismissRebuildReport(): void {
+    clearRebuildReport(this.#db);
   }
 
   deck(lectureId: LectureId): Deck | undefined {

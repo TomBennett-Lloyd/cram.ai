@@ -14,6 +14,7 @@ export const PENDING = {
   decks: 'Loading decks…',
   answer: 'Checking your slides…',
   repair: 'Updating this course’s stored decks…',
+  dismissal: 'Dismissing…',
 } as const;
 
 /** The fixed system string for a question no surviving unit answers (`docs/standards/grounding.md` rule 5). */
@@ -25,6 +26,7 @@ export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 const fileUnopened = (problem: string): string => `This course’s file can’t be opened (${problem})`;
 
 export const RETRY = 'Try again';
+export const DISMISS = 'Dismiss';
 export const APP_FAILED = 'Something went wrong in cram.ai. Reload the page to start again.';
 export const MODEL_FAILED = 'The model didn’t answer. Ask again in a moment.';
 export const COURSE_NAME_REFUSED =

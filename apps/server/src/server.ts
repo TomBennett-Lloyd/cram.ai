@@ -3,6 +3,7 @@ import type { ModelGateway } from '@cram/gateway';
 import { storedCourses } from './course-file';
 import {
   askQuestion,
+  dismissRebuildReport,
   type HandlerContext,
   ingestStatus,
   listCourses,
@@ -61,6 +62,9 @@ const handleRequest = async (
         return;
       case 'ask':
         await askQuestion(route, context);
+        return;
+      case 'dismiss-rebuild-report':
+        await dismissRebuildReport(route, context);
     }
   } catch (error) {
     context.log({
