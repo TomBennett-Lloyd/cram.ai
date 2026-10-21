@@ -114,7 +114,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/copy.ts` `fileUnopened` and its three callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`)
 - What: an unopenable course file is reported as "This course’s file can’t be opened (embedder-mismatch)", the raw `OpenCourseResult` status, with no words for what it means or what to do. Root cause: no mapping from `@cram/index`'s vocabulary to student-facing copy. #147 (rebuild or re-embed on course-unavailable) changes what the student can do about each one.
 - Source: #146 review cycle 1
-- Update 2026-10-21 (#147): the server now repairs both codes at start (`repairCourse` in `apps/server/src/course-repair.ts`), with no action from the student. Either code still reaches the student while a repair is queued or running, and after a refused or failed one. #225 owns reporting the repair.
+- Update 2026-10-21 (#147): the server now repairs both codes at start (`repairCourse` in `apps/server/src/course-repair.ts`), with no action from the student. Either code still reaches the student until a repair has rebuilt or re-embedded the file: while the repair is queued or running, and after any repair that ends any other way. #225 owns reporting the repair.
 
 ## 2026-10-21 — every start-up repair failure is logged as `Error`
 
