@@ -23,20 +23,16 @@ const messages = ruleMessages(ruleName, {
 /** @param {valueParser.Node} node */
 const isVar = (node) => node.type === 'function' && node.value.toLowerCase() === 'var';
 
-/**
- * postcss strips comments from a declaration's value before any rule reads it,
- * so whitespace is the only filler a list can hold.
- * @param {valueParser.Node} node
- */
-const isSpace = (node) => node.type === 'space';
+/** @param {valueParser.Node} node */
+const isBlank = (node) => node.type === 'space' || node.type === 'comment';
 
 /**
  * What a token list may hold besides `var()` calls: the separators a
- * `<declaration-value>` list uses, and whitespace.
+ * `<declaration-value>` list uses, whitespace, and comments.
  * @param {valueParser.Node} node
  */
 const isSeparator = (node) =>
-  isSpace(node) || (node.type === 'div' && (node.value === ',' || node.value === '/'));
+  isBlank(node) || (node.type === 'div' && (node.value === ',' || node.value === '/'));
 
 /**
  * The first node of a token list that is neither a `var()` nor a separator.
@@ -70,7 +66,7 @@ const rule = (primary) => (root, result) => {
       const fallback = comma === -1 ? [] : rest.slice(comma + 1);
       const raw =
         name?.type === 'word' && name.value.startsWith('--')
-          ? (head.find((arg) => !isSpace(arg)) ?? firstRaw(fallback))
+          ? (head.find((arg) => !isBlank(arg)) ?? firstRaw(fallback))
           : node;
       if (raw !== undefined) reject(valueParser.stringify(raw), 'a var() reference');
     });

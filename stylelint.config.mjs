@@ -192,10 +192,8 @@ export default {
       { reportDisables: true },
     ],
 
-    // A `var()` fallback and a custom property's value hold token references
-    // only, or a raw value launders past the rules above under a token's name
-    // (#273, #280). packages/ui/src/frontend-gate/var-references.mjs's header
-    // owns the grammar.
+    // packages/ui/src/frontend-gate/var-references.mjs's header owns what this
+    // refuses (#273, #280).
     'cram/var-references-only': [true, { reportDisables: true }],
 
     /*

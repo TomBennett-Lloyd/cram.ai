@@ -163,6 +163,7 @@
   color: var(--color-ink, var(--color-surface), var(--color-accent));
   width: var(--space-1, var(--space-2) / var(--space-3));
   width: var(--space-1, var(--space-2) var(--space-3));
+  width: var(--space-1,/* a note */var(--space-2));
   color: var(--color-ink,);
   color: var(--color-ink, );
   transition-property: var(--probe-a), opacity;
@@ -177,6 +178,7 @@
   width: var(--space-1 / var(--space-2)); /* refused-by: cram/var-references-only */
   width: var("--space-1"); /* refused-by: cram/var-references-only */
   width: var( --space-1 );
+  width: var(--space-1/* a note */);
 
   /* cram/var-references-only: a custom property only aliases */
   --probe-alias: var(--space-1);
@@ -185,6 +187,8 @@
   --probe-slash: var(--space-1) / var(--space-2);
   --probe-commented: var(--space-1) /* a note */;
   --probe-name-commented: var(--space-1 /* a note */);
+  --probe-adjacent-comment: var(--space-1)/* a note */var(--space-2);
+  --probe-adjacent-comment-list: var(--space-1)/* a note */, var(--space-2);
   --probe-raw: 4px; /* refused-by: cram/var-references-only */
   --probe-calc: calc(var(--space-1) * 2); /* refused-by: cram/var-references-only */
   --probe-trailing: var(--space-1) 4px; /* refused-by: cram/var-references-only */
