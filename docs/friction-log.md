@@ -163,3 +163,8 @@ Entry format:
 
 - Phase: verify
 - Observed: `pnpm verify` in the #209 lane went red twice on the gateway clock assertion #243 owns, with a rerun green each time, on a diff that cannot reach `packages/gateway`. Third rerun that flake has cost today (PR #255 took one), about ten minutes each under load; #243 is dispatched.
+
+## 2026-10-21 — PR #267
+
+- Phase: planning
+- Observed: the #254 lane pasted its restatement sweep's output into the plan comment from memory before running the command, and dropped a line; it noticed and fixed the comment before the first edit. `.claude/agents/ticket-agent.md` § 2 asks for the command and its output, and the output it got was a recollection. One ticket so far.
