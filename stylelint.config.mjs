@@ -198,9 +198,9 @@ export default {
 
     /*
      * A registered custom property's `initial-value` is that property's value,
-     * and no rule above requires a token there, so `padding: var(--registered)`
-     * carries whatever raw value it names (#290). A registration is therefore a
-     * token definition, and it lives with the others. The name is matched
+     * and no rule above requires a token there, so a `var()` of it can carry a
+     * raw length or a named colour (#290). A registration is therefore a token
+     * definition, and it lives with the others. The name is matched
      * case-insensitively because at-rule names are.
      */
     'at-rule-disallowed-list': [
