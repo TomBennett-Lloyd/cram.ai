@@ -35,14 +35,12 @@ describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
       if (read.status !== 'read') throw new Error(`${read.where}: ${read.message}`);
       const dir = await mkdtemp(join(tmpdir(), 'cram-eval-134-'));
       try {
-        const sampling = configured.config.generator.sampling;
-        const recorder = new RecordingGateway({ inner: opened.gateway, sampling });
+        const recorder = new RecordingGateway({ inner: opened.gateway });
         const report = await runEval({
           facts: {
             measuredCommit: measured.commit,
             pullRequest: facts.CRAM_EVAL_PR,
             machineClass: facts.CRAM_MACHINE_CLASS,
-            sampling,
           },
           courseId: EVAL_COURSE_ID,
           lectures: await ingestedCourse(read.course.deck, EVAL_COURSE_ID, dir),

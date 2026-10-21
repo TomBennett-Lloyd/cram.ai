@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { indexedLecture } from './run-fixture';
 import { runEval } from './run-eval';
 import { readRun, RECORDINGS_DIR, recordingsText, REPORTS_DIR, writeRun } from './run-files';
-import { SAMPLING, ScriptedGateway } from './scripted-gateway-fixture';
+import { ScriptedGateway } from './scripted-gateway-fixture';
 import { CourseId } from '@cram/shared';
 import type { EvalReport } from './report';
 
@@ -33,7 +33,6 @@ const scriptedReport = async (measuredCommit: string): Promise<EvalReport> =>
       measuredCommit,
       pullRequest: 1,
       machineClass: 'dev-apple-silicon',
-      sampling: SAMPLING,
     },
     courseId: CourseId.parse('hollowmere'),
     lectures: [indexedLecture('l1')],

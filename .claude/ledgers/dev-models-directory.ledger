@@ -8,3 +8,7 @@ carrier: apps/server/src/gateway-config.ts
 carrier: apps/server/src/gateway-config.test.ts
 excluded: apps/server/src/compose-server.test.ts
 carrier: README.md
+carrier: eval/src/live-config.ts
+carrier: eval/src/live-config.test.ts
+carrier: eval/src/live-run.measure.test.ts
+excluded: eval/src/live-gateway.test.ts

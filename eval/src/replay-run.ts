@@ -26,7 +26,6 @@ export const replayRun = (spec: ReplaySpec): Promise<EvalReport> =>
       measuredCommit: spec.run.report.measuredCommit,
       pullRequest: spec.run.report.pullRequest,
       machineClass: spec.run.report.machineClass,
-      sampling: LIVE_SAMPLING,
     },
     courseId: spec.courseId,
     lectures: spec.lectures,

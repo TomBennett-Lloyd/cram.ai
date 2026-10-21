@@ -9,3 +9,5 @@ carrier: .claude/scripts/models-pull.test.sh
 carrier: apps/server/src/gateway-config.ts
 carrier: apps/server/src/gateway-config.test.ts
 excluded: packages/gateway/src/adapters/openai-http/openai-http.measure.test.ts
+excluded: eval/src/live-config.test.ts
+excluded: eval/src/live-gateway.test.ts

@@ -38,8 +38,7 @@ const respond = (wire: ChatWireRequest): GeneratorReply => ({
 /** A live run of `COURSE` over the scripted gateway, timed by a clock that moves. */
 const liveRun = async (): Promise<EvalRun> => {
   const recorder = new RecordingGateway({
-    inner: new ScriptedGateway(respond),
-    sampling: LIVE_SAMPLING,
+    inner: new ScriptedGateway(respond, null, LIVE_SAMPLING),
   });
   let now = 0;
   const report = await runEval({
@@ -47,7 +46,6 @@ const liveRun = async (): Promise<EvalRun> => {
       measuredCommit: 'abc1234',
       pullRequest: 7,
       machineClass: 'dev-apple-silicon',
-      sampling: LIVE_SAMPLING,
     },
     courseId: COURSE_ID,
     lectures: LECTURES,
