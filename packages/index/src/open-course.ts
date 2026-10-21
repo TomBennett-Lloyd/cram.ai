@@ -23,11 +23,7 @@ const CourseRow = z
   }));
 type CourseRow = z.infer<typeof CourseRow>;
 
-/**
- * Every state a course file can be in when opened. Only `open` holds a connection;
- * `older-schema` is `rebuildCourse`'s to rebuild, never migrated (`docs/adr/0004-storage.md` § Decision (d)).
- * A mismatch's `recorded` is what the file holds, which need not pass `CourseId` or `EmbedderIdentity`.
- */
+/** Only `open` holds a connection. */
 export type OpenCourseResult =
   | { readonly status: 'open'; readonly course: CourseIndex }
   | { readonly status: 'newer-schema' | 'older-schema'; readonly fileVersion: number }
@@ -35,7 +31,6 @@ export type OpenCourseResult =
   | { readonly status: 'course-mismatch'; readonly recorded: CourseRow['courseId'] }
   | { readonly status: 'embedder-mismatch'; readonly recorded: CourseRow['embedder'] };
 
-/** A course opened only to be read: its type has no write. */
 export type CourseReader = Pick<
   CourseIndex,
   | 'slides'
@@ -55,7 +50,6 @@ export type ReadCourseResult =
   | { readonly status: 'open'; readonly course: CourseReader }
   | { readonly status: 'blank' };
 
-/** `undefined` when the file is not SQLite at all; the connection is closed on every failure. */
 const readState = (db: Database.Database) => {
   try {
     const fileVersion = z.number().parse(db.pragma('user_version', { simple: true }));
@@ -73,7 +67,6 @@ const readState = (db: Database.Database) => {
   }
 };
 
-/** A blank or current file keeps its connection; any other is closed and refused. */
 const classify = (
   db: Database.Database,
 ):
@@ -107,7 +100,6 @@ type OpenedFile =
       readonly recorded: CourseRow['embedder'];
     };
 
-/** Runs `prepare`, then checks the stored course row against `spec` and hands `db` over, or closes it. */
 const handOver = (
   db: Database.Database,
   spec: OpenCourseSpec,
@@ -153,13 +145,11 @@ const underSpecEmbedder = (file: OpenedFile, spec: OpenCourseSpec): OpenCourseRe
   return { status: 'open', course: file.course };
 };
 
-/** Opens, or creates when blank, the course file at `spec.path`. */
 export const openCourse = (spec: OpenCourseSpec): OpenCourseResult =>
   underSpecEmbedder(openFile(spec), spec);
 
 /**
- * Opens the course file at `spec.path`, which must exist, without changing what it holds: it sends no
- * write and no journal-mode pragma, and `query_only` refuses the writes a `CourseReader` cannot name.
+ * Opens the course file at `spec.path`, which must exist, without changing what it holds.
  * It is not SQLite's read-only flag, because a read-only connection cannot remove the WAL files it
  * opens beside a course file, and a closed course file holds none (`rebuildCourse`;
  * `apps/server/src/repair.test.ts`). The cost: closing the last connection checkpoints the WAL,
@@ -180,10 +170,8 @@ export const openCourseReadOnly = (spec: OpenCourseSpec): ReadCourseResult => {
   );
 };
 
-/** Each slide indexed as its chunks (`IndexedSlide`), in the order given. */
 export type EmbedSlides = (slides: readonly SlideRecord[]) => Promise<readonly IndexedSlide[]>;
 
-/** Each slide as `embed` indexed it, refused unless it returns exactly those slides in order. */
 export const embedSlides = async (
   operation: string,
   slides: readonly SlideRecord[],
@@ -203,7 +191,6 @@ export const embedSlides = async (
   return indexed;
 };
 
-/** Opens a course under `spec.embedder`, first re-embedding every slide with `embed` if the file records another. */
 export const reembedCourse = async (
   spec: OpenCourseSpec,
   embed: EmbedSlides,
