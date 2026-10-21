@@ -1,5 +1,5 @@
 {
-  "measuredCommit": "8d78aad",
+  "measuredCommit": "f95be65",
   "pullRequest": 214,
   "machineClass": "dev-apple-silicon",
   "pins": {
@@ -54,6 +54,9 @@
       }
     },
     "reranker": null
+  },
+  "servedGenerator": {
+    "status": "verified"
   },
   "determinism": {
     "generator": {
@@ -229,8 +232,8 @@
       "perUnitLatency": {
         "status": "measured",
         "samples": 30,
-        "medianMs": 19.57497849999345,
-        "maxMs": 34.241374999983236
+        "medianMs": 87.72225049999543,
+        "maxMs": 467.82995899999514
       }
     },
     "llm": {
@@ -255,8 +258,8 @@
       "perUnitLatency": {
         "status": "measured",
         "samples": 30,
-        "medianMs": 310.8732500000042,
-        "maxMs": 614.6194159999723
+        "medianMs": 359.7194784999883,
+        "maxMs": 417.05012500000885
       }
     },
     "nliThenLlm": {
@@ -323,8 +326,8 @@
       "perUnitLatency": {
         "status": "measured",
         "samples": 30,
-        "medianMs": 19.81114550001803,
-        "maxMs": 34.40570800000569
+        "medianMs": 29.689854500000365,
+        "maxMs": 78.22608400002355
       }
     },
     "crossEncoderPrimary": {
@@ -340,27 +343,27 @@
     "ask": {
       "status": "measured",
       "samples": 31,
-      "medianMs": 2411.8022920000003,
-      "maxMs": 45575.54416700001
+      "medianMs": 2581.609166999988,
+      "maxMs": 53252.012124999994
     },
     "perCall": {
       "generator": {
         "status": "measured",
         "samples": 92,
-        "medianMs": 2006.5835625000036,
-        "maxMs": 45060.629375000004
+        "medianMs": 2308.9746250000017,
+        "maxMs": 51721.350792
       },
       "verifier": {
         "status": "measured",
         "samples": 200,
-        "medianMs": 20.706666499987477,
-        "maxMs": 41.93962499999907
+        "medianMs": 31.393874999979744,
+        "maxMs": 467.8090830000001
       },
       "embedder": {
         "status": "measured",
         "samples": 37,
-        "medianMs": 4.626542000000427,
-        "maxMs": 55.25562500000024
+        "medianMs": 4.591916999999739,
+        "maxMs": 52.452541999999994
       },
       "reranker": {
         "status": "not-measurable",
