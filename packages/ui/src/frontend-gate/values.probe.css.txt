@@ -146,25 +146,58 @@
   filter: drop-shadow(0 0 0 var(--color-ink));
   grid-area: lab;
 
-  /* declaration-property-value-disallowed-list: a var() fallback is a token or empty */
-  color: var(--color-ink, red); /* refused-by: declaration-property-value-disallowed-list */
-  padding: var(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
-  width: var(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
-  width: VAR(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
-  color: var( --color-ink , red); /* refused-by: declaration-property-value-disallowed-list */
-  color: var(--color-ink, var(--color-surface, red)); /* refused-by: declaration-property-value-disallowed-list */
-  --probe-fallback: var(--space-1, 4px); /* refused-by: declaration-property-value-disallowed-list */
+  /* cram/var-references-only: a var() fallback is token references or empty */
+  color: var(--color-ink, red); /* refused-by: cram/var-references-only */
+  padding: var(--space-1, 4px); /* refused-by: cram/var-references-only */
+  width: var(--space-1, 4px); /* refused-by: cram/var-references-only */
+  width: VAR(--space-1, 4px); /* refused-by: cram/var-references-only */
+  color: var( --color-ink , red); /* refused-by: cram/var-references-only */
+  color: var(--color-ink, var(--color-surface, red)); /* refused-by: cram/var-references-only */
+  --probe-fallback: var(--space-1, 4px); /* refused-by: cram/var-references-only */
+  font-family: var(--font-family-body, var(--font-family-mono), serif); /* refused-by: cram/var-references-only */
+  width: calc(var(--space-1, 4px) * 2); /* refused-by: cram/var-references-only */
+  width: var(--space-1, calc(var(--space-2))); /* refused-by: cram/var-references-only */
+  width: var(--space-1, "4px"); /* refused-by: cram/var-references-only */
+  width: var(--space-1, var(--space-2):var(--space-3)); /* refused-by: cram/var-references-only */
   color: var(--color-ink, var(--color-surface));
+  color: var(--color-ink, var(--color-surface), var(--color-accent));
+  width: var(--space-1, var(--space-2) / var(--space-3));
+  width: var(--space-1, var(--space-2) var(--space-3));
+  width: var(--space-1,/* a note */var(--space-2));
   color: var(--color-ink,);
   color: var(--color-ink, );
   transition-property: var(--probe-a), opacity;
   filter: --brand-var(0, 0);
   filter: envvar(0, 0);
 
-  /* declaration-property-value-allowed-list: a custom property only aliases */
+  /* cram/var-references-only: a var() names a custom property and nothing else */
+  width: var(4px); /* refused-by: cram/var-references-only */
+  width: var(); /* refused-by: cram/var-references-only */
+  width: var(--space-1 4px); /* refused-by: cram/var-references-only */
+  width: var(--space-1 4px, var(--space-2)); /* refused-by: cram/var-references-only */
+  width: var(--space-1 / var(--space-2)); /* refused-by: cram/var-references-only */
+  width: var("--space-1"); /* refused-by: cram/var-references-only */
+  width: var( --space-1 );
+  width: var(--space-1/* a note */);
+
+  /* cram/var-references-only: a custom property only aliases */
   --probe-alias: var(--space-1);
-  --probe-raw: 4px; /* refused-by: declaration-property-value-allowed-list */
-  --probe-calc: calc(var(--space-1) * 2); /* refused-by: declaration-property-value-allowed-list */
+  --probe-alias-case: VAR(--space-1);
+  --probe-list: var(--font-family-body), var(--font-family-mono);
+  --probe-slash: var(--space-1) / var(--space-2);
+  --probe-commented: var(--space-1) /* a note */;
+  --probe-name-commented: var(--space-1 /* a note */);
+  --probe-adjacent-comment: var(--space-1)/* a note */var(--space-2);
+  --probe-adjacent-comment-list: var(--space-1)/* a note */, var(--space-2);
+  --probe-raw: 4px; /* refused-by: cram/var-references-only */
+  --probe-calc: calc(var(--space-1) * 2); /* refused-by: cram/var-references-only */
+  --probe-trailing: var(--space-1) 4px; /* refused-by: cram/var-references-only */
+  --probe-leading: 4px var(--space-1); /* refused-by: cram/var-references-only */
+  --probe-string: "a"; /* refused-by: cram/var-references-only */
+  --probe-keyword: initial; /* refused-by: cram/var-references-only */
+  --probe-colon: var(--space-1):var(--space-2); /* refused-by: cram/var-references-only */
+  --probe-empty: ; /* refused-by: cram/var-references-only */
+  --probe-bare-word: var; /* refused-by: cram/var-references-only */
 }
 
 /* selector-pseudo-class-disallowed-list: bare :focus only */
