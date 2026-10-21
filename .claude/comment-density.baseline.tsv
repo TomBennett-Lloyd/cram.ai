@@ -171,13 +171,13 @@ packages/shared/src/course-list.ts	2000
 packages/shared/src/deck.ts	769
 packages/shared/src/embed-text.ts	1428
 packages/shared/src/index.ts	0
-packages/shared/src/ingest-status.ts	1944
+packages/shared/src/ingest-status.ts	645
 packages/shared/src/non-blank-text.ts	0
-packages/shared/src/quotable-text.ts	975
+packages/shared/src/quotable-text.ts	512
 packages/shared/src/retrieved-slide.ts	1666
 packages/shared/src/slide-chunk.ts	1764
 packages/shared/src/slide-record-fixture.ts	588
-packages/shared/src/slide-record.ts	1860
+packages/shared/src/slide-record.ts	540
 packages/shared/src/split-chunk.ts	617
 packages/shared/src/style-exemplar.ts	2173
 packages/shared/src/topic-tag.ts	1428

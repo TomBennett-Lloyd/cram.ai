@@ -10,7 +10,6 @@ const COURSE_ID = new RegExp(
   `^[a-z0-9](?:[a-z0-9-]{0,${String(COURSE_ID_MAX_LENGTH - 2)}}[a-z0-9])?$`,
 );
 
-/** Names a course and its file (`docs/adr/0004-storage.md` § Decision (a)), so lowercase, file-safe and no device name. */
 export const CourseId = z
   .string()
   .regex(COURSE_ID, 'lowercase letters, digits and inner hyphens')
@@ -31,11 +30,6 @@ export type SourceHash = z.infer<typeof SourceHash>;
 export const SlideKind = z.enum(['content', 'references', 'image-only']);
 export type SlideKind = z.infer<typeof SlideKind>;
 
-/**
- * One slide as ingest emits it. A slide with no extractable text is an `image-only`
- * record, not an error (#9). `derived` marks text produced by OCR or captioning rather
- * than read from the deck (ADR 0006, #6).
- */
 export const SlideRecord = z.object({
   courseId: CourseId,
   lectureId: LectureId,
