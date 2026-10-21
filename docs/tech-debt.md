@@ -31,17 +31,27 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 **Resolving a conflict here after a pruning pass**: take `main`'s pruned file as the base and re-apply only your branch's own additions — a union of **changes**, never a union of lines, because a line-union silently resurrects everything just deleted. A deletion on either side is authoritative and is never reinstated. Capture the heading and redirect-row sets of base, main and branch **before** rebasing and the resolution becomes arithmetic rather than judgement; `review-loop` step 5 states the full procedure.
 
-| Captured entry                                                                               | Now owned by |
-| -------------------------------------------------------------------------------------------- | ------------ |
-| architecture.md § Why paraphrases ADR 0002's count without citing it                         | #181         |
-| plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14                         | #181         |
-| ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
-| grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
-| ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
-| ADR 0003's restatement ledger does not list #20's new carriers                               | #298         |
-| ADR 0006's carrier ledger names the old home of the quotable field list                      | #298         |
-| ADR 0005 cites `citation.ts` for a minting split it no longer states                         | #298         |
-| ledger sweeps with only literal arms cannot see a paraphrase                                 | #298         |
+| Captured entry                                                                                   | Now owned by |
+| ------------------------------------------------------------------------------------------------ | ------------ |
+| architecture.md § Why paraphrases ADR 0002's count without citing it                             | #181         |
+| plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14                             | #181         |
+| ADR 0005 (g) lists the trigger path set its script will own                                      | #181         |
+| grading agreement's hand-marked inputs have no delivering ticket                                 | #181         |
+| ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed     | #181         |
+| ADR 0003's restatement ledger does not list #20's new carriers                                   | #298         |
+| ADR 0006's carrier ledger names the old home of the quotable field list                          | #298         |
+| ADR 0005 cites `citation.ts` for a minting split it no longer states                             | #298         |
+| ledger sweeps with only literal arms cannot see a paraphrase                                     | #298         |
+| a failed repair's log names the outcome, not the lecture or the cause                            | #398         |
+| a course file's `course` table with no row throws instead of being refused                       | #398         |
+| three copies of the read-only course-file sequence in apps/server                                | #398         |
+| which slides get a vector is decided twice, once by the server and once by eval                  | #399         |
+| an over-length slide's whole text now reaches the generator prompt                               | #399         |
+| check:ledgers accepts any word in the owner as a citation                                        | #400         |
+| the .claude/ledgers/ exemption hides siblings' claim and comment lines                           | #400         |
+| the comment-density median counts the small files it never judges                                | #401         |
+| the trim-batch trigger does not say whether a `+`-joined tier counts                             | #402         |
+| "has no text, so it can't be cited yet" is false for an image-only PPTX slide with speaker notes | #383         |
 
 ---
 
@@ -76,59 +86,17 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: the selectors test every string literal and template element in UI code, so they cannot tell a style value from user-visible copy or a URL. The #273 review measured these as refused: `'Text color(s)'`, `'see lab(3)'`, the anchor `'#add'` and the entity `'&#123;'`. Root cause: the selectors match by node type, not by position. Scoping them to style-bearing positions (a `style`/`fill`/`stroke` attribute, a CSS-in-TS value) would remove the false refusals without opening a way past the gate.
 - Source: #273 review cycle 1
 
-## 2026-10-21 — a failed repair's log names the outcome, not the lecture or the cause
-
-- Where: `apps/server/src/course-repair.ts` `repairCourse`, `parseStored`; `apps/server/src/ingest-queue.ts` `#repair`
-- What: `rebuildCourse` returns the lecture whose stored deck no longer reads, and ingest says why, but `repairCourse` returns only the status and `parseStored` drops ingest's reason, so the log reads `deck-unreadable` with no lecture or reason (`docs/standards/error-handling.md` rule 4). Root cause: `RepairOutcome` is a bare status, and the log entry has one `outcome` field.
-- Source: #299 review cycle 1
-
 ## 2026-10-21 — no gate holds a rebuild report across a rename of a discardable table
 
 - Where: `packages/shared/src/ingest-status.ts` `DiscardableTable`; `packages/index/src/schema.test.ts`; `packages/index/src/rebuild-report.ts` `readRebuildReport`
 - What: the schema test holds `DiscardableTable` equal to the current schema's discardable tables, so renaming `topics` drops the old name from the vocabulary. An undismissed report a rebuild wrote under that old name is then counted as `OTHER_ROW` (`apps/web/src/copy.ts` `discardedMessage`). `readRebuildReport` also reads an older file's `rebuild_report` with the current reader. Root cause: the report's table names are persisted across app versions, and the vocabulary only knows the current one.
 - Source: #299 review cycle 1
 
-## 2026-10-21 — a course file's `course` table with no row throws instead of being refused
-
-- Where: `packages/index/src/open-course.ts` `handOver` (the `CourseRow` parse); `packages/index/src/rebuild-course.ts` `rebuildCourse` (the older file's `course_id` read)
-- What: a `course` table holding no row makes the row read return `undefined`, so both parses throw a `ZodError`. An older file whose schema was not `strict` can also hold a non-text `course_id`, which throws the same way. This is the same class as #300's: a course file is external input, and the module that reads it should refuse a malformed file as a value (`docs/standards/error-handling.md` rule 1). It predates #300, which only touched those lines.
-- Source: #300 review cycle 1
-
 ## 2026-10-21 — the PPTX reader finds parts only by lowercase extension and exact name
 
 - Where: `unzipParts` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`; `readXml` and `resolveTarget` in `packages/ingest/src/adapters/pptx/ooxml.ts`
 - What: only names ending in lowercase `.xml` or `.rels` are inflated, parts are looked up by exact case, and relationship targets are not percent-decoded, though OPC part names compare case-insensitively and may be escaped. A conforming package whose main, slide or notes part is named another way reads as `missing-part`, so `damaged`: a reader limit in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). Predates #301, which made the main part's name come from a relationship and so more reachable.
 - Source: #301 review cycle 1
-
-## 2026-10-21 — which slides get a vector is decided twice, once by the server and once by eval
-
-- Where: `apps/server/src/slide-embedding.ts` `embedSlides`; `eval/src/index-retriever.ts` `embedAll`
-- What: the server embeds no `references` slide and stores an over-length slide with no vector. Eval's `IndexRetriever` cannot import that rule, so it embeds every slide and rejects an over-length text. Default search leaves references out of both lists, and an over-length text fails loudly, so recall@k is unaffected today. But the embedded-text ledger's claim that recall@k measures the retrieval the app runs now rests on two copies of one rule. Suspected root cause: the rule lives in an app, where eval cannot reach it; it belongs in a package both import, beside `packages/shared/src/embed-text.ts`.
-- Source: PR for #338 (review); #184
-
-## 2026-10-21 — an over-length slide's whole text now reaches the generator prompt
-
-- Where: `packages/index/src/course-index.ts` `search` → the generator's retrieved context
-- What: until #338 the embedder's input limit capped every stored slide's length. A slide stored with no vector is still returned by BM25 and sent whole. Grounding holds, because resolution and verification judge quotes. The risk is quality, through #184's open "context trimmed silently" entry.
-- Source: PR for #338 (review)
-
-## 2026-10-21 — "has no text, so it can't be cited yet" is false for an image-only PPTX slide with speaker notes
-
-- Where: `apps/web/src/copy.ts` `indexedMessage`; `packages/ingest/src/slide-text.ts` (an `image-only` slide is classed from its title and body only)
-- What: A citation can quote the speaker notes, and BM25 finds the slide by them, so such a slide can be found and cited. The copy reads the `image-only` kind as "no text". Suspected root cause: one kind is doing two jobs, "derive text from the image" and "nothing to cite".
-- Source: PR for #338 (review; this was already true before #338)
-
-## 2026-10-21 — check:ledgers accepts any word in the owner as a citation
-
-- Where: `.claude/scripts/check-ledgers.sh`'s `cite_names_owner`
-- What: the identifier form of `cite:` passes when the word occurs anywhere in the owner, whether it is a local variable, the claim's own literal or an English word, and the path form's `§ <section>` is never checked against the owner. So the gate proves the sweep matches _a_ name the owner holds, not one carriers use to cite it (#179's review found `cite: ALLOWLIST`, a shell local no carrier could write). Suspected root cause: "citable" has no definition the gate can test, such as an exported symbol or an existing heading.
-- Source: #179 review
-
-## 2026-10-21 — the .claude/ledgers/ exemption hides siblings' claim and comment lines
-
-- Where: `.claude/scripts/check-ledgers.sh`'s unlisted-hit loop
-- What: every path under `.claude/ledgers/` is exempt from the unlisted-hit check, so another ledger's `claim:` or `#` line restating a value is never returned. Only the lines the gate itself checks (`owner:`, `cite:`, `carrier:`, `excluded:`) need the exemption. No hidden restatement exists today (#179's review sweep).
-- Source: #179 review
 
 ## 2026-10-21 — `describeError` is copied in each gateway adapter
 
@@ -142,29 +110,11 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: a value of type `HttpGeneratorConfig` does not prove its endpoint is on loopback, so each entry point must parse it again before any request, and throw if it is not. #171's loader needed its own parse before `/api/show`, and a test now guards that parse. Branding the schema would move the proof into the type (`docs/standards/typing.md` rules 1 and 3), but it touches every consumer of the config.
 - Source: #171 review cycle 1
 
-## 2026-10-21 — the trim-batch trigger does not say whether a `+`-joined tier counts
-
-- Where: `docs/standards/prose.md` § Trim batches (first paragraph); `.claude/skills/review-loop/SKILL.md` **Trim-batch lane**
-- What: both say a PR whose diff `.claude/scripts/verify-tier.sh` classifies `source-prose` or `docs` is a trim batch. #292 made composite tier names reachable, so a trim batch that writes the restatement ledger prose.md rule 1 asks for now classifies `source-prose+ledgers`, and neither text says whether that counts. Nothing regressed: before #292 a diff touching a ledger classified `full`, which was never a trim batch. The fix is a standards decision.
-- Source: #292 review cycle 1
-
-## 2026-10-21 — the comment-density median counts the small files it never judges
-
-- Where: `.claude/scripts/check-comment-density.sh` (the median block, and the `MIN_JUDGED_LINES` arm of the comparison); `.claude/comment-density.baseline.tsv`
-- What: the admission median is taken over every baseline row, including the rows of files under `MIN_JUDGED_LINES`, which are banked at any ratio. Those small files are denser, so the bar that judged files are measured against sits above their own median: on the #187 census (origin/main 1a7277a) it was 769 bp over all 170 rows against 641 over the 92 files of 40 or more non-blank lines. Each dense small file a lane banks raises the bar for later lanes, so "new dense files cannot lift the bar" holds within one PR, not across PRs. A median over judged rows only would need a line count in the baseline, which is a format change.
-- Source: #187 review cycle 1
-
 ## 2026-10-21 — the `chunks` table stores text that no production path reads
 
 - Where: `packages/index/src/chunk-row.ts` (`CHUNK_TABLE`'s text columns); `packages/index/src/course-index.ts` `chunks()`
 - What: every slide's quotable text is stored a second time, split across its chunks, and that copy is read only by `CourseIndex.chunks()`, which only tests call. A rebuild re-parses the stored deck, and a re-embed runs `embedSlideChunks` from the slides again. Neither reads the chunk text. `slides_fts` is contentless (`content = ''`), so it does not need the copy either. Suspected root cause: the plan argued for storing the text as a way to avoid re-running the split, and the code never needed that. Decide whether to drop the columns, keeping a line range or nothing, or to keep them for a reader that will need them, such as a chunk-level highlight.
 - Source: PR for #339 (review)
-
-## 2026-10-21 — three copies of the read-only course-file sequence in apps/server
-
-- Where: `storedSlideImage` and `storedLectures` in `apps/server/src/course-file.ts`; `askCourse` in `apps/server/src/ask-course.ts`
-- What: each runs the same steps: check the file exists, `openToRead`, treat `blank` as empty, map any other non-`open` status to `course-unavailable`, then read inside `try`/`finally close`. A change to how one copy handles a status leaves the other two wrong (`docs/standards/structure.md` rule 7). Extracting the shared part touches all three call sites.
-- Source: #368 review cycle 1
 
 ## 2026-10-21 — only the slide-image route sends Cross-Origin-Resource-Policy
 
