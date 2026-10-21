@@ -1,0 +1,30 @@
+/*
+ * Probe for eslint.config.mjs's custom-property registration ban, linted by
+ * frontend-gate.test.ts as a .ts file. A line whose trailing comment carries
+ * the refused-by marker must draw the rules it lists; every other line must
+ * not draw a gate rule. The `.txt` suffix keeps it out of `lint:js`.
+ */
+declare const registry: { registerProperties: () => void; register: () => void };
+const definition = { name: '--probe-size', syntax: '<length>', inherits: false, initialValue: '4px' };
+
+CSS.registerProperty(definition); // refused-by: no-restricted-properties
+CSS['registerProperty'](definition); // refused-by: no-restricted-properties
+CSS[`registerProperty`](definition); // refused-by: no-restricted-properties
+CSS?.registerProperty(definition); // refused-by: no-restricted-properties
+window.CSS.registerProperty(definition); // refused-by: no-restricted-properties
+globalThis.CSS.registerProperty(definition); // refused-by: no-restricted-properties
+export const css = CSS;
+css.registerProperty(definition); // refused-by: no-restricted-properties
+CSS.registerProperty.call(CSS, definition); // refused-by: no-restricted-properties
+export const alias = CSS.registerProperty.bind(CSS); // refused-by: no-restricted-properties
+export const { registerProperty } = CSS; // refused-by: no-restricted-properties
+export const { registerProperty: renamed } = window.CSS; // refused-by: no-restricted-properties
+export const { ['registerProperty']: computed } = CSS; // refused-by: no-restricted-properties
+export const fromParameter = ({ registerProperty: r }: typeof CSS) => r; // refused-by: no-restricted-properties
+export let assigned: typeof CSS.registerProperty | undefined;
+({ registerProperty: assigned } = CSS); // refused-by: no-restricted-properties
+
+CSS.supports('display: grid');
+registry.registerProperties();
+registry.register();
+export const unrelated = { registerProperty: true };

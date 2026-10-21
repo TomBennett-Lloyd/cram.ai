@@ -56,20 +56,32 @@ const ESLINT_PATHS = {
   appTsx: 'apps/web/src/__gate_probe__.tsx',
   uiTs: 'packages/ui/src/__gate_probe__.ts',
   uiTsx: 'packages/ui/src/__gate_probe__.tsx',
+  tokensTs: 'packages/ui/src/tokens/__gate_probe__.ts',
+  tokensTsx: 'packages/ui/src/tokens/__gate_probe__.tsx',
+  tokensNestedTs: 'packages/ui/src/tokens/fonts/__gate_probe__.ts',
+  appTokensTs: 'apps/web/src/tokens/__gate_probe__.ts',
   sharedTs: 'packages/shared/src/__gate_probe__.ts',
 } as const;
 
 // The one override: the type-aware presets need a project for a file that is
-// not on disk. The gate's rule is syntax-only, so none of its settings moves.
+// not on disk, and a cap on how many such files typescript-eslint accepts
+// that this table outgrew. The gate's rules are syntax-only, so none of their
+// settings moves.
+const DEFAULT_PROJECT = Object.values(ESLINT_PATHS);
 const eslint = new ESLint({
   cwd: ROOT,
   overrideConfig: {
     languageOptions: {
-      parserOptions: { projectService: { allowDefaultProject: Object.values(ESLINT_PATHS) } },
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: DEFAULT_PROJECT,
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: DEFAULT_PROJECT.length,
+        },
+      },
     },
   },
 });
-const GATE_RULE = 'no-restricted-syntax';
+const GATE_RULES = new Set(['no-restricted-syntax', 'no-restricted-properties']);
 
 const eslintRefusals = async (text: string, virtualPath: string): Promise<string[]> => {
   const [result] = await eslint.lintText(text, { filePath: join(ROOT, virtualPath) });
@@ -77,9 +89,9 @@ const eslintRefusals = async (text: string, virtualPath: string): Promise<string
   // A parse error or an ignored-file notice carries no rule id.
   expect(result.messages.filter((message) => message.ruleId === null)).toEqual([]);
   return sorted(
-    result.messages
-      .filter((message) => message.ruleId === GATE_RULE)
-      .map((message) => `${String(message.line)}:${GATE_RULE}`),
+    result.messages.flatMap(({ line, ruleId }) =>
+      ruleId !== null && GATE_RULES.has(ruleId) ? [`${String(line)}:${ruleId}`] : [],
+    ),
   );
 };
 
@@ -126,6 +138,7 @@ describe('stylelint.config.mjs', () => {
 describe('eslint.config.mjs frontend gate', () => {
   const colour = readProbe('colour.probe.ts.txt');
   const jsx = readProbe('jsx.probe.tsx.txt');
+  const registration = readProbe('register-property.probe.ts.txt');
 
   it.each([ESLINT_PATHS.appTs, ESLINT_PATHS.uiTs])(
     'refuses exactly the colour literals the probe marks, at %s',
@@ -143,8 +156,35 @@ describe('eslint.config.mjs frontend gate', () => {
     },
   );
 
-  it('does not reach a package outside apps/ and packages/ui', SLOW, async () => {
-    expectedRefusals(colour);
-    expect(await eslintRefusals(colour, ESLINT_PATHS.sharedTs)).toEqual([]);
+  // Only the tokens source itself is exempt: not a directory under it, and not
+  // a tokens/ directory elsewhere.
+  it.each([
+    ESLINT_PATHS.appTs,
+    ESLINT_PATHS.appTsx,
+    ESLINT_PATHS.uiTs,
+    ESLINT_PATHS.uiTsx,
+    ESLINT_PATHS.tokensNestedTs,
+    ESLINT_PATHS.appTokensTs,
+  ])('refuses exactly the registrations the probe marks, at %s', SLOW, async (virtualPath) => {
+    expect(await eslintRefusals(registration, virtualPath)).toEqual(expectedRefusals(registration));
   });
+
+  it.each([ESLINT_PATHS.tokensTs, ESLINT_PATHS.tokensTsx])(
+    'exempts %s from the registration ban and not from the colour ban',
+    SLOW,
+    async (virtualPath) => {
+      expectedRefusals(registration);
+      expect(await eslintRefusals(registration, virtualPath)).toEqual([]);
+      expect(await eslintRefusals(colour, virtualPath)).toEqual(expectedRefusals(colour));
+    },
+  );
+
+  it.each([colour, registration])(
+    'does not reach a package outside apps/ and packages/ui (probe %#)',
+    SLOW,
+    async (probe) => {
+      expectedRefusals(probe);
+      expect(await eslintRefusals(probe, ESLINT_PATHS.sharedTs)).toEqual([]);
+    },
+  );
 });
