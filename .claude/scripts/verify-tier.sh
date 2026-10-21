@@ -128,6 +128,9 @@
 #     anything else.
 #   * check:comment-density — counts comment lines, which is what a change set
 #     on this rung changes (cumulo#553).
+#   * check:no-network-egress, whenever a lintable file is admitted — its
+#     first-party census reads source text, comments included, so a comment
+#     naming `fetch(` changes its verdict (#165).
 #   * check:adr-index, check:no-course-content and check:markdown-links, when the
 #     set also holds .md — the one type this rung admits without an emit proof.
 #   * the observing tests, below, and the legs every class runs (further down).
@@ -135,8 +138,8 @@
 # Skipped, provably unaffected: every other package's vitest; stylelint when no
 # .css changed; the shell harnesses when none is selected; and the check:* gates
 # that read code SHAPE — module-names reads filenames, node-types and
-# supply-chain-policy read manifests, no-network-egress reads the installed
-# dependency tree. None of them can change under an unchanged emit.
+# supply-chain-policy read manifests. None of them can change under an unchanged
+# emit.
 #
 # THE OBSERVING TESTS, selected mechanically. A test can observe a comment in
 # exactly two ways, and each gets an arm: it reads files as data (readFileSync,
@@ -221,7 +224,8 @@
 # does, so the package's reach is its own: eslint over its directory (type-aware
 # rules see across its files), lint:sh (a shebang file needs no .sh), its own
 # typecheck and test scripts, check:comment-density, check:module-names,
-# check:no-course-content (a new package can carry a fixture file), and the
+# check:no-course-content (a new package can carry a fixture file),
+# check:no-network-egress (its census reads the package's sources), and the
 # observing tests elsewhere.
 #
 # ---------------------------------------------------------------------------
@@ -943,9 +947,14 @@ build_legs() {
         # path prettier has no parser for is skipped, not failed.
         append_file_leg "pnpm exec prettier --check --ignore-unknown --" "$TMP/present"
         ;;
-      # Run only through the closure above: they read manifests, the installed
-      # tree or workflow files, which no admitted class changes.
-      lint:workflows | check:no-network-egress | check:node-types | check:supply-chain-policy) ;;
+      check:no-network-egress)
+        if [ -s "$TMP/lintable" ] || [ "$has_pkg" = 1 ]; then
+          append_leg "pnpm $slot"
+        fi
+        ;;
+      # Run only through the closure above: they read manifests or workflow
+      # files, which no admitted class changes.
+      lint:workflows | check:node-types | check:supply-chain-policy) ;;
       *)
         append_leg "pnpm $slot"
         ;;
