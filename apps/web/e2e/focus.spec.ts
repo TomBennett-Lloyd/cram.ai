@@ -13,8 +13,7 @@ const IN_TRANSIT_MS = 500;
 /**
  * The first slide card of a rendered answer (#231). It waits for the card because a Tab pressed
  * while the reply is pending leaves the document, and focus never returns when the cards land
- * (#228). The reply lands `IN_TRANSIT_MS` after `release()`, so the keyboard case fails every run
- * without that wait (#247).
+ * (#228).
  */
 const answered = async (page: Page) => {
   let release = (): void => undefined;
