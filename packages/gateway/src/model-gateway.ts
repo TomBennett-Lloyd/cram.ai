@@ -15,12 +15,10 @@ export interface Generator {
   readonly pin: GeneratorPin;
   /** What this generator samples with: what an eval report records, never a caller's copy (`.claude/ledgers/generator-sampling.ledger`). */
   readonly sampling: Sampling;
-  /** What an eval report records beside the pin (#171). */
   readonly served: ServedArtefact;
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>>;
 }
 
-/** One result per text, in request order. */
 export interface Embedder {
   readonly pin: EmbedderPin;
   embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]>;
@@ -38,7 +36,6 @@ export interface Verifier {
   entail(request: EntailRequest): Promise<readonly EntailmentResult[]>;
 }
 
-/** One capability per role, `docs/adr/0003-model-roles-and-backends.md` § Decision (b); `reranker` is null when unconfigured. */
 export interface ModelGateway {
   readonly generator: Generator;
   readonly verifier: Verifier;

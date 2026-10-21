@@ -28,11 +28,9 @@ const int64 = (values: readonly number[]): Tensor =>
 export interface EncoderSessionSpec {
   readonly pin: EncoderPin;
   readonly directory: string;
-  /** `last_hidden_state` for the embedder, `logits` for a classifier head. */
   readonly output: string;
 }
 
-/** `logits` of a single input's `[1, classes]` classifier head. */
 export const logitsOf = (output: FloatOutput, classes: number): Float32Array | null =>
   output.dims.length === 2 && output.dims[1] === classes ? output.data : null;
 
@@ -88,10 +86,7 @@ export class EncoderSession {
     return output;
   }
 
-  /**
-   * Runs the empty input at load, refusing an artefact that cannot take it or answers in a shape
-   * `accepts` refuses; the input is fixed, so any failure is the artefact's.
-   */
+  /** Runs the empty input at load; the input is fixed, so any failure is the artefact's. */
   async probe(accepts: (output: FloatOutput) => boolean, pair?: string): Promise<void> {
     const output = await this.run('', pair).catch((error: unknown) => {
       throw invalid(this.#modelPath, error);
@@ -109,7 +104,6 @@ export class EncoderSession {
   }
 }
 
-/** Opens the pinned encoder once its whole manifest is verified. */
 export const openEncoderSession = async (spec: EncoderSessionSpec): Promise<EncoderSession> => {
   await verifyManifest(spec.directory, spec.pin);
   const modelPath = join(spec.directory, spec.pin.artefact.file);

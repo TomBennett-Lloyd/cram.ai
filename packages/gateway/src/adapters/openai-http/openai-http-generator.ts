@@ -21,11 +21,7 @@ const failed = (reason: string): TimedReply => ({
   timing: null,
 });
 
-/**
- * The generator over an OpenAI-compatible server (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)).
- * Failure policy: one attempt, no retry, `timeoutMs` bounding the whole call including the streamed body,
- * redirects refused; every transport or protocol failure is `backend-failed`.
- */
+/** The generator over an OpenAI-compatible server (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)). */
 export class OpenAiHttpGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
@@ -47,7 +43,6 @@ export class OpenAiHttpGenerator implements Generator {
     this.#now = now;
   }
 
-  /** The server's reply before parsing, and the call's timing beside it (`TimedReply`). */
   async timedReply(wire: ChatWireRequest): Promise<TimedReply> {
     const at = `POST ${this.#url.href}`;
     const startedAt = this.#now();
@@ -83,9 +78,7 @@ export class OpenAiHttpGenerator implements Generator {
 
 /**
  * Asks the server which weights it serves as `servedModel`, through Ollama's `/api/show` on the
- * endpoint's origin. Failure policy: one attempt, `timeoutMs` as the bound, redirects refused; a
- * server that cannot be asked is `unverified`, never a failure (#171). It sits beside the chat call, the
- * adapter's one allow-listed socket module (#165).
+ * endpoint's origin; a server that cannot be asked is `unverified`, never a failure (#171).
  */
 export const checkServedModel = async (config: HttpGeneratorConfig): Promise<ServedCheck> => {
   const url = new URL('/api/show', config.endpoint);
