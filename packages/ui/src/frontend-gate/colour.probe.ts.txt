@@ -22,6 +22,7 @@ export const literals = [
   'lab(0 0 0)', // refused-by: no-restricted-syntax
   'lch(0 0 0)', // refused-by: no-restricted-syntax
   'var(--color-ink)',
+  'label',
 ];
 
 export const templates = [
@@ -40,4 +41,5 @@ export const templates = [
   `${n} lab(0 0 0)`, // refused-by: no-restricted-syntax
   `${n} lch(0 0 0)`, // refused-by: no-restricted-syntax
   `${n} var(--color-ink)`,
+  `${n} label`,
 ];

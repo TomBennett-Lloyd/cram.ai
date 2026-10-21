@@ -121,6 +121,7 @@
   filter: drop-shadow(0 0 0 lch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
   border-image-source: linear-gradient(#abc, transparent); /* refused-by: declaration-property-value-disallowed-list */
   filter: drop-shadow(0 0 0 var(--color-ink));
+  grid-area: lab;
 
   /* declaration-property-value-allowed-list: a custom property only aliases */
   --probe-alias: var(--space-1);
