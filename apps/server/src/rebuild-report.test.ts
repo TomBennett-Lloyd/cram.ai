@@ -27,8 +27,10 @@ const started = async (embedder?: GatedEmbedder): Promise<TestServer> => {
   return test;
 };
 
-const dismiss = (port: number, courseId = 'bio') =>
-  send(port, { method: 'DELETE', path: `/courses/${courseId}/rebuild-report` });
+const SHOWN = 'a'.repeat(64);
+
+const dismiss = (port: number, courseId = 'bio', query = `?revision=${SHOWN}`) =>
+  send(port, { method: 'DELETE', path: `/courses/${courseId}/rebuild-report${query}` });
 
 const upload = async (port: number, courseId = 'bio') =>
   send(port, {
@@ -86,6 +88,17 @@ describe('DELETE /courses/:id/rebuild-report', () => {
     expect((await settledStatus(server.port, 'chem')).json).toMatchObject({
       uploads: [{ progress: { state: 'indexed' } }],
     });
+  });
+
+  it('refuses a dismissal that names no report revision, or a malformed one', async () => {
+    const { server } = await started();
+    await upload(server.port);
+    await settledStatus(server.port, 'bio');
+    for (const query of ['', '?revision=', `?revision=${'a'.repeat(63)}`, `?other=${SHOWN}`])
+      expect(await dismiss(server.port, 'bio', query)).toMatchObject({
+        status: 400,
+        json: { status: 'bad-request' },
+      });
   });
 
   it('refuses a course id the route does not take, and any other method', async () => {

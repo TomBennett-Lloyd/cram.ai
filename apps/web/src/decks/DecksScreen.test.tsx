@@ -77,7 +77,7 @@ describe('DecksScreen', () => {
     ).toEqual([
       'This deck couldn’t be read (encrypted).',
       'Slide 2 holds more text than the model reads at once (512 tokens), so nothing from this deck was indexed.',
-      'This course’s file can’t be opened (embedder-mismatch), so the deck was not indexed.',
+      'This course’s file was indexed by a different embedding model, so the deck was not indexed.',
       'Something went wrong reading this deck. Upload it again.',
       '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.',
       'Slides 2, 5 hold more text than the model reads at once (512 tokens), so nothing from this deck was indexed.',
@@ -134,6 +134,32 @@ describe('DecksScreen', () => {
     expect(reads(sent)).toBe(3);
   });
 
+  it('keeps the batch’s refusals in the alert across a retry of a failed status read', async () => {
+    let healthy = true;
+    const { api } = fakeApi(({ path }) => {
+      if (path.startsWith('/courses/bio/decks'))
+        return { status: 415, body: { status: 'unsupported-media-type' } };
+      return healthy ? status() : { status: 200, body: { nope: true } };
+    });
+    renderDecks(api);
+    await settle();
+    healthy = false;
+    fireEvent.change(screen.getByLabelText('Add decks'), {
+      target: { files: [new File(['x'], 'a.key')] },
+    });
+    await settle();
+    const lines = () =>
+      [...screen.getByRole('alert').querySelectorAll('p')].map((line) => line.textContent);
+    expect(lines()).toEqual([
+      'a.key: Only PDF and PowerPoint (.pptx) decks can be read.',
+      'The server sent a reply this app doesn’t understand.',
+    ]);
+    healthy = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await settle();
+    expect(lines()).toEqual(['a.key: Only PDF and PowerPoint (.pptx) decks can be read.']);
+  });
+
   it('reports a batch’s refusals in one alert, and announces a repeat refusal afresh', async () => {
     const { api } = fakeApi(({ path }) =>
       path.startsWith('/courses/bio/decks')
@@ -164,7 +190,7 @@ describe('DecksScreen', () => {
     const stored = StoredLectures.parse({
       state: 'read',
       lectures: [lecture('l1', 1, [1])],
-      discarded: [],
+      report: { state: 'none' },
     });
     const { api, sent } = fakeApi(() => storedStatus(stored));
     renderDecks(api);
@@ -183,7 +209,7 @@ describe('DecksScreen', () => {
     const stored = StoredLectures.parse({
       state: 'read',
       lectures: [lecture('l1', 12, [3, 9]), lecture('l2', 1, []), lecture('l3', 4, [])],
-      discarded: [],
+      report: { state: 'none' },
     });
     const { api } = fakeApi(() =>
       storedStatus(
@@ -211,7 +237,7 @@ describe('DecksScreen', () => {
     renderDecks(api);
     await settle();
     expect(screen.getByRole('alert').textContent).toBe(
-      'This course’s file can’t be opened (embedder-mismatch), so its stored decks can’t be listed.',
+      'This course’s file was indexed by a different embedding model, so its stored decks can’t be listed.',
     );
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(screen.queryByText(/No decks yet/)).toBeNull();

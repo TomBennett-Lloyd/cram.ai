@@ -1,124 +1,32 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { openCourse, SCHEMA_VERSION, sourceIdOf } from '@cram/index';
-import { CourseId, TopicTag } from '@cram/shared';
+import { existsSync } from 'node:fs';
+import { sourceIdOf } from '@cram/index';
+import { StoredLectures, TopicTag } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
-  GatedEmbedder,
-  gatewayOf,
-  PDF,
-  pdfDeck,
-  send,
-  settledStatus,
-  ShortEmbedder,
-  startTestServer,
-  stopTestServer,
-  type TestServer,
-  uploadPath,
-  WordEmbedder,
-} from './server-fixture';
-import { embedderIdentity } from './slide-embedding';
+  BIO,
+  HIVE,
+  HIVE_STORED,
+  markOlder,
+  openedUnder,
+  repairedStatus,
+  repairLog,
+  RepinnedGatedEmbedder,
+  restarted,
+  seededDataDir,
+  stopRestarted,
+  uploadTo,
+} from './repair-fixture';
+import { pdfDeck, send, settledStatus, startTestServer, WordEmbedder } from './server-fixture';
 
-const BIO = CourseId.parse('bio');
-const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
-const HIVE_STORED = {
-  state: 'read',
-  lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
-  discarded: [],
-};
-
-/** `WordEmbedder`'s vectors under another pin, so a file it wrote records another embedder. */
-class RepinnedEmbedder extends WordEmbedder {
-  override readonly pin = { ...new WordEmbedder().pin, model: 'fixture/repinned-embedder' };
-}
-
-class RepinnedGatedEmbedder extends GatedEmbedder {
-  override readonly pin = new RepinnedEmbedder().pin;
-}
-
-class RepinnedShortEmbedder extends ShortEmbedder {
-  override readonly pin = new RepinnedEmbedder().pin;
-}
-
-let test: TestServer | undefined;
-afterEach(async () => {
-  if (test !== undefined) await stopTestServer(test);
-  test = undefined;
-});
-
-const upload = (
-  port: number,
-  deck: Uint8Array,
-  lectureId = 'l1',
-  fileName = 'hive.pdf',
-  courseId = 'bio',
-) =>
-  send(port, {
-    method: 'POST',
-    path: uploadPath(courseId, lectureId, fileName),
-    headers: { 'content-type': PDF },
-    body: deck,
-  });
-
-/** A data directory whose `bio` course holds `pages` as lecture `l1`, written by a server since closed. */
-const seededDataDir = async (
-  pages: readonly (readonly string[])[] = HIVE,
-  fileName?: string,
-): Promise<string> => {
-  const seeding = await startTestServer();
-  await upload(seeding.server.port, await pdfDeck(pages), 'l1', fileName);
-  await settledStatus(seeding.server.port, 'bio');
-  await seeding.server.close();
-  return seeding.dataDir;
-};
-
-/** Rewrites the `user_version` field of the SQLite file header to the previous schema. */
-const markOlder = (dataDir: string): void => {
-  const path = courseFilePath(dataDir, BIO);
-  expect(existsSync(`${path}-wal`)).toBe(false);
-  const file = readFileSync(path);
-  file.writeUInt32BE(SCHEMA_VERSION - 1, 60);
-  writeFileSync(path, file);
-};
-
-const restarted = async (dataDir: string, embedder = new WordEmbedder()): Promise<TestServer> => {
-  test = await startTestServer(gatewayOf([], embedder), dataDir);
-  return test;
-};
-
-const repairLog = async ({ logs }: TestServer) => {
-  for (let attempt = 0; attempt < 500; attempt++) {
-    const repairs = logs.filter(({ operation }) => operation === 'repair');
-    if (repairs.length > 0) return repairs;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error('repairLog: no repair was logged');
-};
-
-/** The `bio` course's ingest status once its repair has finished. */
-const repairedStatus = async ({ server }: TestServer) => {
-  const { stored, repair } = (await settledStatus(server.port, 'bio')).json as {
-    stored: unknown;
-    repair: unknown;
-  };
-  return { stored, repair };
-};
-
-/** The `bio` course file as `embedder` opens it. */
-const openedUnder = async (dataDir: string, embedder: WordEmbedder) =>
-  openCourse({
-    path: courseFilePath(dataDir, BIO),
-    courseId: BIO,
-    embedder: await embedderIdentity(embedder),
-  });
+afterEach(stopRestarted);
 
 describe('start-up repair', () => {
   it('re-embeds a course file another embedder wrote, before any upload runs', async () => {
     const dataDir = await seededDataDir();
     const embedder = new RepinnedGatedEmbedder();
     const server = await restarted(dataDir, embedder);
-    await upload(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
+    await uploadTo(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
     const held = await send(server.server.port, { method: 'GET', path: '/courses/bio/ingest' });
     expect(held.json).toMatchObject({
       stored: { state: 'course-unavailable', problem: 'embedder-mismatch' },
@@ -140,7 +48,7 @@ describe('start-up repair', () => {
   it('reports a repair queued behind another course’s as queued', async () => {
     const seeding = await startTestServer();
     for (const courseId of ['bio', 'chem'])
-      await upload(seeding.server.port, await pdfDeck(HIVE), 'l1', 'hive.pdf', courseId);
+      await uploadTo(seeding.server.port, await pdfDeck(HIVE), 'l1', 'hive.pdf', courseId);
     await settledStatus(seeding.server.port, 'chem');
     await seeding.server.close();
     const embedder = new RepinnedGatedEmbedder();
@@ -176,7 +84,7 @@ describe('start-up repair', () => {
       stored: {
         state: 'read',
         lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
-        discarded: [],
+        report: { state: 'none' },
       },
       repair: { state: 'done' },
     });
@@ -202,15 +110,32 @@ describe('start-up repair', () => {
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
     ]);
-    const reported = { stored: { ...HIVE_STORED, discarded: [{ table: 'topics', rows: 1 }] } };
-    expect(await repairedStatus(server)).toEqual({ ...reported, repair: { state: 'done' } });
+    const reported = await repairedStatus(server);
+    expect(reported).toMatchObject({
+      stored: {
+        ...HIVE_STORED,
+        report: { state: 'undismissed', discarded: [{ table: 'topics', rows: 1 }] },
+      },
+      repair: { state: 'done' },
+    });
     await server.server.close();
     const current = await restarted(dataDir);
-    expect(await repairedStatus(current)).toEqual({ ...reported, repair: { state: 'done' } });
+    const shown = await repairedStatus(current);
+    expect(shown).toEqual(reported);
     expect(current.logs).toEqual([]);
+    const stored = StoredLectures.parse(shown.stored);
+    if (stored.state !== 'read' || stored.report.state !== 'undismissed')
+      throw new Error('expected an undismissed report');
+    const { revision } = stored.report;
+    const stale = await send(current.server.port, {
+      method: 'DELETE',
+      path: `/courses/bio/rebuild-report?revision=${'0'.repeat(64)}`,
+    });
+    expect(stale).toMatchObject({ status: 409, json: { status: 'report-changed' } });
+    expect(await repairedStatus(current)).toEqual(shown);
     const dismissed = await send(current.server.port, {
       method: 'DELETE',
-      path: '/courses/bio/rebuild-report',
+      path: `/courses/bio/rebuild-report?revision=${revision}`,
     });
     expect(dismissed).toMatchObject({ status: 200, json: { status: 'dismissed' } });
     expect(await repairedStatus(current)).toEqual({
@@ -221,38 +146,10 @@ describe('start-up repair', () => {
     expect(await repairedStatus(await restarted(dataDir))).toMatchObject({ stored: HIVE_STORED });
   });
 
-  it('logs a repair that throws, and leaves the course unavailable', async () => {
-    const dataDir = await seededDataDir();
-    const server = await restarted(dataDir, new RepinnedShortEmbedder(3));
-    expect(await repairLog(server)).toEqual([
-      { operation: 'repair', courseId: 'bio', outcome: 'Error' },
-    ]);
-    expect(await repairedStatus(server)).toEqual({
-      stored: { state: 'course-unavailable', problem: 'embedder-mismatch' },
-      repair: { state: 'failed' },
-    });
-  });
-
-  it('logs a course file it cannot repair by the reason it cannot be opened', async () => {
-    const seeding = await startTestServer();
-    await seeding.server.close();
-    const path = courseFilePath(seeding.dataDir, BIO);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, 'not a course file');
-    const server = await restarted(seeding.dataDir);
-    expect(await repairLog(server)).toEqual([
-      { operation: 'repair', courseId: 'bio', outcome: 'not-a-course-file' },
-    ]);
-    expect(await repairedStatus(server)).toEqual({
-      stored: { state: 'course-unavailable', problem: 'not-a-course-file' },
-      repair: { state: 'failed' },
-    });
-  });
-
   it('logs nothing for a course file that needs no repair, and leaves it closed', async () => {
     const dataDir = await seededDataDir();
     const server = await restarted(dataDir);
-    await upload(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
+    await uploadTo(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
     expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
       repair: { state: 'done' },
     });

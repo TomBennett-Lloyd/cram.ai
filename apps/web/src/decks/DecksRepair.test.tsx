@@ -18,9 +18,12 @@ describe('the course file’s start-up repair', () => {
     state: 'course-unavailable',
     problem: 'older-schema',
   });
-  const storedWith = (discarded: unknown[]) =>
-    StoredLectures.parse({ state: 'read', lectures: [lecture('l1', 2, [])], discarded });
-  const STORED = storedWith([]);
+  const SHOWN = 'a'.repeat(64);
+  const storedWith = (report: unknown) =>
+    StoredLectures.parse({ state: 'read', lectures: [lecture('l1', 2, [])], report });
+  const STORED = storedWith({ state: 'none' });
+  const undismissed = (discarded: unknown[], revision = SHOWN) =>
+    storedWith({ state: 'undismissed', discarded, revision });
   const repair = (value: unknown) => CourseRepair.parse(value);
   const busy = () =>
     [...document.querySelectorAll('[aria-busy="true"]')].map((node) => node.textContent);
@@ -66,7 +69,7 @@ describe('the course file’s start-up repair', () => {
     await settle();
     expect(busy()).toEqual([]);
     expect(screen.getByRole('alert').textContent).toBe(
-      'This course’s file can’t be opened (older-schema) and couldn’t be updated, so its stored decks can’t be listed.',
+      'This course’s file was saved by an older version of cram.ai and couldn’t be updated, so its stored decks can’t be listed.',
     );
   });
 
@@ -76,7 +79,7 @@ describe('the course file’s start-up repair', () => {
     fakeApi(({ method }) =>
       method === 'DELETE'
         ? onDelete()
-        : repairStatus(storedWith(DISCARDED), repair({ state: 'done' })),
+        : repairStatus(undismissed(DISCARDED), repair({ state: 'done' })),
     );
   const dismissButton = () => screen.getByRole('button', { name: DISMISS });
 
@@ -92,7 +95,10 @@ describe('the course file’s start-up repair', () => {
     dismissButton().focus();
     fireEvent.click(dismissButton());
     await settle();
-    expect(sent.at(-1)).toMatchObject({ method: 'DELETE', path: '/courses/bio/rebuild-report' });
+    expect(sent.at(-1)).toMatchObject({
+      method: 'DELETE',
+      path: `/courses/bio/rebuild-report?revision=${SHOWN}`,
+    });
     expect(screen.queryAllByRole('alert')).toEqual([]);
     expect(document.activeElement).toBe(screen.getByLabelText('Add decks'));
     expect(reads(sent)).toBe(1);
@@ -146,7 +152,7 @@ describe('the course file’s start-up repair', () => {
   });
 
   it('keeps the notice, and says why, when the dismissal is refused', async () => {
-    const { api } = reported(() => ({
+    const { api, sent } = reported(() => ({
       status: 409,
       body: { status: 'course-unavailable', problem: 'newer-schema' },
     }));
@@ -156,10 +162,84 @@ describe('the course file’s start-up repair', () => {
     fireEvent.click(dismissButton());
     await settle();
     expect([...screen.getByRole('alert').querySelectorAll('p')].map((p) => p.textContent)).toEqual([
-      'This course’s file can’t be opened (newer-schema).',
+      'This course’s file was saved by a newer version of cram.ai.',
       discardedMessage(DISCARDED),
     ]);
     expect(document.activeElement).toBe(dismissButton());
     expect(dismissButton().getAttribute('aria-disabled')).toBe('false');
+    expect(reads(sent)).toBe(1);
+  });
+
+  it('re-reads, and shows the later report, when the one dismissed is no longer the file’s', async () => {
+    const LATER = [{ table: 'topics', rows: 14 }];
+    let rebuiltAgain = false;
+    const { api, sent } = fakeApi(({ method, path }) => {
+      if (method === 'DELETE') {
+        if (path.endsWith(SHOWN)) return { status: 409, body: { status: 'report-changed' } };
+        return DISMISSED;
+      }
+      return repairStatus(
+        rebuiltAgain ? undismissed(LATER, 'b'.repeat(64)) : undismissed(DISCARDED),
+        repair({ state: 'done' }),
+      );
+    });
+    renderDecks(api);
+    await settle();
+    rebuiltAgain = true;
+    fireEvent.click(dismissButton());
+    await settle();
+    expect(reads(sent)).toBe(2);
+    expect([...screen.getByRole('alert').querySelectorAll('p')].map((p) => p.textContent)).toEqual([
+      'This course was rebuilt again since that notice was shown. Read it before dismissing it.',
+      discardedMessage(LATER),
+    ]);
+    fireEvent.click(dismissButton());
+    await settle();
+    expect(sent.at(-1)).toMatchObject({
+      method: 'DELETE',
+      path: `/courses/bio/rebuild-report?revision=${'b'.repeat(64)}`,
+    });
+    expect(screen.queryAllByRole('alert')).toEqual([]);
+  });
+
+  it('shows a report a later rebuild records again, with the same rows, once a read showed it gone', async () => {
+    let phase: 'shown' | 'dismissed' | 'recorded again' = 'shown';
+    const { api } = fakeApi(({ method }) => {
+      if (method === 'DELETE') {
+        phase = 'dismissed';
+        return DISMISSED;
+      }
+      return repairStatus(
+        phase === 'dismissed' ? STORED : undismissed(DISCARDED),
+        repair({ state: 'done' }),
+      );
+    });
+    const reread = async () => {
+      fireEvent.change(screen.getByLabelText('Add decks'), { target: { files: [] } });
+      await settle();
+    };
+    renderDecks(api);
+    await settle();
+    fireEvent.click(dismissButton());
+    await settle();
+    expect(screen.queryAllByRole('alert')).toEqual([]);
+    await reread();
+    expect(screen.queryAllByRole('alert')).toEqual([]);
+    phase = 'recorded again';
+    await reread();
+    expect(screen.getByRole('alert').querySelector('p')?.textContent).toBe(
+      discardedMessage(DISCARDED),
+    );
+  });
+
+  it('keeps a dismissed report hidden while a read still shows it', async () => {
+    const { api } = reported(() => DISMISSED);
+    renderDecks(api);
+    await settle();
+    fireEvent.click(dismissButton());
+    await settle();
+    fireEvent.change(screen.getByLabelText('Add decks'), { target: { files: [] } });
+    await settle();
+    expect(screen.queryAllByRole('alert')).toEqual([]);
   });
 });

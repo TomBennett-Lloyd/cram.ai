@@ -1,10 +1,12 @@
-import type {
-  ApiRefusal,
-  DiscardedTable,
-  PartialPolicy,
-  StoredLecture,
-  UploadProgress,
-  WithheldUnit,
+import {
+  type ApiRefusal,
+  type CourseUnavailableProblem,
+  DiscardableTable,
+  type DiscardedTable,
+  type PartialPolicy,
+  type StoredLecture,
+  type UploadProgress,
+  type WithheldUnit,
 } from '@cram/shared';
 import type { ApiFailure } from './api/api-result';
 
@@ -23,7 +25,17 @@ export const CLOSEST_SLIDES = 'Closest slides';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 
-const fileUnopened = (problem: string): string => `This course’s file can’t be opened (${problem})`;
+/** What each reason a course file cannot be opened means to the student, never its code (#299). */
+const UNOPENED: Readonly<Record<CourseUnavailableProblem, string>> = {
+  'newer-schema': 'was saved by a newer version of cram.ai',
+  'older-schema': 'was saved by an older version of cram.ai',
+  'not-a-course-file': 'isn’t a cram.ai course file',
+  'course-mismatch': 'holds a different course',
+  'embedder-mismatch': 'was indexed by a different embedding model',
+};
+
+const fileUnopened = (problem: CourseUnavailableProblem): string =>
+  `This course’s file ${UNOPENED[problem]}`;
 
 export const RETRY = 'Try again';
 export const DISMISS = 'Dismiss';
@@ -42,6 +54,8 @@ const refusalMessage = (refusal: ApiRefusal): string => {
       return `That question is too long for the model to read (at most ${String(refusal.maxInputTokens)} tokens). Shorten it and ask again.`;
     case 'no-such-course':
       return 'This course has no decks yet. Add one first.';
+    case 'report-changed':
+      return 'This course was rebuilt again since that notice was shown. Read it before dismissing it.';
     case 'payload-too-large':
       return 'That is too large for the server to accept.';
     case 'unsupported-media-type':
@@ -81,25 +95,27 @@ export const indexedMessage = ({
 };
 
 /** Why the course file's lectures are not listed; this session's uploads still are. */
-export const storedUnavailableMessage = (problem: string): string =>
+export const storedUnavailableMessage = (problem: CourseUnavailableProblem): string =>
   `${fileUnopened(problem)}, so its stored decks can’t be listed.`;
 
 /** Why the course file's lectures are not listed once its start-up repair has failed (#225). */
-export const repairFailedMessage = (problem: string): string =>
+export const repairFailedMessage = (problem: CourseUnavailableProblem): string =>
   `${fileUnopened(problem)} and couldn’t be updated, so its stored decks can’t be listed.`;
 
-/** Student words for the `@cram/index` tables a rebuild can discard; any other table counts as `OTHER_ROW`. */
-const DISCARDED_ROW: ReadonlyMap<string, readonly [one: string, many: string]> = new Map([
-  ['topics', ['topic tag', 'topic tags']],
-  [
-    'confirmations',
-    [
-      'confirmation of text read from a slide picture',
-      'confirmations of text read from slide pictures',
-    ],
+/** Student words for each `DiscardableTable`; any other table counts as `OTHER_ROW`. */
+const DISCARDED_ROW: Readonly<Record<DiscardableTable, readonly [one: string, many: string]>> = {
+  topics: ['topic tag', 'topic tags'],
+  confirmations: [
+    'confirmation of text read from a slide picture',
+    'confirmations of text read from slide pictures',
   ],
-]);
+};
 const OTHER_ROW = ['other saved item', 'other saved items'] as const;
+
+const nounOf = (table: string): readonly [string, string] | undefined => {
+  const discardable = DiscardableTable.safeParse(table);
+  return discardable.success ? DISCARDED_ROW[discardable.data] : undefined;
+};
 
 const counted = (rows: number, [one, many]: readonly [string, string]): string =>
   `${String(rows)} ${rows === 1 ? one : many}`;
@@ -107,11 +123,11 @@ const counted = (rows: number, [one, many]: readonly [string, string]): string =
 /** What a rebuild lost (`docs/adr/0004-storage.md` § Decision (d)); `discarded` is not empty. */
 export const discardedMessage = (discarded: readonly DiscardedTable[]): string => {
   const named = discarded.flatMap(({ table, rows }) => {
-    const noun = DISCARDED_ROW.get(table);
+    const noun = nounOf(table);
     return noun === undefined ? [] : [counted(rows, noun)];
   });
   const other = discarded
-    .filter(({ table }) => !DISCARDED_ROW.has(table))
+    .filter(({ table }) => nounOf(table) === undefined)
     .reduce((sum, { rows }) => sum + rows, 0);
   const lost = other === 0 ? named : [...named, counted(other, OTHER_ROW)];
   return `This course was rebuilt from its stored decks for this version of cram.ai, and what was saved with it didn’t carry over: ${lost.join(', ')}.`;

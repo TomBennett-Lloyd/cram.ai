@@ -7,6 +7,7 @@ import {
   IngestStatus,
   type LectureId,
   RebuildReportDismissed,
+  type RebuildReportRevision,
   Upload,
 } from '@cram/shared';
 import type { z } from 'zod';
@@ -66,9 +67,14 @@ export class ApiClient {
     return this.#call(`/courses/${courseId}/ingest`, { method: 'GET' }, IngestStatus);
   }
 
-  dismissRebuildReport(courseId: CourseId): Promise<ApiResult<RebuildReportDismissed>> {
+  /** Dismisses the report `revision` names; the server refuses one other than the file's (#299). */
+  dismissRebuildReport(
+    courseId: CourseId,
+    revision: RebuildReportRevision,
+  ): Promise<ApiResult<RebuildReportDismissed>> {
+    const query = new URLSearchParams({ revision });
     return this.#call(
-      `/courses/${courseId}/rebuild-report`,
+      `/courses/${courseId}/rebuild-report?${query.toString()}`,
       { method: 'DELETE' },
       RebuildReportDismissed,
     );

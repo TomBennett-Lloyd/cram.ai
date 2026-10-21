@@ -1,7 +1,8 @@
 import Database from 'better-sqlite3';
-import { SlideKind } from '@cram/shared';
+import { DiscardableTable, SlideKind } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { openOrFail, slide, tempCourse } from './course-fixture';
+import { unreproducedTables } from './rebuild-course';
 import { classifySchema } from './schema';
 import { SLIDE_COLUMNS, slideRowValues } from './slide-row';
 
@@ -39,6 +40,20 @@ describe('the slides table', () => {
       const kindColumn = SLIDE_COLUMNS.split(', ').indexOf('kind');
       const unknown = slideRowValues(slide({ slideNo: 9 })).with(kindColumn, 'appendix');
       expect(() => insert.run(...unknown)).toThrow(/CHECK constraint/);
+    } finally {
+      db.close();
+      temp.remove();
+    }
+  });
+});
+
+describe('the tables a rebuild discards', () => {
+  it('are each named in DiscardableTable, so the student is told of each in words', () => {
+    const temp = tempCourse();
+    openOrFail(temp.spec).close();
+    const db = new Database(temp.spec.path, { readonly: true });
+    try {
+      expect([...unreproducedTables(db)].sort()).toEqual([...DiscardableTable.options].sort());
     } finally {
       db.close();
       temp.remove();

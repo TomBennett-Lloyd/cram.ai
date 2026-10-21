@@ -29,9 +29,13 @@ export { AskReply, AskRequest } from './ask';
 export { CourseList } from './course-list';
 export {
   CourseRepair,
+  CourseUnavailableProblem,
+  DiscardableTable,
   DiscardedTable,
   IngestStatus,
+  RebuildReport,
   RebuildReportDismissed,
+  RebuildReportRevision,
   StoredLecture,
   StoredLectures,
   Upload,

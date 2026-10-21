@@ -15,7 +15,12 @@ import {
   type TempCourse,
 } from './course-fixture';
 import { openCourse } from './open-course';
-import { rebuildCourse, type RebuildCourseResult, type RebuildDeps } from './rebuild-course';
+import {
+  type ParsedDeck,
+  rebuildCourse,
+  type RebuildCourseResult,
+  type RebuildDeps,
+} from './rebuild-course';
 import { SCHEMA_VERSION } from './schema';
 import { sourceIdOf } from './slide-row';
 
@@ -82,9 +87,10 @@ const writeOlderFile = (
 };
 
 /** One slide per `|`-separated part of the deck's text. */
-const parse = vi.fn((stored: Deck, courseId: CourseId) =>
-  Promise.resolve(
-    new TextDecoder()
+const parse = vi.fn((stored: Deck, courseId: CourseId): Promise<ParsedDeck> =>
+  Promise.resolve({
+    status: 'parsed',
+    slides: new TextDecoder()
       .decode(stored.content)
       .split('|')
       .map((body, index) =>
@@ -102,7 +108,7 @@ const parse = vi.fn((stored: Deck, courseId: CourseId) =>
           sourceHash: 'hash',
         }),
       ),
-  ),
+  }),
 );
 
 const embed = vi.fn((slides: readonly SlideRecord[]) =>
@@ -258,6 +264,24 @@ describe('rebuildCourse', () => {
       message: 'rebuildCourse: lecture lecture-1 did not rebuild',
       cause: new Error('rebuildCourse: embed returned 0 vectors for 2 slides'),
     });
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+    expect(filesInDir()).toEqual(['course-a.sqlite']);
+    expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });
+  });
+
+  it('names the first stored deck that no longer reads, and leaves the older file untouched', async () => {
+    writeOlderFile(temp.spec.path);
+    const before = readFileSync(temp.spec.path);
+    const unreadable = vi.fn((stored: Deck, courseId: CourseId): Promise<ParsedDeck> =>
+      stored.lectureId === 'lecture-2'
+        ? Promise.resolve({ status: 'unreadable' })
+        : parse(stored, courseId),
+    );
+    expect(await rebuildCourse(temp.spec, { ...deps, parse: unreadable })).toEqual({
+      status: 'deck-unreadable',
+      lectureId: 'lecture-2',
+    });
+    expect(unreadable).toHaveBeenCalledTimes(2);
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);
     expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });

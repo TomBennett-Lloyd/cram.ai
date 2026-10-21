@@ -26,7 +26,7 @@ const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 const HIVE_STORED = {
   state: 'read',
   lectures: [{ lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2] }],
-  discarded: [],
+  report: { state: 'none' },
 };
 
 let test: TestServer | undefined;

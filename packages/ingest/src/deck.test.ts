@@ -96,6 +96,15 @@ describe('slidesFromPages', () => {
     expect(slide?.lectureTitle).toBe('Caf\u00E9 k rates');
   });
 
+  it('takes a stored title verbatim over the filename when the first page has none (#299)', () => {
+    const stored = { ...source('decks/Lecture_04-Kinetics.pdf'), storedTitle: 'Cells/Tissues_1-2' };
+    expect(slidesFromPages([blank], stored)[0]?.lectureTitle).toBe('Cells/Tissues_1-2');
+    expect(slidesFromPages([titled('Kinetics')], stored)[0]?.lectureTitle).toBe('Kinetics');
+    expect(slidesFromPages([blank], { ...stored, storedTitle: '' })[0]?.lectureTitle).toBe(
+      UNTITLED_LECTURE,
+    );
+  });
+
   it('falls back to a fixed lecture title when neither page nor filename has one', () => {
     const [slide] = slidesFromPages([blank], source('.pdf'));
     expect(slide?.lectureTitle).toBe(UNTITLED_LECTURE);
