@@ -61,7 +61,7 @@ class Replies<R> {
   }
 }
 
-/** A replay serves no model, so it is never `verified`. */
+/** A replay serves no model. */
 export const REPLAYED: ServedArtefact = {
   status: 'unverified',
   reason: 'replayed from recordings',

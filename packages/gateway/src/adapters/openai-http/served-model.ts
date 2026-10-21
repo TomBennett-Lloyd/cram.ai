@@ -2,33 +2,44 @@ import { z } from 'zod';
 import type { GeneratorPin } from '../../pin';
 import type { HttpGeneratorConfig } from '../../role-config';
 import type { ServedArtefact } from '../../served-artefact';
+import { BODY_EXCERPT_CHARS, describeError } from './http-failure';
 
 /** `mismatch` is the server naming weights the pin does not: the one outcome that refuses a start. */
 export type ServedCheck = ServedArtefact | { readonly status: 'mismatch'; readonly detail: string };
 
-const BODY_EXCERPT_CHARS = 500;
-
 /** Ollama's model-inspection reply; only the modelfile is read. */
 const ShowReply = z.object({ modelfile: z.string() });
 
-const DIRECTIVE = /^(FROM|ADAPTER)\s+(.+)$/i;
+/** Upper case, as `ollama show` prints every directive; `.claude/scripts/models-pull.sh` reads `FROM` the same way. */
+const DIRECTIVE = /^(FROM|ADAPTER)\s+(.+)$/;
+/** Opens or closes a multi-line value (`SYSTEM`, `TEMPLATE`, `LICENSE`, `MESSAGE`), whose lines are never directives. */
+const QUOTE = '"""';
 /** Ollama stores every layer under its own sha256, so the weights' blob name is the GGUF's digest. */
 const BLOB = /\/blobs\/sha256-([0-9a-f]{64})$/;
 
 const unverified = (reason: string): ServedCheck => ({ status: 'unverified', reason });
 const mismatch = (detail: string): ServedCheck => ({ status: 'mismatch', detail });
 
-const describeError = (error: unknown): string =>
-  error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+interface Directive {
+  readonly keyword: string;
+  readonly argument: string;
+}
+
+const directivesOf = (modelfile: string): readonly Directive[] => {
+  const directives: Directive[] = [];
+  let quoted = false;
+  for (const line of modelfile.split('\n')) {
+    const match = quoted ? null : DIRECTIVE.exec(line.trim());
+    if (match?.[1] !== undefined && match[2] !== undefined)
+      directives.push({ keyword: match[1], argument: match[2] });
+    if (line.split(QUOTE).length % 2 === 0) quoted = !quoted;
+  }
+  return directives;
+};
 
 /** Judges an `ollama show --modelfile` text against the pin's weights. */
 export const modelfileCheck = (modelfile: string, pin: GeneratorPin): ServedCheck => {
-  const directives = modelfile.split('\n').flatMap((line) => {
-    const match = DIRECTIVE.exec(line.trim());
-    return match?.[1] === undefined || match[2] === undefined
-      ? []
-      : [{ keyword: match[1].toUpperCase(), argument: match[2] }];
-  });
+  const directives = directivesOf(modelfile);
   const adapter = directives.find(({ keyword }) => keyword === 'ADAPTER');
   if (adapter !== undefined)
     return mismatch(`serves ADAPTER ${adapter.argument}, which the pin does not name`);
@@ -51,7 +62,7 @@ export const modelfileCheck = (modelfile: string, pin: GeneratorPin): ServedChec
  */
 export const checkServedModel = async (config: HttpGeneratorConfig): Promise<ServedCheck> => {
   const url = new URL('/api/show', config.endpoint);
-  const at = `POST ${url.href}`;
+  const at = `POST ${url.href} for ${config.servedModel}`;
   let body: unknown;
   try {
     const response = await fetch(url, {
@@ -70,7 +81,15 @@ export const checkServedModel = async (config: HttpGeneratorConfig): Promise<Ser
     return unverified(`${at}: ${describeError(error)}`);
   }
   const show = ShowReply.safeParse(body);
-  return show.success
-    ? modelfileCheck(show.data.modelfile, config.pin)
-    : unverified(`${at}: not an /api/show reply: ${z.prettifyError(show.error)}`);
+  if (!show.success)
+    return unverified(`${at}: not an /api/show reply: ${z.prettifyError(show.error)}`);
+  const check = modelfileCheck(show.data.modelfile, config.pin);
+  switch (check.status) {
+    case 'verified':
+      return check;
+    case 'unverified':
+      return unverified(`${at}: ${check.reason}`);
+    case 'mismatch':
+      return mismatch(`${at}: ${check.detail}`);
+  }
 };

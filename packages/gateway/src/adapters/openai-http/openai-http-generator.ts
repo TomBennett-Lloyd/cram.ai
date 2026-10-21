@@ -13,17 +13,13 @@ import { HttpGeneratorConfig, type Sampling } from '../../role-config';
 import type { ServedArtefact } from '../../served-artefact';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
 import { readChatCompletionStream } from './chat-completion-stream';
+import { BODY_EXCERPT_CHARS, describeError } from './http-failure';
 import { checkServedModel } from './served-model';
-
-const BODY_EXCERPT_CHARS = 500;
 
 const failed = (reason: string): TimedReply => ({
   reply: { status: 'backend-failed', reason },
   timing: null,
 });
-
-const describeError = (error: unknown): string =>
-  error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 
 /**
  * The generator over an OpenAI-compatible server (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)).

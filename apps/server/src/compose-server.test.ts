@@ -1,4 +1,6 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
@@ -94,9 +96,25 @@ describe('composeServer', () => {
     expect(built).toEqual([]);
   });
 
-  it('refuses when an encoder does not load, starting no server', async () => {
+  it('refuses when the served weights or an encoder do not load, starting no server', async () => {
+    const show = createServer((_request, response) => {
+      const modelfile = `FROM /m/blobs/sha256-${'a'.repeat(64)}`;
+      response
+        .writeHead(200, { 'content-type': 'application/json' })
+        .end(JSON.stringify({ modelfile }));
+    });
+    await new Promise<void>((resolve) => show.listen(0, '127.0.0.1', resolve));
+    const { port } = show.address() as AddressInfo;
+    const generator = {
+      ...defaults(join(root, 'models')).generator,
+      endpoint: `http://127.0.0.1:${String(port)}/v1/`,
+    };
+    writeFileSync(join(root, GATEWAY_CONFIG_FILE), JSON.stringify({ generator }));
     const composition = await composeServer(spec({ CRAM_DATA_DIR: root }, { buildGateway }));
-    expect(composition.status).toBe('load-failed');
+    await new Promise((resolve) => show.close(resolve));
+    expect(
+      composition.status === 'load-failed' && composition.failures.map(({ role }) => role),
+    ).toEqual(['generator', 'verifier', 'embedder']);
   });
 });
 
