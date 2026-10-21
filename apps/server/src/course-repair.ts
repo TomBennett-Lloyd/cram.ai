@@ -28,7 +28,7 @@ const parseStored: ParseDeck = async (deck, courseId) => {
     : { status: 'parsed', slides: ingested.slides };
 };
 
-/** A stored deck's slides embedded as an upload embeds them, so a rebuild reproduces what it stored (#338). */
+/** Embeds a stored deck's slides the way an upload does, so a rebuild reproduces what it stored (#338). */
 const embedStored =
   (deps: IngestDeps): EmbedSlides =>
   async (slides) =>
