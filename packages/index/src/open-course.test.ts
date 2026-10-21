@@ -22,6 +22,7 @@ import {
   vector,
   type TempCourse,
 } from './course-fixture';
+import { CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
 import { openCourse, openCourseReadOnly, reembedCourse } from './open-course';
 import { SCHEMA_VERSION } from './schema';
@@ -198,6 +199,21 @@ describe('openCourseReadOnly', () => {
     expect(opened.course.slides().map((s) => s.body)).toEqual(['osmosis', 'diffusion']);
     opened.course.close();
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+  });
+
+  it('refuses a write through the handle it returns, and leaves the file closed with no WAL beside it', () => {
+    seed();
+    const before = readFileSync(temp.spec.path);
+    const opened = openCourseReadOnly(temp.spec);
+    if (opened.status !== 'open') throw new Error(opened.status);
+    const { course } = opened;
+    if (!(course instanceof CourseIndex)) throw new Error('expected the course index');
+    expect(() => {
+      course.dismissRebuildReport();
+    }).toThrow(/readonly/);
+    course.close();
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+    expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
   });
 
   it('reports a blank file as blank and leaves it empty, whether or not it may be written', () => {

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { dirname } from 'node:path';
 import { CourseId, LectureId, COURSE_ID_MAX_LENGTH } from '@cram/shared';
@@ -236,6 +236,18 @@ describe('GET /courses/:id/ingest', () => {
       repair: { state: 'none' },
       uploads: [],
     });
+  });
+
+  it('reports a blank course file as holding no lectures, and leaves it blank', async () => {
+    const { server, dataDir } = await started();
+    const path = courseFilePath(dataDir, CourseId.parse('bio'));
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, '');
+    const status = await send(server.port, { method: 'GET', path: '/courses/bio/ingest' });
+    expect(status.json).toMatchObject({
+      stored: { state: 'read', lectures: [], report: { state: 'none' } },
+    });
+    expect(statSync(path).size).toBe(0);
   });
 
   it('reports a course with an upload but no file yet as holding no lectures', async () => {

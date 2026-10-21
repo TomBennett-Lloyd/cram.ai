@@ -25,7 +25,7 @@ export type OpenCourseResult =
   | { readonly status: 'course-mismatch'; readonly recorded: string }
   | { readonly status: 'embedder-mismatch'; readonly recorded: EmbedderIdentity };
 
-/** A course opened only to be read; its connection is SQLite's read-only one, so a write cannot reach the file. */
+/** A course opened only to be read: its type has no write, and its connection refuses every write statement. */
 export type CourseReader = Pick<
   CourseIndex,
   | 'slides'
@@ -76,12 +76,15 @@ type Connected =
   | { readonly status: 'connected'; readonly db: Database.Database; readonly blank: boolean }
   | Extract<OpenCourseResult, { status: 'newer-schema' | 'older-schema' | 'not-a-course-file' }>;
 
-/** A connection to a file holding a blank or current schema; a file holding any other is closed and refused. */
+/**
+ * A connection to a file holding a blank or current schema; a file holding any other is closed and refused.
+ * Read-only is `query_only` rather than SQLite's read-only flag, because a read-only connection cannot
+ * remove the WAL files it opens beside a course file, and a closed course file holds none
+ * (`rebuildCourse`; `apps/server/src/repair.test.ts`, "leaves it closed").
+ */
 const connect = (path: string, mode: Mode): Connected => {
-  const db = new Database(
-    path,
-    mode === 'read-only' ? { readonly: true, fileMustExist: true } : undefined,
-  );
+  const db = new Database(path, mode === 'read-only' ? { fileMustExist: true } : undefined);
+  if (mode === 'read-only') db.pragma('query_only = true');
   const state = readState(db);
   if (state === undefined) return { status: 'not-a-course-file' };
   if (state.schema === 'blank' || state.schema === 'current')
