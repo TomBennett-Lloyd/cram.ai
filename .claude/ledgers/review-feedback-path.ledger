@@ -1,0 +1,31 @@
+# The review-feedback log's path, owned by `feedbackLog` in .claude/workflow.json, which points
+# here from `feedbackLogLedger` (docs/standards/architecture.md rule 9; #179). The executable
+# carriers fail closed on a rename: ci.yml's merge-ritual-gate grep step reds every
+# awaiting-review PR, and merge-pr.sh's feedback step refuses every humanAlways merge.
+# Inside the owner, which the gate never lists, these keys also state the path and move
+# with it: merge.reviewedSourceRule, merge.humanAlwaysRule, merge.approvedAtPlanRule,
+# merge.mergeRitual, merge.mergeRitualGate and orchestration.rollback.
+owner: .claude/workflow.json
+claim: the review-feedback log lives at docs/review-feedback.md, where every humanAlways PR adds its entry
+cite: feedbackLog
+sweep: \bfeedbackLog\b|review-feedback\.md|\.claude/ledgers/review-feedback-path\.ledger
+carrier: .github/workflows/ci.yml
+carrier: .claude/scripts/merge-pr.sh
+carrier: .claude/scripts/merge-pr.test.sh
+carrier: .claude/scripts/fill-verdict.sh
+carrier: .claude/scripts/fill-verdict.test.sh
+carrier: CLAUDE.md
+carrier: .claude/skills/review-loop/SKILL.md
+carrier: .claude/skills/run-issue/SKILL.md
+carrier: .claude/skills/retro/SKILL.md
+carrier: .claude/skills/plan-issue/SKILL.md
+carrier: .claude/agents/task-orchestrator.md
+carrier: .claude/agents/ticket-agent.md
+carrier: docs/review-feedback.md
+excluded: docs/adr/0002-deployables.md
+excluded: docs/adr/0003-model-roles-and-backends.md
+excluded: docs/adr/0004-storage.md
+excluded: docs/adr/0005-evaluation-as-gate.md
+excluded: docs/adr/0006-image-only-slides.md
+excluded: docs/friction-log.md
+excluded: docs/adr/0007-desktop-packaging.md

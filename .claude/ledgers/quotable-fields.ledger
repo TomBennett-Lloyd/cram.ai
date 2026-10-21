@@ -5,7 +5,8 @@
 # arm finds a reader that lists the fields by hand; slide-row.ts's ftsValues still does (#325).
 owner: packages/shared/src/quotable-text.ts
 claim: the fields a quote resolves against are the ones slideFields returns
-sweep: \.claude/ledgers/quotable-fields\.ledger|\bslideFields\b|\.imageCaptions\b|(?i:fields a quote resolves|quotable fields)
+cite: slideFields
+sweep: \bslideFields\b|\.claude/ledgers/quotable-fields\.ledger|\.imageCaptions\b|(?i:fields a quote resolves|quotable fields)
 scope: :!pnpm-lock.yaml
 carrier: packages/shared/src/index.ts
 carrier: packages/shared/src/quotable-text.test.ts

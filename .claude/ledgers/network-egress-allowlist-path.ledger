@@ -1,8 +1,13 @@
 # The network-egress allow-list's path (docs/standards/architecture.md rule 9).
 owner: .claude/scripts/check-no-network-egress.sh
 claim: the allow-list lives at .claude/network-egress.allowlist, a merge.humanAlways path
-sweep: network-egress\.allowlist|\.claude/ledgers/network-egress-allowlist-path\.ledger
+cite: .claude/scripts/check-no-network-egress.sh
+sweep: check-no-network-egress\.sh|network-egress\.allowlist|\.claude/ledgers/network-egress-allowlist-path\.ledger
 carrier: .claude/workflow.json
 carrier: CLAUDE.md
 carrier: .claude/scripts/check-no-network-egress.test.sh
 excluded: docs/review-feedback.md
+excluded: .claude/network-egress.allowlist
+excluded: docs/adr/0003-model-roles-and-backends.md
+excluded: package.json
+excluded: docs/adr/0007-desktop-packaging.md

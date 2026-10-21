@@ -3,9 +3,16 @@
 # digest characters, lowercased.
 owner: .claude/scripts/models-pull.sh
 claim: the served generator name is <file stem>-<first 12 sha256 characters>, lowercased
-sweep: dev-served-model-name\.ledger|servedModelName|(?i:served[ -]?(model[ -]?)?name)|sha256:0:12\}|GGUF_SUM:0:12\}|SERVED_DIGEST_CHARS
+cite: .claude/scripts/models-pull.sh
+sweep: models-pull\.sh|dev-served-model-name\.ledger|servedModelName|(?i:served[ -]?(model[ -]?)?name)|sha256:0:12\}|GGUF_SUM:0:12\}|SERVED_DIGEST_CHARS
 scope: :!pnpm-lock.yaml
 carrier: .claude/scripts/models-pull.test.sh
 carrier: apps/server/src/gateway-config.ts
 carrier: apps/server/src/gateway-config.test.ts
 excluded: packages/gateway/src/adapters/openai-http/openai-http.measure.test.ts
+excluded: .claude/scripts/ollama-pin.sh
+excluded: .claude/scripts/verify-tier.sh
+excluded: docs/tech-debt.md
+excluded: package.json
+excluded: pnpm-workspace.yaml
+excluded: .claude/scripts/generator-pin.mjs

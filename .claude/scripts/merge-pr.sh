@@ -703,10 +703,10 @@ fi
 
 # The logs this step may resolve, declared once: .claude/skills/review-loop/SKILL.md
 # step 5 cites this name rather than listing them. Each path is an executable carrier
-# of that log's name (the path ledgers that exist: docs/tech-debt.md's header, and
-# .claude/workflow.json → feedbackLogLedger), and a rename that misses this list fails
-# closed: the conflict arrives under a path the list lacks, and the conflicted-set test
-# refuses naming it.
+# of that log's name (the path ledgers: docs/tech-debt.md's header,
+# .claude/ledgers/review-feedback-path.ledger and .claude/ledgers/friction-log-path.ledger),
+# and a rename that misses this list fails closed: the conflict arrives under a path the
+# list lacks, and the conflicted-set test refuses naming it.
 APPEND_ONLY_LOGS=('docs/review-feedback.md' 'docs/tech-debt.md' 'docs/friction-log.md')
 
 is_append_only_log() { # is_append_only_log <path> -> 0 when <path> is one of APPEND_ONLY_LOGS

@@ -1,7 +1,14 @@
 # The path patterns that mark course content (docs/standards/architecture.md rule 9).
 owner: .claude/scripts/check-no-course-content.sh
 claim: the banned extension set and data/ directory that check-no-course-content.sh enforces, and its one synthetic-fixture exemption (directory, extensions, provenance file and line form)
-sweep: \bpptx\b.*\bkey\b|^\*\.pptx$|packages/ingest/fixtures|authored with|\.claude/ledgers/course-content-patterns\.ledger
+cite: .claude/scripts/check-no-course-content.sh
+sweep: check-no-course-content\.sh|\bpptx\b.*\bkey\b|^\*\.pptx$|packages/ingest/fixtures|authored with|\.claude/ledgers/course-content-patterns\.ledger
 carrier: .gitignore
 carrier: .claude/scripts/check-no-course-content.test.sh
 excluded: docs/review-feedback.md
+carrier: CLAUDE.md
+carrier: apps/server/src/data-directory.ts
+carrier: docs/adr/0004-storage.md
+carrier: docs/adr/0005-evaluation-as-gate.md
+carrier: eval/src/render-deck.ts
+excluded: package.json

@@ -1,6 +1,7 @@
 # ADR 0003's pin shape (docs/standards/architecture.md rule 9; #124).
 owner: docs/adr/0003-model-roles-and-backends.md
 claim: ADR 0003 § Decision (e)'s pin shape — every pin's fields, and an encoder pin's sha256 as the digest of its manifest (the four snapshot files' digests and the embedder's pooling)
+cite: `docs/adr/0003-model-roles-and-backends.md` § Decision (e)
 sweep: `docs/adr/0003-model-roles-and-backends\.md` § Decision \(e\)|\b(EncoderManifest|manifestDigest|verifyManifest)\b|\bmanifest: \{|manifest’s|\.claude/ledgers/model-pin-shape\.ledger
 carrier: packages/gateway/src/pin.ts
 carrier: packages/gateway/src/pin.test.ts
