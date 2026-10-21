@@ -24,6 +24,25 @@ afterEach(() => {
 });
 
 describe('ingestPptx', () => {
+  it('stores prose runs as it stores an equation: NFC, math alphanumerics folded (#194)', () => {
+    const [record] = ingested({
+      slides: [
+        {
+          shapes: [
+            shape(['E\u0301nergie'], 'title'),
+            shape(['La vitesse de re\u0301action de 𝑘 est mesure\u0301e']),
+          ],
+          notes: ['De\u0301river 𝐸.'],
+        },
+      ],
+    });
+    expect(record).toMatchObject({
+      title: '\u00C9nergie',
+      body: 'La vitesse de r\u00E9action de k est mesur\u00E9e',
+      speakerNotes: 'D\u00E9river E.',
+    });
+  });
+
   it('reads each slide into a record with its title placeholder, body paragraphs and notes', () => {
     const slides = ingested({
       slides: [
