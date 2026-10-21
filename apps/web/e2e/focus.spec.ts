@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { PENDING } from '../src/copy';
 import { GROUNDED_QUESTION, stubApi } from './hermetic-api';
@@ -6,16 +7,21 @@ import { GROUNDED_QUESTION, stubApi } from './hermetic-api';
 const ringed = (locator: Locator) =>
   locator.evaluate((node) => getComputedStyle(node).outlineStyle !== 'none');
 
+/** How long a released reply stays in transit: longer than a `focus()` and a Tab (#247). */
+const IN_TRANSIT_MS = 500;
+
 /**
  * The first slide card of a rendered answer (#231). It waits for the card because a Tab pressed
  * while the reply is pending leaves the document, and focus never returns when the cards land
- * (#228).
+ * (#228). The reply lands `IN_TRANSIT_MS` after `release()`, so the keyboard case fails every run
+ * without that wait (#247).
  */
 const answered = async (page: Page) => {
   let release = (): void => undefined;
-  const askReplyAfter = new Promise<void>((resolve) => {
+  const released = new Promise<void>((resolve) => {
     release = resolve;
   });
+  const askReplyAfter = released.then(() => delay(IN_TRANSIT_MS));
   await stubApi(page, { askReplyAfter });
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
