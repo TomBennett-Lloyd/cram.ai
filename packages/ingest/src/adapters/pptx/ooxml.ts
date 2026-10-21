@@ -15,15 +15,34 @@ export const NS = {
 export const NOTES_SLIDE_RELATIONSHIP =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide';
 
-export type PptxUnreadableReason = 'not-a-pptx' | 'encrypted' | 'damaged';
+/** Each way a deck can fail to read, and the reason it reports: `reader-limit` blames this reader, not the deck (docs/standards/error-handling.md rule 1). */
+const UNREADABLE = {
+  'not-zip': 'not-a-pptx',
+  'not-ooxml': 'not-a-pptx',
+  'encrypted-package': 'encrypted',
+  'no-presentation': 'not-a-pptx',
+  'not-presentationml': 'not-a-pptx',
+  'strict-presentationml': 'reader-limit',
+  'corrupt-zip': 'damaged',
+  'missing-part': 'damaged',
+  'undecodable-part': 'damaged',
+  'not-well-formed': 'damaged',
+  'incomplete-relationship': 'damaged',
+  'unresolved-slide': 'damaged',
+} as const;
 
-/** A deck its own bytes cannot yield; `ingestPptx` returns it as a value (docs/standards/error-handling.md rule 1). */
+type PptxFailure = keyof typeof UNREADABLE;
+
+/** Derived from `UNREADABLE`, so every reason has a failure that produces it (#185). */
+export type PptxUnreadableReason = (typeof UNREADABLE)[PptxFailure];
+
+/** `ingestPptx` returns this as a value (docs/standards/error-handling.md rule 1). */
 export class UnreadablePptx extends Error {
   readonly reason: PptxUnreadableReason;
 
-  constructor(reason: PptxUnreadableReason, message: string, options?: ErrorOptions) {
+  constructor(failure: PptxFailure, message: string, options?: ErrorOptions) {
     super(message, options);
-    this.reason = reason;
+    this.reason = UNREADABLE[failure];
   }
 }
 
@@ -41,25 +60,43 @@ const RelationshipAttributes = z.object({
   Target: z.string(),
 });
 
-const decodeUtf8 = (bytes: Uint8Array, partName: string): string => {
+export const startsWith = (bytes: Uint8Array, magic: readonly number[]): boolean =>
+  magic.every((byte, index) => bytes[index] === byte);
+
+const BYTE_ORDER_MARKS = [
+  { mark: [0xff, 0xfe], encoding: 'UTF-16LE' },
+  { mark: [0xfe, 0xff], encoding: 'UTF-16BE' },
+] as const;
+
+/** A UTF-16 part opens with its byte-order mark (XML 1.0 §4.3.3); any other part is read as UTF-8 (#185). */
+const decodePart = (bytes: Uint8Array, partName: string): string => {
+  const encoding =
+    BYTE_ORDER_MARKS.find(({ mark }) => startsWith(bytes, mark))?.encoding ?? 'UTF-8';
+  const decoder = new TextDecoder(encoding, { fatal: true });
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return decoder.decode(bytes);
   } catch (error) {
-    throw new UnreadablePptx('damaged', `${partName} is not UTF-8`, { cause: error });
+    throw new UnreadablePptx('undecodable-part', `${partName} is not ${encoding}`, {
+      cause: error,
+    });
   }
 };
 
 export const readXml = (parts: Parts, partName: string): Document => {
   const bytes = parts[partName];
-  if (bytes === undefined) throw new UnreadablePptx('damaged', `${partName} is missing`);
-  const text = decodeUtf8(bytes, partName);
+  if (bytes === undefined) throw new UnreadablePptx('missing-part', `${partName} is missing`);
+  const text = decodePart(bytes, partName);
   try {
     return new DOMParser({ onError: onErrorStopParsing }).parseFromString(text, 'text/xml');
   } catch (error) {
     if (!(error instanceof ParseError)) throw error;
-    throw new UnreadablePptx('damaged', `${partName} is not well-formed XML: ${error.message}`, {
-      cause: error,
-    });
+    throw new UnreadablePptx(
+      'not-well-formed',
+      `${partName} is not well-formed XML: ${error.message}`,
+      {
+        cause: error,
+      },
+    );
   }
 };
 
@@ -82,7 +119,7 @@ export const relationshipsOf = (
     });
     if (!attributes.success)
       throw new UnreadablePptx(
-        'damaged',
+        'incomplete-relationship',
         `${relsName} has a relationship without Id, Type or Target`,
       );
     const { Id, Type, Target } = attributes.data;

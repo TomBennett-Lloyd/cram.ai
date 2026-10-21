@@ -186,6 +186,14 @@ passes $'git commit -m "$(cat <<\'EOF\'\n#1: drop the old advice "revert it (git
 passes $'git commit -m "$(cat <<\'EOF\'\n#1: a 6" ruler\ngit restore dirty.txt was the bad revert\nEOF\n)"'
 refuses "echo \"\$(git checkout -- dirty.txt)\"" dirty.txt
 refuses "git commit -m \"\$(echo x)\" && git checkout -- dirty.txt" dirty.txt
+refuses "echo \"\$(true; (true); git checkout -- dirty.txt)\"" dirty.txt
+passes "echo \"\$( (true) ) git checkout -- dirty.txt\""
+refuses "echo \"\$(echo \$(true); git checkout -- dirty.txt)\"" dirty.txt
+refuses "echo \"\$(cat <(true); git checkout -- dirty.txt)\"" dirty.txt
+refuses "echo \"\$(tee >(true); git checkout -- dirty.txt)\"" dirty.txt
+refuses "echo \"\$(echo \${b%(*})\" && git checkout -- dirty.txt" dirty.txt
+refuses "echo \"\$(ls [(]*)\"; git restore dirty.txt" dirty.txt
+passes "echo \"\$(echo \${x%(*}) git checkout -- dirty.txt\""
 passes $'git commit -F - <<\'EOF\'\ngit checkout -- dirty.txt\nEOF'
 passes '# git checkout -- dirty.txt'
 passes 'true # ; git checkout -- dirty.txt'

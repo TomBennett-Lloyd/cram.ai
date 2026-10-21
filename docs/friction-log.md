@@ -143,3 +143,48 @@ Entry format:
 
 - Phase: implementation
 - Observed: every `pnpm verify` in the #183 lane ran the full tier because a `.ledger` file in the change set is a type `verify-tier.sh` cannot classify, and one run was re-run whole after the gateway timing flake #243 owns. A ledger line is the cheapest edit in the repo and buys the most expensive tier. One ticket so far; the classifier's docblock owns which extensions resolve to which rungs.
+
+## 2026-10-21 — PR #260
+
+- Phase: implementation
+- Observed: the #194 lane could not bank one file's comment-density drop inside its ticket, because `check-comment-density.sh --ratchet` writes a row for every unbanked file in the repo on the same run (151 here), and the lane reverted the run rather than carry 151 unrelated rows in a feature PR. Second instance of the baseline shaping a lane's choices (PR #73's entry was the first, captured into #187); PR #252 banks every file's row, which removes the unbanked rows a later `--ratchet` would sweep in. Nothing to change while that PR waits for the owner.
+
+## 2026-10-21 — PR #262
+
+- Phase: verify
+- Observed: every `.sh` edit in the #180 lane sent `pnpm verify` to the full tier (about 10 min under load), and the lane ran its mutants through a scratch case-trimmer because `merge-pr.test.sh` has no case filter and a whole run takes about 2.5 min. Second instance of a cheap edit buying the most expensive tier (PR #255's `.ledger` line was the first); `verify-tier.sh`'s docblock owns which extensions resolve to which rungs.
+
+## 2026-10-21 — PR #263
+
+- Phase: implementation
+- Observed: the #233 plan split the shared `IngestStatus` shape change (step 2) from the web consumer that answers it (step 3), and the lane had to land both in one commit because `pnpm verify` is whole-repo and the web package is red between them. A plan step that changes a shared type is not committable on its own; nothing in `.claude/agents/planner.md` asks whether a step's `Verify:` can pass before its consumers move. One ticket so far.
+
+## 2026-10-21 — PR #264
+
+- Phase: verify
+- Observed: `pnpm verify` in the #209 lane went red twice on the gateway clock assertion #243 owns, with a rerun green each time, on a diff that cannot reach `packages/gateway`. Third rerun that flake has cost today (PR #255 took one), about ten minutes each under load; #243 is dispatched.
+
+## 2026-10-21 — PR #267
+
+- Phase: planning
+- Observed: the #254 lane pasted its restatement sweep's output into the plan comment from memory before running the command, and dropped a line; it noticed and fixed the comment before the first edit. `.claude/agents/ticket-agent.md` § 2 asks for the command and its output, and the output it got was a recollection. One ticket so far.
+
+## 2026-10-21 — PR #270
+
+- Phase: planning
+- Observed: the #247 plan's restatement sweep missed `docs/friction-log.md:120`, a dated and still-true carrier of #228's mechanism, because its claim family was the test's wording and not the behaviour ("pressed Tab before the answer rendered"); no edit turned out to be owed. Second sweep-shape miss today after PR #267's (an output pasted before its command ran); both were caught inside the lane.
+
+## 2026-10-21 — PR #272
+
+- Phase: review
+- Observed: the #243 lane quoted one earlier run's figure as the 10/10 control reading because its loop had not printed values; the reviewer caught it and the lane re-ran and pasted the readings. One ticket so far on a loop whose output was summarised before it was captured.
+
+## 2026-10-21 — PR #271
+
+- Phase: implementation
+- Observed: the #241 lane's mutant loop killed every mutant of the paren counter it wrote and still shipped a counter too broad for `${b%(*}`, because mutating a guard's edges exercises the inputs it has and never the inputs it should have excluded; the reviewer's side-by-side probe of the old and new hook over a hostile corpus found it, at the cost of one review cycle. Same shape as PR #90's (a guard that did not exist): `.claude/agents/ticket-agent.md` § 4's mutation pass cannot find a missing exclusion. Second instance.
+
+## 2026-10-21 — PRs #266 and #269
+
+- Phase: process
+- Observed: two REBASE bounces from the merge owner stated the expected `docs/tech-debt.md` heading count one too high, because the count came from `gh pr diff <n> | grep '^[-+]## '` over the whole diff, which also returns `docs/review-feedback.md`'s entry heading; both lanes corrected the figure from their own `comm` run. The per-file form (`git diff <base> <branch> -- docs/tech-debt.md`) is the one the bounce needs. Two instances in one morning, both harmless because the lane's arithmetic is the check, not the bounce's.

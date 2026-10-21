@@ -176,3 +176,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/app.css` (`button:disabled` is the only inert-button style); `apps/web/src/shell/async-states.tsx` `Failed`'s Dismiss button
 - What: while a dismissal waits, the Dismiss button is `aria-disabled` and ignores presses, because a real `disabled` would drop the focus the reader put on it. No style matches `[aria-disabled='true']`, so it looks fully live. The "Dismissing…" pending label beside it says why. Root cause: the stylesheet has no treatment for an inert button that keeps its focus. Give it one when a second such button appears (`docs/standards/design.md` rule 9).
 - Source: #233 review cycle 1 confirmation pass
+
+## 2026-10-21 — a PDF that pdf.js cannot read is reported as damaged, whoever is at fault
+
+- Where: `UNREADABLE` in `packages/ingest/src/adapters/pdf/ingest-pdf.ts`
+- What: `UnknownErrorException` maps to `damaged`, but pdf.js raises it for every worker error it does not classify. That covers a damaged deck, pdf.js's own limits (its cipher factory throws `FormatError('unsupported encryption algorithm')`) and its internal bugs, and the exception name cannot tell them apart. So a reader limit is still reported in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). #108 adds PDF reasons and is the natural place to split it.
+- Source: #185 review cycle 1
+
+## 2026-10-21 — the PPTX reader finds the presentation part by fixed name, not by relationship
+
+- Where: `pagesOf` and `PRESENTATION` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`
+- What: the main part is read from the fixed name `ppt/presentation.xml` rather than from the package's `_rels/.rels` officeDocument relationship. A conforming package that names its main part elsewhere returns `no-presentation` → `not-a-pptx`, which is a reader limit reported as the deck's fault. Predates #185.
+- Source: #185 review cycle 1
