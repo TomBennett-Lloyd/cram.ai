@@ -38,7 +38,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
 | grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
 | ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
-| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                  | #292         |
 | ADR 0003's restatement ledger does not list #20's new carriers                               | #298         |
 | ADR 0006's carrier ledger names the old home of the quotable field list                      | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                         | #298         |
