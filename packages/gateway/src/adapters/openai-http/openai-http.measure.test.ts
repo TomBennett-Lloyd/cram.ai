@@ -5,8 +5,7 @@ import { decodeTokensPerSecond } from '../../generator-timing';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
 import { HttpGeneratorConfig } from '../../role-config';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
-import { loadOpenAiHttpGenerator } from './openai-http-generator';
-import { checkServedModel } from './served-model';
+import { checkServedModel, loadOpenAiHttpGenerator } from './openai-http-generator';
 
 // `docs/adr/0003-model-roles-and-backends.md` § Decision (k): A4's two figures on this machine, A11 (prompt-prefix reuse)
 // and A12 (thinking suppressed), against a live server:

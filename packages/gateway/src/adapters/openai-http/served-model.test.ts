@@ -1,8 +1,10 @@
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
 import type { HttpGeneratorConfig } from '../../role-config';
-import { type FixtureServer, type Handler, reply, startServer, stopServer } from './http-fixture';
-import { checkServedModel, modelfileCheck } from './served-model';
+import { checkServedModel, loadOpenAiHttpGenerator } from './openai-http-generator';
+import { modelfileCheck } from './served-model';
 
 const pin = PROVISIONAL_DEFAULT_PINS.generator;
 const OTHER = 'a'.repeat(64);
@@ -17,7 +19,6 @@ const modelfile = (...directives: readonly string[]) =>
     '',
     ...directives,
     'TEMPLATE {{ .Prompt }}',
-    'PARAMETER num_ctx 40960',
   ].join('\n');
 
 describe('modelfileCheck', () => {
@@ -96,6 +97,39 @@ describe('modelfileCheck', () => {
     expect(modelfileCheck(text, pin)).toEqual({ status: 'unverified', reason });
   });
 });
+
+type Handler = (request: IncomingMessage, body: string, response: ServerResponse) => void;
+
+interface FixtureServer {
+  readonly server: Server;
+  readonly origin: string;
+  handler: Handler;
+}
+
+const startServer = async (): Promise<FixtureServer> => {
+  const fixture: { handler: Handler } = { handler: (_request, _body, response) => response.end() };
+  const server = createServer((request, response) => {
+    let body = '';
+    request.on('data', (chunk: Buffer) => (body += chunk.toString()));
+    request.on('end', () => {
+      fixture.handler(request, body, response);
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  return Object.assign(fixture, { server, origin: `http://127.0.0.1:${String(port)}` });
+};
+
+const stopServer = async ({ server }: FixtureServer): Promise<void> => {
+  server.closeAllConnections();
+  await new Promise((resolve) => server.close(resolve));
+};
+
+const reply =
+  (status: number, body: string, contentType = 'text/event-stream'): Handler =>
+  (_request, _body, response) => {
+    response.writeHead(status, { 'content-type': contentType }).end(body);
+  };
 
 let fixture: FixtureServer;
 let config: HttpGeneratorConfig;
@@ -193,5 +227,48 @@ describe('checkServedModel', () => {
   it('leaves a server that is not listening unverified', async () => {
     const check = await checkServedModel({ ...config, endpoint: 'http://127.0.0.1:9/v1/' });
     expect(check.status === 'unverified' && check.reason).toMatch(/fetch failed/);
+  });
+});
+
+describe('loadOpenAiHttpGenerator', () => {
+  const fromBlob = (sha256: string) => `FROM /Users/ann/.ollama/models/blobs/sha256-${sha256}\n`;
+  const show = (status: number, value: unknown): Handler =>
+    reply(status, JSON.stringify(value), 'application/json');
+
+  it('loads a generator that carries the verified weights', async () => {
+    fixture.handler = show(200, { modelfile: fromBlob(config.pin.sha256) });
+    const load = await loadOpenAiHttpGenerator(config);
+    expect(load.status === 'loaded' && load.generator.served).toEqual({ status: 'verified' });
+  });
+
+  it('loads a generator on a server it cannot ask, recording why', async () => {
+    fixture.handler = reply(404, '404 page not found', 'text/plain');
+    const load = await loadOpenAiHttpGenerator(config);
+    const served = load.status === 'loaded' ? load.generator.served : null;
+    expect(served?.status === 'unverified' && served.reason).toMatch(/HTTP 404/);
+  });
+
+  it('refuses a server that serves weights the pin does not name', async () => {
+    fixture.handler = show(200, { modelfile: fromBlob('a'.repeat(64)) });
+    const load = await loadOpenAiHttpGenerator(config);
+    expect(load).toMatchObject({
+      status: 'load-failed',
+      role: 'generator',
+      reason: 'served-mismatch',
+    });
+    expect(load.status === 'load-failed' && load.detail).toMatch(
+      /^POST .*\/api\/show for qwen3-4b-q4_k_m-7485fe6f11af: serves blob sha256-a{64}, not the pin's/,
+    );
+  });
+
+  it('refuses an endpoint off loopback before asking it anything', async () => {
+    let asked = false;
+    fixture.handler = (_incoming, _body, response) => {
+      asked = true;
+      response.end();
+    };
+    const endpoint = `${fixture.origin.replace('127.0.0.1', '0.0.0.0')}/v1/`;
+    await expect(loadOpenAiHttpGenerator({ ...config, endpoint })).rejects.toThrow();
+    expect(asked).toBe(false);
   });
 });

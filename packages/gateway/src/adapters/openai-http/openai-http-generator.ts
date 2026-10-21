@@ -14,7 +14,7 @@ import type { ServedArtefact } from '../../served-artefact';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
 import { readChatCompletionStream } from './chat-completion-stream';
 import { BODY_EXCERPT_CHARS, describeError } from './http-failure';
-import { checkServedModel } from './served-model';
+import { type ServedCheck, showOutcome } from './served-model';
 
 const failed = (reason: string): TimedReply => ({
   reply: { status: 'backend-failed', reason },
@@ -80,6 +80,35 @@ export class OpenAiHttpGenerator implements Generator {
     return chatResult(await this.reply(chatWireRequest(request)), request.output.schema);
   }
 }
+
+/**
+ * Asks the server which weights it serves as `servedModel`, through Ollama's `/api/show` on the
+ * endpoint's origin. Failure policy: one attempt, `timeoutMs` as the bound, redirects refused; a
+ * server that cannot be asked is `unverified`, never a failure (#171). It sits beside the chat call, the
+ * adapter's one allow-listed socket module (#165).
+ */
+export const checkServedModel = async (config: HttpGeneratorConfig): Promise<ServedCheck> => {
+  const url = new URL('/api/show', config.endpoint);
+  const at = `POST ${url.href} for ${config.servedModel}`;
+  let body: unknown;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: config.servedModel }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(config.timeoutMs),
+    });
+    if (!response.ok) {
+      const excerpt = (await response.text()).slice(0, BODY_EXCERPT_CHARS);
+      return { status: 'unverified', reason: `${at}: HTTP ${String(response.status)}: ${excerpt}` };
+    }
+    body = await response.json();
+  } catch (error) {
+    return { status: 'unverified', reason: `${at}: ${describeError(error)}` };
+  }
+  return showOutcome(at, body, config.pin);
+};
 
 /** The server named weights the pin does not: the operator's to fix in the server or the pin. */
 export interface GeneratorLoadFailure {

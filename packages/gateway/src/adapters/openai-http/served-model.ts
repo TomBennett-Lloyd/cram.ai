@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import type { GeneratorPin } from '../../pin';
-import type { HttpGeneratorConfig } from '../../role-config';
 import type { ServedArtefact } from '../../served-artefact';
-import { BODY_EXCERPT_CHARS, describeError } from './http-failure';
 
 /** `mismatch` is the server naming weights the pin does not: the one outcome that refuses a start. */
 export type ServedCheck = ServedArtefact | { readonly status: 'mismatch'; readonly detail: string };
@@ -55,35 +53,12 @@ export const modelfileCheck = (modelfile: string, pin: GeneratorPin): ServedChec
     : mismatch(`serves blob sha256-${blob}, not the pin's sha256-${pin.sha256}`);
 };
 
-/**
- * Asks the server which weights it serves as `servedModel`, through Ollama's `/api/show` on the
- * endpoint's origin. Failure policy: one attempt, `timeoutMs` as the bound, redirects refused; a
- * server that cannot be asked is `unverified`, never a failure (#171).
- */
-export const checkServedModel = async (config: HttpGeneratorConfig): Promise<ServedCheck> => {
-  const url = new URL('/api/show', config.endpoint);
-  const at = `POST ${url.href} for ${config.servedModel}`;
-  let body: unknown;
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: config.servedModel }),
-      redirect: 'error',
-      signal: AbortSignal.timeout(config.timeoutMs),
-    });
-    if (!response.ok) {
-      const excerpt = (await response.text()).slice(0, BODY_EXCERPT_CHARS);
-      return unverified(`${at}: HTTP ${String(response.status)}: ${excerpt}`);
-    }
-    body = await response.json();
-  } catch (error) {
-    return unverified(`${at}: ${describeError(error)}`);
-  }
+/** `/api/show`'s reply judged against the pin, every reason prefixed with `at`, the request it answers. */
+export const showOutcome = (at: string, body: unknown, pin: GeneratorPin): ServedCheck => {
   const show = ShowReply.safeParse(body);
   if (!show.success)
     return unverified(`${at}: not an /api/show reply: ${z.prettifyError(show.error)}`);
-  const check = modelfileCheck(show.data.modelfile, config.pin);
+  const check = modelfileCheck(show.data.modelfile, pin);
   switch (check.status) {
     case 'verified':
       return check;
