@@ -50,9 +50,10 @@ export interface FixturePage {
 export interface FixtureDeck {
   readonly pages: readonly FixturePage[];
   readonly metadataTitle?: string;
-  readonly encrypted?: true;
-  /** Replace the second page's entry in the page tree with a number, which pdf.js rejects on `getPage`. */
-  readonly brokenPageTree?: true;
+  /** `password`: a Standard handler whose password is not empty. The others are encryptions pdf.js cannot open. */
+  readonly encrypted?: 'password' | 'algorithm-3' | 'custom-handler';
+  /** Break the page tree, which pdf.js rejects on `getPage`. */
+  readonly brokenPageTree?: 'kid-not-a-reference' | 'kids-not-an-array' | 'circular';
 }
 
 const PAGE: [number, number] = [960, 540];
@@ -123,6 +124,32 @@ const showCodes = (page: PDFPage, name: string, codes: string, size: number, y: 
   );
 };
 
+const breakPageTree = (doc: PDFDocument, how: NonNullable<FixtureDeck['brokenPageTree']>): void => {
+  const pages = doc.catalog.Pages();
+  const kids = pages.lookup(PDFName.of('Kids'), PDFArray);
+  if (how === 'kid-not-a-reference') kids.set(1, PDFNumber.of(7));
+  if (how === 'kids-not-an-array') pages.set(PDFName.of('Kids'), PDFNumber.of(7));
+  if (how === 'circular') {
+    const root = doc.catalog.get(PDFName.of('Pages'));
+    if (root === undefined) throw new Error('buildDeck: the catalog has no page tree');
+    kids.set(1, root);
+  }
+};
+
+const ENCRYPTION = {
+  password: { Filter: 'Standard', V: 1, R: 2 },
+  'algorithm-3': { Filter: 'Standard', V: 3, R: 3 },
+  'custom-handler': { Filter: 'Custom', V: 1, R: 2 },
+} as const;
+
+const encrypt = (doc: PDFDocument, how: NonNullable<FixtureDeck['encrypted']>): void => {
+  const filler = (byte: string): PDFHexString => PDFHexString.of(byte.repeat(32));
+  doc.context.trailerInfo.Encrypt = doc.context.register(
+    doc.context.obj({ ...ENCRYPTION[how], O: filler('11'), U: filler('22'), P: -4 }),
+  );
+  doc.context.trailerInfo.ID = doc.context.obj([filler('33'), filler('33')]);
+};
+
 /** A synthetic PDF deck authored in memory for the adapter tests (docs/standards/testing.md rule 3). */
 export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
@@ -170,15 +197,7 @@ export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
       page.node.set(PDFName.of('Annots'), doc.context.obj(refs));
     }
   }
-  if (deck.brokenPageTree) {
-    doc.catalog.Pages().lookup(PDFName.of('Kids'), PDFArray).set(1, PDFNumber.of(7));
-  }
-  if (deck.encrypted) {
-    const filler = (byte: string): PDFHexString => PDFHexString.of(byte.repeat(32));
-    doc.context.trailerInfo.Encrypt = doc.context.register(
-      doc.context.obj({ Filter: 'Standard', V: 1, R: 2, O: filler('11'), U: filler('22'), P: -4 }),
-    );
-    doc.context.trailerInfo.ID = doc.context.obj([filler('33'), filler('33')]);
-  }
+  if (deck.brokenPageTree !== undefined) breakPageTree(doc, deck.brokenPageTree);
+  if (deck.encrypted !== undefined) encrypt(doc, deck.encrypted);
   return doc.save({ useObjectStreams: false });
 };

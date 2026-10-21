@@ -1,9 +1,12 @@
+import { posix } from 'node:path';
 import { CourseId, LectureId, type SlideRecord } from '@cram/shared';
 import { strToU8, zipSync, type Zippable } from 'fflate';
 import type { DeckFile } from '../deck-file';
 import { ingestPptx } from './ingest-pptx';
 import { NOTES_SLIDE_RELATIONSHIP, NS } from './ooxml';
 
+export const OFFICE_DOCUMENT_RELATIONSHIP =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
 export const SLIDE_RELATIONSHIP =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide';
 const IMAGE_RELATIONSHIP =
@@ -73,6 +76,10 @@ export interface FixtureDeck {
   /** Number the slide parts in reverse of the presentation order. */
   readonly reversePartNames?: true;
   readonly presentationNamespace?: string;
+  /** The main part's name; omitted, `ppt/presentation.xml`. */
+  readonly presentationPart?: string;
+  /** The type `_rels/.rels` gives its relationship to the main part; omitted, Transitional's. */
+  readonly officeDocumentRelationship?: string;
   /** List one more `p:sldId` than the relationships resolve. */
   readonly danglingSlideId?: true;
   /** Part names to replace (a `Uint8Array` or text) or drop (`null`) after the deck is built. */
@@ -168,20 +175,28 @@ export const buildDeck = (deck: FixtureDeck): Uint8Array => {
     (_, index) => `<p:sldId id="${String(256 + index)}" r:id="rId${String(index + 1)}"/>`,
   );
   if (deck.danglingSlideId) ids.push(`<p:sldId id="999" r:id="rIdMissing"/>`);
+  const presentation = deck.presentationPart ?? 'ppt/presentation.xml';
+  const folder = posix.dirname(presentation);
   const files = new Map<string, string | Uint8Array>([
     [
-      'ppt/presentation.xml',
+      '_rels/.rels',
+      relationships([
+        ['rId1', deck.officeDocumentRelationship ?? OFFICE_DOCUMENT_RELATIONSHIP, presentation],
+      ]),
+    ],
+    [
+      presentation,
       xml(
         `<p:presentation xmlns:p="${deck.presentationNamespace ?? NS.p}" xmlns:r="${NS.r}"><p:sldIdLst>${ids.join('')}</p:sldIdLst></p:presentation>`,
       ),
     ],
     [
-      'ppt/_rels/presentation.xml.rels',
+      posix.join(folder, '_rels', `${posix.basename(presentation)}.rels`),
       relationships(
         numbers.map(({ n }, index) => [
           `rId${String(index + 1)}`,
           SLIDE_RELATIONSHIP,
-          `slides/slide${n}.xml`,
+          posix.relative(folder, `ppt/slides/slide${n}.xml`),
         ]),
       ),
     ],
