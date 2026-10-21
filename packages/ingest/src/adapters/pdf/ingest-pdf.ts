@@ -4,10 +4,6 @@ import { slidesFromPages } from '../../deck';
 import type { PageText, TextLine } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
 
-export type PdfUnreadableReason = 'not-a-pdf' | 'encrypted' | 'damaged';
-
-export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
-
 const TextItem = z.object({
   str: z.string(),
   transform: z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
@@ -25,11 +21,16 @@ const PdfjsException = z.object({
   message: z.string(),
 });
 
-const UNREADABLE: Record<z.infer<typeof PdfjsException>['name'], PdfUnreadableReason> = {
+const UNREADABLE = {
   InvalidPDFException: 'not-a-pdf',
   PasswordException: 'encrypted',
   UnknownErrorException: 'damaged',
-};
+} as const satisfies Record<z.infer<typeof PdfjsException>['name'], string>;
+
+/** Derived from `UNREADABLE`, so every reason has an exception that produces it (#185). */
+export type PdfUnreadableReason = (typeof UNREADABLE)[keyof typeof UNREADABLE];
+
+export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 
 /** Hundredths of a point: pdf.js composes matrices in floating point, so equal sizes can differ in the last bits. */
 const glyphSize = (transform: z.infer<typeof TextItem>['transform']): number =>
