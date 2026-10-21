@@ -8,7 +8,7 @@ export type ServedCheck = ServedArtefact | { readonly status: 'mismatch'; readon
 /** Ollama's model-inspection reply; only the modelfile is read. */
 const ShowReply = z.object({ modelfile: z.string() });
 
-/** Upper case, as `ollama show` prints every directive; `.claude/scripts/models-pull.sh` reads `FROM` the same way. */
+/** Upper case, as `ollama show` prints every directive. */
 const DIRECTIVE = /^(FROM|ADAPTER)\s+(.+)$/;
 /** Opens or closes a multi-line value (`SYSTEM`, `TEMPLATE`, `LICENSE`, `MESSAGE`), whose lines are never directives. */
 const QUOTE = '"""';
