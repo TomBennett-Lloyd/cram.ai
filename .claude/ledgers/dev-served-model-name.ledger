@@ -1,0 +1,11 @@
+# The name developer mode's Ollama serves the generator pin under, owned by `name` in
+# .claude/scripts/models-pull.sh (#20): the GGUF file's stem, a hyphen and the pin's first 12
+# digest characters, lowercased.
+owner: .claude/scripts/models-pull.sh
+claim: the served generator name is <file stem>-<first 12 sha256 characters>, lowercased
+sweep: dev-served-model-name\.ledger|servedModelName|(?i:served[ -]?(model[ -]?)?name)|sha256:0:12\}|GGUF_SUM:0:12\}|SERVED_DIGEST_CHARS
+scope: :!pnpm-lock.yaml
+carrier: .claude/scripts/models-pull.test.sh
+carrier: apps/server/src/gateway-config.ts
+carrier: apps/server/src/gateway-config.test.ts
+excluded: packages/gateway/src/adapters/openai-http/openai-http.measure.test.ts
