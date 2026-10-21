@@ -16,10 +16,17 @@
 # BASELINE — `.claude/comment-density.baseline.tsv`, one `path<TAB>ratio` row per
 # file, ratio in basis points (`5000` = 50.00%). Integer, so the comparison needs
 # no float arithmetic, and fine-grained enough that one added comment line always
-# moves the figure for any file this repository holds. A file with no row is
-# admitted at or below the median of the baseline's own rows — the committed
-# population, not the current scan, so a batch of new dense files cannot lift the
-# bar it is judged against.
+# moves the figure for any file this repository holds.
+#
+# The baseline is a census (#187): the plain gate refuses a scanned file with no
+# row and a row with no measured file, so the PR that adds or deletes a source
+# file banks it with `--ratchet`, and the median read from the baseline is
+# the median of the whole tree. `--ratchet` admits a file with no row at or below
+# that median, or at any ratio when it has fewer than MIN_JUDGED_LINES non-blank
+# lines, where one docblock is most of the ratio; once banked, every row ratchets
+# alike. The median is the committed rows', not the current scan's, so a batch of
+# new dense files cannot lift the bar it is judged against. A merge conflict in the
+# baseline resolves by taking main's file and re-running `--ratchet`.
 #
 # `--ratchet` is what a trim batch commits. It runs the gate first and writes
 # NOTHING if anything is red: a half-lowered baseline banked by a failing run is
@@ -45,8 +52,9 @@
 #        (or `pnpm check:comment-density`)
 #        REPO_ROOT defaults to the repo root above this script; the argument
 #        exists so the test harness can point the gate at throwaway fixtures.
-# Exit:  0 every file at or below its row, 1 at least one above it, 2 the
-#        invocation, pnpm-workspace.yaml or the baseline's own state was wrong.
+# Exit:  0 every file at or below its row and every row's file measured, 1
+#        otherwise, 2 the invocation, pnpm-workspace.yaml or the baseline's own
+#        state was wrong.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
@@ -57,6 +65,7 @@ MODULE_EXTENSIONS=(ts tsx)
 PRUNED_DIRS=(node_modules dist coverage)
 # Basis points: the ratio's unit everywhere in this gate and in the baseline.
 SCALE=10000
+MIN_JUDGED_LINES=40
 
 ratchet=0
 root_arg=""
@@ -73,7 +82,8 @@ Usage: bash .claude/scripts/check-comment-density.sh [--ratchet] [REPO_ROOT]
   REPO_ROOT   repository to scan (default: the repo root above this script)
   --ratchet   on a green run, rewrite the baseline downward (never upward)
 
-Exit: 0 pass, 1 at least one file above its baseline row, 2 no verdict reached.
+Exit: 0 pass, 1 a file above its row or the median, a file with no row, or a row
+      with no file, 2 no verdict reached.
 EOF
       exit 0
       ;;
@@ -311,6 +321,7 @@ fi
 # compare nothing.
 if ! awk -F'\t' \
   -v basefile="$TMP/base" -v median="$median" -v scale="$SCALE" \
+  -v floor="$MIN_JUDGED_LINES" -v ratchet="$ratchet" \
   -v viol="$TMP/violations" -v lowered="$TMP/lowered" \
   -v added="$TMP/added" -v dropped="$TMP/dropped" -v newbase="$TMP/newbase" '
 function pct(bp) { return sprintf("%.2f%% (%d)", bp / (scale / 100), bp) }
@@ -330,15 +341,24 @@ FILENAME == basefile { base[$1] = $2; unseen[$1] = 1; next }
     printf "%s\t%d\n", path, (cur < b ? cur : b) > newbase
     next
   }
-  if (cur > median) {
-    printf "  ERROR %s: %s > repo median %s — a file with no baseline row is admitted at or below the median\n",
-      path, pct(cur), pct(median) > viol
+  if ($4 >= floor && cur > median) {
+    printf "  ERROR %s: %s > repo median %s — a new file of %d or more non-blank lines is admitted at or below the median\n",
+      path, pct(cur), pct(median), floor > viol
+    next
+  }
+  if (!ratchet) {
+    printf "  ERROR %s: no baseline row — a new file banks its row in the PR that adds it\n", path > viol
     next
   }
   printf "  %s: %s (new row)\n", path, pct(cur) > added
   printf "%s\t%d\n", path, cur > newbase
 }
-END { for (p in unseen) printf "  %s\n", p > dropped }
+END {
+  for (p in unseen) {
+    printf "  %s\n", p > dropped
+    if (!ratchet) printf "  ERROR %s: baseline row with no measured file\n", p > viol
+  }
+}
 ' "$TMP/base" "$TMP/current"; then
   printf 'check-comment-density: comparison against %s failed\n' "$BASELINE_REL" >&2
   exit 2
@@ -349,15 +369,15 @@ violation_count=$(grep -c '' <"$TMP/violations" || true)
 unmeasurable_count=$(grep -c '' <"$TMP/unmeasurable" || true)
 
 if [ "$violation_count" -gt 0 ]; then
-  printf '\ncheck-comment-density: %d file(s) above the committed comment density\n' \
+  printf '\ncheck-comment-density: %d violation(s) against the committed baseline\n' \
     "$violation_count" >&2
   LC_ALL=C sort "$TMP/violations" >&2
   printf '\nA prose finding is fixed by delete, cite or move-to-test, never by adding\n' >&2
-  printf '(docs/standards/prose.md rule 6). When the ratio fell and the baseline is\n' >&2
-  printf 'merely stale, lower it with:\n\n' >&2
+  printf '(docs/standards/prose.md rule 6). A file with no row, a row with no file\n' >&2
+  printf 'and a ratio that fell are banked with:\n\n' >&2
   printf '    bash .claude/scripts/check-comment-density.sh --ratchet\n\n' >&2
-  printf 'which lowers rows and never raises one.\n\n' >&2
-  printf 'A RENAMED file arrives as a new one and is judged against the median:\n' >&2
+  printf 'which adds, drops and lowers rows and never raises one.\n\n' >&2
+  printf 'A RENAMED file arrives as a new one:\n' >&2
   printf 'carry its row across to the new path in %s.\n' "$BASELINE_REL" >&2
   exit 1
 fi
@@ -401,9 +421,8 @@ fi
 
 printf 'check-comment-density: OK — %d file(s) at or below baseline; median %d bp, %d baseline row(s)' \
   "$measured" "$median" "$baseline_rows"
-if [ "$ratchet" = "0" ] && [ "$drift" -gt 0 ]; then
-  printf '; baseline is stale (%d lower, %d unpinned, %d gone) — --ratchet banks it' \
-    "$lowered_count" "$added_count" "$dropped_count"
+if [ "$ratchet" = "0" ] && [ "$lowered_count" -gt 0 ]; then
+  printf '; baseline is stale (%d lower) — --ratchet banks it' "$lowered_count"
 fi
 if [ "$unmeasurable_count" -gt 0 ]; then
   printf '; %d file(s) have no non-blank line' "$unmeasurable_count"
