@@ -25,22 +25,8 @@ export PATH="/opt/homebrew/bin:$PATH"
 root=$(git rev-parse --show-toplevel) || exit 1
 cd "$root" || exit 1
 
-if ! command -v gitleaks >/dev/null 2>&1; then
-  cat >&2 <<'EOF'
-
-pre-commit: gitleaks is not installed — refusing to commit.
-
-  Secret scanning is not optional in this repo. A leaked credential is the one
-  mistake a follow-up commit cannot undo, and a silently skipped scanner is
-  indistinguishable from a passing one — so this hook hard-fails rather than warn.
-
-  Install it, then commit again:
-
-      brew install gitleaks
-
-EOF
-  exit 1
-fi
+# Installed, and the version CI scans with (#173); the script names the way out.
+bash .claude/scripts/require-gitleaks-pin.sh || exit 1
 
 # --verbose is load-bearing, not noise: without it gitleaks reports only a count,
 # and a rejection that does not name the file and rule is not actionable.
