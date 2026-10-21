@@ -16,7 +16,7 @@ const REFERENCES = `kind = '${SlideKind.enum.references}'`;
 
 /**
  * One subquery per list. vec0 drops rows before `k` only for `rowid in`; FTS5 given
- * `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR, `retrieval.measure.test.ts`).
+ * `rowid in` re-runs its MATCH once per id, so it takes `not in` (#78's PR; `search-plan.test.ts` asserts it).
  */
 export const listFilters = (exclusions: ListExclusions): ListFilters => {
   const left = [
