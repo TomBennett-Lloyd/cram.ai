@@ -95,11 +95,16 @@ the section before you dispatch.
    this prose owns stays yours.
 5. **Rebase hand-off** — your next touchpoint, and only when `main` moved. After every
    merge, `gh pr view --json mergeStateStatus` on each open lane PR. `BEHIND` → run
-   `gh pr update-branch` yourself; it is mechanical. `DIRTY` → a `REBASE —` bounce to the
+   `gh pr update-branch` yourself; it is mechanical. `DIRTY` → after `git fetch origin`, set
+   `b=origin/<branch>` and read the conflicted set,
+   `git merge-tree --write-tree --name-only --no-messages origin/main "$b" | tail -n +2`.
+   Every path in it one of `.claude/scripts/merge-pr.sh`'s `APPEND_ONLY_LOGS` → no bounce:
+   the PR waits as it is, and `bash .claude/scripts/merge-pr.sh <pr>` unions the conflict at
+   merge in its update-branch step, or refuses, naming why (#297). Any other path, or that
+   refusal → a `REBASE —` bounce to the
    warm agent, which rebases per its rule 8 and re-reports. The second merger rebases,
    always; merges serialise. The bounce carries pasted command output and citations, and no
-   figure of its own. After `git fetch origin`, set `b=origin/<branch>` and
-   `base=$(git merge-base origin/main "$b")`, then paste:
+   figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
    (a) `git log --oneline "$base"..origin/main`, what merged since the branch was cut;
    (b) `git diff "$base" origin/main -- <file>` for each file both sides touched, that set
    printed by
@@ -112,8 +117,11 @@ the section before you dispatch.
    expected `docs/tech-debt.md` count one too high in the #165 and #179 bounces (PRs #266
    and #269). The union rule is
    cited as `.claude/skills/review-loop/SKILL.md` step 5, not restated; the lane's own
-   arithmetic there is the check, and (c) is its input. Whether a `DIRTY` on the logs alone
-   owes a bounce at all is #279's question.
+   arithmetic there is the check, and (c) is its input. A PR that opened `DIRTY` on those
+   logs alone is the lane's to clear before its report (`.claude/agents/ticket-agent.md`
+   rule 7, #279), so a report arriving with one is a step 4 `FIX —`; a `DIRTY` that
+   arrives after the report is this step's, because the lane pushes nothing unprompted
+   after `DONE`.
    A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase and
    pushes nothing more, which makes the worktree yours: finish the rebase there — git only,
    under every rule `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify,

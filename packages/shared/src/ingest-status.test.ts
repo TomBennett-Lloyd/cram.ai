@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { CourseRepair, IngestStatus, StoredLectures, UploadProgress } from './ingest-status';
 
 describe('UploadProgress', () => {
-  it('reports image-only pages by slide number, counted from 1', () => {
-    const indexed = { state: 'indexed', slideCount: 2 };
+  it('reports image-only and unembedded pages by slide number, counted from 1', () => {
+    const counted = { state: 'indexed', slideCount: 2 };
+    const indexed = { ...counted, imageOnly: [], unembedded: [] };
     expect(UploadProgress.safeParse({ ...indexed, imageOnly: [2] }).success).toBe(true);
     expect(UploadProgress.safeParse({ ...indexed, imageOnly: [0] }).success).toBe(false);
+    expect(UploadProgress.safeParse({ ...indexed, unembedded: [2] }).success).toBe(true);
+    expect(UploadProgress.safeParse({ ...indexed, unembedded: [0] }).success).toBe(false);
+    expect(UploadProgress.safeParse({ ...counted, imageOnly: [] }).success).toBe(false);
   });
 
-  it('names at least one slide, and the limit, of an over-length deck', () => {
-    const over = { state: 'over-length', maxInputTokens: 512 };
-    expect(UploadProgress.safeParse({ ...over, slides: [3] }).success).toBe(true);
-    expect(UploadProgress.safeParse({ ...over, slides: [] }).success).toBe(false);
-    expect(UploadProgress.safeParse({ ...over, slides: [3], maxInputTokens: 0 }).success).toBe(
-      false,
-    );
+  it('has no whole-deck over-length state: an over-length slide refuses only itself (#338)', () => {
+    const over = { state: 'over-length', slides: [3], maxInputTokens: 512 };
+    expect(UploadProgress.safeParse(over).success).toBe(false);
   });
 
   it('names why the course file could not take the deck by @cram/index’s open status', () => {
@@ -32,7 +32,13 @@ describe('UploadProgress', () => {
 });
 
 describe('IngestStatus', () => {
-  const lecture = { lectureId: 'l1', lectureTitle: 'Bees', slideCount: 2, imageOnly: [2] };
+  const lecture = {
+    lectureId: 'l1',
+    lectureTitle: 'Bees',
+    slideCount: 2,
+    imageOnly: [2],
+    unembedded: [],
+  };
 
   it('carries the course file’s lectures beside the uploads, and refuses a status without them', () => {
     const stored = { state: 'read', lectures: [lecture], report: { state: 'none' } };
@@ -58,6 +64,7 @@ describe('IngestStatus', () => {
       }).success;
     expect(read({})).toBe(true);
     expect(read({ imageOnly: [0] })).toBe(false);
+    expect(read({ unembedded: [0] })).toBe(false);
     expect(read({ lectureTitle: ' ' })).toBe(false);
   });
 });

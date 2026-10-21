@@ -12,10 +12,13 @@ export { type ConfirmationState, type ConfirmResult } from './confirmation';
 export { EmbedderIdentity } from './embedder-identity';
 export {
   openCourse,
+  openCourseReadOnly,
   reembedCourse,
+  type CourseReader,
   type EmbedSlides,
   type OpenCourseResult,
   type OpenCourseSpec,
+  type ReadCourseResult,
 } from './open-course';
 export { type RebuildReportDismissal } from './rebuild-report';
 export { SCHEMA_VERSION } from './schema';

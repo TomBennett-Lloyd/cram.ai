@@ -43,14 +43,32 @@ describe('ingestPptx unreadable decks', () => {
     expect(reasonOf(ole('PowerPoint Document'))).toBe('not-a-pptx');
   });
 
-  it('reports a zip with no presentation part as not a pptx', () => {
-    const deck = { slides: [titled('Rate laws')], parts: { 'ppt/presentation.xml': null } };
+  it.each([
+    ['no package relationships part', null],
+    [
+      'package relationships with no officeDocument relationship',
+      `<Relationships xmlns="${NS.rel}"><Relationship Id="rId1" Type="${SLIDE_RELATIONSHIP}" Target="ppt/presentation.xml"/></Relationships>`,
+    ],
+  ])('reports a zip with %s as not a pptx', (_, rels) => {
+    const deck = { slides: [titled('Rate laws')], parts: { '_rels/.rels': rels } };
     expect(reasonOf(buildDeck(deck))).toBe('not-a-pptx');
   });
 
+  it('reports a main part the package relationships name but the zip lacks as damaged', () => {
+    const deck = { slides: [titled('Rate laws')], parts: { 'ppt/presentation.xml': null } };
+    expect(ingest(buildDeck(deck))).toMatchObject({
+      reason: 'damaged',
+      detail: 'ppt/presentation.xml is missing',
+    });
+  });
+
   it('reports a Strict presentation as a limit of this reader, not of the deck', () => {
-    const strict = 'http://purl.oclc.org/ooxml/presentationml/main';
-    const deck = { slides: [titled('Rate laws')], presentationNamespace: strict };
+    const deck = {
+      slides: [titled('Rate laws')],
+      presentationNamespace: 'http://purl.oclc.org/ooxml/presentationml/main',
+      officeDocumentRelationship:
+        'http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument',
+    };
     expect(reasonOf(buildDeck(deck))).toBe('reader-limit');
   });
 

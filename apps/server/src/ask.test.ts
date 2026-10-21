@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { Recording } from '@cram/gateway';
 import { CourseId, type RetrievedSlide } from '@cram/shared';
@@ -149,6 +149,16 @@ describe('POST /courses/:id/ask', () => {
     const reply = await askBio(test);
     expect(reply.status).toBe(409);
     expect(reply.json).toEqual({ status: 'course-unavailable', problem: 'not-a-course-file' });
+  });
+
+  it('answers not-covered from a blank course file, and leaves it blank', async () => {
+    test = await startTestServer();
+    const path = courseFilePath(test.dataDir, CourseId.parse('bio'));
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, '');
+    const reply = await askBio(test);
+    expect(reply.json).toEqual({ status: 'not-covered', withheld: [], slides: [] });
+    expect(statSync(path).size).toBe(0);
   });
 
   it('refuses a body that is not a JSON question', async () => {

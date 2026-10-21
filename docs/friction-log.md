@@ -119,7 +119,52 @@ Entry format:
 - Phase: implementation
 - Observed: the #299 lane's per-package test runs were green before `pnpm verify` refused the tree on `max-lines` and the comment-density ratchet, which forced a test-file split and docblock trims after the work was otherwise done; the lane's footprint grew by two test files and a ledger carrier moved with them. Second instance today of the composite gate's size rules arriving after a package's own tests pass (PR #313's lane split its corpus file for the same reason). One ticket so far on the ordering.
 
-## 2026-10-21 — PR #323
+## 2026-10-21 — PR #324
+
+- Phase: implementation
+- Observed: the #300 lane's first cut used SQLite's read-only open flag and three repair tests failed, because a read-only connection leaves `-wal` and `-shm` beside the file on close and `rebuildCourse` reads a `-wal` as another connection still holding the file; `PRAGMA query_only` on a normal connection was the fix. One ticket so far on a library flag whose side effect is in the file system rather than in the API. Also the first `REBASE` bounce under `run-issue` step 5's pasted form (PR #310): seven shared files, resolved with no correction from the lane.
+
+## 2026-10-21 — PR #331
 
 - Phase: planning
-- Observed: the #311 lane's restatement sweep covered what the gate refuses and not what it exempts, so adding a tokens-directory exemption falsified "`tokens.css` is the one file this gate exempts" at three sites that review found. A fourth sweep shape after the three #293 captured (a change that adds an exemption needs an exemption-claim arm); counts toward #293.
+- Observed: issue #279's body placed the `run-issue` rebase hand-off at "step 4"; PR #310 had renumbered it to step 5 before the lane read it, and the dispatch's overlap note caught it first. Second issue body in one afternoon written by the merge owner with a stale step number (PR #310's lane found the first, in #295); a step number in an issue is a figure that goes stale the moment the skill is edited, so the issue should name the step by its heading or its first words. Counts toward #295's measurement.
+
+## 2026-10-21 — PR #175
+
+- Phase: merge
+- Observed: the #7 lane rebased five times before its ADR merged, and one fill commit (d4526f4) was undone and redone because a neighbour amended an ADR this one cites (PR #174 → ADR 0003 (e)) between the owner's approval and the merge, which only `check:ledgers` on the rebased tree could see. A humanAlways PR waiting on the owner collects every log and ADR merge in the meantime; counts toward #297 (the cascade) and #330 (the ADR 0007 (e) true-up it left behind).
+
+## 2026-10-21 — PR #327
+
+- Phase: rebase
+- Observed: the #301 lane took two log-only DIRTY bounces in one hour (#320, then #324), each a `docs/tech-debt.md` table or append collision, and lost one CI round to the second; PR #331 (#279) landed after, moving a report-time log-only DIRTY to the lane, and #297 is in flight for the merge-time half. Third lane today with two log-only rounds (#302's PR #329 took the same two); counts toward #297.
+
+## 2026-10-21 — PR #336
+
+- Phase: dispatch
+- Observed: the #296 lane reported no friction of its own, but its merge made PR #337 (#294) DIRTY on the same `.claude/agents/ticket-agent.md` § 4 paragraph, costing that lane a source-conflict rebase round; a third lane (#293, PR #334) edits § 2 of the same file. The merge owner admitted all three in parallel with the overlap named in each dispatch, pricing it as rebase cost; a same-paragraph edit on an agent definition is same-file SOURCE overlap by `run-issue` step 1's own rule and should have been sequenced or batched at dispatch. One ticket so far on agent-definition edits colliding.
+
+## 2026-10-21 — PR #334
+
+- Phase: planning
+- Observed: the #293 lane's first claim-family arm, written for the sweep-shape rule it was itself landing, missed `.claude/agents/planner.md:35` ("the command you ran and the output it returned"); the positive control caught it before the plan went out. The ticket ran into the exact shape it fixes, and the control was what made that visible. No rule change: § 2's three-part sweep now owns it.
+
+## 2026-10-21 — PR #329
+
+- Phase: rebase
+- Observed: in one of the #302 lane's three rebase rounds, a delete script whose assertion failed still reached `rebase --continue`, because the chain used `;` rather than `&&`; a tip commit made the missed deletion. Two of the three rounds were forced by redirect-row deletions on `docs/tech-debt.md` (#324, #327), both log-only. Counts toward a lane-side rule that a scripted rebase step chains with `&&` (`docs/standards/evidence.md` form 8 asserts the edit's count; this is the step after it).
+
+## 2026-10-21 — PR #266
+
+- Phase: implementation
+- Observed: the #165 lane mutated the test-exclusion regex but not the line that applies it to the basename, and review found the surviving mutant. The guard's edges include the site that applies the pattern, not only the pattern's arms; second instance of a mutant list stopping at the regex (PR #278's anchoring mutants were the first, now in ticket-agent § 4's axes rule). One ticket so far on the application site.
+
+## 2026-10-21 — PR #345
+
+- Phase: merge
+- Observed: the #297 lane found that `merge-pr.sh` has unioned a conflict confined to `APPEND_ONLY_LOGS` since #60 (PR #64), so the issue's proposed script change was already shipped; triage wrote the fix direction without reading the script's union step. On the merge owner's side, every log-only `REBASE —` bounce sent today (PRs #266, #269, #275, #324, #327 twice, #329 twice, #334) was avoidable under that union, each costing a lane round and a CI run; PR #345's step 5 now reads the conflicted set first. Second instance today of a triage issue restating shipped behaviour (#332's carrier sweep is the other).
+
+## 2026-10-21 — PR #289
+
+- Phase: implementation
+- Observed: the #268 lane left two background wait loops of the form `until ! pgrep -f 268-mut/mutate.py; do sleep 15; done` running for 4 h 44 min after the PR merged: `pgrep -f` matched the loop's own command line, so the loop could never see the script finish. The lane read its result file directly and never noticed. The merge owner's `kill` was refused by the permission classifier and the owner killed them by hand. One ticket so far on a self-matching `pgrep -f` wait.

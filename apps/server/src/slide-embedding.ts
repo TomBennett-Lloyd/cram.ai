@@ -1,7 +1,6 @@
-import type { Embedder, EmbeddingResult, OverLength } from '@cram/gateway';
-import { slideText } from '@cram/grounding';
+import type { Embedder, EmbeddingResult } from '@cram/gateway';
 import { EmbedderIdentity, type IndexedSlide } from '@cram/index';
-import type { SlideNo, SlideRecord } from '@cram/shared';
+import { embedText, type SlideRecord } from '@cram/shared';
 
 export const PROBE_TEXT = 'embedder probe';
 
@@ -29,35 +28,23 @@ export const embedderIdentity = async (embedder: Embedder): Promise<EmbedderIden
   });
 };
 
-/** Every slide embedded, or the slides longer than the embedder takes: never truncated (`docs/adr/0003-model-roles-and-backends.md` § Decision (d)). */
-export type SlideEmbedding =
-  | { readonly status: 'embedded'; readonly slides: readonly IndexedSlide[] }
-  | {
-      readonly status: 'over-length';
-      readonly slideNos: readonly SlideNo[];
-      readonly maxInputTokens: number;
-    };
-
+/**
+ * Every record, with a vector unless the embedder cannot take it whole, which is never truncated
+ * (`docs/adr/0003-model-roles-and-backends.md` § Decision (d)), or it is a `references` slide (#338).
+ */
 export const embedSlides = async (
   embedder: Embedder,
   records: readonly SlideRecord[],
-): Promise<SlideEmbedding> => {
-  const results = await resultsFor(embedder, records.map(slideText));
-  const slides: IndexedSlide[] = [];
-  const overLength: { readonly slideNo: SlideNo; readonly result: OverLength }[] = [];
-  records.forEach((record, index) => {
-    const result = results[index];
-    if (result?.status === 'embedded') slides.push({ record, embedding: result.vector });
-    else if (result !== undefined) overLength.push({ slideNo: record.slideNo, result });
-  });
-  const [first] = overLength;
-  return first === undefined
-    ? { status: 'embedded', slides }
-    : {
-        status: 'over-length',
-        slideNos: overLength.map(({ slideNo }) => slideNo),
-        maxInputTokens: first.result.maxInputTokens,
-      };
+): Promise<readonly IndexedSlide[]> => {
+  const embeddable = records.filter(({ kind }) => kind !== 'references');
+  const results = await resultsFor(embedder, embeddable.map(embedText));
+  const vectors = new Map(
+    embeddable.map((record, index) => {
+      const result = results[index];
+      return [record, result?.status === 'embedded' ? result.vector : undefined] as const;
+    }),
+  );
+  return records.map((record) => ({ record, embedding: vectors.get(record) }));
 };
 
 export const embedQuestion = async (

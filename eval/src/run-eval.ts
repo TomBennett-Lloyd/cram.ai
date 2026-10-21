@@ -1,4 +1,4 @@
-import type { ModelGateway, Sampling } from '@cram/gateway';
+import type { ModelGateway } from '@cram/gateway';
 import {
   ask,
   PROVISIONAL_NLI_THRESHOLDS,
@@ -27,8 +27,6 @@ export interface EvalRunFacts {
   readonly measuredCommit: string;
   readonly pullRequest: number;
   readonly machineClass: MachineClass;
-  /** What the gateway's generator samples with. */
-  readonly sampling: Sampling;
 }
 
 export interface EvalRunSpec {
@@ -192,7 +190,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       embedder: inner.embedder.pin,
       reranker: inner.reranker?.pin ?? null,
     },
-    determinism: { generator: spec.facts.sampling },
+    determinism: { generator: inner.generator.sampling },
     nliThresholds: PROVISIONAL_NLI_THRESHOLDS,
     retrievalK: RETRIEVAL_K,
     verifierStrategy: PROVISIONAL_VERIFIER_STRATEGY,

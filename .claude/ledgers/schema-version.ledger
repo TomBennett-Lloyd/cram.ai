@@ -5,6 +5,7 @@ sweep: (?i)schema.?(version|bump)|user_version|rebuilds? (run|only)|\.claude/led
 carrier: packages/index/src/index.ts
 carrier: packages/index/src/open-course.ts
 carrier: packages/index/src/open-course.test.ts
+carrier: packages/index/src/confirmation.test.ts
 carrier: packages/index/src/rebuild-course.test.ts
 carrier: packages/index/src/rebuild-report.test.ts
 carrier: packages/ingest/src/stored-output-pin.test.ts

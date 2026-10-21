@@ -83,7 +83,15 @@ describe('start-up repair', () => {
     expect(await repairedStatus(server)).toEqual({
       stored: {
         state: 'read',
-        lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
+        lectures: [
+          {
+            lectureId: 'l1',
+            lectureTitle: 'hive.v2',
+            slideCount: 2,
+            imageOnly: [1],
+            unembedded: [],
+          },
+        ],
         report: { state: 'none' },
       },
       repair: { state: 'done' },

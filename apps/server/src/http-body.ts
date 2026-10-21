@@ -4,10 +4,7 @@ import type { ApiRefusal } from '@cram/shared';
 export type BodyRead =
   { readonly status: 'read'; readonly bytes: Uint8Array } | { readonly status: 'too-large' };
 
-/**
- * Drains the whole request either way, so the refusal reaches a client still sending. The bytes are
- * a plain `Uint8Array` view, never a `Buffer`, which pdf.js refuses.
- */
+/** Drains the whole request either way, so the refusal reaches a client still sending. */
 export const readBody = async (request: IncomingMessage, maxBytes: number): Promise<BodyRead> => {
   const chunks: Buffer[] = [];
   let length = 0;
@@ -18,8 +15,7 @@ export const readBody = async (request: IncomingMessage, maxBytes: number): Prom
     if (length <= maxBytes) chunks.push(chunk);
   }
   if (length > maxBytes) return { status: 'too-large' };
-  const body = Buffer.concat(chunks);
-  return { status: 'read', bytes: new Uint8Array(body.buffer, body.byteOffset, body.length) };
+  return { status: 'read', bytes: Buffer.concat(chunks) };
 };
 
 export const sendJson = (

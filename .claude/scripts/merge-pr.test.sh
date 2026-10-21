@@ -3044,6 +3044,62 @@ expect_no_merge_in_progress
 end
 
 # ==========================================================================================
+# 22. a humanAlways PR, filled and labelled, DIRTY on one log alone, merges in one run
+# ==========================================================================================
+# .claude/skills/run-issue/SKILL.md ticket-agent lane step 5 owes such a PR no bounce,
+# because this one invocation unions it (#297). One case per log.
+RF_FILLED_ENTRY='
+## 2026-10-21 — PR #490 — the entry the owner approved
+
+- **Category**: approved-no-changes
+- **Verdict**: Approved without changes — owner, in chat.
+'
+
+for log in "$RF" "$TD" "$FL"; do
+  begin "a humanAlways PR whose only conflict is in $log is unioned, merged and unlabelled in one run"
+  td_fixture "human-union-${log##*/}" "$RF" "$RF_BASE" "$FL" "$FL_BASE"
+  case "$log" in
+    "$RF")
+      main_writes "$RF" "$RF_BASE$RF_MAIN_ENTRY"
+      branch_writes "$RF" "$RF_BASE$RF_FILLED_ENTRY"
+      want="$RF_BASE$RF_MAIN_ENTRY$RF_FILLED_ENTRY"
+      ;;
+    "$TD")
+      main_writes "$TD" "$TD_BASE$TD_MAIN_ENTRY"
+      branch_writes "$TD" "$TD_BASE$TD_BRANCH_ENTRY" "$RF" "$RF_BASE$RF_FILLED_ENTRY"
+      want="$TD_BASE$TD_MAIN_ENTRY$TD_BRANCH_ENTRY"
+      ;;
+    "$FL")
+      main_writes "$FL" "$FL_BASE$FL_58"
+      branch_writes "$FL" "$FL_BASE$FL_60" "$RF" "$RF_BASE$RF_FILLED_ENTRY"
+      want="$FL_BASE$FL_58$FL_60"
+      ;;
+  esac
+  # What `gh pr diff` answers is the branch's own diff, so the feedback step reads the
+  # filled entry the branch really carries.
+  gitc "$ROOT/wt" diff main...HEAD >"$STATE/diff" || bad "could not write the PR diff"
+  V_FILES="CLAUDE.md,$log,$RF"
+  V_LABELS="awaiting-review"
+  conflict_once
+  td_views
+  run_merge
+  expect_union "$log" "$want"
+  expect_stdout 'HUMAN (humanAlways: CLAUDE.md)'
+  expect_stdout 'entry on the branch, both placeholders filled'
+  expect_stdout "$log unioned and pushed ($log: base appended 1 entr(ies), the branch 1;"
+  case "$(origin_branch_file "$RF")" in
+    *"- **Verdict**: Approved without changes — owner, in chat."*) ;;
+    *) bad "the pushed branch lost its filled $RF entry" ;;
+  esac
+  merge_at=$(call_line "pr merge $PR")
+  edit_at=$(call_line "pr edit $PR --remove-label awaiting-review")
+  [ "$merge_at" -gt 0 ] || bad "the PR never merged"
+  [ "$edit_at" -gt "$merge_at" ] ||
+    bad "the label came off at call $edit_at, the merge at call $merge_at — the label must come off after"
+  end
+done
+
+# ==========================================================================================
 # 18. usage
 # ==========================================================================================
 begin "a missing or non-numeric PR number is a usage error, and nothing is called"
