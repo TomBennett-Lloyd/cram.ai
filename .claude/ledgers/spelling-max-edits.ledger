@@ -1,0 +1,6 @@
+# A spelling-correction bound (docs/standards/architecture.md rule 9; #393).
+owner: packages/index/src/spelling-correction.ts
+claim: a correction makes at most MAX_EDITS edits, however long the typed token
+cite: MAX_EDITS
+sweep: \bMAX_EDITS\b|\.claude/ledgers/spelling-max-edits\.ledger
+carrier: packages/index/src/spelling-correction.test.ts

@@ -1,4 +1,4 @@
-const TERM = /[\p{L}\p{M}\p{N}]+/gu;
+export const TERM = /[\p{L}\p{M}\p{N}]+/gu;
 
 /** Student text as an FTS5 `MATCH` that cannot be a syntax error: distinct terms, quoted, OR-joined. */
 export const ftsMatchExpression = (text: string): string | undefined => {
