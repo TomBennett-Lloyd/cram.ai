@@ -91,6 +91,11 @@ describe('slidesFromPages', () => {
     expect(slide?.lectureTitle).toBe('Lecture 04 Kinetics');
   });
 
+  it('stores the filename lecture title as storedText gives it (#254)', () => {
+    const [slide] = slidesFromPages([blank], source('Cafe\u0301_𝑘_rates.pdf'));
+    expect(slide?.lectureTitle).toBe('Caf\u00E9 k rates');
+  });
+
   it('falls back to a fixed lecture title when neither page nor filename has one', () => {
     const [slide] = slidesFromPages([blank], source('.pdf'));
     expect(slide?.lectureTitle).toBe(UNTITLED_LECTURE);
