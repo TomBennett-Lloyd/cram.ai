@@ -10,9 +10,10 @@
 # loud — never exit 2: this hook runs on every Bash call in every lane, so a
 # refusing failure would block all of them (hook-context.sh's header).
 #
-# The scan is lexical: the first word of each simple command, with `cd <dir>` and
-# `git -C <dir>` followed, and into `"$(...)"`. A command reached through a
-# variable, `xargs` or a shell keyword is not seen.
+# The scan is lexical: the first word of each simple command after its `NAME=value`
+# words, with `cd <dir>` and `git -C <dir>` followed, and into `"$(...)"`. A command
+# reached through an expansion, `xargs` or a shell keyword is not seen, and neither
+# `$'…'` nor a backtick is read as a unit.
 # Cases: .claude/scripts/guard-dirty-revert.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -63,18 +64,39 @@ const command = event?.tool_input?.command;
 if (typeof command !== 'string') process.exit(0);
 let dir = typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallbackDir;
 
-// Appends each simple command's words to `commands`; a nested scan is a `"$(...)"`
-// body and returns the index past the `)` that closes it, the first at paren depth 0 (#241).
-// Only a `(` that opens something counts: one at command position, or after `$`, `<` or
-// `>`. A `(` inside `${...}` or `[...]` opens nothing and has no `)` to close it.
+// Words after which a `case` or `esac` still stands at command position.
+const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 'until', 'time']);
+
+// Appends each simple command's words to `commands`; a nested scan is a `"$(...)"` body
+// and returns the index past the `)` that closes it: the first at paren depth 0 (#241)
+// that does not end a `case` pattern (#268). A paren inside `[…]` counts, because the
+// shells' own `$(` readers count it: zsh (the Bash tool's shell here) counts the `(` of
+// `[(]`, and both bash and zsh close at the `)` of `[)]`.
 function scan(src, i, commands, nested) {
   const heredocs = [];
-  let depth = 0;
+  // Open parens, innermost last. Each holds the word and command it opened in (`$(`, `<(`,
+  // `@(`, `a=(`, a subshell's empty one), which resume at its `)` without the group's text,
+  // so zsh's `dirty.txt(N)` names dirty.txt.
+  const groups = [];
+  // Open `case` frames, innermost last, each at the paren depth it opened at. `state` runs
+  // head (`case WORD in`) → pattern → body, and back to pattern at each `;;`.
+  const cases = [];
   let current = [];
   let word = null;
   commands.push(current);
+  const frame = () => (cases.at(-1)?.depth === groups.length ? cases.at(-1) : undefined);
   const end = () => {
-    if (word !== null) current.push(word);
+    if (word === null) return;
+    const atCommand = current.every((w) => LEADERS.has(w));
+    current.push(word);
+    const f = frame();
+    if (f?.state === 'head') {
+      if (++f.words === 2) Object.assign(f, { state: 'pattern', fresh: true });
+    } else if (f?.state === 'pattern') {
+      if (f.fresh && word === 'esac') cases.pop();
+      else f.fresh = false;
+    } else if (atCommand && word === 'esac' && f) cases.pop();
+    else if (atCommand && word === 'case') cases.push({ depth: groups.length, state: 'head', words: 0 });
     word = null;
   };
   const split = () => {
@@ -102,12 +124,36 @@ function scan(src, i, commands, nested) {
       i++;
     } else if (c === '#' && word === null) {
       while (i < src.length && src[i] !== '\n') i++;
-    } else if (c === ')' && nested && depth === 0) {
+    } else if (c === ';' && /[;&|]/.test(src[i + 1] ?? '') && frame()?.state === 'body') {
+      split();
+      Object.assign(frame(), { state: 'pattern', fresh: true });
+      i += 2;
+    } else if (c === '(') {
+      const f = frame();
+      if (word === null && f?.state === 'pattern' && f.fresh) f.fresh = false;
+      else {
+        groups.push({ current, word });
+        word = null;
+        current = [];
+        commands.push(current);
+      }
+      i++;
+    } else if (c === ')') {
       end();
-      return i + 1;
-    } else if (';&|()'.includes(c)) {
-      if (c === '(' && (word === null || /[$<>]$/.test(word))) depth++;
-      else if (c === ')') depth--;
+      const f = frame();
+      if (f?.state === 'pattern') {
+        f.state = 'body';
+        split();
+      } else if (nested && groups.length === 0) return i + 1;
+      else {
+        const g = groups.pop();
+        if (g) {
+          current = g.current;
+          word = g.word;
+        } else split();
+      }
+      i++;
+    } else if (';&|'.includes(c)) {
       split();
       i++;
     } else if (src.startsWith('<<<', i)) {
@@ -134,17 +180,13 @@ function scan(src, i, commands, nested) {
       while (i < src.length && src[i] !== "'") word += src[i++];
       i++;
     } else if (c === '"') {
-      word ??= '';
-      i++;
-      while (i < src.length && src[i] !== '"') {
-        if (src.startsWith('$(', i)) {
-          i = scan(src, i + 2, commands, true);
-          continue;
-        }
-        if (src[i] === '\\' && '"\\'.includes(src[i + 1] ?? '')) i++;
-        word += src[i++];
-      }
-      i++;
+      const quoted = dquote(src, i, commands);
+      word = (word ?? '') + quoted.text;
+      i = quoted.end;
+    } else if (src.startsWith('${', i)) {
+      const j = param(src, i, commands, false);
+      word = (word ?? '') + src.slice(i, j);
+      i = j;
     } else if (c === '\\') {
       if (src[i + 1] !== '\n') word = (word ?? '') + (src[i + 1] ?? '');
       i += 2;
@@ -155,6 +197,44 @@ function scan(src, i, commands, nested) {
   }
   end();
   return i;
+}
+
+// Reads the `"…"` at `i`: returns its text and the index past the closing quote. A `$(`
+// inside is scanned as a body; `\$` and `\``, like `\"` and `\\`, are escapes there.
+function dquote(src, i, commands) {
+  let text = '';
+  i++;
+  while (i < src.length && src[i] !== '"') {
+    if (src.startsWith('$(', i)) {
+      i = scan(src, i + 2, commands, true);
+      continue;
+    }
+    if (src.startsWith('${', i)) {
+      const j = param(src, i, commands, true);
+      text += src.slice(i, j);
+      i = j;
+      continue;
+    }
+    if (src[i] === '\\' && '"\\$`'.includes(src[i + 1] ?? '')) i++;
+    text += src[i++];
+  }
+  return { text, end: i + 1 };
+}
+
+// Reads the `${…}` at `i` as one unit and returns the index past its first unquoted `}`.
+// Its parens never reach the counter, but a `$(` inside is still scanned, so
+// `${x:-$(git checkout …)}` is seen (#268). `'…'` quotes only outside `"…"` (`dq`), as zsh
+// reads `"${x:-'}"`; a bare `{` does not nest, which is bash's reading and the shorter unit.
+function param(src, i, commands, dq) {
+  i += 2;
+  while (i < src.length && src[i] !== '}') {
+    if (src.startsWith('${', i)) i = param(src, i, commands, dq);
+    else if (src.startsWith('$(', i)) i = scan(src, i + 2, commands, true);
+    else if (src[i] === '"') i = dquote(src, i, commands).end;
+    else if (src[i] === "'" && !dq) i = src.indexOf("'", i + 1) + 1 || src.length;
+    else i += src[i] === '\\' ? 2 : 1;
+  }
+  return i + 1;
 }
 
 function checkoutOperands(args) {
@@ -204,7 +284,11 @@ const git = (cwd, ...args) => {
 
 const commands = [];
 scan(command, 0, commands, false);
-for (const words of commands) {
+for (const simple of commands) {
+  // `NAME=value` words lead a command without being it.
+  let a = 0;
+  while (a < simple.length && /^[A-Za-z_]\w*\+?=/.test(simple[a])) a++;
+  const words = simple.slice(a);
   if (words[0] === 'cd') {
     dir = path.resolve(dir, words[1] ?? os.homedir());
     continue;

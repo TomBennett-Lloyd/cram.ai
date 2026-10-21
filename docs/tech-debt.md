@@ -189,3 +189,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `pagesOf` and `PRESENTATION` in `packages/ingest/src/adapters/pptx/ingest-pptx.ts`
 - What: the main part is read from the fixed name `ppt/presentation.xml` rather than from the package's `_rels/.rels` officeDocument relationship. A conforming package that names its main part elsewhere returns `no-presentation` → `not-a-pptx`, which is a reader limit reported as the deck's fault. Predates #185.
 - Source: #185 review cycle 1
+
+## 2026-10-21 — the eslint frontend gate refuses copy that only looks like a colour
+
+- Where: the frontend-gate block of `eslint.config.mjs`, its four `no-restricted-syntax` colour selectors
+- What: the selectors test every string literal and template element in UI code, so they cannot tell a style value from user-visible copy or a URL. The #273 review measured these as refused: `'Text color(s)'`, `'see lab(3)'`, the anchor `'#add'` and the entity `'&#123;'`. Root cause: the selectors match by node type, not by position. Scoping them to style-bearing positions (a `style`/`fill`/`stroke` attribute, a CSS-in-TS value) would remove the false refusals without opening a way past the gate.
+- Source: #273 review cycle 1

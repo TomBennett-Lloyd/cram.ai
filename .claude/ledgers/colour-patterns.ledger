@@ -1,0 +1,8 @@
+# The frontend gate's raw-colour patterns (docs/standards/architecture.md rule 9; #273).
+owner: packages/ui/src/frontend-gate/colour-patterns.mjs
+claim: the hex-colour lengths and the CSS Color 4/5 colour-function names the frontend gate refuses, which both lint configs import and both probes assert arm by arm
+sweep: HEX_COLOUR|COLOUR_FUNCTION|colour-patterns\.mjs|device-cmyk|light-dark|\.claude/ledgers/colour-patterns\.ledger
+carrier: stylelint.config.mjs
+carrier: eslint.config.mjs
+carrier: packages/ui/src/frontend-gate/values.probe.css.txt
+carrier: packages/ui/src/frontend-gate/colour.probe.ts.txt

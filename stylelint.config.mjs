@@ -20,6 +20,8 @@
  * packages/ui/src/frontend-gate/frontend-gate.test.ts lints with this config; a
  * new entry gets its line there (#258).
  */
+import { COLOUR_FUNCTION, HEX_COLOUR } from './packages/ui/src/frontend-gate/colour-patterns.mjs';
+
 export default {
   plugins: ['stylelint-declaration-strict-value'],
 
@@ -92,7 +94,7 @@ export default {
         /*
          * Colour-bearing shorthands. Without these, `border: 1px solid red`
          * lints clean — the named colour is a sub-value of a property nothing
-         * on this list matches, and the property-agnostic rule below only
+         * on this list matches, and the property-agnostic rule below
          * catches hex literals and colour functions, not named colours. Listed
          * individually rather than as `/^border-/`, which would also demand a
          * token for `border-style: solid` — a keyword, not a design value.
@@ -127,8 +129,10 @@ export default {
       ],
       {
         ignoreFunctions: false,
+        // CSS keywords are ASCII case-insensitive, so `currentcolor` is the
+        // same keyword as `currentColor` (#273).
         ignoreValues: [
-          'currentColor',
+          'currentcolor',
           'inherit',
           'transparent',
           'none',
@@ -136,20 +140,26 @@ export default {
           'auto',
           'initial',
           'unset',
-        ],
+        ].map((keyword) => `/^${keyword}$/i`),
       },
     ],
 
     /*
      * The property list above is an allow-list of the properties we thought of,
      * so anything it does not name is unguarded. This rule closes the colour
-     * half of that gap and only that half: it is property-agnostic, so whatever
+     * half of that gap: it is property-agnostic, so whatever
      * the property, a hex literal or a colour-function call in its value is
-     * refused. Token references survive because `var(--color-…)` names a colour
+     * refused, by `HEX_COLOUR` and `COLOUR_FUNCTION` from
+     * packages/ui/src/frontend-gate/colour-patterns.mjs. Token references survive because `var(--color-…)` names a colour
      * rather than spelling one. Named colours (`red`) are not caught here —
      * they are ordinary keywords, indistinguishable from `solid` or `auto` by
      * pattern — which is why every colour-bearing shorthand is on the list
      * above instead.
+     *
+     * The third pattern is a `var()` fallback. The plugin above accepts any
+     * `var()` whole, so `color: var(--a, red)` would launder `red`; here a
+     * fallback must be empty or another `var()` (#273). A fallback that goes on
+     * after its first `var()` — `var(--a, var(--b), serif)` — is not seen (#280).
      *
      * Residual, deliberately open: the *length* half of the frontend gate is
      * still allow-list-shaped, so a raw size reaches the page through any
@@ -175,7 +185,9 @@ export default {
      * syntax everywhere.
      */
     'declaration-property-value-disallowed-list': [
-      { '/.*/': ['/#[0-9a-fA-F]{3,8}\\b/', '/\\b(rgba?|hsla?|oklch|lab|lch)\\(/'] },
+      {
+        '/.*/': [HEX_COLOUR, COLOUR_FUNCTION, '/(?<![\\w-])var\\([^,)]*,(?!\\s*(?:var\\(|\\)))/i'],
+      },
       { reportDisables: true },
     ],
 
