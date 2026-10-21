@@ -208,9 +208,9 @@ describe('openCourseReadOnly', () => {
     if (opened.status !== 'open') throw new Error(opened.status);
     const { course } = opened;
     if (!(course instanceof CourseIndex)) throw new Error('expected the course index');
-    expect(() => {
-      course.dismissRebuildReport();
-    }).toThrow(/readonly/);
+    const [first] = course.slides();
+    if (first === undefined) throw new Error('expected a seeded slide');
+    expect(() => course.removeLecture(first.lectureId)).toThrow(/readonly/);
     course.close();
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(existsSync(`${temp.spec.path}-wal`)).toBe(false);
