@@ -2,6 +2,13 @@ export { Citation, SourceId } from './citation';
 export { Deck, DeckMediaType, SlideImage, SlideImageMediaType } from './deck';
 export { CourseId, LectureId, SlideKind, SlideNo, SlideRecord, SourceHash } from './slide-record';
 export { NonBlankText } from './non-blank-text';
+export {
+  type QuoteSpan,
+  type SlideField,
+  type SlideFieldName,
+  quoteSpan,
+  slideFields,
+} from './quotable-text';
 export { RetrievedSlide } from './retrieved-slide';
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { Unit, UnitKind } from './unit';
