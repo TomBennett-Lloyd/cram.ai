@@ -74,11 +74,12 @@ const LEADERS = new Set(['!', '{', 'if', 'then', 'elif', 'else', 'do', 'while', 
 // here) counts the `(` of `[(]`, and both bash and zsh close at the `)` of `[)]`.
 function scan(src, i, commands, nested) {
   const heredocs = [];
-  // Open parens, innermost last. A `(` inside a word (`$(`, `<(`, `@(`, `a=(`, …) holds
-  // that word and its command, which resume at its `)`; `null` is a subshell.
+  // Open parens, innermost last. Each holds the word and command it opened in (`$(`, `<(`,
+  // `@(`, `a=(`, a subshell's empty one), which resume at its `)` without the group's text,
+  // so zsh's `dirty.txt(N)` names dirty.txt.
   const groups = [];
   // Open `case` frames, innermost last, each at the paren depth it opened at. `state` runs
-  // subject → in → pattern → body, and back to pattern at each `;;`.
+  // head (`case WORD in`) → pattern → body, and back to pattern at each `;;`.
   const cases = [];
   let current = [];
   let word = null;
@@ -89,14 +90,13 @@ function scan(src, i, commands, nested) {
     const atCommand = current.every((w) => LEADERS.has(w));
     current.push(word);
     const f = frame();
-    if (f?.state === 'subject') f.state = 'in';
-    else if (f?.state === 'in') {
-      if (word === 'in') Object.assign(f, { state: 'pattern', fresh: true });
+    if (f?.state === 'head') {
+      if (++f.words === 2) Object.assign(f, { state: 'pattern', fresh: true });
     } else if (f?.state === 'pattern') {
       if (f.fresh && word === 'esac') cases.pop();
       else f.fresh = false;
     } else if (atCommand && word === 'esac' && f) cases.pop();
-    else if (atCommand && word === 'case') cases.push({ depth: groups.length, state: 'subject', fresh: false });
+    else if (atCommand && word === 'case') cases.push({ depth: groups.length, state: 'head', words: 0 });
     word = null;
   };
   const split = () => {
@@ -106,7 +106,6 @@ function scan(src, i, commands, nested) {
   };
   while (i < src.length) {
     const c = src[i];
-    const terminator = frame()?.state === 'body' ? /^;(?:;&?|[&|])/.exec(src.slice(i, i + 3)) : null;
     if (c === '\n') {
       split();
       i++;
@@ -125,18 +124,15 @@ function scan(src, i, commands, nested) {
       i++;
     } else if (c === '#' && word === null) {
       while (i < src.length && src[i] !== '\n') i++;
-    } else if (terminator) {
+    } else if (c === ';' && /[;&|]/.test(src[i + 1] ?? '') && frame()?.state === 'body') {
       split();
       Object.assign(frame(), { state: 'pattern', fresh: true });
-      i += terminator[0].length;
+      i += 2;
     } else if (c === '(') {
       const f = frame();
-      if (word === null && f?.state === 'pattern' && f.fresh) f.fresh = false;
-      else if (word === null) {
-        groups.push(null);
-        split();
-      } else {
-        groups.push({ current, word, start: i });
+      if (word === null && f?.state === 'pattern') f.fresh = false;
+      else {
+        groups.push({ current, word });
         word = null;
         current = [];
         commands.push(current);
@@ -151,10 +147,9 @@ function scan(src, i, commands, nested) {
       } else if (nested && groups.length === 0) return i + 1;
       else {
         const g = groups.pop();
-        while (cases.at(-1)?.depth > groups.length) cases.pop();
         if (g) {
           current = g.current;
-          word = g.word + src.slice(g.start, i + 1);
+          word = g.word;
         } else split();
       }
       i++;
