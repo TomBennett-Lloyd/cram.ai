@@ -19,6 +19,7 @@ export interface Generator {
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>>;
 }
 
+/** One result per text, in request order. */
 export interface Embedder {
   readonly pin: EmbedderPin;
   embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]>;
@@ -36,6 +37,7 @@ export interface Verifier {
   entail(request: EntailRequest): Promise<readonly EntailmentResult[]>;
 }
 
+/** One capability per role, `docs/adr/0003-model-roles-and-backends.md` § Decision (b); `reranker` is null when unconfigured. */
 export interface ModelGateway {
   readonly generator: Generator;
   readonly verifier: Verifier;

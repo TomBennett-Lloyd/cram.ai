@@ -7,7 +7,10 @@ import {
   VerifierPin,
 } from './pin';
 
-/** The provisional default per role, `docs/adr/0003-model-roles-and-backends.md` § Decision (g); no reranker by default. The embedder's pooling is its snapshot's `1_Pooling/config.json`. */
+/**
+ * The provisional default per role, `docs/adr/0003-model-roles-and-backends.md` § Decision (g);
+ * no reranker by default. The embedder's pooling is its snapshot's `1_Pooling/config.json`.
+ */
 export const PROVISIONAL_DEFAULT_PINS = {
   generator: GeneratorPin.parse({
     role: 'generator',
@@ -52,5 +55,8 @@ export const PROVISIONAL_DEFAULT_PINS = {
   }),
 } as const;
 
-/** The generator's context length in tokens. Carriers: `.claude/ledgers/generator-context-length.ledger`. */
+/**
+ * The generator's context length in tokens. Qwen3-4B's native length per its model card, until #7 sizes it under
+ * `docs/adr/0003-model-roles-and-backends.md` § Decision (k) A3. Carriers: `.claude/ledgers/generator-context-length.ledger`.
+ */
 export const PROVISIONAL_GENERATOR_CONTEXT_LENGTH = 32768;

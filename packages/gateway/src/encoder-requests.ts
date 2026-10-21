@@ -15,7 +15,10 @@ export type EntailRequest = z.infer<typeof EntailRequest>;
 const Probability = z.number().min(0).max(1);
 const TokenCount = z.number().int().positive();
 
-/** An input longer than the model's maximum is reported, never truncated (`docs/adr/0003-model-roles-and-backends.md` § Decision (d); #66 for the embedder and reranker). */
+/**
+ * An input longer than the model's maximum is reported, never truncated
+ * (`docs/adr/0003-model-roles-and-backends.md` § Decision (d); #66 for the embedder and reranker).
+ */
 export const OverLength = z.strictObject({
   status: z.literal('over-length'),
   inputTokens: TokenCount,
@@ -42,7 +45,6 @@ export const EmbeddingResult = z.discriminatedUnion('status', [
 ]);
 export type EmbeddingResult = z.infer<typeof EmbeddingResult>;
 
-/** `EmbeddingResult` as a recording stores it. */
 export const RecordedEmbedding = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('embedded'), vector: z.array(z.number()) }),
   OverLength,

@@ -94,13 +94,13 @@ packages/gateway/src/adapters/openai-http/openai-http-generator.ts	695
 packages/gateway/src/adapters/openai-http/served-model.ts	677
 packages/gateway/src/canonical-json.ts	666
 packages/gateway/src/chat.ts	675
-packages/gateway/src/encoder-requests.ts	434
+packages/gateway/src/encoder-requests.ts	833
 packages/gateway/src/fake-gateway.ts	276
 packages/gateway/src/generator-timing.ts	1304
 packages/gateway/src/index.ts	0
-packages/gateway/src/model-gateway.ts	769
+packages/gateway/src/model-gateway.ts	1219
 packages/gateway/src/pin.ts	740
-packages/gateway/src/provisional-pins.ts	370
+packages/gateway/src/provisional-pins.ts	1333
 packages/gateway/src/recording.ts	468
 packages/gateway/src/role-config.ts	937
 packages/gateway/src/role.ts	1666
