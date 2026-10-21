@@ -10,6 +10,7 @@ export {
   SourceHash,
 } from './slide-record';
 export { NonBlankText } from './non-blank-text';
+export { embedText } from './embed-text';
 export {
   type QuoteSpan,
   type SlideField,

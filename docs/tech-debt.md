@@ -31,22 +31,18 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 
 **Resolving a conflict here after a pruning pass**: take `main`'s pruned file as the base and re-apply only your branch's own additions — a union of **changes**, never a union of lines, because a line-union silently resurrects everything just deleted. A deletion on either side is authoritative and is never reinstated. Capture the heading and redirect-row sets of base, main and branch **before** rebasing and the resolution becomes arithmetic rather than judgement; `review-loop` step 5 states the full procedure.
 
-| Captured entry                                                                                     | Now owned by |
-| -------------------------------------------------------------------------------------------------- | ------------ |
-| architecture.md § Why paraphrases ADR 0002's count without citing it                               | #181         |
-| plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14                               | #181         |
-| ADR 0005 (g) lists the trigger path set its script will own                                        | #181         |
-| grading agreement's hand-marked inputs have no delivering ticket                                   | #181         |
-| ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed       | #181         |
-| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                        | #292         |
-| ADR 0003's restatement ledger does not list #20's new carriers                                     | #298         |
-| ADR 0006's carrier ledger names the old home of the quotable field list                            | #298         |
-| ADR 0005 cites `citation.ts` for a minting split it no longer states                               | #298         |
-| ledger sweeps with only literal arms cannot see a paraphrase                                       | #298         |
-| an eval report's sampling is what the caller says, never what the generator ran                    | #302         |
-| nothing owns which text a slide is embedded as                                                     | #302         |
-| the generator's context length differs between developer mode and the installed app, with no owner | #302         |
-| the quotable fields of a SlideRecord are listed in two packages                                    | #302         |
+| Captured entry                                                                               | Now owned by |
+| -------------------------------------------------------------------------------------------- | ------------ |
+| architecture.md § Why paraphrases ADR 0002's count without citing it                         | #181         |
+| plan.md §8 puts the contradiction set in M2; ADR 0005 puts it in #14                         | #181         |
+| ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
+| grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
+| ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
+| verify-tier.sh's rung 2 claims verify:full's leg order and does not keep it                  | #292         |
+| ADR 0003's restatement ledger does not list #20's new carriers                               | #298         |
+| ADR 0006's carrier ledger names the old home of the quotable field list                      | #298         |
+| ADR 0005 cites `citation.ts` for a minting split it no longer states                         | #298         |
+| ledger sweeps with only literal arms cannot see a paraphrase                                 | #298         |
 
 ---
 

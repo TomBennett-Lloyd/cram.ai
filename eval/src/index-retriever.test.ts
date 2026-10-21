@@ -1,5 +1,5 @@
 import type { Embedder } from '@cram/gateway';
-import { CourseId, Deck, type SlideRecord } from '@cram/shared';
+import { CourseId, Deck, embedText, type SlideRecord } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { IndexRetriever, type IndexRetrieverSpec } from './index-retriever';
 import { record } from './run-fixture';
@@ -37,6 +37,27 @@ describe('IndexRetriever', () => {
     const hits = await retriever.retrieve('Are worker bees male?');
     retriever.close();
     expect(hits.map(({ record: slide }) => slide.slideNo)).toEqual([2, 1]);
+  });
+
+  it('embeds each slide as its embedText, the text ingest embeds it as', async () => {
+    const slides = [
+      record({
+        slideNo: 1,
+        speakerNotes: 'Drones are male.',
+        imageCaptions: ['A comb', 'A queen'],
+      }),
+      record({ slideNo: 2, title: ' ', body: 'Foragers see red best.' }),
+    ];
+    const sent: string[][] = [];
+    const spy: Embedder = {
+      pin: embedder.pin,
+      embed: (request) => {
+        sent.push([...request.texts]);
+        return embedder.embed(request);
+      },
+    };
+    (await IndexRetriever.open(spec({ lectures: [{ deck, slides }], embedder: spy }))).close();
+    expect(sent).toEqual([slides.map(embedText)]);
   });
 
   it('refuses a course with no slide', async () => {

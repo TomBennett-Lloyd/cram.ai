@@ -142,7 +142,6 @@ const spec = (
     measuredCommit: 'abc1234',
     pullRequest: 1,
     machineClass: 'dev-apple-silicon',
-    sampling: SAMPLING,
   },
   courseId: COURSE,
   lectures: LECTURES,
@@ -154,10 +153,7 @@ const spec = (
 });
 
 const recordRun = async (respond: Respond, overrides: Partial<EvalRunSpec> = {}) => {
-  const recorder = new RecordingGateway({
-    inner: new ScriptedGateway(respond),
-    sampling: SAMPLING,
-  });
+  const recorder = new RecordingGateway({ inner: new ScriptedGateway(respond) });
   const report = await runEval(spec(recorder, overrides));
   const recorded = recorder.recordings();
   if (recorded.status !== 'recorded') throw new Error('the scripted run was nondeterministic');
@@ -187,6 +183,12 @@ describe('runEval', () => {
       crossEncoderPrimary: { status: 'tied' },
       secondOpinion: { status: 'drop', failed: 'recall' },
     });
+  });
+
+  it('records the sampling its generator reports, which no caller passes', async () => {
+    const reseeded = { ...SAMPLING, seed: 7 };
+    const report = await runEval(spec(new ScriptedGateway(tutor(false), null, reseeded)));
+    expect(report.determinism).toEqual({ generator: reseeded });
   });
 
   it('reports the metrics with no input yet as not-measurable', async () => {

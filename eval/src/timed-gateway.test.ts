@@ -28,6 +28,12 @@ describe('TimedGateway', () => {
     expect(gateway.durations('reranker')).toEqual([]);
   });
 
+  it('reports the sampling its inner generator reports', () => {
+    const reseeded = { temperature: 0.5, seed: 7 };
+    const inner = new ScriptedGateway(() => ({ status: 'content', content: '1' }), null, reseeded);
+    expect(new TimedGateway(inner, steppingClock(1)).generator.sampling).toEqual(reseeded);
+  });
+
   it('returns what the inner gateway returned', async () => {
     const inner = new ScriptedGateway(() => ({ status: 'content', content: '"x"' }));
     await expect(

@@ -1,7 +1,12 @@
 import type { Embedder } from '@cram/gateway';
-import { slideText } from '@cram/grounding';
 import { type CourseIndex, openCourse } from '@cram/index';
-import type { CourseId, Deck, RetrievedSlide, SlideRecord } from '@cram/shared';
+import {
+  type CourseId,
+  type Deck,
+  embedText,
+  type RetrievedSlide,
+  type SlideRecord,
+} from '@cram/shared';
 
 /** One lecture's stored deck and the records ingest made of it. */
 export interface IndexedLecture {
@@ -46,11 +51,11 @@ export class IndexRetriever {
     this.#k = k;
   }
 
-  /** Slides are embedded one lecture per call, as `slideText` gives them to the generator. */
+  /** Slides are embedded one lecture per call, each as its `embedText`. */
   static async open(spec: IndexRetrieverSpec): Promise<IndexRetriever> {
     const embedded = [];
     for (const lecture of spec.lectures) {
-      const vectors = await embedAll(spec.embedder, lecture.slides.map(slideText));
+      const vectors = await embedAll(spec.embedder, lecture.slides.map(embedText));
       embedded.push({ lecture, vectors });
     }
     const dimension = embedded.flatMap(({ vectors }) => vectors)[0]?.length;

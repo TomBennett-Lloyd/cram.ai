@@ -8,9 +8,12 @@ import type {
   RerankResult,
 } from './encoder-requests';
 import type { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
+import type { Sampling } from './role-config';
 
 export interface Generator {
   readonly pin: GeneratorPin;
+  /** What this generator samples with: what an eval report records, never a caller's copy (`.claude/ledgers/generator-sampling.ledger`). */
+  readonly sampling: Sampling;
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>>;
 }
 
