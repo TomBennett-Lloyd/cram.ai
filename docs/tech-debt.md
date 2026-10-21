@@ -95,3 +95,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/shared/src/ingest-status.ts` `DiscardableTable`; `packages/index/src/schema.test.ts`; `packages/index/src/rebuild-report.ts` `readRebuildReport`
 - What: the schema test holds `DiscardableTable` equal to the current schema's discardable tables, so renaming `topics` drops the old name from the vocabulary. An undismissed report a rebuild wrote under that old name is then counted as `OTHER_ROW` (`apps/web/src/copy.ts` `discardedMessage`). `readRebuildReport` also reads an older file's `rebuild_report` with the current reader. Root cause: the report's table names are persisted across app versions, and the vocabulary only knows the current one.
 - Source: #299 review cycle 1
+
+## 2026-10-21 — a course file's `course` table with no row throws instead of being refused
+
+- Where: `packages/index/src/open-course.ts` `handOver` (the `CourseRow` parse); `packages/index/src/rebuild-course.ts` `rebuildCourse` (the older file's `course_id` read)
+- What: a `course` table holding no row makes the row read return `undefined`, so both parses throw a `ZodError`. An older file whose schema was not `strict` can also hold a non-text `course_id`, which throws the same way. This is the same class as #300's: a course file is external input, and the module that reads it should refuse a malformed file as a value (`docs/standards/error-handling.md` rule 1). It predates #300, which only touched those lines.
+- Source: #300 review cycle 1

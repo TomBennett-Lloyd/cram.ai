@@ -51,7 +51,7 @@ export const openForWrite = (files: CourseFiles, courseId: CourseId): OpenCourse
   return openCourse({ path, courseId, embedder: files.embedder });
 };
 
-/** Opens an existing course file without writing to it; the caller has checked `courseExists`. */
+/** Opens an existing course file through `openCourseReadOnly`; the caller has checked `courseExists`. */
 export const openToRead = (files: CourseFiles, courseId: CourseId): ReadCourseResult =>
   openCourseReadOnly({
     path: courseFilePath(files.dataDir, courseId),
