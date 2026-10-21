@@ -107,13 +107,13 @@ describe('ingestPdf', () => {
             line('Pointed Hebrew', TITLE),
             { text: '\u05e8\u05e7\ufb4b\ufb31', size: BODY, toUnicode: true },
             { text: '\u05d4\ufb2a\u05dc\u05d5\u05dd', size: BODY, toUnicode: true },
-            { text: '\u05e8\u05e7\ufb4b\ufb31\tabc', size: BODY, toUnicode: true },
+            { text: 'abc\t\u05e8\u05e7\ufb4b\ufb31', size: BODY, toUnicode: true },
           ],
         },
       ],
     });
     expect(slide?.body).toBe(
-      '\u05d1\u05bc\u05d5\u05b9\u05e7\u05e8\n\u05dd\u05d5\u05dc\u05e9\u05c1\u05d4\n\u05d1\u05bc\u05d5\u05b9\u05e7\u05e8 abc',
+      '\u05d1\u05bc\u05d5\u05b9\u05e7\u05e8\n\u05dd\u05d5\u05dc\u05e9\u05c1\u05d4\nabc \u05d1\u05bc\u05d5\u05b9\u05e7\u05e8',
     );
   });
 

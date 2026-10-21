@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { buildDeck } from './deck-fixture';
 import { logicalOrder } from './logical-order';
 
-/** Hebrew and Arabic letters at the ends of `bidi`'s R and AL ranges, Latin-1 letters and neutrals, no digit. */
+/** Units at the ends of `bidi`'s R and AL ranges (short of U+FEFF, which pdf.js reads as a gap), the presentation block's non-letters, Latin-1 letters and neutrals, no digit. */
 const PLAIN = [
-  ...['\u05d0', '\u05d1', '\u05e7', '\u05e8', '\u05e9', '\u0591', '\u05f4'],
-  ...['\u0710', '\u08ac', '\ufb50', '\ufdfd', '\ufe70', '\ufefc'],
+  ...['\u05d0', '\u05d1', '\u05e7', '\u05e8', '\u05e9', '\u0590', '\u05f4'],
+  ...['\u0700', '\u08ac', '\ufb50', '\ufdff', '\ufe70', '\ufefc'],
+  ...['\ufb1e', '\ufb29'],
   ...['a', 'b', 'x', '\u00e9', '\u00aa', '.', ',', '(', '!', '-', '\u00d7', '\u00f7'],
 ];
 
@@ -19,8 +20,9 @@ const STAND_IN = new Map([
   ['\ufb4f', '\u05d8'],
 ]);
 
-/** Lines at the edges of `bidi`'s paragraph rule (a share of R of exactly and just under 0.3, four units) and its neutrals. */
+/** Lines at the edges of `bidi`'s ranges, its paragraph rule (a share of R of exactly and just under 0.3, four units) and its neutrals. */
 const EDGES = [
+  'ab \u05f4\ufb31',
   'ab cd e\ufb31\ufb4b\u05e8',
   'ab cd ef\ufb31\ufb4b\u05e8',
   'abc\ufb31',

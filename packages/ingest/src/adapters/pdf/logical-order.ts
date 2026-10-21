@@ -7,13 +7,13 @@ interface CodeUnit {
   readonly logical: Direction;
 }
 
-/** Units `bidi` may type outside L, R and the neutrals: EN, AN and NSM resolve from one neighbour, controls take the paragraph's level. */
+/** Units `bidi` may type outside L, R and the neutrals, whose items keep pdf.js's order (#304). */
 const UNMODELLED = /[\p{Cc}\u00ad0-9\u00b2\u00b3\u00b9\u0600-\u06ff]/u;
 const LETTER = /\p{L}/u;
 const PDFJS_RIGHT = /[\u0590-\u05f4\u0700-\u08ac\ufb50-\ufdff\ufe70-\ufeff]/;
-const HEBREW_PRESENTATION = /[\ufb1d-\ufb4f]/;
+const HEBREW_PRESENTATION = /(?=\p{L})[\ufb1d-\ufb4f]/u;
 
-/** `bidi`'s type for `unit` (unpdf 1.9.0): its own table below U+0100, R or AL for its Hebrew and Arabic ranges, L above. */
+/** `bidi`'s type for `unit`: its own table below U+0100, R or AL for its Hebrew and Arabic ranges, L above. */
 const pdfjsDirection = (unit: string): Direction => {
   if (PDFJS_RIGHT.test(unit)) return 'R';
   return unit.charCodeAt(0) > 0xff || LETTER.test(unit) ? 'L' : 'N';
@@ -66,8 +66,9 @@ const reorder = (units: readonly CodeUnit[], directionOf: (unit: CodeUnit) => Di
 
 /**
  * A pdf.js text item in logical order: `bidi` orders Hebrew presentation forms left to right (#283). On the units
- * `codeUnitsOf` admits its reorder is its own inverse, so applying it again gives the drawn order, which is then
- * ordered with those forms right to left; an item holding any other unit keeps pdf.js's order (logical-order.test.ts).
+ * `codeUnitsOf` admits its reorder is its own inverse, so applying it again gives the drawn order (unless pdf.js
+ * deleted a `<` or `>`, #305), which is then ordered with those letters right to left; an item holding any other unit
+ * keeps pdf.js's order (logical-order.test.ts).
  */
 export const logicalOrder = (text: string): string => {
   const units = codeUnitsOf(text);
