@@ -43,6 +43,7 @@ unset "${!OLLAMA_PIN_@}"
   die "$here/ollama-pin.sh declares no version or no SHA-256"
 
 data=$HOME/.local/share/cram
+# Where weights land; its other carriers are in .claude/ledgers/dev-models-directory.ledger.
 models=${CRAM_MODELS_DIR:-$data/models}
 # The developer-mode endpoint; its other carriers are in .claude/ledgers/dev-generator-endpoint.ledger.
 port=11434
@@ -144,7 +145,8 @@ fi
 
 # --- 4. Import exactly that file (ADR 0003 § Decision (c), (e)) -------------------------
 
-# Named from the pin so a re-pin is a new model, never a silent replacement.
+# Named from the pin so a re-pin is a new model, never a silent replacement; its other
+# carriers are in .claude/ledgers/dev-served-model-name.ledger.
 stem=${file%.gguf}
 name=$(printf '%s-%s' "$stem" "${sha256:0:12}" | tr '[:upper:]' '[:lower:]')
 
