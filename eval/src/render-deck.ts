@@ -6,14 +6,12 @@ import { SANS_32_BLACK, SANS_64_BLACK } from 'jimp/fonts';
 import { PDFDocument, PDFHexString, PDFName, StandardFonts, type PDFPage } from 'pdf-lib';
 import type { Deck, DeckLecture, DeckSlide } from './deck';
 
-/** In points; a 16:9 slide. */
 export const PAGE = { width: 960, height: 540, margin: 40 } as const;
 export const TITLE_SIZE = 40;
 /** Scaled with the title, so the body stays smaller and `slideText` (packages/ingest/src/slide-text.ts) finds the title. */
 export const BODY_SIZE = 24;
 const LINE_HEIGHT = 1.4;
 
-/** Width of `text` set at size 1, in points. */
 type Measure = (text: string) => number;
 
 export interface PlacedLine {
@@ -23,7 +21,6 @@ export interface PlacedLine {
   readonly top: number;
 }
 
-/** The largest size up to `max` at which `lines` fit the text width and `height`. */
 const fit = (lines: readonly string[], max: number, height: number, measure: Measure): number => {
   const widest = Math.max(...lines.map(measure));
   return Math.min(
@@ -33,7 +30,6 @@ const fit = (lines: readonly string[], max: number, height: number, measure: Mea
   );
 };
 
-/** The title, then one body item per line, each block shrunk until it fits the page. */
 export const layoutSlide = (slide: DeckSlide, measure: Measure): readonly PlacedLine[] => {
   const usable = PAGE.height - 2 * PAGE.margin;
   const titleSize = fit([slide.title], TITLE_SIZE, usable, measure);
@@ -49,10 +45,8 @@ export const layoutSlide = (slide: DeckSlide, measure: Measure): readonly Placed
   });
 };
 
-/** jimp's bitmap Open Sans at two of its fixed pixel sizes. */
 const RASTER_TITLE_FONT = SANS_64_BLACK;
 const RASTER_BODY_FONT = SANS_32_BLACK;
-/** The raster's minimum size, in pixels: the page at two pixels per point. */
 const RASTER_MIN = { width: PAGE.width * 2, height: PAGE.height * 2 } as const;
 
 /**
@@ -109,7 +103,6 @@ const addNotes = (doc: PDFDocument, page: PDFPage, notes: string): void => {
   page.node.set(PDFName.of('Annots'), doc.context.obj([annotation]));
 };
 
-/** One page per slide, in slide order: a text layer, or for an `imageOnly` slide a single image. */
 export const renderLecturePdf = async (lecture: DeckLecture): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -143,7 +136,6 @@ export interface RenderedLecture {
   readonly path: string;
 }
 
-/** Writes `<lectureId>.pdf` per lecture into `dir`, which must lie outside this checkout. */
 export const renderDeckPdfs = async (
   deck: Deck,
   dir: string,

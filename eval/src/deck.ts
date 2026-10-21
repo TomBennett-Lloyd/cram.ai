@@ -34,14 +34,12 @@ export type DeckParse =
   | { readonly status: 'parsed'; readonly deck: Deck }
   | { readonly status: 'invalid'; readonly file: string; readonly message: string };
 
-/** Everything a slide says, in reading order, as one string. */
 export const slideText = (slide: DeckSlide): string =>
   [slide.title, ...slide.body, slide.speakerNotes].join('\n');
 
 const byName = (a: DeckFile, b: DeckFile): number =>
   a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
 
-/** Lectures in file-name order, which is the deck's lecture order. */
 export const parseDeck = (files: readonly DeckFile[]): DeckParse => {
   const deck: DeckLecture[] = [];
   for (const file of [...files].sort(byName)) {
