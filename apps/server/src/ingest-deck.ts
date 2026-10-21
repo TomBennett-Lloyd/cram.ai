@@ -29,6 +29,9 @@ const ADAPTERS = {
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': ingestPptx,
 } satisfies Record<DeckMediaType, (deck: DeckFile) => unknown>;
 
+/** `deck` read by the adapter for `mediaType`. */
+export const ingestFile = (mediaType: DeckMediaType, deck: DeckFile) => ADAPTERS[mediaType](deck);
+
 /** The deck as the course file stores it; a deck with no slides has no title to read. */
 export const lectureDeck = (job: IngestJob, records: readonly SlideRecord[]): Deck =>
   Deck.parse({
@@ -40,7 +43,7 @@ export const lectureDeck = (job: IngestJob, records: readonly SlideRecord[]): De
 
 /** Ingest → embed → index one deck, replacing its lecture whole (`CourseIndex.replaceLecture`). */
 export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<UploadProgress> => {
-  const ingested = await ADAPTERS[job.mediaType](job);
+  const ingested = await ingestFile(job.mediaType, job);
   if (ingested.status === 'unreadable')
     return { state: 'unreadable', reason: ingested.reason, detail: ingested.detail };
   const records = ingested.slides;

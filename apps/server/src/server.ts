@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { ModelGateway } from '@cram/gateway';
+import { storedCourses } from './course-file';
 import {
   askQuestion,
   type HandlerContext,
@@ -119,6 +120,7 @@ export const startServer = async (spec: ServerSpec): Promise<CramServer> => {
   const { gateway, dataDir, log } = spec;
   const files = { dataDir, embedder: await embedderIdentity(gateway.embedder) };
   const queue = new IngestQueue({ files, embedder: gateway.embedder }, log);
+  for (const courseId of storedCourses(files)) queue.repair(courseId);
   const context: HandlerContext = { files, gateway, log, queue };
   const server = createServer((request, response) => {
     void handleRequest(request, response, context);
