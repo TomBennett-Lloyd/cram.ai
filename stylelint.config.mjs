@@ -15,6 +15,10 @@
  * sits in this file because it is the same kind of thing — a design rule with a
  * CSS-shaped tell that a linter can see — and see
  * `selector-pseudo-class-disallowed-list` below for what it refuses and why.
+ *
+ * Every rule here and the tokens override has a line in a probe that
+ * packages/ui/src/frontend-gate/frontend-gate.test.ts lints with this config; a
+ * new entry gets its line there (#258).
  */
 export default {
   plugins: ['stylelint-declaration-strict-value'],
@@ -201,11 +205,12 @@ export default {
      *
      * The list matches pseudo-class *names*, which is what makes a one-entry
      * list sufficient: `focus-visible` and `focus-within` are different names,
-     * so they pass untouched while bare `:focus` is refused. The two `lint:css`
-     * runs on cumulo#339 (https://github.com/TomBennett-Lloyd/cumulo/issues/339)
-     * are what establish that rather than the documentation — a seeded
-     * `.gate-probe:focus` was refused by this rule, and real `:focus-visible`
-     * rules stayed green.
+     * so they pass untouched while bare `:focus` is refused. A test rather than
+     * the documentation establishes that:
+     * packages/ui/src/frontend-gate/values.probe.css.txt holds all three
+     * (#258), where cumulo#339
+     * (https://github.com/TomBennett-Lloyd/cumulo/issues/339) first showed it
+     * with a one-off seeded probe.
      *
      * Here it lands on a tree with no CSS at all, so it is a ratchet from day
      * one: it exists to fail the *first* bare `:focus`. That regression is

@@ -86,7 +86,10 @@ export default tseslint.config(
      *
      * The colour-function list below is the same set stylelint refuses in
      * `declaration-property-value-disallowed-list`; the two must stay in step,
-     * or a value banned in a stylesheet becomes legal in a string literal.
+     * or a value banned in a stylesheet becomes legal in a string literal. They
+     * part on a prefixed name such as `oklab(`, which only this regex refuses
+     * (#273). packages/ui/src/frontend-gate/frontend-gate.test.ts lints each
+     * selector here against a probe (#258).
      */
     files: ['apps/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],
     rules: {
