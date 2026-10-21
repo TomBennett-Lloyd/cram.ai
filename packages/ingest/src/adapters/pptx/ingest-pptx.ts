@@ -8,6 +8,7 @@ import {
   NS,
   readXml,
   relationshipsOf,
+  startsWith,
   UnreadablePptx,
   type Parts,
   type PptxUnreadableReason,
@@ -27,9 +28,6 @@ const ENCRYPTED_PACKAGE = Buffer.from('EncryptedPackage', 'utf16le');
 
 /** fflate's own errors carry a numeric `code`: the archive's fault, not ours. */
 const FlateError = z.object({ code: z.number(), message: z.string() });
-
-const startsWith = (bytes: Uint8Array, magic: readonly number[]): boolean =>
-  magic.every((byte, index) => bytes[index] === byte);
 
 /** Bytes that are not a zip: an encrypted package, or not a PPTX at all. */
 const notZip = (bytes: Uint8Array): UnreadablePptx => {

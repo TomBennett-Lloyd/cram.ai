@@ -94,6 +94,29 @@ describe('ingestPptx unreadable decks', () => {
     ).toBe('damaged');
   });
 
+  it.each([
+    ['UTF-16LE', [0xff, 0xfe, 0x00, 0xd8]],
+    ['UTF-16BE', [0xfe, 0xff, 0xd8, 0x00]],
+  ])('reports a %s part holding a lone surrogate as damaged', (encoding, bytes) => {
+    const deck = { slides: [titled('Rate laws')], parts: { [SLIDE_1]: new Uint8Array(bytes) } };
+    expect(ingest(buildDeck(deck))).toMatchObject({
+      reason: 'damaged',
+      detail: `${SLIDE_1} is not ${encoding}`,
+    });
+  });
+
+  it.each([
+    ['FF', 0xff],
+    ['FE', 0xfe],
+  ])('reads a part opening with half a byte-order mark (%s) as UTF-8', (_, byte) => {
+    const slide = new Uint8Array([byte, ...strToU8(`<p:sld xmlns:p="${NS.p}"/>`)]);
+    const deck = { slides: [titled('Rate laws')], parts: { [SLIDE_1]: slide } };
+    expect(ingest(buildDeck(deck))).toMatchObject({
+      reason: 'damaged',
+      detail: `${SLIDE_1} is not UTF-8`,
+    });
+  });
+
   it('reports a relationship with no target as damaged, even one no slide needs', () => {
     const rels = `<Relationships xmlns="${NS.rel}"><Relationship Id="rId1" Type="${SLIDE_RELATIONSHIP}" Target="slides/slide1.xml"/><Relationship Id="rId2" Type="${SLIDE_RELATIONSHIP}"/></Relationships>`;
     const deck = {

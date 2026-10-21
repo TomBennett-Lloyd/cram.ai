@@ -60,18 +60,31 @@ const RelationshipAttributes = z.object({
   Target: z.string(),
 });
 
-const decodeUtf8 = (bytes: Uint8Array, partName: string): string => {
+export const startsWith = (bytes: Uint8Array, magic: readonly number[]): boolean =>
+  magic.every((byte, index) => bytes[index] === byte);
+
+const BYTE_ORDER_MARKS = [
+  { mark: [0xff, 0xfe], encoding: 'UTF-16LE' },
+  { mark: [0xfe, 0xff], encoding: 'UTF-16BE' },
+] as const;
+
+/** OPC parts are UTF-8 or UTF-16, and a UTF-16 part opens with its byte-order mark (XML 1.0 §4.3.3, #185). */
+const decodePart = (bytes: Uint8Array, partName: string): string => {
+  const encoding =
+    BYTE_ORDER_MARKS.find(({ mark }) => startsWith(bytes, mark))?.encoding ?? 'UTF-8';
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return new TextDecoder(encoding, { fatal: true }).decode(bytes);
   } catch (error) {
-    throw new UnreadablePptx('undecodable-part', `${partName} is not UTF-8`, { cause: error });
+    throw new UnreadablePptx('undecodable-part', `${partName} is not ${encoding}`, {
+      cause: error,
+    });
   }
 };
 
 export const readXml = (parts: Parts, partName: string): Document => {
   const bytes = parts[partName];
   if (bytes === undefined) throw new UnreadablePptx('missing-part', `${partName} is missing`);
-  const text = decodeUtf8(bytes, partName);
+  const text = decodePart(bytes, partName);
   try {
     return new DOMParser({ onError: onErrorStopParsing }).parseFromString(text, 'text/xml');
   } catch (error) {
