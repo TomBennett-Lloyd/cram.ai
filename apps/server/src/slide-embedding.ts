@@ -1,7 +1,6 @@
 import type { Embedder, EmbeddingResult, OverLength } from '@cram/gateway';
-import { slideText } from '@cram/grounding';
 import { EmbedderIdentity, type IndexedSlide } from '@cram/index';
-import type { SlideNo, SlideRecord } from '@cram/shared';
+import { embedText, type SlideNo, type SlideRecord } from '@cram/shared';
 
 export const PROBE_TEXT = 'embedder probe';
 
@@ -42,7 +41,7 @@ export const embedSlides = async (
   embedder: Embedder,
   records: readonly SlideRecord[],
 ): Promise<SlideEmbedding> => {
-  const results = await resultsFor(embedder, records.map(slideText));
+  const results = await resultsFor(embedder, records.map(embedText));
   const slides: IndexedSlide[] = [];
   const overLength: { readonly slideNo: SlideNo; readonly result: OverLength }[] = [];
   records.forEach((record, index) => {
