@@ -56,7 +56,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # Env knobs, all overridable — the harness pins the waits to zero, and an operator
 # on a slow lane can widen the poll without editing the script. Every *_RETRIES
 # knob counts ATTEMPTS, the first included, so each is at least 1 (#180).
-: "${MERGE_PR_GH_CMD:=gh}"                             # GitHub CLI; the one seam the harness stubs
+: "${MERGE_PR_GH_CMD:=gh}"                             # GitHub CLI
 : "${MERGE_PR_REAP_CMD:=$script_dir/reap-worktree.sh}" # the reaper, which owns its own safety checks
 : "${MERGE_PR_POLL_INTERVAL_SECONDS:=20}"              # between checks polls
 : "${MERGE_PR_POLL_TIMEOUT_SECONDS:=1800}"             # total budget for the checks poll

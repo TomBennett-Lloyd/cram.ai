@@ -376,9 +376,12 @@ GH_TIMEOUT=60
 FAKE_BOX="" # non-empty: the watchdog's sleep is sleep_stub's, which fires only at a hang
 
 # Prefixes a case may set: MERGE_METHOD (`MERGE_METHOD=rebase run_merge`) passes --method,
-# MERGE_BASH names the interpreter, and UNION_SEAM is MERGE_PR_UNION_SEAM.
+# MERGE_BASH names the interpreter, UNION_SEAM is MERGE_PR_UNION_SEAM, and READ_DEFAULT
+# leaves MERGE_PR_READ_RETRIES at the subject's own default (case 13f).
 run_merge() { # run_merge [caller's working directory]
-  capture -C "${1:-$REPO}" env \
+  local read_knob=(MERGE_PR_READ_RETRIES=3)
+  [ -z "${READ_DEFAULT-}" ] || read_knob=()
+  capture -C "${1:-$REPO}" env -u MERGE_PR_READ_RETRIES \
     PATH="${FAKE_BOX:+$ROOT/clock:}$PATH" \
     MERGE_PR_GH_CMD="$ROOT/gh" \
     MERGE_PR_REAP_CMD="$ROOT/reap" \
@@ -388,7 +391,7 @@ run_merge() { # run_merge [caller's working directory]
     MERGE_PR_RETRY_SECONDS=0 \
     MERGE_PR_UPDATE_RETRIES=3 \
     MERGE_PR_CONFIRM_RETRIES=2 \
-    MERGE_PR_READ_RETRIES=3 \
+    ${read_knob[@]+"${read_knob[@]}"} \
     MERGE_PR_GH_TIMEOUT_SECONDS="$GH_TIMEOUT" \
     MERGE_PR_UNION_SEAM="${UNION_SEAM-}" \
     "${MERGE_BASH:-bash}" "$SUBJECT" ${MERGE_METHOD:+--method "$MERGE_METHOD"} "$PR" "$REPO"
@@ -1582,8 +1585,7 @@ end
 # cumulo#488: the chain died on `error connecting to api.github.com` and left the PR
 # open with no signal. The property under test is that the repair is a re-run —
 # the script keeps no state of its own, so the second run re-reads and proceeds.
-# The poll allows MERGE_PR_READ_RETRIES consecutive failed reads (3 here) and the
-# outage is exactly that long: reads 2, 3 and 4 all fail.
+# The outage is MERGE_PR_READ_RETRIES failed reads (3 here): reads 2, 3 and 4.
 begin "a re-run after a mid-poll network failure resumes and completes"
 fixture resume
 write_view default
@@ -1695,6 +1697,35 @@ run_merge
 expect_rc 0
 expect_stderr 'read failed (2 of 3 attempts)'
 expect_called "pr merge $PR --squash"
+end
+
+# ==========================================================================================
+# 13f. the shipped MERGE_PR_READ_RETRIES fails on the 4th failed read, as it did as 3 retries
+# ==========================================================================================
+# Every other case pins the knob, so this is the one that runs its default (testing.md
+# rule 7): three failed reads are ridden out, and a fourth fails the step.
+begin "at its default, the poll rides out 3 failed reads and fails on the 4th"
+fixture read-retries-default
+write_view default
+for n in 2 3 4; do
+  must printf 'error connecting to api.github.com\n' >"$STATE/view.$n"
+  must printf '1\n' >"$STATE/view.$n.rc"
+done
+write_merged_view
+READ_DEFAULT=1 run_merge
+expect_rc 0
+expect_stderr 'read failed (3 of 4 attempts)'
+expect_called "pr merge $PR --squash"
+case_ctx="a 4th failed read"
+must rm -f "$STATE/merged"
+must printf 'error connecting to api.github.com\n' >"$STATE/view.5"
+must printf '1\n' >"$STATE/view.5.rc"
+reset_calls
+READ_DEFAULT=1 run_merge
+expect_rc 1
+expect_stderr '4 consecutive reads failed'
+expect_not_called "pr merge $PR --squash"
+case_ctx=""
 end
 
 # ==========================================================================================
