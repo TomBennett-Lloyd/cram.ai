@@ -16,6 +16,6 @@ The synthetic evaluation course: its deck, golden questions and hand labels. Wha
 
 ## The live run
 
-`pnpm eval` is tier 2 (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), and its entry is `eval/src/live-run.measure.test.ts`, whose header names the environment it reads. It runs `runEval` over the course as ingest makes it (`ingestedCourse`, `eval/src/ingested-course.ts`), through the backends `liveConfig` (`eval/src/live-config.ts`) configures and `openLiveGateway` (`eval/src/live-gateway.ts`) opens, and refuses a working tree that differs from `HEAD`, since the report names the commit it measured. `CRAM_MODELS_DIR` holds one snapshot per encoder pin, under the pin's `artefact.repository`.
+`pnpm eval` is tier 2 (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), and its entry is `eval/src/live-run.measure.test.ts`, whose header names the environment it reads. It runs `runEval` over the course as ingest makes it (`ingestedCourse`, `eval/src/ingested-course.ts`), through the backends `liveConfig` (`eval/src/live-config.ts`) configures and `openLiveGateway` (`eval/src/live-gateway.ts`) opens, and refuses to run unless `measuredCommit` (`eval/src/measured-commit.ts`) finds the tree at `HEAD`.
 
-`writeRun` (`eval/src/run-files.ts`) writes the report to `eval/reports/<short-sha>.json` and the run's recordings to `eval/recordings/<short-sha>.jsonl`. A later run keeps every older report, since those are the baselines, and replaces the recordings.
+`writeRun` (`eval/src/run-files.ts`) writes the report to `eval/reports/<short-sha>.json` and the run's recordings to `eval/recordings/<short-sha>.jsonl`.

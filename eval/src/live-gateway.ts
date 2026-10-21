@@ -1,4 +1,5 @@
 import {
+  type EncoderLoad,
   type EncoderLoadFailure,
   type GatewayConfig,
   loadOnnxEmbedder,
@@ -12,8 +13,7 @@ import type { RecordableGateway } from './recording-gateway';
 export type LiveGatewayOpen =
   { readonly status: 'open'; readonly gateway: RecordableGateway } | EncoderLoadFailure;
 
-type RerankerLoad =
-  { readonly status: 'loaded'; readonly encoder: Reranker | null } | EncoderLoadFailure;
+type RerankerLoad = EncoderLoad<Reranker | null>;
 
 const loadReranker = async (config: GatewayConfig): Promise<RerankerLoad> =>
   config.reranker === undefined

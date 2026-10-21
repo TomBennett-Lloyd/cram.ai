@@ -3,11 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PROVISIONAL_DEFAULT_PINS, type Recording } from '@cram/gateway';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { record } from './run-fixture';
+import { indexedLecture } from './run-fixture';
 import { runEval } from './run-eval';
 import { readRun, RECORDINGS_DIR, recordingsText, REPORTS_DIR, writeRun } from './run-files';
 import { SAMPLING, ScriptedGateway } from './scripted-gateway-fixture';
-import { Deck } from '@cram/shared';
 import { CourseId } from '@cram/shared';
 import type { EvalReport } from './report';
 
@@ -37,17 +36,7 @@ const scriptedReport = async (measuredCommit: string): Promise<EvalReport> =>
       sampling: SAMPLING,
     },
     courseId: CourseId.parse('hollowmere'),
-    lectures: [
-      {
-        deck: Deck.parse({
-          lectureId: 'l1',
-          lectureTitle: 'Lecture l1',
-          mediaType: 'application/pdf',
-          content: new Uint8Array([1]),
-        }),
-        slides: [record()],
-      },
-    ],
+    lectures: [indexedLecture('l1')],
     questions: [],
     labels: [],
     gateway: new ScriptedGateway(() => ({ status: 'backend-failed', reason: 'unused' })),

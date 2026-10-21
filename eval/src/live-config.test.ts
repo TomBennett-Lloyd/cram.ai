@@ -29,6 +29,7 @@ describe('liveConfig', () => {
     expect(config.embedder).toMatchObject({
       pin: LIVE_PINS.embedder,
       directory: '/models/BAAI/bge-small-en-v1.5',
+      pooling: 'cls',
     });
     expect(config.reranker).toBeUndefined();
   });

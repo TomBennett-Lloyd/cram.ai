@@ -2,12 +2,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { CourseId } from '@cram/shared';
 import { describe, it } from 'vitest';
 import { ingestedCourse } from './ingested-course';
 import { liveConfig, RunEnvironment } from './live-config';
 import { openLiveGateway } from './live-gateway';
-import { EVAL_ROOT, readEvalCourse } from './read-eval-course';
+import { EVAL_COURSE_ID, EVAL_ROOT, readEvalCourse } from './read-eval-course';
 import { RecordingGateway } from './recording-gateway';
 import { measuredCommit } from './measured-commit';
 import { runEval } from './run-eval';
@@ -18,7 +17,6 @@ import { writeRun } from './run-files';
 //   CRAM_GENERATOR_ENDPOINT=… CRAM_GENERATOR_MODEL=… pnpm eval      (the last two as `pnpm models:pull` prints them)
 const env = process.env;
 const RUN_TIMEOUT_MS = 6 * 60 * 60 * 1000;
-const COURSE = CourseId.parse('hollowmere');
 
 describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
   it(
@@ -46,8 +44,8 @@ describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
             machineClass: facts.CRAM_MACHINE_CLASS,
             sampling,
           },
-          courseId: COURSE,
-          lectures: await ingestedCourse(read.course.deck, COURSE, dir),
+          courseId: EVAL_COURSE_ID,
+          lectures: await ingestedCourse(read.course.deck, EVAL_COURSE_ID, dir),
           questions: read.course.questions,
           labels: read.course.labels,
           gateway: recorder,

@@ -4,30 +4,24 @@ import {
   GeneratorPin,
   RecordingMissError,
 } from '@cram/gateway';
-import { CourseId, Deck } from '@cram/shared';
+import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { course, label, question } from './eval-fixture';
-import type { IndexedLecture } from './index-retriever';
 import { LIVE_PINS, LIVE_SAMPLING } from './live-config';
 import { RecordingGateway } from './recording-gateway';
 import { replayRun, untimed } from './replay-run';
 import { runEval } from './run-eval';
 import type { EvalRun } from './run-files';
-import { record } from './run-fixture';
+import { indexedLecture, record } from './run-fixture';
 import { ScriptedGateway } from './scripted-gateway-fixture';
 
 const COURSE_ID = CourseId.parse('hollowmere');
 
-const LECTURES: readonly IndexedLecture[] = [
-  {
-    deck: Deck.parse({
-      lectureId: 'l1',
-      lectureTitle: 'Lecture l1',
-      mediaType: 'application/pdf',
-      content: new Uint8Array([1]),
-    }),
-    slides: [record(), record({ slideNo: 2, title: 'Workers', body: 'Workers are male.' })],
-  },
+const LECTURES = [
+  indexedLecture('l1', [
+    record(),
+    record({ slideNo: 2, title: 'Workers', body: 'Workers are male.' }),
+  ]),
 ];
 
 const COURSE = course({

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CourseId } from '@cram/shared';
 import type { z } from 'zod';
 import type { EvalCourse } from './audit';
 import { parseDeck, type DeckFile } from './deck';
@@ -8,6 +9,9 @@ import { attempt } from './file-attempt';
 import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { parseJsonLines } from './json-text';
+
+/** The course id the eval deck is ingested and indexed under, live and in replay alike. */
+export const EVAL_COURSE_ID = CourseId.parse('hollowmere');
 
 /** The `eval/` directory of this checkout. */
 export const EVAL_ROOT = fileURLToPath(new URL('..', import.meta.url));

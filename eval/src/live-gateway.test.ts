@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 describe('openLiveGateway', () => {
-  it('reports the first encoder whose snapshot is missing, and opens nothing', async () => {
+  it('reports the first encoder whose snapshot is missing', async () => {
     const result = liveConfig({
       CRAM_GENERATOR_ENDPOINT: 'http://127.0.0.1:8080/v1/',
       CRAM_GENERATOR_MODEL: 'served-name',

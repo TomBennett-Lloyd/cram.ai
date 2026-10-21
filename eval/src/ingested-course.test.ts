@@ -8,7 +8,7 @@ import { ingestedCourse } from './ingested-course';
 
 const COURSE = CourseId.parse('hollowmere');
 
-/** Over `THIN_TEXT_LAYER_WORDS` (`packages/ingest/src/slide-text.ts`), so the rendering keeps a text layer. */
+/** Over `THIN_TEXT_LAYER_WORDS` (`packages/ingest/src/slide-text.ts`). */
 const BODY =
   'Every cell of a Hollowmere comb is square, and each frame holds a fixed count of them.';
 

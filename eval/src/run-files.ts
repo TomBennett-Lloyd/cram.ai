@@ -6,7 +6,7 @@ import { attempt } from './file-attempt';
 import { parseJsonLines, parseJsonText } from './json-text';
 import { EvalReport } from './report';
 
-/** Under `eval/`: the reports kept as baselines, and the one run's recordings tier 1 replays (`docs/adr/0005-evaluation-as-gate.md` § Decision (e), (f)). */
+/** Under `eval/`: the reports, and the one run's recordings tier 1 replays (`docs/adr/0005-evaluation-as-gate.md` § Decision (e), (f)). */
 export const REPORTS_DIR = 'reports';
 export const RECORDINGS_DIR = 'recordings';
 
