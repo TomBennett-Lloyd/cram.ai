@@ -6,3 +6,4 @@ scope: :!pnpm-lock.yaml
 carrier: .claude/scripts/models-pull.test.sh
 carrier: apps/server/src/gateway-config.ts
 carrier: apps/server/src/gateway-config.test.ts
+excluded: apps/server/src/compose-server.test.ts
