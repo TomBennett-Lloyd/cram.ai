@@ -122,9 +122,14 @@ Entry format:
 ## 2026-10-21 — PR #222
 
 - Phase: implementation
-- Observed: the #146 lane's local browser lane failed `apps/web/e2e/focus.spec.ts` ("a keyboard reader sees the ring on a slide card") on three runs of three with the element reported inactive, while the same spec passed in CI's `web-e2e` and the PR did not touch it; the lane read it as the local browser window not being frontmost on a machine running other lanes' browsers. One lane so far on a focus assertion that depends on window activation.
+- Observed: the #146 lane's local browser lane failed `apps/web/e2e/focus.spec.ts` ("a keyboard reader sees the ring on a slide card") on three runs of three with the element reported inactive, and read it as the browser window not being frontmost. PR #232 (#228) then showed the cause was a race in the test: it pressed Tab before the answer rendered, so focus left the page; Playwright's `toBeFocused` reports `inactive` both for a wrong active element and for a document without focus, so the message could not tell the two apart. Recorded as the first reading and its correction, because the first reading reached a dispatch note before it was tested.
 
 ## 2026-10-21 — PR #224
 
 - Phase: planning
 - Observed: the #145 lane's planning sweep covered `main` only, so it did not see that open PR #214 (#134) builds the same live gateway in `eval/src/live-gateway.ts`; it found that through an issue search partway through the lane. The dispatch note names in-flight lanes by footprint, and `.claude/agents/ticket-agent.md` § 2's sweep runs over the tree, so an open PR's duplicate of a planned helper is visible only to whoever greps the open branches. One ticket so far; #223 holds the merge of the two assemblies.
+
+## 2026-10-21 — PR #235
+
+- Phase: process
+- Observed: `merge-pr.sh`'s first run on PR #222 and again on PR #232 exited 1 without merging, and the idempotent re-run merged each at once. Both times the first run had just done `gh pr update-branch` and polled the new head's checks within the 540 s the caller allowed, while CI runs were taking three to four minutes to queue under the evening's load; the second run found the checks complete. Two merges so far; the poll budget is the caller's environment variable, not the script's, so this is a merge-owner habit to measure before it is a script change.
