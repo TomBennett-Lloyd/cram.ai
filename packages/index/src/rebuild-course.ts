@@ -31,9 +31,17 @@ export interface DiscardedTable {
   readonly rows: number;
 }
 
+/** `refuse` answers `would-discard`, writing nothing, for a file holding rows no rebuild carries over. */
+export type DiscardPolicy = 'discard' | 'refuse';
+
 export type RebuildCourseResult =
   | Exclude<OpenCourseResult, { status: 'older-schema' }>
   | { readonly status: 'no-stored-decks'; readonly fileVersion: number }
+  | {
+      readonly status: 'would-discard';
+      readonly fileVersion: number;
+      readonly discarded: readonly DiscardedTable[];
+    }
   | {
       readonly status: 'rebuilt';
       readonly course: CourseIndex;
@@ -118,6 +126,7 @@ const writeRebuilt = async (
 export const rebuildCourse = async (
   spec: OpenCourseSpec,
   deps: RebuildDeps,
+  policy: DiscardPolicy = 'discard',
 ): Promise<RebuildCourseResult> => {
   const opened = openCourse(spec);
   if (opened.status !== 'older-schema') return opened;
@@ -129,6 +138,8 @@ export const rebuildCourse = async (
     if (recorded !== spec.courseId) return { status: 'course-mismatch', recorded };
     if (!hasStoredDecks(old)) return { status: 'no-stored-decks', fileVersion: opened.fileVersion };
     discarded = discardedTables(old);
+    if (policy === 'refuse' && discarded.length > 0)
+      return { status: 'would-discard', fileVersion: opened.fileVersion, discarded };
     rmSync(rebuilt, { force: true });
     await writeRebuilt(old, { ...spec, path: rebuilt }, deps);
   } catch (error) {
