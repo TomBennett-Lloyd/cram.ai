@@ -1,0 +1,9 @@
+# Where a HUMAN batch is refused at merge (docs/standards/architecture.md rule 9; #211).
+owner: .claude/scripts/merge-pr.sh
+claim: a --rebase PR that classifies HUMAN is refused at merge-pr.sh's classify step, ahead of the curated-history count, which a hand-folded verdict passes (#105)
+cite: .claude/scripts/merge-pr.sh § classify
+sweep: merge-pr\.sh(?: §|'s) classify|PR (?:that )?classifies HUMAN|(?i:HUMAN batch[^.;]{0,60}refus)
+carrier: .claude/workflow.json
+carrier: .claude/skills/run-issue/SKILL.md
+carrier: .claude/scripts/merge-pr.test.sh
+excluded: docs/review-feedback.md
