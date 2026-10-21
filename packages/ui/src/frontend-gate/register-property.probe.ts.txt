@@ -13,6 +13,8 @@ CSS[`registerProperty`](definition); // refused-by: no-restricted-properties
 CSS?.registerProperty(definition); // refused-by: no-restricted-properties
 window.CSS.registerProperty(definition); // refused-by: no-restricted-properties
 globalThis.CSS.registerProperty(definition); // refused-by: no-restricted-properties
+export const css = CSS;
+css.registerProperty(definition); // refused-by: no-restricted-properties
 CSS.registerProperty.call(CSS, definition); // refused-by: no-restricted-properties
 export const alias = CSS.registerProperty.bind(CSS); // refused-by: no-restricted-properties
 export const { registerProperty } = CSS; // refused-by: no-restricted-properties

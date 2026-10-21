@@ -28,7 +28,7 @@ _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13.
 
 4. **Components are presentational by default.** Data fetching and domain logic live in hooks/modules; a component that's hard to render in isolation (Storybook-style) is structured wrong.
 
-5. **Design tokens only — lint-enforced, not a convention.** `eslint.config.mjs` and `stylelint.config.mjs` are the rule; read them for the exact scope rather than trusting a paraphrase here. Both run under `pnpm lint`, `packages/ui/src/tokens/tokens.css` is the one exempt file, and disable comments are themselves errors in both linters. So: if a token is missing, the lint error _is_ the design signal — raise it as a design-system issue rather than reaching for a literal.
+5. **Design tokens only — lint-enforced, not a convention.** `eslint.config.mjs` and `stylelint.config.mjs` are the rule; read them for the exact scope rather than trusting a paraphrase here. Both run under `pnpm lint`, and disable comments are themselves errors in both linters. So: if a token is missing, the lint error _is_ the design signal — raise it as a design-system issue rather than reaching for a literal.
 
 ## Async surface convention (apps/web)
 

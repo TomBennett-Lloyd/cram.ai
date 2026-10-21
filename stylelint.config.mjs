@@ -207,7 +207,7 @@ export default {
       ['/^property$/i'],
       {
         reportDisables: true,
-        message: 'Register custom properties in packages/ui/src/tokens/ only (#290).',
+        message: 'Register custom properties only in packages/ui/src/tokens/*.css (#290).',
       },
     ],
 

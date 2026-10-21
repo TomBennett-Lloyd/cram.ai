@@ -83,9 +83,7 @@ export default tseslint.config(
      * Frontend gate (CLAUDE.md): UI code consumes design tokens only. Raw
      * colours, inline styles and custom-property registration are caught here;
      * the CSS half of the same rule lives in stylelint.config.mjs. Values are
-     * exempted by file, never by comment — packages/ui/src/tokens/tokens.css is
-     * the one file this gate exempts, and tokens.ts only ever references them
-     * as `var(--…)` strings.
+     * exempted by file, never by comment.
      *
      * The hex and colour-function patterns are
      * packages/ui/src/frontend-gate/colour-patterns.mjs's, which stylelint's
@@ -125,14 +123,14 @@ export default tseslint.config(
       /*
        * The script twin of stylelint's `@property` ban (#290): a registration's
        * `initialValue` is a token definition (#311). The entry names no object,
-       * so `window.CSS`, an alias and a destructured `registerProperty` are
-       * refused like `CSS.registerProperty`.
+       * so a receiver other than the bare `CSS` identifier — `window.CSS`, an
+       * alias of `CSS`, a parameter — is refused too.
        */
       'no-restricted-properties': [
         'error',
         {
           property: 'registerProperty',
-          message: 'Register custom properties in packages/ui/src/tokens/ only (#311).',
+          message: 'Register custom properties only in packages/ui/src/tokens/*.{ts,tsx} (#311).',
         },
       ],
     },
