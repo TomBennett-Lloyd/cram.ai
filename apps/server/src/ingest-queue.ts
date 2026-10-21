@@ -78,7 +78,7 @@ export class IngestQueue {
     return [...(this.#uploads.get(courseId)?.values() ?? [])];
   }
 
-  /** Settles once every upload enqueued so far has finished. */
+  /** Settles once every job queued so far has finished. */
   idle(): Promise<void> {
     return this.#tail;
   }

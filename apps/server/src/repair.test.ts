@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { EmbeddingResult, EmbedRequest } from '@cram/gateway';
-import { EmbedderIdentity, openCourse, SCHEMA_VERSION, sourceIdOf } from '@cram/index';
+import { openCourse, SCHEMA_VERSION, sourceIdOf } from '@cram/index';
 import { CourseId } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
@@ -18,7 +18,7 @@ import {
   uploadPath,
   WordEmbedder,
 } from './server-fixture';
-import { PROBE_TEXT } from './slide-embedding';
+import { embedderIdentity, PROBE_TEXT } from './slide-embedding';
 
 const BIO = CourseId.parse('bio');
 const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
@@ -59,24 +59,27 @@ afterEach(async () => {
   test = undefined;
 });
 
-const upload = (port: number, deck: Uint8Array, lectureId = 'l1') =>
+const upload = (port: number, deck: Uint8Array, lectureId = 'l1', fileName = 'hive.pdf') =>
   send(port, {
     method: 'POST',
-    path: uploadPath('bio', lectureId, 'hive.pdf'),
+    path: uploadPath('bio', lectureId, fileName),
     headers: { 'content-type': PDF },
     body: deck,
   });
 
 /** A data directory whose `bio` course holds `pages` as lecture `l1`, written by a server since closed. */
-const seededDataDir = async (pages: readonly (readonly string[])[] = HIVE): Promise<string> => {
+const seededDataDir = async (
+  pages: readonly (readonly string[])[] = HIVE,
+  fileName?: string,
+): Promise<string> => {
   const seeding = await startTestServer();
-  await upload(seeding.server.port, await pdfDeck(pages));
+  await upload(seeding.server.port, await pdfDeck(pages), 'l1', fileName);
   await settledStatus(seeding.server.port, 'bio');
   await seeding.server.close();
   return seeding.dataDir;
 };
 
-/** Rewrites the `user_version` field of the SQLite file header (bytes 60–63, big-endian) to the previous schema. */
+/** Rewrites the `user_version` field of the SQLite file header to the previous schema. */
 const markOlder = (dataDir: string): void => {
   const path = courseFilePath(dataDir, BIO);
   expect(existsSync(`${path}-wal`)).toBe(false);
@@ -106,15 +109,12 @@ const storedOf = async ({ server }: TestServer) =>
     }
   ).stored;
 
-/** The `bio` course file as `embedder` opens it, with its slides' lecture titles and the tags on its first slide. */
-const openedUnder = (dataDir: string, embedder: WordEmbedder) =>
+/** The `bio` course file as `embedder` opens it. */
+const openedUnder = async (dataDir: string, embedder: WordEmbedder) =>
   openCourse({
     path: courseFilePath(dataDir, BIO),
     courseId: BIO,
-    embedder: EmbedderIdentity.parse({
-      model: `${embedder.pin.model}@${embedder.pin.sha256}`,
-      dimension: 8,
-    }),
+    embedder: await embedderIdentity(embedder),
   });
 
 describe('start-up repair', () => {
@@ -140,7 +140,10 @@ describe('start-up repair', () => {
   });
 
   it('rebuilds an older course file from its stored decks', async () => {
-    const dataDir = await seededDataDir([[], ['Worker bees are male in this course.']]);
+    const dataDir = await seededDataDir(
+      [[], ['Worker bees are male in this course.']],
+      'hive.v2.pdf',
+    );
     markOlder(dataDir);
     const server = await restarted(dataDir);
     expect(await repairLog(server)).toEqual([
@@ -148,20 +151,20 @@ describe('start-up repair', () => {
     ]);
     expect(await storedOf(server)).toEqual({
       state: 'read',
-      lectures: [{ lectureId: 'l1', lectureTitle: 'hive', slideCount: 2, imageOnly: [1] }],
+      lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
     });
-    const opened = openedUnder(dataDir, new WordEmbedder());
+    const opened = await openedUnder(dataDir, new WordEmbedder());
     if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
     expect(opened.course.slides().map(({ lectureTitle }) => lectureTitle)).toEqual([
-      'hive',
-      'hive',
+      'hive.v2',
+      'hive.v2',
     ]);
     opened.course.close();
   });
 
   it('leaves an older course file unavailable when a rebuild would discard its rows', async () => {
     const dataDir = await seededDataDir();
-    const seeded = openedUnder(dataDir, new WordEmbedder());
+    const seeded = await openedUnder(dataDir, new WordEmbedder());
     if (seeded.status !== 'open') throw new Error(`course file: ${seeded.status}`);
     const [first] = seeded.course.slides();
     if (first === undefined) throw new Error('seeded course has no slides');

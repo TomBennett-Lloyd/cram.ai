@@ -114,4 +114,28 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/copy.ts` `fileUnopened` and its three callers (`refusalMessage`'s `course-unavailable`, `progressMessage`'s `course-unavailable`, `storedUnavailableMessage`)
 - What: an unopenable course file is reported as "This course’s file can’t be opened (embedder-mismatch)", the raw `OpenCourseResult` status, with no words for what it means or what to do. Root cause: no mapping from `@cram/index`'s vocabulary to student-facing copy. #147 (rebuild or re-embed on course-unavailable) changes what the student can do about each one.
 - Source: #146 review cycle 1
-- Update 2026-10-21 (#147): the server now repairs `embedder-mismatch` and lossless `older-schema` files at start (`repairCourse`), with no action from the student. Both codes still reach the student while a repair is queued or has failed, and `older-schema` stays when a rebuild would discard rows. #225 owns reporting the repair.
+- Update 2026-10-21 (#147): the server now repairs both codes at start (`repairCourse` in `apps/server/src/course-repair.ts`), with no action from the student. Either code still reaches the student while a repair is queued, and after any `RepairOutcome` other than `rebuilt` or `reembedded`. #225 owns reporting the repair.
+
+## 2026-10-21 — every start-up repair failure is logged as `Error`
+
+- Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/index/src/rebuild-course.ts` `ParseDeck`, `writeRebuilt`
+- What: a stored deck that no longer reads is an expected failure, but `ParseDeck` has no value arm for it, so `parseStored` throws. `rebuildCourse` then wraps every per-lecture failure in a plain `Error`. The log therefore cannot tell an unreadable deck, an over-length slide and a backend that is down apart: all three are `outcome: 'Error'`. Root cause: `ParseDeck` and `EmbedSlides` fail only by rejecting. #184 covers the `EmbedSlides` half.
+- Source: #147 review cycle 1
+
+## 2026-10-21 — pdf.js refuses a `Buffer` that `DeckFile` accepts by type
+
+- Where: `packages/ingest/src/adapters/pdf/ingest-pdf.ts` `ingestPdf`; its callers' workarounds in `apps/server/src/http-body.ts` `readBody` and `apps/server/src/course-repair.ts` `parseStored`
+- What: `DeckFile.bytes` is typed `Uint8Array`, and a `Buffer` passes that type, but pdf.js rejects one at runtime. Each caller re-wraps its bytes as a plain view and restates why. A `slice()` on a `Buffer` returns a view, not a copy. Root cause: the adapter does not normalise its own input. Once it does, both workarounds and their prose can go.
+- Source: #147 review cycle 1
+
+## 2026-10-21 — server tests hand-build the embedder identity
+
+- Where: `apps/server/src/upload.test.ts` `lectureDeckIn`
+- What: the test restates the identity formula `embedderIdentity` owns (`apps/server/src/slide-embedding.ts`) and the fixture's private vector dimension as a literal, so a change to either breaks the test with no pointer to the owner. `repair.test.ts` calls `embedderIdentity` instead.
+- Source: #147 review cycle 1
+
+## 2026-10-21 — a rebuilt lecture's fallback title comes from its stored title, not its file name
+
+- Where: `apps/server/src/course-repair.ts` `parseStored`; `packages/shared/src/deck.ts` `Deck`; `packages/ingest/src/deck.ts` `fileStem`
+- What: `Deck` does not store the uploaded file name, so a rebuild passes the stored title through `fileStem` as the title fallback. If a title came from the first slide and contains `/`, `\`, `-` or `_`, and a later ingest no longer reads a title from that slide, the rebuilt title is mangled ("Cells/Tissues" becomes "Tissues"). This can only happen across an ingest change, which is exactly when rebuilds run. Root cause: the stored deck drops the file name.
+- Source: #147 review cycle 1

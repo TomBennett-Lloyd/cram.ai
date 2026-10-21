@@ -103,7 +103,7 @@ export class CramServer {
     return address === null || typeof address === 'string' ? undefined : address.address;
   }
 
-  /** Stops accepting requests, then waits for queued uploads to finish writing. */
+  /** Stops accepting requests, then waits for the queue's writes to finish. */
   async close(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       this.#server.close((error) => {

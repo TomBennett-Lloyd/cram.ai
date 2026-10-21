@@ -45,7 +45,7 @@ export type RepairOutcome =
 
 /**
  * Brings a course file to the running schema and embedder. A rebuild that would discard rows is
- * refused, because nothing yet tells the student what it lost (`docs/adr/0004-storage.md` § Decision (d)).
+ * refused (`docs/adr/0004-storage.md` § Decision (d); #225).
  */
 export const repairCourse = async (
   courseId: CourseId,
