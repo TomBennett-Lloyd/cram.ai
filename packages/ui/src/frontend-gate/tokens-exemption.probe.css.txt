@@ -7,6 +7,8 @@
   color: red;
   filter: drop-shadow(0 0 0 #abc);
   --probe-raw: 4px;
+  --probe-trailing: var(--probe-raw) 4px;
+  width: var(--probe-raw, 4px);
 }
 
 .t:focus { color: red; } /* refused-by: selector-pseudo-class-disallowed-list */

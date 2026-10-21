@@ -9,7 +9,7 @@
   color: red;
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
   filter: drop-shadow(0 0 0 #abc);
-  /* stylelint-disable-next-line declaration-property-value-allowed-list -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
+  /* stylelint-disable-next-line cram/var-references-only -- probe */ /* refused-by: comment-word-disallowed-list reportDisables */
   --probe-raw: 4px;
 
   /* The same scope, in the same-line and block forms. */
