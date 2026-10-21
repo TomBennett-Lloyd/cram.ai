@@ -443,8 +443,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-10-21 — issue #339 — adr-0008-slide-chunking
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/339#issuecomment-6315418361 in chat on 2026-10-21 ("approve with both reccomendations for 339"; then REVISE and PROCEED: "339 new adr (as long as it wont introduce a contradiction?)"). The PR asks the owner to decide only the one extra beyond that plan: accept `excluded: docs/adr/0008-slide-chunking.md` in the topics-table ledger (`topics-table.ledger` under `.claude/ledgers/`). The exclusion was added when the branch was rebased onto #179, after the PROCEED. That ledger's sweep matches ADR 0008 because the ADR names the index's schema module by path, but only where it cites the course file's version counter. The ADR is therefore not a carrier of the topics table's name.
 - **Why**: `docs/adr/**` is a `humanAlways` path, and `.claude/workflow.json` → `merge.approvedAtPlanRule` counts a ledger carrier change from a rebase after the PROCEED as an extra, which sends the PR to the owner limited to that extra.
 - **How applied**: the PR as proposed, with ADR 0008 at `proposed`. It is revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: Owner, chat, 2026-10-21: "approve 364" — the plan was approved on 2026-10-21 ("approve with both reccomendations for 339", then "339 new adr (as long as it wont introduce a contradiction?)"); the one extra, the topics-table.ledger exclusion of ADR 0008 from a post-approval rebase, is accepted. Approved, no changes.
