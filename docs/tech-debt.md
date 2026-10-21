@@ -38,8 +38,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0005 (g) lists the trigger path set its script will own                                  | #181         |
 | grading agreement's hand-marked inputs have no delivering ticket                             | #181         |
 | ADR 0004 (h)'s carrier list names a .gitignore phrase and a tech-debt entry that #15 removed | #181         |
-| check:no-network-egress's `--depth Infinity` is pinned by no test                            | #182         |
-| check:no-network-egress exempts a name absent anywhere from the stale check                  | #182         |
 
 ---
 

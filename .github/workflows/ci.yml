@@ -193,6 +193,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # The action scans with GITLEAKS_VERSION, or its own default when unset. Set from the
+      # pin the pre-commit hook also holds to, so both scans run one release (#173).
+      - name: Read the gitleaks pin
+        run: |
+          . .claude/scripts/gitleaks-pin.sh
+          echo "GITLEAKS_VERSION=${GITLEAKS_PIN_VERSION:?}" >> "$GITHUB_ENV"
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

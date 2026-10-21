@@ -1,0 +1,9 @@
+# The gitleaks version both secret scans run, owned by GITLEAKS_PIN_VERSION in
+# .claude/scripts/gitleaks-pin.sh (#173). Readers source it; none carries the number.
+owner: .claude/scripts/gitleaks-pin.sh
+claim: the pre-commit hook and CI's gitleaks job run the one gitleaks release the pin declares
+sweep: gitleaks-pin\.ledger|gitleaks-pin\.sh|GITLEAKS_PIN_|GITLEAKS_VERSION|(?i:gitleaks[^\n]{0,40}\b(version|release)s?\b|\b(version|release)s?\b[^\n]{0,40}gitleaks)|gitleaks[^\n]{0,20}v?[0-9]+\.[0-9]+\.[0-9]+
+carrier: .claude/scripts/require-gitleaks-pin.sh
+carrier: .claude/scripts/require-gitleaks-pin.test.sh
+carrier: .githooks/pre-commit
+carrier: .github/workflows/ci.yml
