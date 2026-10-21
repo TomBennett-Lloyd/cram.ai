@@ -39,7 +39,6 @@ const directoryEntries = (path: string): readonly string[] => {
   }
 };
 
-/** The courses with a course file; a file whose name is not a course id is not one. */
 export const storedCourses = (files: CourseFiles): readonly CourseId[] =>
   directoryEntries(coursesDirectory(files.dataDir)).flatMap((name) => {
     if (!name.endsWith(COURSE_FILE_EXTENSION)) return [];
@@ -47,7 +46,6 @@ export const storedCourses = (files: CourseFiles): readonly CourseId[] =>
     return parsed.success ? [parsed.data] : [];
   });
 
-/** Opens the course file, creating it and its directory when absent. */
 export const openForWrite = (files: CourseFiles, courseId: CourseId): OpenCourseResult => {
   const path = courseFilePath(files.dataDir, courseId);
   mkdirSync(dirname(path), { recursive: true });

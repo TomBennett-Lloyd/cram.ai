@@ -4,10 +4,8 @@ import { GatewayConfig, type GeneratorPin, PROVISIONAL_DEFAULT_PINS } from '@cra
 import { z } from 'zod';
 import type { DataDirectoryHost } from './data-directory';
 
-/** Read from the data directory, so outside the repo (`docs/adr/0003-model-roles-and-backends.md` § Decision (f)). */
 export const GATEWAY_CONFIG_FILE = 'gateway.json';
 
-/** A role the file names replaces that role's default whole; the merge is then parsed by `GatewayConfig`. */
 export const GatewayOverrides = GatewayConfig.partial();
 export type GatewayOverrides = z.infer<typeof GatewayOverrides>;
 
@@ -34,7 +32,6 @@ export const developerModelsDirectory = ({ env, homedir }: DataDirectoryHost): s
     : override;
 };
 
-/** Developer mode's roles (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)): Ollama on loopback, encoders in-process. */
 export const developerDefaults = (host: DataDirectoryHost): GatewayConfig => {
   const models = developerModelsDirectory(host);
   const { generator, verifier, embedder } = PROVISIONAL_DEFAULT_PINS;
@@ -53,7 +50,6 @@ export const developerDefaults = (host: DataDirectoryHost): GatewayConfig => {
 
 export type GatewayConfigRead =
   | { readonly status: 'read'; readonly config: GatewayConfig; readonly overridden: boolean }
-  /** `source` is the file's path, or `defaults` when no file exists and the defaults themselves fail. */
   | { readonly status: 'invalid'; readonly source: string; readonly issues: string };
 
 const isMissing = (error: unknown): boolean =>
@@ -80,7 +76,6 @@ const parsedJson = (text: string): JsonParse => {
   }
 };
 
-/** The defaults, overridden by the data directory's `GATEWAY_CONFIG_FILE` when it exists; any other read failure throws. */
 export const readGatewayConfig = async (
   dataDir: string,
   defaults: GatewayConfig,
