@@ -95,6 +95,7 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
   const status: IngestStatus = {
     courseId,
     stored: storedLectures(context.files, courseId),
+    repair: context.queue.repairOf(courseId),
     uploads: [...uploads],
   };
   sendJson(route.response, 200, status);

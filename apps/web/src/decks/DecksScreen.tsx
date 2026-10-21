@@ -4,14 +4,16 @@ import { useApi } from '../api/api-context';
 import type { ApiClient } from '../api/api-client';
 import { DECK_FILE_ACCEPT, deckMediaType, lectureIdOf } from '../api/deck-file';
 import {
+  discardedMessage,
   failureMessage,
   indexedMessage,
   PENDING,
   progressMessage,
+  repairFailedMessage,
   storedUnavailableMessage,
 } from '../copy';
 import { Empty, Failed, Pending } from '../shell/async-states';
-import { useIngestStatus } from './use-ingest-status';
+import { repairing, useIngestStatus } from './use-ingest-status';
 
 interface Refused {
   readonly fileName: string;
@@ -46,6 +48,24 @@ const unlistedLectures = (
   );
   return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
 };
+
+/** What the panel owes about the course file: what a rebuild lost, and why its lectures are missing. */
+const storedMessages = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): readonly string[] => {
+  const lost =
+    repair.state === 'done' && repair.discarded.length > 0
+      ? [discardedMessage(repair.discarded)]
+      : [];
+  if (stored.state === 'read' || repairing(repair)) return lost;
+  const { problem } = stored;
+  return [
+    ...lost,
+    repair.state === 'failed' ? repairFailedMessage(problem) : storedUnavailableMessage(problem),
+  ];
+};
+
+/** A course file that is unavailable only until its repair finishes. */
+const awaitingRepair = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): boolean =>
+  stored.state === 'course-unavailable' && repairing(repair);
 
 const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> }) => {
   const { stored, uploads } = ingest;
@@ -92,9 +112,7 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const messages = [
     ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
     ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
-    ...(state.status === 'ready' && state.ingest.stored.state === 'course-unavailable'
-      ? [storedUnavailableMessage(state.ingest.stored.problem)]
-      : []),
+    ...(state.status === 'ready' ? storedMessages(state.ingest) : []),
   ];
   return (
     <main className="screen">
@@ -108,6 +126,9 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
           messages={messages}
           onRetry={state.status === 'failed' ? reread : undefined}
         />
+      )}
+      {state.status === 'ready' && awaitingRepair(state.ingest) && (
+        <Pending label={PENDING.repair} />
       )}
       {state.status === 'pending' ? (
         <Pending label={PENDING.decks} />

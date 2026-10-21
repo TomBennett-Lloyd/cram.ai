@@ -59,10 +59,16 @@ afterEach(async () => {
   test = undefined;
 });
 
-const upload = (port: number, deck: Uint8Array, lectureId = 'l1', fileName = 'hive.pdf') =>
+const upload = (
+  port: number,
+  deck: Uint8Array,
+  lectureId = 'l1',
+  fileName = 'hive.pdf',
+  courseId = 'bio',
+) =>
   send(port, {
     method: 'POST',
-    path: uploadPath('bio', lectureId, fileName),
+    path: uploadPath(courseId, lectureId, fileName),
     headers: { 'content-type': PDF },
     body: deck,
   });
@@ -102,12 +108,14 @@ const repairLog = async ({ logs }: TestServer) => {
   throw new Error('repairLog: no repair was logged');
 };
 
-const storedOf = async ({ server }: TestServer) =>
-  (
-    (await send(server.port, { method: 'GET', path: '/courses/bio/ingest' })).json as {
-      stored: unknown;
-    }
-  ).stored;
+/** The `bio` course's ingest status once its repair has finished. */
+const repairedStatus = async ({ server }: TestServer) => {
+  const { stored, repair } = (await settledStatus(server.port, 'bio')).json as {
+    stored: unknown;
+    repair: unknown;
+  };
+  return { stored, repair };
+};
 
 /** The `bio` course file as `embedder` opens it. */
 const openedUnder = async (dataDir: string, embedder: WordEmbedder) =>
@@ -126,6 +134,7 @@ describe('start-up repair', () => {
     const held = await send(server.server.port, { method: 'GET', path: '/courses/bio/ingest' });
     expect(held.json).toMatchObject({
       stored: { state: 'course-unavailable', problem: 'embedder-mismatch' },
+      repair: { state: 'running' },
       uploads: [{ lectureId: 'l2', progress: { state: 'queued' } }],
     });
     embedder.open();
@@ -134,9 +143,35 @@ describe('start-up repair', () => {
     ]);
     expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
       stored: { state: 'read', lectures: [HIVE_STORED.lectures[0], { lectureId: 'l2' }] },
+      repair: { state: 'done', discarded: [] },
       uploads: [{ progress: { state: 'indexed' } }],
     });
     expect(existsSync(`${courseFilePath(dataDir, BIO)}-wal`)).toBe(false);
+  });
+
+  it('reports a repair queued behind another course’s as queued', async () => {
+    const seeding = await startTestServer();
+    for (const courseId of ['bio', 'chem'])
+      await upload(seeding.server.port, await pdfDeck(HIVE), 'l1', 'hive.pdf', courseId);
+    await settledStatus(seeding.server.port, 'chem');
+    await seeding.server.close();
+    const embedder = new GatedEmbedder();
+    const server = await restarted(seeding.dataDir, embedder);
+    const repairs = await Promise.all(
+      ['bio', 'chem'].map(
+        async (courseId) =>
+          (
+            (await send(server.server.port, { method: 'GET', path: `/courses/${courseId}/ingest` }))
+              .json as { repair: { state: string } }
+          ).repair.state,
+      ),
+    );
+    expect(repairs.sort()).toEqual(['queued', 'running']);
+    embedder.open();
+    for (const courseId of ['bio', 'chem'])
+      expect((await settledStatus(server.server.port, courseId)).json).toMatchObject({
+        repair: { state: 'done', discarded: [] },
+      });
   });
 
   it('rebuilds an older course file from its stored decks', async () => {
@@ -149,9 +184,12 @@ describe('start-up repair', () => {
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
     ]);
-    expect(await storedOf(server)).toEqual({
-      state: 'read',
-      lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
+    expect(await repairedStatus(server)).toEqual({
+      stored: {
+        state: 'read',
+        lectures: [{ lectureId: 'l1', lectureTitle: 'hive.v2', slideCount: 2, imageOnly: [1] }],
+      },
+      repair: { state: 'done', discarded: [] },
     });
     const opened = await openedUnder(dataDir, new WordEmbedder());
     if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
@@ -162,7 +200,7 @@ describe('start-up repair', () => {
     opened.course.close();
   });
 
-  it('leaves an older course file unavailable when a rebuild would discard its rows', async () => {
+  it('rebuilds an older course file whose rows no rebuild carries over, and reports them', async () => {
     const dataDir = await seededDataDir();
     const seeded = await openedUnder(dataDir, new WordEmbedder());
     if (seeded.status !== 'open') throw new Error(`course file: ${seeded.status}`);
@@ -171,16 +209,14 @@ describe('start-up repair', () => {
     seeded.course.setTopics(sourceIdOf(first), ['castes']);
     seeded.course.close();
     markOlder(dataDir);
-    const before = readFileSync(courseFilePath(dataDir, BIO));
     const server = await restarted(dataDir);
     expect(await repairLog(server)).toEqual([
-      { operation: 'repair', courseId: 'bio', outcome: 'would-discard' },
+      { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
     ]);
-    expect(await storedOf(server)).toEqual({
-      state: 'course-unavailable',
-      problem: 'older-schema',
+    expect(await repairedStatus(server)).toEqual({
+      stored: HIVE_STORED,
+      repair: { state: 'done', discarded: [{ table: 'topics', rows: 1 }] },
     });
-    expect(readFileSync(courseFilePath(dataDir, BIO)).equals(before)).toBe(true);
   });
 
   it('logs a repair that throws, and leaves the course unavailable', async () => {
@@ -189,9 +225,9 @@ describe('start-up repair', () => {
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'Error' },
     ]);
-    expect(await storedOf(server)).toEqual({
-      state: 'course-unavailable',
-      problem: 'embedder-mismatch',
+    expect(await repairedStatus(server)).toEqual({
+      stored: { state: 'course-unavailable', problem: 'embedder-mismatch' },
+      repair: { state: 'failed' },
     });
   });
 
@@ -205,13 +241,19 @@ describe('start-up repair', () => {
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'not-a-course-file' },
     ]);
+    expect(await repairedStatus(server)).toEqual({
+      stored: { state: 'course-unavailable', problem: 'not-a-course-file' },
+      repair: { state: 'failed' },
+    });
   });
 
   it('logs nothing for a course file that needs no repair, and leaves it closed', async () => {
     const dataDir = await seededDataDir();
     const server = await restarted(dataDir);
     await upload(server.server.port, await pdfDeck([['Drones', 'Drones are female.']]), 'l2');
-    await settledStatus(server.server.port, 'bio');
+    expect((await settledStatus(server.server.port, 'bio')).json).toMatchObject({
+      repair: { state: 'done', discarded: [] },
+    });
     expect(server.logs).toEqual([]);
     expect(existsSync(`${courseFilePath(dataDir, BIO)}-wal`)).toBe(false);
   });
