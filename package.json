@@ -25,11 +25,12 @@
     "check:no-course-content": "bash .claude/scripts/check-no-course-content.sh",
     "check:no-network-egress": "bash .claude/scripts/check-no-network-egress.sh",
     "check:node-types": "bash .claude/scripts/check-node-types.sh",
+    "check:stored-output-pin": "bash .claude/scripts/check-stored-output-pin.sh",
     "check:supply-chain-policy": "bash .claude/scripts/check-supply-chain-policy.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "pnpm verify:root && bash .claude/scripts/verify-tier.sh",
-    "verify:full": "pnpm verify:root && pnpm lint && pnpm typecheck && pnpm check:comment-density && pnpm test && pnpm check:adr-index && pnpm check:ledgers && pnpm check:module-names && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:node-types && pnpm check:supply-chain-policy && pnpm check:markdown-links && pnpm test:scripts && pnpm format:check",
+    "verify:full": "pnpm verify:root && pnpm lint && pnpm typecheck && pnpm check:comment-density && pnpm test && pnpm check:adr-index && pnpm check:ledgers && pnpm check:module-names && pnpm check:no-course-content && pnpm check:no-network-egress && pnpm check:node-types && pnpm check:stored-output-pin && pnpm check:supply-chain-policy && pnpm check:markdown-links && pnpm test:scripts && pnpm format:check",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks && git config commit.cleanup whitespace || true"
   },
   "lint-staged": {

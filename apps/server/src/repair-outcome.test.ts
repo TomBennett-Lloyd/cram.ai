@@ -11,12 +11,13 @@ import {
   olderDataDir,
   repairedStatus,
   repairLog,
+  RepinnedFailingEmbedder,
   RepinnedShortEmbedder,
   restarted,
   seededDataDir,
   stopRestarted,
 } from './repair-fixture';
-import { pdfDeck, settledStatus, startTestServer } from './server-fixture';
+import { pdfDeck, settledStatus, ShortEmbedder, startTestServer } from './server-fixture';
 
 afterEach(stopRestarted);
 
@@ -85,13 +86,38 @@ describe('a start-up repair’s outcome', () => {
 
   it('logs a repair that throws, and leaves the course unavailable', async () => {
     const dataDir = await seededDataDir();
-    const server = await restarted(dataDir, new RepinnedShortEmbedder(3));
+    const server = await restarted(dataDir, new RepinnedFailingEmbedder());
     expect(await repairLog(server)).toEqual([
       { operation: 'repair', courseId: 'bio', outcome: 'Error' },
     ]);
     expect(await repairedStatus(server)).toEqual({
       stored: { state: 'course-unavailable', problem: 'embedder-mismatch' },
       repair: { state: 'failed' },
+    });
+  });
+
+  it('re-embeds a slide longer than the new embedder takes as unembedded, never refusing the course', async () => {
+    const dataDir = await seededDataDir();
+    const server = await restarted(dataDir, new RepinnedShortEmbedder(3));
+    expect(await repairLog(server)).toEqual([
+      { operation: 'repair', courseId: 'bio', outcome: 'reembedded' },
+    ]);
+    expect(await repairedStatus(server)).toMatchObject({
+      stored: { state: 'read', lectures: [{ slideCount: 2, unembedded: [1] }] },
+      repair: { state: 'done' },
+    });
+  });
+
+  it('rebuilds a stored deck with a slide longer than the embedder takes, keeping that slide unembedded', async () => {
+    const dataDir = await seededDataDir();
+    markOlder(dataDir);
+    const server = await restarted(dataDir, new ShortEmbedder(3));
+    expect(await repairLog(server)).toEqual([
+      { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
+    ]);
+    expect(await repairedStatus(server)).toMatchObject({
+      stored: { state: 'read', lectures: [{ slideCount: 2, unembedded: [1] }] },
+      repair: { state: 'done' },
     });
   });
 

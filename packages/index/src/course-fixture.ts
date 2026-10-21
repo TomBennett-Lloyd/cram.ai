@@ -53,7 +53,10 @@ export const text = (bytes: Uint8Array | undefined): string | undefined =>
 
 export const vector = (...values: number[]): Float32Array => new Float32Array(values);
 
-export const indexed = (record: SlideRecord, embedding: Float32Array): IndexedSlide => ({
+export const indexed = (
+  record: SlideRecord,
+  embedding: Float32Array | undefined,
+): IndexedSlide => ({
   record,
   embedding,
 });
