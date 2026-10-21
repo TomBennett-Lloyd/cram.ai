@@ -200,6 +200,12 @@ input:not([type='file']) {
   font-size: var(--text-sm);
 }
 
+.searched {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .closest-heading {
   margin: 0;
   font-size: var(--text-sm);

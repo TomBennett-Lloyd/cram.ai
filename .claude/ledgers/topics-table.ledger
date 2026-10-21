@@ -18,3 +18,4 @@ excluded: .claude/scripts/check-stored-output-pin.test.sh
 excluded: docs/standards/testing.md
 excluded: .claude/comment-density.baseline.tsv
 excluded: docs/adr/0008-slide-chunking.md
+excluded: docs/tech-debt.md

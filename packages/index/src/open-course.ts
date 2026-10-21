@@ -35,6 +35,7 @@ export type CourseReader = Pick<
   CourseIndex,
   | 'slides'
   | 'search'
+  | 'correctSpelling'
   | 'confirmation'
   | 'slidesTagged'
   | 'lectures'

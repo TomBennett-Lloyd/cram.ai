@@ -1,5 +1,5 @@
 import type { AskReply, RetrievedSlide, Unit } from '@cram/shared';
-import { CLOSEST_SLIDES, MODEL_FAILED, NOT_COVERED, SOURCE_MISSING } from '../copy';
+import { CLOSEST_SLIDES, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR, SOURCE_MISSING } from '../copy';
 import { Failed } from '../shell/async-states';
 import { type CitedSlide, citedSlides } from './cited-slide';
 import { SlideCard } from './SlideCard';
@@ -66,6 +66,13 @@ const ClosestSlides = ({
   </>
 );
 
+const SearchedFor = ({ searched }: { readonly searched: string | undefined }) =>
+  searched === undefined ? null : (
+    <p className="searched">
+      {SEARCHED_FOR} <q>{searched}</q>
+    </p>
+  );
+
 /** One reply: the answer's units with their slides, or the not-covered result, and what was withheld. */
 export const AnswerView = ({
   reply,
@@ -80,6 +87,7 @@ export const AnswerView = ({
     case 'grounded':
       return (
         <>
+          <SearchedFor searched={reply.searched} />
           <ol className="answer">
             {reply.shown.map((unit, index) => (
               <UnitView key={index} unit={unit} slides={reply.slides} onOpen={onOpen} />
@@ -91,6 +99,7 @@ export const AnswerView = ({
     case 'not-covered':
       return (
         <>
+          <SearchedFor searched={reply.searched} />
           <ClosestSlides slides={reply.slides} onOpen={onOpen} />
           <WithheldPanel withheld={reply.withheld} />
         </>

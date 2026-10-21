@@ -3,7 +3,7 @@
 # points of non-blank lines (5000 = 50.00%). A ratio may fall, never
 # rise. Regenerate with:
 #     bash .claude/scripts/check-comment-density.sh --ratchet
-apps/server/src/ask-course.ts	140
+apps/server/src/ask-course.ts	102
 apps/server/src/compose-server.ts	330
 apps/server/src/course-file.ts	598
 apps/server/src/course-repair.ts	384
@@ -29,7 +29,7 @@ apps/web/src/api/api-context.ts	1111
 apps/web/src/api/api-fixture.ts	250
 apps/web/src/api/api-result.ts	1250
 apps/web/src/api/deck-file.ts	1428
-apps/web/src/ask/AnswerView.tsx	105
+apps/web/src/ask/AnswerView.tsx	97
 apps/web/src/ask/AskScreen.tsx	0
 apps/web/src/ask/SlideCard.tsx	666
 apps/web/src/ask/SlideDialog.tsx	606
@@ -38,7 +38,7 @@ apps/web/src/ask/WithheldPanel.tsx	2000
 apps/web/src/ask/cited-slide.ts	2000
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	591
+apps/web/src/copy.ts	588
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
@@ -64,7 +64,7 @@ eval/src/exam-metrics.ts	1379
 eval/src/file-attempt.ts	714
 eval/src/golden-question.ts	1481
 eval/src/hand-label.ts	1111
-eval/src/index-retriever.ts	459
+eval/src/index-retriever.ts	449
 eval/src/index.ts	0
 eval/src/ingested-course.ts	263
 eval/src/json-text.ts	0
@@ -130,21 +130,25 @@ packages/grounding/src/slide-text.ts	1666
 packages/grounding/src/verifier-input.ts	1666
 packages/grounding/src/verify.ts	327
 packages/index/src/chunk-row.ts	555
+packages/index/src/common-words.ts	444
 packages/index/src/confirmation.ts	606
 packages/index/src/course-fixture.ts	198
-packages/index/src/course-index.ts	745
+packages/index/src/course-index.ts	721
+packages/index/src/course-lexicon.ts	306
+packages/index/src/edit-distance.ts	909
 packages/index/src/embed-chunks.ts	588
 packages/index/src/embedder-identity.ts	1111
 packages/index/src/fts-query.ts	1666
 packages/index/src/index.ts	0
 packages/index/src/indexed-slide.ts	338
-packages/index/src/list-filter.ts	1785
-packages/index/src/open-course.ts	757
+packages/index/src/list-filter.ts	1764
+packages/index/src/open-course.ts	753
 packages/index/src/rebuild-course.ts	745
 packages/index/src/rebuild-report.ts	740
 packages/index/src/reciprocal-rank.ts	1111
 packages/index/src/schema.ts	722
 packages/index/src/slide-row.ts	322
+packages/index/src/spelling-correction.ts	535
 packages/index/src/stored-deck.ts	683
 packages/index/src/stored-lectures.ts	1538
 packages/ingest/src/adapters/deck-file.ts	645
@@ -165,7 +169,7 @@ packages/ingest/src/stored-output-equations.ts	340
 packages/ingest/src/stored-output-fixture.ts	180
 packages/ingest/src/stored-text.ts	1176
 packages/shared/src/api-refusal.ts	400
-packages/shared/src/ask.ts	1851
+packages/shared/src/ask.ts	1724
 packages/shared/src/citation.ts	4000
 packages/shared/src/course-list.ts	2000
 packages/shared/src/deck.ts	769

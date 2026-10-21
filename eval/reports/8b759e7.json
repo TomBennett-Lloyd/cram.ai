@@ -1,0 +1,358 @@
+{
+  "measuredCommit": "8b759e7",
+  "pullRequest": 407,
+  "machineClass": "dev-apple-silicon",
+  "pins": {
+    "generator": {
+      "role": "generator",
+      "backend": "openai-compatible-http",
+      "model": "Qwen/Qwen3-4B",
+      "artefact": {
+        "repository": "Qwen/Qwen3-4B-GGUF",
+        "file": "Qwen3-4B-Q4_K_M.gguf"
+      },
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "licence": "Apache-2.0"
+    },
+    "verifier": {
+      "role": "verifier",
+      "backend": "onnxruntime",
+      "model": "cross-encoder/nli-deberta-v3-base",
+      "artefact": {
+        "repository": "cross-encoder/nli-deberta-v3-base",
+        "file": "onnx/model.onnx"
+      },
+      "sha256": "113fb4c7eca1a1ec5f2ace1330fadde2828de68f3f661b4638cc3111b62a3d26",
+      "licence": "Apache-2.0",
+      "manifest": {
+        "files": {
+          "onnx/model.onnx": "369ebf04fce8206c83b8fd62e9dc860144f10351a7f885ed3076beb17b7c6dda",
+          "tokenizer.json": "5124ef2ead1a10a717703bc436de7f353da76d6340e4587719b42b1693707964",
+          "tokenizer_config.json": "f3eecd07c370ef0bf7dd3780d3cd68cf9c8b00c267e21a208ddcd8f82bfec1a6",
+          "config.json": "897e756eb59d3183adb505952e7910e7cbc7750a43f3b3747a96b688d2b02a47"
+        }
+      }
+    },
+    "embedder": {
+      "role": "embedder",
+      "backend": "onnxruntime",
+      "model": "BAAI/bge-small-en-v1.5",
+      "artefact": {
+        "repository": "BAAI/bge-small-en-v1.5",
+        "file": "onnx/model.onnx"
+      },
+      "sha256": "cea12e6bda1790cb1e973d4edffa472f9cadac590b0e65c54e9d7d868835aa00",
+      "licence": "MIT",
+      "manifest": {
+        "files": {
+          "onnx/model.onnx": "828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35",
+          "tokenizer.json": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66",
+          "tokenizer_config.json": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3",
+          "config.json": "094f8e891b932f2000c92cfc663bac4c62069f5d8af5b5278c4306aef3084750"
+        },
+        "pooling": "cls"
+      }
+    },
+    "reranker": null
+  },
+  "servedGenerator": {
+    "status": "verified"
+  },
+  "determinism": {
+    "generator": {
+      "temperature": 0,
+      "seed": 0
+    }
+  },
+  "nliThresholds": {
+    "entailedAt": 0.5,
+    "contradictedAt": 0.5
+  },
+  "retrievalK": 8,
+  "verifierStrategy": "nli-then-llm",
+  "metrics": {
+    "citationValidity": {
+      "status": "measured",
+      "bar": "absolute",
+      "ratio": {
+        "numerator": 30,
+        "denominator": 30
+      },
+      "failures": []
+    },
+    "contradictionSet": {
+      "status": "measured",
+      "bar": "absolute",
+      "ratio": {
+        "numerator": 13,
+        "denominator": 16
+      },
+      "failures": [
+        {
+          "question": "What does a returning forager's dance tell the other bees?",
+          "problems": [
+            {
+              "kind": "no-expected-citation"
+            }
+          ]
+        },
+        {
+          "question": "What shape are the cells of honeycomb?",
+          "problems": [
+            {
+              "kind": "no-expected-citation"
+            }
+          ]
+        },
+        {
+          "question": "How long does a queen bee live?",
+          "problems": [
+            {
+              "kind": "answered-uncovered"
+            }
+          ]
+        }
+      ]
+    },
+    "retrievalRecall": {
+      "status": "measured",
+      "bar": "baseline",
+      "ratio": {
+        "numerator": 37,
+        "denominator": 40
+      }
+    },
+    "verifierPrecision": {
+      "status": "measured",
+      "bar": "baseline",
+      "ratio": {
+        "numerator": 8,
+        "denominator": 8
+      }
+    },
+    "verifierRecall": {
+      "status": "measured",
+      "bar": "baseline",
+      "ratio": {
+        "numerator": 8,
+        "denominator": 12
+      }
+    },
+    "examAnswerability": {
+      "status": "not-measurable",
+      "reason": "no exam generator exists until M4 (docs/plan.md §8), so no generated question"
+    },
+    "gradingAgreement": {
+      "status": "not-measurable",
+      "reason": "no synthetic student answer carries hand marks, and no ticket delivers them yet (#181)"
+    },
+    "derivedTextCoverage": {
+      "status": "not-measurable",
+      "reason": "no OCR adapter derives text from imageOnly slides until #108"
+    },
+    "derivedTextRecall": {
+      "status": "not-measurable",
+      "reason": "no OCR adapter derives text from imageOnly slides until #108"
+    },
+    "derivedTextPrecision": {
+      "status": "not-measurable",
+      "reason": "no OCR adapter derives text from imageOnly slides until #108"
+    }
+  },
+  "verifierArms": {
+    "nli": {
+      "accuracy": {
+        "precision": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 8,
+            "denominator": 8
+          }
+        },
+        "recall": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 8,
+            "denominator": 12
+          }
+        }
+      },
+      "contradictionSet": {
+        "status": "measured",
+        "bar": "absolute",
+        "ratio": {
+          "numerator": 13,
+          "denominator": 16
+        },
+        "failures": [
+          {
+            "question": "What does a returning forager's dance tell the other bees?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "What shape are the cells of honeycomb?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "How long does a queen bee live?",
+            "problems": [
+              {
+                "kind": "answered-uncovered"
+              }
+            ]
+          }
+        ]
+      },
+      "perUnitLatency": {
+        "status": "measured",
+        "samples": 30,
+        "medianMs": 21.66491700000188,
+        "maxMs": 37.852000000013504
+      }
+    },
+    "llm": {
+      "accuracy": {
+        "precision": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 10,
+            "denominator": 12
+          }
+        },
+        "recall": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 10,
+            "denominator": 12
+          }
+        }
+      },
+      "perUnitLatency": {
+        "status": "measured",
+        "samples": 30,
+        "medianMs": 320.6352709999919,
+        "maxMs": 362.9061670000083
+      }
+    },
+    "nliThenLlm": {
+      "accuracy": {
+        "precision": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 8,
+            "denominator": 8
+          }
+        },
+        "recall": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 8,
+            "denominator": 12
+          }
+        }
+      },
+      "contradictionSet": {
+        "status": "measured",
+        "bar": "absolute",
+        "ratio": {
+          "numerator": 13,
+          "denominator": 16
+        },
+        "failures": [
+          {
+            "question": "What does a returning forager's dance tell the other bees?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "What shape are the cells of honeycomb?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "How long does a queen bee live?",
+            "problems": [
+              {
+                "kind": "answered-uncovered"
+              }
+            ]
+          }
+        ]
+      },
+      "perUnitLatency": {
+        "status": "measured",
+        "samples": 30,
+        "medianMs": 21.225458500004606,
+        "maxMs": 38.98533399999724
+      }
+    },
+    "crossEncoderPrimary": {
+      "status": "drop",
+      "failed": "contradiction-set"
+    },
+    "secondOpinion": {
+      "status": "drop",
+      "failed": "contradiction-set"
+    }
+  },
+  "latency": {
+    "ask": {
+      "status": "measured",
+      "samples": 32,
+      "medianMs": 2151.7311040000027,
+      "maxMs": 10599.632166000003
+    },
+    "perCall": {
+      "generator": {
+        "status": "measured",
+        "samples": 94,
+        "medianMs": 1428.8940625000032,
+        "maxMs": 10517.754499999995
+      },
+      "verifier": {
+        "status": "measured",
+        "samples": 144,
+        "medianMs": 23.41637499999524,
+        "maxMs": 42.69175000001269
+      },
+      "embedder": {
+        "status": "measured",
+        "samples": 39,
+        "medianMs": 4.796499999999469,
+        "maxMs": 143.4735840000003
+      },
+      "reranker": {
+        "status": "not-measurable",
+        "reason": "no reranker call was made"
+      }
+    },
+    "generatorTimeToFirstToken": {
+      "status": "not-measurable",
+      "reason": "Generator.chat reports neither first-token time nor token counts (#138)"
+    },
+    "generatorTokensPerSecond": {
+      "status": "not-measurable",
+      "reason": "Generator.chat reports neither first-token time nor token counts (#138)"
+    }
+  }
+}

@@ -159,6 +159,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/chunk-row.ts` (`CHUNK_TABLE`'s text columns); `packages/index/src/course-index.ts` `chunks()`
 - What: every slide's quotable text is stored a second time, split across its chunks, and that copy is read only by `CourseIndex.chunks()`, which only tests call. A rebuild re-parses the stored deck, and a re-embed runs `embedSlideChunks` from the slides again. Neither reads the chunk text. `slides_fts` is contentless (`content = ''`), so it does not need the copy either. Suspected root cause: the plan argued for storing the text as a way to avoid re-running the split, and the code never needed that. Decide whether to drop the columns, keeping a line range or nothing, or to keep them for a reader that will need them, such as a chunk-level highlight.
 - Source: PR for #339 (review)
+- Update 2026-10-21: `CourseLexicon` (`packages/index/src/course-lexicon.ts`, #393) now reads the chunk text in production, rebuilding the keyword index's vocabulary from it for spelling correction. Dropping the columns needs another source for that vocabulary.
 
 ## 2026-10-21 — three copies of the read-only course-file sequence in apps/server
 
@@ -177,3 +178,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.slide-figure` in `apps/web/src/app.css`; `SlideImage` in `packages/shared/src/deck.ts`
 - What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
 - Source: #368 review cycle 1
+
+## 2026-10-21 — spelling correction rewrites correctly spelt words the course does not use, and nothing counts how often
+
+- Where: `packages/index/src/spelling-correction.ts` (`correctSpelling`); `packages/index/src/common-words.ts`
+- What: any letters-only token that is neither a course term, a common word, nor a `porter` inflection of a term within reach is rewritten to the nearest course term. A derivation the stemmer does not join is rewritten too: one clean golden question on the synthetic deck has `dormancy` become `dormant`. The only measure is that one-in-the-golden-set observation; #395 measures recall on misspelt variants, not wrong rewrites of clean questions. Suspected root cause: the guard is a bundled everyday-English list, and nothing measures its coverage against real student questions. A metric for clean questions rewritten would make the trade visible.
+- Source: PR for #393 (review)
+
+## 2026-10-21 — `TERM` and the keyword index's tokenizer disagree on combining marks
+
+- Where: `packages/index/src/fts-query.ts` (`TERM`); `packages/index/src/schema.ts` (`slides_fts`, default `unicode61`)
+- What: `TERM` keeps every `\p{M}` inside a token, while `unicode61` drops diacritic marks and splits a word at a spacing or enclosing mark (`\p{Mc}`, `\p{Me}`). In scripts whose words carry spacing marks, such as Indic vowel signs, a word reaches `slides_fts` as fragments. Search hides this, because a quoted multi-fragment term becomes a phrase match; spelling correction compares whole `TERM` tokens with fragment terms, so `isCourseTerm`'s phrase match is what keeps such a word as typed (`course-lexicon.test.ts`'s near-miss corpus). Suspected root cause: `TERM` was written for FTS5 quoting, not to mirror the tokenizer.
+- Source: PR for #393 (review)

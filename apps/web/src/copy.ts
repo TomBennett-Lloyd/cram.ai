@@ -23,6 +23,7 @@ export const PENDING = {
 /** The fixed system string for a question no surviving unit answers (`docs/standards/grounding.md` rule 5). */
 export const NOT_COVERED = 'Your slides don’t cover this.';
 export const CLOSEST_SLIDES = 'Closest slides';
+export const SEARCHED_FOR = 'Searched for:';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';
 export const SLIDE_LINES = 'Lines found on this slide';
