@@ -31,9 +31,9 @@ describe('storedText', () => {
   });
 
   it('composes an accent with its base, a folded one included, where Unicode has the composite', () => {
-    expect(storedText('café')).toBe('café');
-    expect(storedText('𝑎̂')).toBe('â');
-    expect(storedText('𝑥̅')).toBe('x̅');
+    expect(storedText('cafe\u0301')).toBe('caf\u00E9');
+    expect(storedText('𝑎\u0302')).toBe('\u00E2');
+    expect(storedText('𝑥\u0305')).toBe('x\u0305');
   });
 });
 
@@ -41,14 +41,14 @@ describe('storedPage', () => {
   it('stores every text a page carries, and keeps its sizes', () => {
     expect(
       storedPage({
-        markedTitle: 'Café 𝑥',
+        markedTitle: 'Cafe\u0301 𝑥',
         lines: [{ text: '𝐸=𝑚𝑐^2', size: 24 }],
-        notes: '𝑎̂',
+        notes: '𝑎\u0302',
       }),
     ).toEqual({
-      markedTitle: 'Café x',
+      markedTitle: 'Caf\u00E9 x',
       lines: [{ text: 'E=mc^2', size: 24 }],
-      notes: 'â',
+      notes: '\u00E2',
     });
   });
 
