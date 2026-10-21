@@ -6,7 +6,12 @@ export type {
 export { loadOnnxEmbedder, OnnxEmbedder } from './adapters/onnx/onnx-embedder';
 export { loadOnnxReranker, OnnxReranker } from './adapters/onnx/onnx-reranker';
 export { loadOnnxVerifier, OnnxVerifier } from './adapters/onnx/onnx-verifier';
-export { OpenAiHttpGenerator } from './adapters/openai-http/openai-http-generator';
+export {
+  type GeneratorLoad,
+  type GeneratorLoadFailure,
+  loadOpenAiHttpGenerator,
+  OpenAiHttpGenerator,
+} from './adapters/openai-http/openai-http-generator';
 export {
   type ChatMessage,
   type ChatOutputSpec,
@@ -34,6 +39,7 @@ export {
   type FakeGatewayPins,
   type FakeGatewaySpec,
   RecordingMissError,
+  REPLAYED,
 } from './fake-gateway';
 export {
   decodeTokensPerSecond,
@@ -55,6 +61,7 @@ export {
 } from './pin';
 export { PROVISIONAL_DEFAULT_PINS, PROVISIONAL_GENERATOR_CONTEXT_LENGTH } from './provisional-pins';
 export { type RecordedCall, Recording, recordingKey } from './recording';
+export { ServedArtefact } from './served-artefact';
 export { EncoderRole, Role } from './role';
 export {
   ArtefactDirectory,

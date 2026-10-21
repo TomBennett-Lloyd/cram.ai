@@ -15,6 +15,7 @@ import {
   RerankerPin,
   type RerankRequest,
   type Sampling,
+  type ServedArtefact,
   type Verifier,
 } from '@cram/gateway';
 import type { RecordableGateway, RecordableGenerator } from './recording-gateway';
@@ -26,9 +27,12 @@ export const SAMPLING: Sampling = { temperature: 0, seed: 0 };
 /** A stand-in for a live backend in tests: replies are computed from the request. */
 export type Respond = (wire: ChatWireRequest) => GeneratorReply;
 
+export const SERVED: ServedArtefact = { status: 'unverified', reason: 'a scripted generator' };
+
 class ScriptedGenerator implements RecordableGenerator {
   readonly pin = pins.generator;
   readonly sampling: Sampling;
+  readonly served = SERVED;
   readonly #respond: Respond;
 
   constructor(respond: Respond, sampling: Sampling) {
