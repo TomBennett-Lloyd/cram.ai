@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { TopicTag } from './topic-tag';
 
 describe('TopicTag', () => {
-  it('accepts a trimmed tag, one character or several words long', () => {
-    for (const tag of ['a', 'cells', 'cell biology', 'cell\nbiology'])
+  it('accepts a trimmed tag, one character, two, or several words long', () => {
+    for (const tag of ['a', 'pH', 'cells', 'cell biology', 'cell\nbiology'])
       expect(TopicTag.safeParse(tag).success, tag).toBe(true);
   });
 

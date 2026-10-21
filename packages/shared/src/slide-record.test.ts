@@ -57,6 +57,7 @@ describe('CourseId', () => {
     for (const id of [
       'a',
       '7',
+      'ab',
       'bio-101',
       'a-b-c',
       'x'.repeat(MAX),

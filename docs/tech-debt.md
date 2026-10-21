@@ -152,3 +152,21 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0006-image-only-slides.md` § Decision (k), the "Code carriers citing by number" bullet; `packages/shared/src/quotable-text.ts` `slideFields`
 - What: the bullet lists `packages/grounding/src/slide-text.ts` as the carrier that makes `imageCaptions` part of the text a quote resolves against. Since #202 that file builds `slideText` from `slideFields`, which is now the carrier, and the ADR's recorded sweep no longer finds `packages/grounding/src/slide-text.ts` or `apps/web/src/ask/quote-marks.ts` while `packages/shared/src/quotable-text.ts` and its test are unclassified. The claim still holds through `slideFields`; only the site is stale. The ADR is humanAlways, so its next amendment should correct the entry.
 - Source: #202 review cycle 1
+
+## 2026-10-21 — ADR 0005 cites `citation.ts` for a minting split it no longer states
+
+- Where: `docs/adr/0005-evaluation-as-gate.md` § Decision (c), the `expectedCitations` sentence; `packages/shared/src/citation.ts` `SourceId`
+- What: the ADR says golden questions never name a minted `SourceId` "because `packages/shared/src/citation.ts` leaves minting to ingest and the index". Since #183 that docblock names `sourceIdOf` in `packages/index/src/slide-row.ts` as the one minter, so the ADR cites a file for a claim the file no longer makes. The decision still stands (a golden question stays independent of how the index mints); only the cited reason is stale. The ADR is humanAlways, so its next amendment should correct the sentence.
+- Source: #183 review cycle 1
+
+## 2026-10-21 — a course file whose stored `course_id` fails `CourseId` throws instead of being refused
+
+- Where: `packages/index/src/open-course.ts` (the `course_id` read), `packages/index/src/rebuild-course.ts` `rebuildCourse` (`CourseId.parse` of the old file's `course` row)
+- What: both parse a course file's stored `course_id` through `CourseId` and let the `ZodError` escape. Since #183 tightened `CourseId` to the file-safe rule, an id the old schema accepted (`Bio`, `course_b`) throws where it used to reach `course-mismatch`. No production path writes such a row, since every id was already file-safe at the server, but a course file is external input, and the module that reads it should refuse a malformed row as a value (`docs/standards/error-handling.md` rule 1), not throw.
+- Source: #183 review cycle 1
+
+## 2026-10-21 — ledger sweeps with only literal arms cannot see a paraphrase
+
+- Where: the `course-id-length`, `topics-table` and `network-egress-allowlist-path` ledgers under `.claude/ledgers/`, each one's `sweep:` line
+- What: each sweep matches the owning identifier and the ledger's own path, but has no claim arm and no numeric arm, which `docs/standards/architecture.md` rule 9 asks for. A later carrier that states the value in words or as a bare number joins the claim without joining the ledger, and `check:ledgers` stays green. The #183 review ran both arms by hand for the course-id length and found no unlisted carrier, so the gap is latent.
+- Source: #183 review cycle 1
