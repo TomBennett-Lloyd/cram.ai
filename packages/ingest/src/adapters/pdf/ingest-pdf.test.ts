@@ -178,14 +178,49 @@ describe('ingestPdf', () => {
   });
 
   it('reports a password-protected PDF as unreadable', async () => {
-    const result = await ingest(await buildDeck({ pages: [{ lines: [] }], encrypted: true }));
+    const result = await ingest(await buildDeck({ pages: [{ lines: [] }], encrypted: 'password' }));
     expect(result).toMatchObject({ status: 'unreadable', reason: 'encrypted' });
   });
 
-  it('reports a deck whose page tree is broken as damaged', async () => {
+  it.each([
+    ['kid-not-a-reference', 'Page dictionary kid reference points to wrong type of object.'],
+    ['kids-not-an-array', 'Page dictionary kids object is not an array.'],
+    ['circular', 'Pages tree contains circular reference.'],
+  ] as const)('reports a page tree broken as %s as damaged', async (brokenPageTree, detail) => {
     const pages = [{ lines: [line('Kinetics', TITLE)] }, { lines: [line('Rate laws', TITLE)] }];
-    const result = await ingest(await buildDeck({ pages, brokenPageTree: true }));
-    expect(result).toMatchObject({ status: 'unreadable', reason: 'damaged' });
+    const result = await ingest(await buildDeck({ pages, brokenPageTree }));
+    expect(result).toEqual({
+      status: 'unreadable',
+      fileName: 'Lecture_04-Kinetics.pdf',
+      reason: 'damaged',
+      detail,
+    });
+  });
+
+  it.each([
+    ['algorithm-3', 'unsupported encryption algorithm'],
+    ['custom-handler', 'unknown encryption method'],
+  ] as const)(
+    'reports an encryption pdf.js cannot open (%s) as a limit of this reader, not of the deck',
+    async (encrypted, detail) => {
+      const result = await ingest(await buildDeck({ pages: [{ lines: [] }], encrypted }));
+      expect(result).toMatchObject({ status: 'unreadable', reason: 'reader-limit', detail });
+    },
+  );
+
+  it.each([
+    ['a Buffer', (bytes: Uint8Array): Uint8Array => Buffer.from(bytes)],
+    [
+      'a Buffer view between two other decks',
+      (bytes: Uint8Array, decoy: Uint8Array): Uint8Array =>
+        Buffer.concat([decoy, bytes, decoy]).subarray(decoy.length, decoy.length + bytes.length),
+    ],
+  ])('reads a deck handed over as %s like its plain bytes', async (_, view) => {
+    const bytes = await buildDeck({ pages: [{ lines: [line('Kinetics', TITLE)] }] });
+    const decoy = await buildDeck({
+      pages: [{ lines: [line('Decoy', TITLE)] }, { lines: [line('Decoy', TITLE)] }],
+    });
+    expect(await ingest(view(bytes, decoy))).toEqual(await ingest(bytes));
   });
 
   it('reads an annotation with no subtype as no speaker note', async () => {
