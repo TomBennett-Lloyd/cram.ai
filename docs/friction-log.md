@@ -188,3 +188,13 @@ Entry format:
 
 - Phase: process
 - Observed: two REBASE bounces from the merge owner stated the expected `docs/tech-debt.md` heading count one too high, because the count came from `gh pr diff <n> | grep '^[-+]## '` over the whole diff, which also returns `docs/review-feedback.md`'s entry heading; both lanes corrected the figure from their own `comm` run. The per-file form (`git diff <base> <branch> -- docs/tech-debt.md`) is the one the bounce needs. Two instances in one morning, both harmless because the lane's arithmetic is the check, not the bounce's.
+
+## 2026-10-21 — PR #278
+
+- Phase: implementation
+- Observed: the #258 lane's first ESLint probe placed every colour at a string's start or end, so four anchoring mutants survived until the reviewer tried them; the grammar the lane listed for its mutation pass was property and value forms, with no axis for where the colour sits in the string. One ticket so far on a grammar list that omits a position axis.
+
+## 2026-10-21 — PR #277
+
+- Phase: review
+- Observed: #254 merged mid-lane and changed stored output, which falsified the #257 plan's "no bump owed"; the reviewer found it by reading `origin/main`, a base the lane may not rebase onto unprompted, so the fact reached the lane at review rather than at the plan, and the rebase round then ran twice because #275 merged during the first. The lane also flagged one message-only `git commit --amend --no-verify`, used to reword a replayed commit whose body line began `#254` and so tripped the `^[#;]` body check; the tree had already passed verify and the final verify and CI ran on it. One ticket so far on each.
