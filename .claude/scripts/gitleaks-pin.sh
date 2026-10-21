@@ -5,9 +5,7 @@
 #
 # Both secret scans read it and neither carries a literal (#173): the pre-commit
 # hook, through require-gitleaks-pin.sh, refuses any other installed version, and
-# CI's `gitleaks` job hands it to gitleaks-action as GITLEAKS_VERSION. Unpinned,
-# the two ran different releases, and a `.gitleaks.toml` the hook accepted would
-# have failed CI.
+# CI's `gitleaks` job hands it to gitleaks-action as GITLEAKS_VERSION.
 #
 # Bumping: change the number below, and nothing else. Anyone whose installed gitleaks
 # differs is refused at commit time until they install it (`brew install

@@ -14,7 +14,7 @@
 #                                     the staged files.
 #   .github/workflows/ci.yml          the unskippable backstop: whole-repo lint,
 #                                     typecheck, test, format:check plus a
-#                                     full-history gitleaks scan. Authoritative.
+#                                     gitleaks scan. Authoritative.
 #
 # Deliberately NOT here: typecheck and tests. Whole-project tsc/vitest on every
 # commit is exactly how `--no-verify` becomes a habit; CI owns those gates.

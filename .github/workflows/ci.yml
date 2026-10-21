@@ -198,7 +198,7 @@ jobs:
       - name: Read the gitleaks pin
         run: |
           . .claude/scripts/gitleaks-pin.sh
-          echo "GITLEAKS_VERSION=$GITLEAKS_PIN_VERSION" >> "$GITHUB_ENV"
+          echo "GITLEAKS_VERSION=${GITLEAKS_PIN_VERSION:?}" >> "$GITHUB_ENV"
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
