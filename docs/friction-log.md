@@ -108,3 +108,8 @@ Entry format:
 
 - Phase: process
 - Observed: `merge-pr.sh`'s first run on PR #313 did `gh pr update-branch`, polled the new head green, and then refused at the merge step because the PR was `BEHIND` again: the #310 retro PR had merged during the poll. The merge owner's retro chains and lane-PR merges each serialise behind the merge they queue on, but not behind each other, so two independent chains can land one PR inside another's checks poll and cost it a full second CI round. First instance recorded; PR #235's entry (poll budget) was a different cause.
+
+## 2026-10-21 — PR #315
+
+- Phase: review
+- Observed: the #290 lane's config comment restated the issue's mechanism backwards ("descriptor, not a declaration") at five sites, a claim about parser behaviour written from memory that one stylelint run would have settled; review caught it and the fix touched all five. Counts toward #294 (a claim written before the run that would establish it), as its fifth instance.
