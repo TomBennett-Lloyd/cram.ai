@@ -115,7 +115,7 @@ expect_rc 1 "$rc"
 expect_out "2 supply-chain opt-out(s)"
 expect_out "minimumReleaseAgeExclude  - '@aws-sdk/core@3.977.4'"
 expect_out "minimumReleaseAgeExclude  - '@aws-sdk/util-user-agent-browser@3.972.40'"
-expect_out "revert it"
+expect_out "delete it from"
 end
 
 # ==========================================================================================
