@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  answer,
-  cite,
+  draft,
   fakeGateway,
   generatorRecording,
   generatorReplies,
+  line,
   slide,
 } from './fake-gateway-fixture';
 import { generateUnits } from './generate-units';
@@ -15,14 +15,12 @@ const slides = [slide('l1/1', 'Worker bees are male.')];
 const request = generationRequest(task, slides);
 
 describe('generateUnits', () => {
-  it('returns the model’s units with the task’s kind', async () => {
-    const units = [
-      { text: 'Workers are male.', citations: [cite('l1/1', 'Worker bees are male.')] },
-    ];
+  it('returns the model’s units, citing lines by number, with the task’s kind', async () => {
+    const units = [{ text: 'Workers are male.', citations: [line('l1/1', 1)] }];
     const gateway = fakeGateway([generatorReplies(request, { units })]);
     await expect(generateUnits(task, slides, gateway.generator)).resolves.toEqual({
       status: 'generated',
-      units: [answer('Workers are male.', [cite('l1/1', 'Worker bees are male.')])],
+      units: [draft('Workers are male.', [line('l1/1', 1)])],
     });
   });
 
@@ -40,6 +38,15 @@ describe('generateUnits', () => {
     await expect(generateUnits(task, slides, gateway.generator)).resolves.toEqual({
       status: 'model-failed',
       failure: reply,
+    });
+  });
+
+  it('refuses a line that is not a whole number as invalid output', async () => {
+    const units = [{ text: 'Workers are male.', citations: [{ sourceId: 'l1/1', line: 1.5 }] }];
+    const gateway = fakeGateway([generatorReplies(request, { units })]);
+    await expect(generateUnits(task, slides, gateway.generator)).resolves.toMatchObject({
+      status: 'model-failed',
+      failure: { status: 'invalid-output' },
     });
   });
 

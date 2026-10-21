@@ -15,6 +15,7 @@ describe('withheldMessage', () => {
     ];
     expect(new Set(sentences).size).toBe(sentences.length);
     expect(sentences[0]).toMatch(/^It cites no slide, or one of its citations/);
+    expect(sentences[0]).toMatch(/a line that slide doesn’t have\.$/);
     expect(sentences[3]).toContain('even after one rewrite');
   });
 });

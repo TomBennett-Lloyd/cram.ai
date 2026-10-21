@@ -1,7 +1,15 @@
-import { SLIDE_FIELD_SEPARATOR, type SlideRecord, slideFields } from '@cram/shared';
+import { chunkLines, SLIDE_FIELD_SEPARATOR, type SlideRecord, slideFields } from '@cram/shared';
 
-/** What the generator is shown and what a quote must come from: one function, so the two cannot differ. */
+/** What a quote must be a substring of (`docs/standards/grounding.md` rule 3). */
 export const slideText = (record: SlideRecord): string =>
   slideFields(record)
     .map(({ text }) => text)
     .join(SLIDE_FIELD_SEPARATOR);
+
+const nonBlank = (text: string): boolean => /\S/.test(text);
+
+/** The lines a citation names by number, counted from 1: the generator is shown these and a quote is looked up in them (#367). */
+export const slideLines = (record: SlideRecord): readonly string[] =>
+  [...record.title.split('\n'), ...chunkLines(record).map(({ text }) => text)]
+    .filter(nonBlank)
+    .map((line) => line.trim());

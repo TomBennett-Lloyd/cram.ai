@@ -179,7 +179,7 @@ const PARTIAL_MESSAGE: Readonly<Record<PartialPolicy, string>> = {
 export const withheldMessage = (withheld: WithheldUnit): string => {
   switch (withheld.reason) {
     case 'dangling-citation':
-      return 'It cites no slide, or one of its citations names a slide not retrieved for this question or quotes words that slide doesn’t contain.';
+      return 'It cites no slide, or one of its citations names a slide not retrieved for this question or a line that slide doesn’t have.';
     case 'unsupported':
       return 'The cited slides don’t support it.';
     case 'partial':
