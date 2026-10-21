@@ -2,12 +2,17 @@ import type { Database } from 'better-sqlite3';
 import {
   type CourseId,
   type Deck,
+  type DiscardedTable,
   type LectureId,
+  type RebuildReportRevision,
   type RetrievedSlide,
   type SlideImage,
   type SlideNo,
   type SlideRecord,
+  SlideKind,
   type SourceId,
+  StoredLecture,
+  type TopicTag,
 } from '@cram/shared';
 import { z } from 'zod';
 import {
@@ -22,6 +27,7 @@ import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
 import { listFilters } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
+import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
 import {
   ftsValues,
@@ -75,6 +81,18 @@ export type RemoveLectureResult =
 
 const RowId = z.number().int();
 const RowIds = z.array(RowId);
+
+/** A deck and one of its slides; a deck with no slides is one row with no slide. */
+const LectureSlideRow = z.object({
+  lecture_id: z.string(),
+  lecture_title: z.string(),
+  slide_no: z.number().nullable(),
+  kind: SlideKind.nullable(),
+});
+
+const LECTURE_SLIDES = `select decks.lecture_id, decks.lecture_title, slides.slide_no, slides.kind
+  from decks left join slides on slides.lecture_id = decks.lecture_id
+  order by decks.lecture_id, slides.slide_no`;
 
 const requireDimension = (
   operation: string,
@@ -246,7 +264,7 @@ export class CourseIndex {
   }
 
   /** Replaces a slide's topic tags (`docs/plan.md` §3.2): metadata, never content. */
-  setTopics(sourceId: SourceId, tags: readonly string[]): SetTopicsResult {
+  setTopics(sourceId: SourceId, tags: readonly TopicTag[]): SetTopicsResult {
     const id = RowId.optional().parse(
       this.#db.prepare('select id from slides where source_id = ?').pluck().get(sourceId),
     );
@@ -270,7 +288,7 @@ export class CourseIndex {
   }
 
   /** Every slide tagged `tag`, by lecture then slide number. */
-  slidesTagged(tag: string, listing: SlideListing = {}): readonly SlideRecord[] {
+  slidesTagged(tag: TopicTag, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
       `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
       tag,
@@ -301,6 +319,39 @@ export class CourseIndex {
         .run(embedder.model, embedder.dimension);
     })();
     this.#embedder = embedder;
+  }
+
+  /** Every lecture with a deck, by lecture id: its title, slide count and `image-only` slides. */
+  lectures(): readonly StoredLecture[] {
+    const lectures = new Map<string, z.input<typeof StoredLecture>>();
+    for (const row of this.#db.prepare(LECTURE_SLIDES).all()) {
+      const { lecture_id, lecture_title, slide_no, kind } = LectureSlideRow.parse(row);
+      const lecture = lectures.get(lecture_id) ?? {
+        lectureId: lecture_id,
+        lectureTitle: lecture_title,
+        slideCount: 0,
+        imageOnly: [],
+      };
+      lectures.set(lecture_id, lecture);
+      if (slide_no === null) continue;
+      lecture.slideCount += 1;
+      if (kind === SlideKind.enum['image-only']) lecture.imageOnly.push(slide_no);
+    }
+    return [...lectures.values()].map((lecture) => StoredLecture.parse(lecture));
+  }
+
+  /** What a rebuild discarded that the student has not dismissed (#233). */
+  rebuildReport() {
+    return rebuildReportOf(this.#db);
+  }
+
+  /** Written by `rebuildCourse` into the file it rebuilt. */
+  recordRebuildReport(discarded: readonly DiscardedTable[]): void {
+    recordRebuildReport(this.#db, discarded);
+  }
+
+  dismissRebuildReport(revision: RebuildReportRevision) {
+    return dismissRebuildReport(this.#db, revision);
   }
 
   deck(lectureId: LectureId): Deck | undefined {

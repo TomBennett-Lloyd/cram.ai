@@ -1,15 +1,16 @@
 import { createHash } from 'node:crypto';
 import { SourceHash, type CourseId, type LectureId, type SlideRecord } from '@cram/shared';
 
-/** An uploaded deck as every format adapter receives it. */
+/** An uploaded deck as every format adapter receives it; a rebuild passes the `storedTitle` (#299). */
 export interface DeckFile {
   readonly bytes: Uint8Array;
   readonly fileName: string;
+  readonly storedTitle?: string;
   readonly courseId: CourseId;
   readonly lectureId: LectureId;
 }
 
-/** `Reason` is the adapter's own vocabulary for a deck its bytes cannot yield. */
+/** `Reason` is the adapter's own vocabulary. */
 export type IngestResult<Reason extends string> =
   | { readonly status: 'ingested'; readonly slides: readonly SlideRecord[] }
   | {

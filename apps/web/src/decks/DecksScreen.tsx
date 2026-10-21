@@ -1,0 +1,202 @@
+import type {
+  CourseId,
+  IngestStatus,
+  RebuildReportRevision,
+  StoredLecture,
+  Upload,
+} from '@cram/shared';
+import { type ChangeEvent, useRef, useState } from 'react';
+import { useApi } from '../api/api-context';
+import type { ApiClient } from '../api/api-client';
+import type { ApiFailure } from '../api/api-result';
+import { DECK_FILE_ACCEPT, deckMediaType, lectureIdOf } from '../api/deck-file';
+import {
+  discardedMessage,
+  failureMessage,
+  indexedMessage,
+  PENDING,
+  progressMessage,
+  repairFailedMessage,
+  storedUnavailableMessage,
+} from '../copy';
+import { type Dismissible, Empty, Failed, Pending } from '../shell/async-states';
+import { repairing, useIngestStatus } from './use-ingest-status';
+
+/** Where dismissing the rebuild report has got to; a refused or failed call is reported in the alert. */
+type Dismissal =
+  | { readonly status: 'idle' }
+  | { readonly status: 'pending' }
+  | { readonly status: 'dismissed'; readonly revision: RebuildReportRevision }
+  | ApiFailure;
+
+interface Refused {
+  readonly fileName: string;
+  readonly message: string;
+}
+
+/** Uploads one at a time, in the order picked, and reports each file the server refused. */
+const uploadAll = async (
+  api: ApiClient,
+  courseId: CourseId,
+  files: readonly File[],
+): Promise<Refused[]> => {
+  const refused: Refused[] = [];
+  for (const file of files) {
+    const deck = { file, lectureId: lectureIdOf(file.name), mediaType: deckMediaType(file.name) };
+    const result = await api.uploadDeck(courseId, deck);
+    if (result.status !== 'ok')
+      refused.push({ fileName: file.name, message: failureMessage(result) });
+  }
+  return refused;
+};
+
+/** A stored lecture with an `indexed` upload this session is left to that upload's row, which names its file. */
+const unlistedLectures = (
+  lectures: readonly StoredLecture[],
+  uploads: readonly Upload[],
+): readonly StoredLecture[] => {
+  const indexed = new Set(
+    uploads
+      .filter(({ progress }) => progress.state === 'indexed')
+      .map(({ lectureId }) => lectureId),
+  );
+  return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
+};
+
+/** Why the course file's lectures are missing, once no repair is still under way. */
+const storedMessages = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): readonly string[] => {
+  if (stored.state === 'read' || repairing(repair)) return [];
+  const { problem } = stored;
+  return [
+    repair.state === 'failed' ? repairFailedMessage(problem) : storedUnavailableMessage(problem),
+  ];
+};
+
+const awaitingRepair = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): boolean =>
+  stored.state === 'course-unavailable' && repairing(repair);
+
+const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> }) => {
+  const { stored, uploads } = ingest;
+  const lectures = stored.state === 'read' ? unlistedLectures(stored.lectures, uploads) : [];
+  if (lectures.length === 0 && uploads.length === 0)
+    return stored.state === 'read' ? (
+      <Empty>No decks yet. Add this course’s lecture slides as PDF or PowerPoint files.</Empty>
+    ) : null;
+  return (
+    <ul className="upload-list">
+      {lectures.map((lecture) => (
+        <li key={`lecture:${lecture.lectureId}`} className="upload" data-state="indexed">
+          <span className="upload-file">{lecture.lectureId}</span>
+          <span className="upload-progress">{indexedMessage(lecture)}</span>
+        </li>
+      ))}
+      {uploads.map((upload) => (
+        <li key={upload.uploadId} className="upload" data-state={upload.progress.state}>
+          <span className="upload-file">{upload.fileName}</span>
+          <span className="upload-progress">{progressMessage(upload.progress)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
+  const api = useApi();
+  const [revision, setRevision] = useState(0);
+  const [refused, setRefused] = useState<readonly Refused[]>([]);
+  const [dismissal, setDismissal] = useState<Dismissal>({ status: 'idle' });
+  const picker = useRef<HTMLInputElement>(null);
+  const state = useIngestStatus(api, courseId, revision);
+  const reread = (): void => {
+    setRevision((value) => value + 1);
+  };
+  /**
+   * The server's report is empty once it answers, so the notice is hidden rather than re-read: a
+   * re-read remounts the alert, which would announce the notice again. Its button goes with it, so
+   * the focus lands on the screen's next act, the picker, unless the reader has moved it since the
+   * press (`docs/standards/design.md` rule 11). The answer waits behind every queued upload. A
+   * report other than the one shown is re-read, so the student sees it before dismissing it (#299).
+   */
+  const dismiss = (shown: RebuildReportRevision): void => {
+    const pressed = document.activeElement;
+    setDismissal({ status: 'pending' });
+    void api.dismissRebuildReport(courseId, shown).then((result) => {
+      const held = document.activeElement;
+      if (result.status === 'ok' && (held === pressed || held === document.body))
+        picker.current?.focus();
+      if (result.status === 'refused' && result.refusal.status === 'report-changed') reread();
+      setDismissal(result.status === 'ok' ? { status: 'dismissed', revision: shown } : result);
+    });
+  };
+  const report =
+    state.status === 'ready' && state.ingest.stored.state === 'read'
+      ? state.ingest.stored.report
+      : undefined;
+  /** A revision names rows a later rebuild can record again, so a read showing none forgets it, in render (`docs/standards/react.md` rule 1). */
+  if (dismissal.status === 'dismissed' && report?.state === 'none')
+    setDismissal({ status: 'idle' });
+  const lost: Dismissible | undefined =
+    report?.state === 'undismissed' &&
+    !(dismissal.status === 'dismissed' && dismissal.revision === report.revision)
+      ? {
+          message: discardedMessage(report.discarded),
+          onDismiss:
+            dismissal.status === 'pending'
+              ? undefined
+              : () => {
+                  dismiss(report.revision);
+                },
+        }
+      : undefined;
+  const onChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const input = event.currentTarget;
+    const files = [...(input.files ?? [])];
+    input.value = '';
+    void uploadAll(api, courseId, files).then((next) => {
+      setRefused(next);
+      setRevision((value) => value + 1);
+    });
+  };
+  const messages = [
+    ...refused.map(({ fileName, message }) => `${fileName}: ${message}`),
+    ...(state.status === 'failed' ? [failureMessage(state.failure)] : []),
+    ...(dismissal.status === 'idle' ||
+    dismissal.status === 'pending' ||
+    dismissal.status === 'dismissed'
+      ? []
+      : [failureMessage(dismissal)]),
+    ...(state.status === 'ready' ? storedMessages(state.ingest) : []),
+  ];
+  return (
+    <main className="screen">
+      <div className="file-picker">
+        <label htmlFor="deck-files">Add decks</label>
+        <input
+          ref={picker}
+          id="deck-files"
+          type="file"
+          accept={DECK_FILE_ACCEPT}
+          multiple
+          onChange={onChange}
+        />
+      </div>
+      {(messages.length > 0 || lost !== undefined) && (
+        <Failed
+          key={revision}
+          messages={messages}
+          dismissible={lost}
+          onRetry={state.status === 'failed' ? reread : undefined}
+        />
+      )}
+      {dismissal.status === 'pending' && <Pending label={PENDING.dismissal} />}
+      {state.status === 'ready' && awaitingRepair(state.ingest) && (
+        <Pending label={PENDING.repair} />
+      )}
+      {state.status === 'pending' ? (
+        <Pending label={PENDING.decks} />
+      ) : (
+        state.status === 'ready' && <DeckList ingest={state.ingest} />
+      )}
+    </main>
+  );
+};

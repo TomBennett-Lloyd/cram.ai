@@ -25,6 +25,13 @@ the section before you dispatch.
    sequenced, here, at dispatch. `conserve` budget mode: one lane.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
    mode and the overlap note — nothing else; it reads the issue and the files.
+   The overlap note asserts only what a command printed: each overlapping lane's issue or
+   PR with its files pasted from `gh pr diff <m> --name-only`, or from the lane's plan
+   comment before it has a PR. A rule or precedent the note leans on is cited by file and
+   section (`` `<path>` § <section> ``) or by issue or PR number, never paraphrased, because
+   the lane takes a paraphrase as fact: the #36 dispatch named the wrong precedent PR
+   (PR #86), and the #234 note credited `docs/standards/structure.md` with a rule it does
+   not state (PR #246).
    An issue that is a batch of a trim campaign under `docs/standards/prose.md` § Trim batches
    (cumulo#545's batches) goes out with `model: 'sonnet'` in the Agent call, cumulo#607's pilot; the
    `reviewer` it dispatches keeps its frontmatter model.
@@ -88,9 +95,28 @@ the section before you dispatch.
    this prose owns stays yours.
 5. **Rebase hand-off** — your next touchpoint, and only when `main` moved. After every
    merge, `gh pr view --json mergeStateStatus` on each open lane PR. `BEHIND` → run
-   `gh pr update-branch` yourself; it is mechanical. `DIRTY` → `REBASE — <what merged since
-this branch was cut, which files, what the union rule expects>` to the warm agent, which
-   rebases per its rule 8 and re-reports. The second merger rebases, always; merges serialise.
+   `gh pr update-branch` yourself; it is mechanical. `DIRTY` → a `REBASE —` bounce to the
+   warm agent, which rebases per its rule 8 and re-reports. The second merger rebases,
+   always; merges serialise. The bounce carries pasted command output and citations, and no
+   figure of its own. After `git fetch origin`, set `b=origin/<branch>` and
+   `base=$(git merge-base origin/main "$b")`, then paste:
+   (a) `git log --oneline "$base"..origin/main`, what merged since the branch was cut;
+   (b) `git diff "$base" origin/main -- <file>` for each file both sides touched, that set
+   printed by
+   `comm -12 <(git diff --name-only "$base" origin/main | sort) <(git diff --name-only "$base" "$b" | sort)`;
+   (c) for each append-only log in that set (`.claude/scripts/merge-pr.sh`'s
+   `APPEND_ONLY_LOGS`), the heading lines each side adds or deletes, read from that file
+   alone: `git diff "$base" origin/main -- <log> | command grep -E '^[-+]## '`, then the same
+   with `"$b"`. Never read them from `gh pr diff <n>`, whose whole-diff grep also returns
+   every other file's `## ` headings: `docs/review-feedback.md`'s entry heading put the
+   expected `docs/tech-debt.md` count one too high in the #165 and #179 bounces (PRs #266
+   and #269). The union rule is
+   cited as `.claude/skills/review-loop/SKILL.md` step 5, not restated; the lane's own
+   arithmetic there is the check, and (c) is its input. A PR that opened `DIRTY` on those
+   logs alone is the lane's to clear before its report (`.claude/agents/ticket-agent.md`
+   rule 7, #279), so a report arriving with one is a step 4 `FIX —`; a `DIRTY` that
+   arrives after the report is this step's, because the lane pushes nothing unprompted
+   after `DONE`.
    A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase and
    pushes nothing more, which makes the worktree yours: finish the rebase there — git only,
    under every rule `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify,
@@ -167,8 +193,9 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    moves only when the merge owner pulls (#95). CI green AND curated history are both
    required; either failing blocks the merge.
    `merge-pr.sh` (ticket-agent lane, step 4) runs this chain for a batch too, and knows
-   the two differences: it checks the curated history itself, from the PR's commit list
-   on GitHub, and refuses without it, and
+   the three differences: it checks the curated history itself, from the PR's commit list
+   on GitHub, and refuses without it; it refuses a `--rebase` PR that classifies HUMAN,
+   naming routeRule, ahead of that check, and leaves naming the member to your `FIX` bounce; and
    it never runs `gh pr update-branch` on a `--rebase` PR — it reports the bounce below
    instead of taking it, since only the branch's owner can curate and force-push.
    A batch that is BEHIND or conflicted gets a "curate onto latest main" bounce instead of

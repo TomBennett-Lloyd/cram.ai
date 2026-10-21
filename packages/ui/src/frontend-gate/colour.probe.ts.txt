@@ -1,0 +1,85 @@
+/*
+ * Probe for eslint.config.mjs's frontend gate, linted by frontend-gate.test.ts
+ * as a .ts file. A line whose trailing comment carries the refused-by marker
+ * must draw the rules it lists; every other line must not draw the gate's rule.
+ * The `.txt` suffix keeps it out of `lint:js`.
+ */
+declare const n: number;
+
+export const literals = [
+  '#abc', // refused-by: no-restricted-syntax
+  '#ABCD', // refused-by: no-restricted-syntax
+  '#123456', // refused-by: no-restricted-syntax
+  '#12345678', // refused-by: no-restricted-syntax
+  '#1a2', // refused-by: no-restricted-syntax
+  '#1a2b3c', // refused-by: no-restricted-syntax
+  '#1a2b3c4d', // refused-by: no-restricted-syntax
+  'url(#ab)',
+  'url(#abcdef123)',
+  'url(#decal)',
+  'url(#fade-mask)',
+  'url(#fade_mask)',
+  'url(#abcde)',
+  'url(#abcdef1)',
+  'rgb(0 0 0)', // refused-by: no-restricted-syntax
+  'rgba(0 0 0 / 50%)', // refused-by: no-restricted-syntax
+  'hsl(0 0% 0%)', // refused-by: no-restricted-syntax
+  'hsla(0 0% 0% / 50%)', // refused-by: no-restricted-syntax
+  'oklch(0 0 0)', // refused-by: no-restricted-syntax
+  'lab(0 0 0)', // refused-by: no-restricted-syntax
+  'lch(0 0 0)', // refused-by: no-restricted-syntax
+  'RGB(0 0 0)', // refused-by: no-restricted-syntax
+  'hwb(0 0% 0%)', // refused-by: no-restricted-syntax
+  'oklab(0.5 0 0)', // refused-by: no-restricted-syntax
+  'color(srgb 1 0 0)', // refused-by: no-restricted-syntax
+  'alpha(from var(--color-ink) / 50%)', // refused-by: no-restricted-syntax
+  'color-mix(in srgb, red, blue)', // refused-by: no-restricted-syntax
+  'contrast-color(var(--color-ink))', // refused-by: no-restricted-syntax
+  'device-cmyk(0 0 0 1)', // refused-by: no-restricted-syntax
+  'light-dark(var(--color-ink), var(--color-surface))', // refused-by: no-restricted-syntax
+  'Matlab(R)',
+  '--brand-rgb(0)',
+  '0 0 1px #abc, transparent', // refused-by: no-restricted-syntax
+  '0 0 1px rgb(0 0 0), transparent', // refused-by: no-restricted-syntax
+  'var(--color-ink)',
+  'label',
+];
+
+export const templates = [
+  `${n} #abc`, // refused-by: no-restricted-syntax
+  `${n} #ABCD`, // refused-by: no-restricted-syntax
+  `${n} #123456`, // refused-by: no-restricted-syntax
+  `${n} #12345678`, // refused-by: no-restricted-syntax
+  `${n} #1a2`, // refused-by: no-restricted-syntax
+  `${n} #1a2b3c`, // refused-by: no-restricted-syntax
+  `${n} #1a2b3c4d`, // refused-by: no-restricted-syntax
+  `${n} url(#ab)`,
+  `${n} url(#abcdef123)`,
+  `${n} url(#decal)`,
+  `${n} url(#fade-mask)`,
+  `${n} url(#fade_mask)`,
+  `${n} url(#abcde)`,
+  `${n} url(#abcdef1)`,
+  `${n} rgb(0 0 0)`, // refused-by: no-restricted-syntax
+  `${n} rgba(0 0 0 / 50%)`, // refused-by: no-restricted-syntax
+  `${n} hsl(0 0% 0%)`, // refused-by: no-restricted-syntax
+  `${n} hsla(0 0% 0% / 50%)`, // refused-by: no-restricted-syntax
+  `${n} oklch(0 0 0)`, // refused-by: no-restricted-syntax
+  `${n} lab(0 0 0)`, // refused-by: no-restricted-syntax
+  `${n} lch(0 0 0)`, // refused-by: no-restricted-syntax
+  `${n} RGB(0 0 0)`, // refused-by: no-restricted-syntax
+  `${n} hwb(0 0% 0%)`, // refused-by: no-restricted-syntax
+  `${n} oklab(0.5 0 0)`, // refused-by: no-restricted-syntax
+  `${n} color(srgb 1 0 0)`, // refused-by: no-restricted-syntax
+  `${n} alpha(from var(--color-ink) / 50%)`, // refused-by: no-restricted-syntax
+  `${n} color-mix(in srgb, red, blue)`, // refused-by: no-restricted-syntax
+  `${n} contrast-color(var(--color-ink))`, // refused-by: no-restricted-syntax
+  `${n} device-cmyk(0 0 0 1)`, // refused-by: no-restricted-syntax
+  `${n} light-dark(var(--color-ink), var(--color-surface))`, // refused-by: no-restricted-syntax
+  `${n} Matlab(R)`,
+  `${n} --brand-rgb(0)`,
+  `${n} #abc, transparent`, // refused-by: no-restricted-syntax
+  `${n} rgb(0 0 0), transparent`, // refused-by: no-restricted-syntax
+  `${n} var(--color-ink)`,
+  `${n} label`,
+];

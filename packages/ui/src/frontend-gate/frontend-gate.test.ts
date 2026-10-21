@@ -1,0 +1,190 @@
+/**
+ * The frontend gate's committed cases: every guard in stylelint.config.mjs, and
+ * in eslint.config.mjs's frontend-gate block, has a line in a probe beside this
+ * file (#258). The probes are `.txt` so `lint:css` and `lint:js` never read
+ * them; each is linted here under a virtual path, so `overrides` and `files`
+ * scoping run exactly as they would for a real file at that path.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { ESLint } from 'eslint';
+import stylelint from 'stylelint';
+import { describe, expect, it } from 'vitest';
+
+const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+// Type-aware linting makes the first ESLint run slow; no case here is near it.
+const SLOW = { timeout: 60_000 };
+
+const readProbe = (name: string): string => readFileSync(new URL(name, import.meta.url), 'utf8');
+
+const sorted = (keys: Iterable<string>): string[] =>
+  [...new Set(keys)].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+
+/** `<line>:<rule>` for each rule a probe line lists after its refused-by marker. */
+const expectedRefusals = (text: string): string[] => {
+  const keys = text.split('\n').flatMap((line, index) => {
+    const rules = /refused-by:([^*]+)/.exec(line)?.[1];
+    return rules === undefined
+      ? []
+      : rules
+          .trim()
+          .split(/\s+/)
+          .map((rule) => `${String(index + 1)}:${rule}`);
+  });
+  // A probe that lost its markers would otherwise pass by refusing nothing.
+  expect(keys).not.toEqual([]);
+  return sorted(keys);
+};
+
+const stylelintRefusals = async (text: string, virtualPath: string): Promise<string[]> => {
+  const { results } = await stylelint.lint({
+    code: text,
+    codeFilename: join(ROOT, virtualPath),
+    configFile: join(ROOT, 'stylelint.config.mjs'),
+  });
+  const [result] = results;
+  if (result === undefined) throw new Error(`stylelint returned no result for ${virtualPath}`);
+  expect(result.invalidOptionWarnings).toEqual([]);
+  expect(result.parseErrors).toEqual([]);
+  return sorted(result.warnings.map((warning) => `${String(warning.line)}:${warning.rule}`));
+};
+
+const ESLINT_PATHS = {
+  appTs: 'apps/web/src/__gate_probe__.ts',
+  appTsx: 'apps/web/src/__gate_probe__.tsx',
+  uiTs: 'packages/ui/src/__gate_probe__.ts',
+  uiTsx: 'packages/ui/src/__gate_probe__.tsx',
+  tokensTs: 'packages/ui/src/tokens/__gate_probe__.ts',
+  tokensTsx: 'packages/ui/src/tokens/__gate_probe__.tsx',
+  tokensNestedTs: 'packages/ui/src/tokens/fonts/__gate_probe__.ts',
+  appTokensTs: 'apps/web/src/tokens/__gate_probe__.ts',
+  sharedTs: 'packages/shared/src/__gate_probe__.ts',
+} as const;
+
+// The one override: the type-aware presets need a project for a file that is
+// not on disk, and a cap on how many such files typescript-eslint accepts
+// that this table outgrew. The gate's rules are syntax-only, so none of their
+// settings moves.
+const DEFAULT_PROJECT = Object.values(ESLINT_PATHS);
+const eslint = new ESLint({
+  cwd: ROOT,
+  overrideConfig: {
+    languageOptions: {
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: DEFAULT_PROJECT,
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: DEFAULT_PROJECT.length,
+        },
+      },
+    },
+  },
+});
+const GATE_RULES = new Set(['no-restricted-syntax', 'no-restricted-properties']);
+
+const eslintRefusals = async (text: string, virtualPath: string): Promise<string[]> => {
+  const [result] = await eslint.lintText(text, { filePath: join(ROOT, virtualPath) });
+  if (result === undefined) throw new Error(`eslint returned no result for ${virtualPath}`);
+  // A parse error or an ignored-file notice carries no rule id.
+  expect(result.messages.filter((message) => message.ruleId === null)).toEqual([]);
+  return sorted(
+    result.messages.flatMap(({ line, ruleId }) =>
+      ruleId !== null && GATE_RULES.has(ruleId) ? [`${String(line)}:${ruleId}`] : [],
+    ),
+  );
+};
+
+describe('stylelint.config.mjs', () => {
+  const values = readProbe('values.probe.css.txt');
+
+  // A tokens/ directory outside packages/ui is not the exempt one.
+  it.each([
+    'apps/web/src/__gate_probe__.css',
+    'apps/web/src/tokens/__gate_probe__.css',
+    'packages/ui/src/__gate_probe__.css',
+  ])('refuses exactly the raw values the values probe marks, at %s', async (virtualPath) => {
+    expect(await stylelintRefusals(values, virtualPath)).toEqual(expectedRefusals(values));
+  });
+
+  // The probes compare sets of `line:rule`, so a rule reporting one fault twice
+  // passes them; this counts instead.
+  it('reports a raw custom property once', async () => {
+    const { results } = await stylelint.lint({
+      code: '.p { --probe-raw: 4px; }',
+      codeFilename: join(ROOT, 'apps/web/src/__gate_probe__.css'),
+      configFile: join(ROOT, 'stylelint.config.mjs'),
+    });
+    expect(results[0]?.warnings.map((warning) => warning.rule)).toEqual([
+      'cram/var-references-only',
+    ]);
+  });
+
+  it('exempts tokens/ from the raw-value rules and not from the :focus ban', async () => {
+    const tokens = readProbe('tokens-exemption.probe.css.txt');
+    expect(await stylelintRefusals(tokens, 'packages/ui/src/tokens/__gate_probe__.css')).toEqual(
+      expectedRefusals(tokens),
+    );
+  });
+
+  it('reports every suppression shape the config’s table names', async () => {
+    const suppressions = readProbe('suppressions.probe.css.txt');
+    expect(await stylelintRefusals(suppressions, 'apps/web/src/__gate_probe__.css')).toEqual(
+      expectedRefusals(suppressions),
+    );
+  });
+});
+
+describe('eslint.config.mjs frontend gate', () => {
+  const colour = readProbe('colour.probe.ts.txt');
+  const jsx = readProbe('jsx.probe.tsx.txt');
+  const registration = readProbe('register-property.probe.ts.txt');
+
+  it.each([ESLINT_PATHS.appTs, ESLINT_PATHS.uiTs])(
+    'refuses exactly the colour literals the probe marks, at %s',
+    SLOW,
+    async (virtualPath) => {
+      expect(await eslintRefusals(colour, virtualPath)).toEqual(expectedRefusals(colour));
+    },
+  );
+
+  it.each([ESLINT_PATHS.appTsx, ESLINT_PATHS.uiTsx])(
+    'refuses exactly the JSX colours and inline styles the probe marks, at %s',
+    SLOW,
+    async (virtualPath) => {
+      expect(await eslintRefusals(jsx, virtualPath)).toEqual(expectedRefusals(jsx));
+    },
+  );
+
+  // Only the tokens source itself is exempt: not a directory under it, and not
+  // a tokens/ directory elsewhere.
+  it.each([
+    ESLINT_PATHS.appTs,
+    ESLINT_PATHS.appTsx,
+    ESLINT_PATHS.uiTs,
+    ESLINT_PATHS.uiTsx,
+    ESLINT_PATHS.tokensNestedTs,
+    ESLINT_PATHS.appTokensTs,
+  ])('refuses exactly the registrations the probe marks, at %s', SLOW, async (virtualPath) => {
+    expect(await eslintRefusals(registration, virtualPath)).toEqual(expectedRefusals(registration));
+  });
+
+  it.each([ESLINT_PATHS.tokensTs, ESLINT_PATHS.tokensTsx])(
+    'exempts %s from the registration ban and not from the colour ban',
+    SLOW,
+    async (virtualPath) => {
+      expectedRefusals(registration);
+      expect(await eslintRefusals(registration, virtualPath)).toEqual([]);
+      expect(await eslintRefusals(colour, virtualPath)).toEqual(expectedRefusals(colour));
+    },
+  );
+
+  it.each([colour, registration])(
+    'does not reach a package outside apps/ and packages/ui (probe %#)',
+    SLOW,
+    async (probe) => {
+      expectedRefusals(probe);
+      expect(await eslintRefusals(probe, ESLINT_PATHS.sharedTs)).toEqual([]);
+    },
+  );
+});

@@ -1,4 +1,4 @@
-import type { LectureId, SlideNo } from '@cram/shared';
+import { type LectureId, quoteSpan, type SlideNo } from '@cram/shared';
 import { slideText, type Deck } from './deck';
 import { firstForbiddenEntry, type GoldenQuestion } from './golden-question';
 import type { HandLabel } from './hand-label';
@@ -36,9 +36,6 @@ export type AuditProblem =
 
 const slideKey = (lectureId: LectureId, slideNo: SlideNo): string =>
   `${lectureId}#${String(slideNo)}`;
-
-// Whitespace-normalised and nothing else, as resolution compares (docs/standards/grounding.md rule 3).
-const collapseWhitespace = (text: string): string => text.replace(/\s+/g, ' ').trim();
 
 const deckProblems = (deck: Deck): AuditProblem[] => {
   const seen = new Set<LectureId>();
@@ -97,12 +94,10 @@ const questionProblems = (deck: Deck, questions: readonly GoldenQuestion[]): Aud
 };
 
 const labelProblems = (deck: Deck, labels: readonly HandLabel[]): AuditProblem[] => {
-  const texts = deck.flatMap((lecture) =>
-    lecture.slides.map((slide) => collapseWhitespace(slideText(slide))),
-  );
+  const texts = deck.flatMap((lecture) => lecture.slides.map(slideText));
   return labels.flatMap((label) =>
     label.quotes
-      .filter((quote) => !texts.some((text) => text.includes(collapseWhitespace(quote))))
+      .filter((quote) => !texts.some((text) => quoteSpan(text, quote) !== undefined))
       .map((quote): AuditProblem => ({ kind: 'unquotable', text: label.text, quote })),
   );
 };

@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "dev": "tsx src/dev.ts",
     "typecheck": "tsc -p .",
     "test": "vitest run"
   },
@@ -21,6 +22,8 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "pdf-lib": "1.17.1",
+    "tsx": "^4.23.15",
+    "vite": "^8.3.4",
     "vitest": "^5.0.4"
   }
 }

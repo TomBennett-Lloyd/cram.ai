@@ -1,0 +1,94 @@
+/*
+ * cram.ai design tokens: cumulo's direction B "Meridian" set (cumulo#15), ported
+ * by owner decision on #16 (2026-10-20) with the values unchanged. cumulo's chart,
+ * map-marker and veil tokens were not ported, because no cram.ai surface draws
+ * one, and their contrast records stay in cumulo.
+ *
+ * The frontend gate's exemptions for this directory are the tokens overrides
+ * in stylelint.config.mjs and eslint.config.mjs. Everything else references
+ * these properties by name, and `tokens.test.ts` pins `tokens.ts` to this file.
+ *
+ * Inter v4 (SIL OFL 1.1, `fonts/OFL.txt`) is self-hosted so that glyph widths
+ * belong to the artefact rather than to the reader's machine (cumulo#463). The
+ * `url()` is relative so that Vite hashes and rewrites it.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('./fonts/inter-latin-variable.woff2') format('woff2');
+}
+
+:root {
+  --color-bg: #eef2f6;
+  --color-surface: #fbfcfd;
+  --color-text: #0f1419;
+  --color-text-muted: #58626d;
+  --color-border: #dbe2e9;
+  --color-border-strong: #7a8591;
+  --color-accent: #1d63bd;
+  --color-accent-contrast: #ffffff;
+  /* The hue is the base ink's, taken by reference so a re-tint carries it. */
+  --color-shadow: color-mix(in srgb, var(--color-text) 18%, transparent);
+  --color-focus-ring: #1d63bd;
+  /* Status steps ship with a label, so colour never carries a state alone. */
+  --color-danger: #d03b3b;
+  --color-warning: #fab219;
+  --color-success: #0ca30c;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-full: 9999px;
+
+  /* Line weights are their own scale so that retuning spacing never re-weights a border (#209). */
+  --line-sm: 0.0625rem;
+  --line-md: 0.125rem;
+  --line-lg: 0.25rem;
+
+  --measure-sm: 16rem;
+  --measure-md: 40rem;
+  --measure-lg: 48rem;
+}
+
+/* Every --color-* token is re-declared here (tokens.test.ts); the rest are mode-invariant. */
+[data-theme='dark'] {
+  --color-bg: #0d0f10;
+  --color-surface: #16181a;
+  --color-text: #eef2f6;
+  --color-text-muted: #9aa5b1;
+  --color-border: #2a2f34;
+  --color-border-strong: #68727c;
+  --color-accent: #3987e5;
+  --color-accent-contrast: #0d0f10;
+  /* A near-black surface leaves a share of light ink no range; black is its own decision. */
+  --color-shadow: rgba(0, 0, 0, 0.55);
+  --color-focus-ring: #3987e5;
+  --color-danger: #d03b3b;
+  --color-warning: #fab219;
+  --color-success: #0ca30c;
+}

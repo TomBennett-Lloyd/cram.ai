@@ -1,15 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   AskRequest,
-  type CourseId,
+  CourseId,
+  type CourseList,
   DeckMediaType,
   type IngestStatus,
   LectureId,
   NonBlankText,
+  RebuildReportRevision,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
-import { courseExists, RouteCourseId } from './course-file';
+import { courseExists, storedCourses, storedLectures } from './course-file';
 import { readBody, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 
@@ -36,7 +38,7 @@ const mediaTypeOf = (request: IncomingMessage): string =>
   (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
 
 const courseIdOf = ({ response, courseSegment }: RouteRequest): CourseId | undefined => {
-  const parsed = RouteCourseId.safeParse(courseSegment);
+  const parsed = CourseId.safeParse(courseSegment);
   if (parsed.success) return parsed.data;
   badRequest(response, `course id: ${z.prettifyError(parsed.error)}`);
   return undefined;
@@ -76,6 +78,40 @@ export const uploadDeck = async (route: RouteRequest, context: HandlerContext): 
   sendJson(response, 202, upload);
 };
 
+export const listCourses = (response: ServerResponse, context: HandlerContext): void => {
+  const ids = new Set([...storedCourses(context.files), ...context.queue.courseIds()]);
+  const list: CourseList = { courses: [...ids].sort() };
+  sendJson(response, 200, list);
+};
+
+/** The report the student was shown, so a later one is not dismissed unseen (#299). */
+const DismissalParams = z.object({ revision: RebuildReportRevision });
+
+export const dismissRebuildReport = async (
+  route: RouteRequest,
+  context: HandlerContext,
+): Promise<void> => {
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  const params = DismissalParams.safeParse(Object.fromEntries(route.url.searchParams));
+  if (!params.success) {
+    badRequest(route.response, z.prettifyError(params.error));
+    return;
+  }
+  const dismissal = await context.queue.dismissRebuildReport(courseId, params.data.revision);
+  switch (dismissal.status) {
+    case 'dismissed':
+      sendJson(route.response, 200, dismissal);
+      return;
+    case 'no-such-course':
+      sendRefusal(route.response, 404, dismissal);
+      return;
+    case 'course-unavailable':
+    case 'report-changed':
+      sendRefusal(route.response, 409, dismissal);
+  }
+};
+
 export const ingestStatus = (route: RouteRequest, context: HandlerContext): void => {
   const courseId = courseIdOf(route);
   if (courseId === undefined) return;
@@ -84,7 +120,12 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
     sendRefusal(route.response, 404, { status: 'no-such-course' });
     return;
   }
-  const status: IngestStatus = { courseId, uploads: [...uploads] };
+  const status: IngestStatus = {
+    courseId,
+    stored: storedLectures(context.files, courseId),
+    repair: context.queue.repairOf(courseId),
+    uploads: [...uploads],
+  };
   sendJson(route.response, 200, status);
 };
 

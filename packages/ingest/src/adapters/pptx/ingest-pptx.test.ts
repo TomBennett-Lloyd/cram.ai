@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { SlideRecord } from '@cram/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   alternateContent,
@@ -24,6 +25,25 @@ afterEach(() => {
 });
 
 describe('ingestPptx', () => {
+  it('stores prose runs as it stores an equation: NFC, math alphanumerics folded (#194)', () => {
+    const [record] = ingested({
+      slides: [
+        {
+          shapes: [
+            shape(['E\u0301nergie'], 'title'),
+            shape(['La vitesse de re\u0301action de 𝑘 est mesure\u0301e']),
+          ],
+          notes: ['De\u0301river 𝐸.'],
+        },
+      ],
+    });
+    expect(record).toMatchObject({
+      title: '\u00C9nergie',
+      body: 'La vitesse de r\u00E9action de k est mesur\u00E9e',
+      speakerNotes: 'D\u00E9river E.',
+    });
+  });
+
   it('reads each slide into a record with its title placeholder, body paragraphs and notes', () => {
     const slides = ingested({
       slides: [
@@ -256,6 +276,20 @@ describe('ingestPptx', () => {
     });
     expect(record).toMatchObject({ title: 'Rate laws', speakerNotes: '' });
   });
+
+  it.each(['le', 'be'] as const)(
+    'reads a deck whose every part is UTF-16%s as its UTF-8 twin',
+    (utf16) => {
+      const deck = { slides: [{ ...titled('Rate laws — Arrhenius'), notes: ['Say this.'] }] };
+      const text = (slides: readonly SlideRecord[]) =>
+        slides.map(({ title, body, speakerNotes }) => ({ title, body, speakerNotes }));
+      const twin = text(ingested(deck));
+      expect(twin).toEqual([
+        expect.objectContaining({ title: 'Rate laws — Arrhenius', speakerNotes: 'Say this.' }),
+      ]);
+      expect(text(ingested({ ...deck, utf16 }))).toEqual(twin);
+    },
+  );
 
   it.each(['ppt/media/image1.png', 'ppt/media/image1.xml.jpeg'])(
     'reads the text of a deck whose %s cannot be inflated',

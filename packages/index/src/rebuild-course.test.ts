@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CourseId, LectureId, SlideNo, SlideRecord, type Deck } from '@cram/shared';
+import { type CourseId, LectureId, SlideNo, SlideRecord, type Deck, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   COURSE,
@@ -15,7 +15,12 @@ import {
   type TempCourse,
 } from './course-fixture';
 import { openCourse } from './open-course';
-import { rebuildCourse, type RebuildCourseResult, type RebuildDeps } from './rebuild-course';
+import {
+  type ParsedDeck,
+  rebuildCourse,
+  type RebuildCourseResult,
+  type RebuildDeps,
+} from './rebuild-course';
 import { SCHEMA_VERSION } from './schema';
 import { sourceIdOf } from './slide-row';
 
@@ -82,9 +87,10 @@ const writeOlderFile = (
 };
 
 /** One slide per `|`-separated part of the deck's text. */
-const parse = vi.fn((stored: Deck, courseId: CourseId) =>
-  Promise.resolve(
-    new TextDecoder()
+const parse = vi.fn((stored: Deck, courseId: CourseId): Promise<ParsedDeck> =>
+  Promise.resolve({
+    status: 'parsed',
+    slides: new TextDecoder()
       .decode(stored.content)
       .split('|')
       .map((body, index) =>
@@ -102,7 +108,7 @@ const parse = vi.fn((stored: Deck, courseId: CourseId) =>
           sourceHash: 'hash',
         }),
       ),
-  ),
+  }),
 );
 
 const embed = vi.fn((slides: readonly SlideRecord[]) =>
@@ -163,14 +169,14 @@ describe('rebuildCourse', () => {
       [],
       [indexed(record, vector(1, 0, 0, 0))],
     );
-    seeded.setTopics(sourceIdOf(record), ['transport', 'water']);
+    seeded.setTopics(sourceIdOf(record), [TopicTag.parse('transport'), TopicTag.parse('water')]);
     seeded.close();
     const db = new Database(temp.spec.path);
     db.pragma(`user_version = ${String(OLDER)}`);
     db.close();
     const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
     expect(discarded).toEqual([{ table: 'topics', rows: 2 }]);
-    expect(course.slidesTagged('transport')).toEqual([]);
+    expect(course.slidesTagged(TopicTag.parse('transport'))).toEqual([]);
     expect(course.slides().map((s) => s.body)).toEqual(['osmosis']);
     course.close();
   });
@@ -193,6 +199,16 @@ describe('rebuildCourse', () => {
     expect(discarded).toEqual([{ table: 'confirmations', rows: 1 }]);
   });
 
+  it('reports nothing discarded when every row carries over', async () => {
+    writeOlderFile(temp.spec.path);
+    const db = new Database(temp.spec.path);
+    db.exec('delete from notes; delete from "exam ""marks""";');
+    db.close();
+    const { course, discarded } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
+    course.close();
+    expect(discarded).toEqual([]);
+  });
+
   it('opens a file that is not older without parsing anything', async () => {
     openOrFail(temp.spec).close();
     const result = await rebuildCourse(temp.spec, deps);
@@ -208,16 +224,16 @@ describe('rebuildCourse', () => {
     expect(parse).not.toHaveBeenCalled();
   });
 
-  it('never rebuilds a file that records another course, and leaves it untouched', async () => {
-    writeOlderFile(temp.spec.path, { courseId: 'course-b' });
-    const before = readFileSync(temp.spec.path);
-    expect(await rebuildCourse(temp.spec, deps)).toEqual({
-      status: 'course-mismatch',
-      recorded: CourseId.parse('course-b'),
-    });
-    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
-    expect(parse).not.toHaveBeenCalled();
-  });
+  it.each(['course-b', 'Bio', 'course_b'])(
+    'never rebuilds a file that records another course, %s, and leaves it untouched',
+    async (recorded) => {
+      writeOlderFile(temp.spec.path, { courseId: recorded });
+      const before = readFileSync(temp.spec.path);
+      expect(await rebuildCourse(temp.spec, deps)).toEqual({ status: 'course-mismatch', recorded });
+      expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+      expect(parse).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports an older file with no stored decks, and leaves it untouched', async () => {
     writeOlderFile(temp.spec.path, { decks: false });
@@ -248,6 +264,24 @@ describe('rebuildCourse', () => {
       message: 'rebuildCourse: lecture lecture-1 did not rebuild',
       cause: new Error('rebuildCourse: embed returned 0 vectors for 2 slides'),
     });
+    expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
+    expect(filesInDir()).toEqual(['course-a.sqlite']);
+    expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });
+  });
+
+  it('names the first stored deck that no longer reads, and leaves the older file untouched', async () => {
+    writeOlderFile(temp.spec.path);
+    const before = readFileSync(temp.spec.path);
+    const unreadable = vi.fn((stored: Deck, courseId: CourseId): Promise<ParsedDeck> =>
+      stored.lectureId === 'lecture-2'
+        ? Promise.resolve({ status: 'unreadable' })
+        : parse(stored, courseId),
+    );
+    expect(await rebuildCourse(temp.spec, { ...deps, parse: unreadable })).toEqual({
+      status: 'deck-unreadable',
+      lectureId: 'lecture-2',
+    });
+    expect(unreadable).toHaveBeenCalledTimes(2);
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);
     expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });

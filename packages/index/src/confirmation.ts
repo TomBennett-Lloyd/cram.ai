@@ -7,6 +7,7 @@ import { z } from 'zod';
  * The student's confirmations of derived text, keyed by source id so one outlives a re-upload
  * that leaves the text as it was. Every slide write drops a row whose hash is no longer its
  * slide's, so a voided confirmation stays void (`docs/adr/0006-image-only-slides.md` § Decision (g)).
+ * The table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/confirmations-table.ledger`.
  */
 export const CONFIRMATION_TABLE = `
   create table confirmations (

@@ -7,6 +7,7 @@
   },
   "scripts": {
     "verify:root": "echo \"verify root: $(git rev-parse --show-toplevel) [$(git rev-parse -q --verify HEAD >/dev/null && git rev-parse --abbrev-ref HEAD || echo 'no commits yet')]\"",
+    "dev": "pnpm --filter @cram/server dev",
     "models:pull": "bash .claude/scripts/models-pull.sh",
     "lint": "pnpm lint:js && pnpm lint:css && pnpm lint:sh && pnpm lint:workflows",
     "lint:js": "eslint --max-warnings 0 .",
@@ -42,6 +43,7 @@
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "lint-staged": "^16.4.0",
+    "postcss-value-parser": "^4.2.0",
     "prettier": "^3.9.6",
     "stylelint": "^17.14.1",
     "stylelint-declaration-strict-value": "^1.11.1",

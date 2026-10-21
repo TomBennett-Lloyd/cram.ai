@@ -55,6 +55,11 @@ const reply =
     response.writeHead(status, { 'content-type': contentType }).end(body);
   };
 
+/** Holds this thread, so the client cannot read what the server has sent until `ms` has passed. */
+const blockEventLoop = (ms: number): void => {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+};
+
 const Answer = z.object({ text: z.string() });
 const request = {
   messages: [
@@ -182,18 +187,33 @@ describe('OpenAiHttpGenerator', () => {
     });
   });
 
-  it('measures the default clock across the stream', async () => {
-    fixture.handler = (_incoming, _body, response) => {
-      response.writeHead(200, { 'content-type': 'text/event-stream' });
-      response.write(sse([chunk('{"text":')]).replace('data: [DONE]\n\n', ''));
-      setTimeout(() => response.end(completion('"a"}')), 40);
-    };
-    const result = await new OpenAiHttpGenerator(config).timedReply(chatWireRequest(request));
-    expect(result.reply).toEqual({ status: 'content', content: '{"text":"a"}' });
-    const { firstTokenMs = 0, lastTokenMs = 0 } = result.timing ?? {};
-    expect(firstTokenMs).toBeGreaterThanOrEqual(0);
-    expect(lastTokenMs - firstTokenMs).toBeGreaterThanOrEqual(20);
-  });
+  it.each([
+    ['', 0],
+    [', even when a held event loop delivers both chunks in one read (#243)', 60],
+  ])(
+    'measures the default clock from the request start to the last token%s',
+    async (_name, heldMs) => {
+      const server = { handledAt: 0, endedAt: 0 };
+      fixture.handler = (_incoming, _body, response) => {
+        server.handledAt = performance.now();
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        response.write(sse([chunk('{"text":')]).replace('data: [DONE]\n\n', ''));
+        setTimeout(() => {
+          server.endedAt = performance.now();
+          response.end(completion('"a"}'));
+        }, 40);
+        blockEventLoop(heldMs);
+      };
+      const before = performance.now();
+      const result = await new OpenAiHttpGenerator(config).timedReply(chatWireRequest(request));
+      const callMs = performance.now() - before;
+      expect(result.reply).toEqual({ status: 'content', content: '{"text":"a"}' });
+      const { firstTokenMs = -1, lastTokenMs = -1 } = result.timing ?? {};
+      expect(firstTokenMs).toBeGreaterThanOrEqual(0);
+      expect(lastTokenMs).toBeGreaterThanOrEqual(server.endedAt - server.handledAt);
+      expect(lastTokenMs).toBeLessThanOrEqual(callMs);
+    },
+  );
 
   it('has no timing for a backend failure', async () => {
     fixture.handler = reply(500, completion('{"text":"a"}'));

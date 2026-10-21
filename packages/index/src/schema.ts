@@ -2,10 +2,16 @@ import type { Database } from 'better-sqlite3';
 import { SlideKind, type CourseId } from '@cram/shared';
 import { CONFIRMATION_TABLE } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
+import { REBUILD_REPORT_TABLE } from './rebuild-report';
 import { STORED_DECK_TABLES } from './stored-deck';
 
-/** Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)). */
-export const SCHEMA_VERSION = 4;
+/**
+ * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
+ * It also versions the records `@cram/ingest` stores, so a change to them moves it too:
+ * `packages/ingest/src/stored-output-pin.test.ts` fails on one its corpus reaches until it has (#257). Carriers:
+ * `.claude/ledgers/schema-version.ledger`.
+ */
+export const SCHEMA_VERSION = 8;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -25,6 +31,7 @@ export const classifySchema = (
 
 const KINDS = SlideKind.options.map((kind) => `'${kind}'`).join(', ');
 
+/** The `topics` table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/topics-table.ledger`. */
 const TABLES = `
   create table course (
     singleton integer primary key check (singleton = 1),
@@ -74,6 +81,7 @@ export const createSchema = (
     db.exec(TABLES);
     db.exec(STORED_DECK_TABLES);
     db.exec(CONFIRMATION_TABLE);
+    db.exec(REBUILD_REPORT_TABLE);
     createVectorTable(db, embedder.dimension);
     db.prepare(
       'insert into course (singleton, course_id, embedder_model, embedder_dimension) values (1, ?, ?, ?)',

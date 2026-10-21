@@ -82,6 +82,23 @@ export class FailingEmbedder extends WordEmbedder {
   }
 }
 
+/** Answers its start-up probe, and holds every other text until `open` is called. */
+export class GatedEmbedder extends WordEmbedder {
+  #open: () => void = () => undefined;
+  readonly #gate = new Promise<void>((resolve) => {
+    this.#open = resolve;
+  });
+
+  open(): void {
+    this.#open();
+  }
+
+  override async embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+    if (request.texts[0] !== PROBE_TEXT) await this.#gate;
+    return super.embed(request);
+  }
+}
+
 const sampling = { temperature: 0, seed: 0 };
 
 export const gatewayOf = (
@@ -163,12 +180,13 @@ export const pdfDeck = async (pages: readonly (readonly string[])[]): Promise<Ui
   return doc.save();
 };
 
-/** Polls the ingest status until no upload is still queued or ingesting. */
+/** Polls the ingest status until no upload or repair is still queued, ingesting or running. */
 export const settledStatus = async (port: number, courseId: string): Promise<Received> => {
   for (let attempt = 0; attempt < 500; attempt++) {
     const status = await send(port, { method: 'GET', path: `/courses/${courseId}/ingest` });
     const text = JSON.stringify(status.json);
-    if (!text.includes('"queued"') && !text.includes('"ingesting"')) return status;
+    if (!['"queued"', '"ingesting"', '"running"'].some((state) => text.includes(state)))
+      return status;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error(`settledStatus: ${courseId} never settled`);

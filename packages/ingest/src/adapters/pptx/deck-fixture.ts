@@ -79,6 +79,8 @@ export interface FixtureDeck {
   readonly parts?: Readonly<Record<string, Uint8Array | string | null>>;
   /** A part name to embed with a compression method fflate cannot inflate (LZMA). */
   readonly uninflatable?: string;
+  /** Write every text part in this UTF-16 byte order, behind its byte-order mark; omitted, UTF-8. */
+  readonly utf16?: 'le' | 'be';
 }
 
 export const FIXTURE_FILE_NAME = 'Lecture_04-Kinetics.pptx';
@@ -125,6 +127,15 @@ const setCompression = (zip: Uint8Array, name: string, method: number): void => 
     if (signature === 0x04034b50 && named(at + 30)) view.setUint16(at + 8, method, true);
     if (signature === 0x02014b50 && named(at + 46)) view.setUint16(at + 10, method, true);
   }
+};
+
+const encode = (text: string, utf16: FixtureDeck['utf16']): Uint8Array => {
+  if (utf16 === undefined) return strToU8(text);
+  const bytes = Buffer.from(
+    `\uFEFF${text.replace('encoding="UTF-8"', 'encoding="UTF-16"')}`,
+    'utf16le',
+  );
+  return utf16 === 'le' ? bytes : bytes.swap16();
 };
 
 /** Each slide with its part number, in presentation order. */
@@ -182,7 +193,7 @@ export const buildDeck = (deck: FixtureDeck): Uint8Array => {
   }
   const zippable: Zippable = {};
   for (const [name, content] of files)
-    zippable[name] = typeof content === 'string' ? strToU8(content) : content;
+    zippable[name] = typeof content === 'string' ? encode(content, deck.utf16) : content;
   if (deck.uninflatable !== undefined)
     zippable[deck.uninflatable] = [strToU8('not really an image'), { level: 0 }];
   const zip = zipSync(zippable);

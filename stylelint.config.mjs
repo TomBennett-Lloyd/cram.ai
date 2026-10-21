@@ -15,9 +15,18 @@
  * sits in this file because it is the same kind of thing — a design rule with a
  * CSS-shaped tell that a linter can see — and see
  * `selector-pseudo-class-disallowed-list` below for what it refuses and why.
+ *
+ * Every rule here and the tokens override has a line in a probe that
+ * packages/ui/src/frontend-gate/frontend-gate.test.ts lints with this config; a
+ * new entry gets its line there (#258).
  */
+import { COLOUR_FUNCTION, HEX_COLOUR } from './packages/ui/src/frontend-gate/colour-patterns.mjs';
+
 export default {
-  plugins: ['stylelint-declaration-strict-value'],
+  plugins: [
+    'stylelint-declaration-strict-value',
+    './packages/ui/src/frontend-gate/var-references.mjs',
+  ],
 
   /*
    * Suppression comments are themselves errors — the CSS mirror of
@@ -88,7 +97,7 @@ export default {
         /*
          * Colour-bearing shorthands. Without these, `border: 1px solid red`
          * lints clean — the named colour is a sub-value of a property nothing
-         * on this list matches, and the property-agnostic rule below only
+         * on this list matches, and the property-agnostic rule below
          * catches hex literals and colour functions, not named colours. Listed
          * individually rather than as `/^border-/`, which would also demand a
          * token for `border-style: solid` — a keyword, not a design value.
@@ -106,11 +115,27 @@ export default {
         'box-shadow',
         'text-shadow',
         'background-image',
+        /*
+         * Line weights and layout measures, which have their own token
+         * scales (#209). The pattern is every side longhand, physical and
+         * logical.
+         */
+        'border-width',
+        '/^border-(top|right|bottom|left|block|inline)(-(start|end))?-width$/',
+        'outline-width',
+        'outline-offset',
+        'column-rule-width',
+        'stroke-width',
+        'text-decoration-thickness',
+        'max-inline-size',
+        'max-width',
       ],
       {
         ignoreFunctions: false,
+        // CSS keywords are ASCII case-insensitive, so `currentcolor` is the
+        // same keyword as `currentColor` (#273).
         ignoreValues: [
-          'currentColor',
+          'currentcolor',
           'inherit',
           'transparent',
           'none',
@@ -118,27 +143,30 @@ export default {
           'auto',
           'initial',
           'unset',
-        ],
+        ].map((keyword) => `/^${keyword}$/i`),
       },
     ],
 
     /*
      * The property list above is an allow-list of the properties we thought of,
      * so anything it does not name is unguarded. This rule closes the colour
-     * half of that gap and only that half: it is property-agnostic, so whatever
+     * half of that gap: it is property-agnostic, so whatever
      * the property, a hex literal or a colour-function call in its value is
-     * refused. Token references survive because `var(--color-…)` names a colour
+     * refused, by `HEX_COLOUR` and `COLOUR_FUNCTION` from
+     * packages/ui/src/frontend-gate/colour-patterns.mjs. Token references survive because `var(--color-…)` names a colour
      * rather than spelling one. Named colours (`red`) are not caught here —
      * they are ordinary keywords, indistinguishable from `solid` or `auto` by
      * pattern — which is why every colour-bearing shorthand is on the list
      * above instead.
      *
+     * A raw value inside a `var()` fallback is `cram/var-references-only`'s,
+     * below: the plugin above accepts any `var()` whole.
+     *
      * Residual, deliberately open: the *length* half of the frontend gate is
      * still allow-list-shaped, so a raw size reaches the page through any
-     * property the list omits — `width`, `height`, `max-width`, `inset`,
-     * `flex-basis`, `border-width`, `letter-spacing`, `stroke-width`,
-     * `grid-template-columns`, among others. The same open half
-     * covers the widths in *at-rule preludes* — media features and container
+     * property the list omits — `width`, `height`, `inline-size`, `inset`,
+     * `flex-basis`, `letter-spacing`, `grid-template-columns`, among others.
+     * The same open half covers the widths in *at-rule preludes* — media features and container
      * features alike — which every rule here misses for a stronger reason: a
      * query feature is not a declaration at all, so no declaration-scoped rule
      * can see one however the property list grows. Those widths are therefore
@@ -155,21 +183,32 @@ export default {
      * breakpoint its documented escalation, so a new one owes an argument for
      * why its surface cannot measure itself. There
      * is no property-agnostic mirror for lengths because a length is legal
-     * syntax everywhere, and adding these properties to the list above would
-     * demand tokens that do not exist: the set has spacing, type, and radii
-     * scales, but no measure or layout-size category. Closing it means adding
-     * token categories first — design-system scope, not a config tweak.
+     * syntax everywhere.
      */
     'declaration-property-value-disallowed-list': [
-      { '/.*/': ['/#[0-9a-fA-F]{3,8}\\b/', '/\\b(rgba?|hsla?|oklch|lab|lch)\\(/'] },
+      {
+        '/.*/': [HEX_COLOUR, COLOUR_FUNCTION],
+      },
       { reportDisables: true },
     ],
 
-    // A local custom property may only alias a token — never introduce a raw
-    // value under a new name, which would launder it past the rule above.
-    'declaration-property-value-allowed-list': [
-      { '/^--/': ['/^var\\(/'] },
-      { reportDisables: true },
+    // packages/ui/src/frontend-gate/var-references.mjs's header owns what this
+    // refuses (#273, #280).
+    'cram/var-references-only': [true, { reportDisables: true }],
+
+    /*
+     * A registered custom property's `initial-value` is that property's value,
+     * and no rule above requires a token there, so a `var()` of it can carry a
+     * raw length or a named colour (#290). A registration is therefore a token
+     * definition, and it lives with the others. The name is matched
+     * case-insensitively because at-rule names are.
+     */
+    'at-rule-disallowed-list': [
+      ['/^property$/i'],
+      {
+        reportDisables: true,
+        message: 'Register custom properties only in packages/ui/src/tokens/*.css (#290).',
+      },
     ],
 
     /*
@@ -191,11 +230,12 @@ export default {
      *
      * The list matches pseudo-class *names*, which is what makes a one-entry
      * list sufficient: `focus-visible` and `focus-within` are different names,
-     * so they pass untouched while bare `:focus` is refused. The two `lint:css`
-     * runs on cumulo#339 (https://github.com/TomBennett-Lloyd/cumulo/issues/339)
-     * are what establish that rather than the documentation — a seeded
-     * `.gate-probe:focus` was refused by this rule, and real `:focus-visible`
-     * rules stayed green.
+     * so they pass untouched while bare `:focus` is refused. A test rather than
+     * the documentation establishes that:
+     * packages/ui/src/frontend-gate/values.probe.css.txt holds all three
+     * (#258), where cumulo#339
+     * (https://github.com/TomBennett-Lloyd/cumulo/issues/339) first showed it
+     * with a one-off seeded probe.
      *
      * Here it lands on a tree with no CSS at all, so it is a ratchet from day
      * one: it exists to fail the *first* bare `:focus`. That regression is
@@ -235,8 +275,9 @@ export default {
       files: ['packages/ui/src/tokens/*.css'],
       rules: {
         'scale-unlimited/declaration-strict-value': null,
-        'declaration-property-value-allowed-list': null,
+        'cram/var-references-only': null,
         'declaration-property-value-disallowed-list': null,
+        'at-rule-disallowed-list': null,
       },
     },
   ],

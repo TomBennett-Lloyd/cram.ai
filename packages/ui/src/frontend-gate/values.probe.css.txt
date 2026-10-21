@@ -1,0 +1,216 @@
+/*
+ * Probe for stylelint.config.mjs, linted by frontend-gate.test.ts at a path
+ * outside the tokens exemption. A line whose trailing comment carries the
+ * refused-by marker must draw exactly the rules it lists; every other line must
+ * lint clean. The `.txt` suffix keeps it out of `lint:css`'s glob.
+ */
+.p {
+  /* declaration-strict-value: each string entry, raw then token */
+  fill: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  fill: var(--color-ink);
+  stroke: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  stroke: var(--color-ink);
+  background: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  background: var(--color-surface);
+  font-size: 16px; /* refused-by: scale-unlimited/declaration-strict-value */
+  font-size: var(--font-size-md);
+  font-family: serif; /* refused-by: scale-unlimited/declaration-strict-value */
+  font-family: var(--font-family-body);
+  font-weight: 700; /* refused-by: scale-unlimited/declaration-strict-value */
+  font-weight: var(--font-weight-bold);
+  line-height: 1.5; /* refused-by: scale-unlimited/declaration-strict-value */
+  line-height: var(--line-height-body);
+  margin: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin: var(--space-1);
+  padding: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding: var(--space-1);
+  gap: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  gap: var(--space-1);
+  row-gap: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  row-gap: var(--space-1);
+  column-gap: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  column-gap: var(--space-1);
+  border-radius: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-radius: var(--radius-sm);
+  border: 1px solid red; /* refused-by: scale-unlimited/declaration-strict-value */
+  border: var(--line-sm) var(--border-style) var(--color-ink);
+  outline: 1px solid red; /* refused-by: scale-unlimited/declaration-strict-value */
+  outline: var(--line-md) var(--outline-style) var(--color-focus);
+  box-shadow: 0 0 4px red; /* refused-by: scale-unlimited/declaration-strict-value */
+  box-shadow: var(--shadow-sm);
+  text-shadow: 0 0 4px red; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-shadow: var(--shadow-sm);
+  background-image: url(a.png); /* refused-by: scale-unlimited/declaration-strict-value */
+  background-image: var(--image-hero);
+  border-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-width: var(--line-sm);
+  outline-width: thin; /* refused-by: scale-unlimited/declaration-strict-value */
+  outline-width: var(--line-md);
+  outline-offset: 2px; /* refused-by: scale-unlimited/declaration-strict-value */
+  outline-offset: var(--line-md);
+  column-rule-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  column-rule-width: var(--line-sm);
+  stroke-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  stroke-width: var(--line-sm);
+  text-decoration-thickness: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-decoration-thickness: var(--line-sm);
+  max-inline-size: 40rem; /* refused-by: scale-unlimited/declaration-strict-value */
+  max-inline-size: var(--measure-md);
+  max-width: 40rem; /* refused-by: scale-unlimited/declaration-strict-value */
+  max-width: var(--measure-md);
+
+  /* declaration-strict-value: the regex entries */
+  color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  color: var(--color-ink);
+  background-color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-start-color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-decoration-color: red; /* refused-by: scale-unlimited/declaration-strict-value */
+  text-decoration-color: var(--color-accent);
+  color-scheme: light dark;
+  margin-top: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin-inline-start: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin-block: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  margin-block: var(--space-1);
+  padding-top: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding-inline-end: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding-inline: 4px; /* refused-by: scale-unlimited/declaration-strict-value */
+  padding-inline: var(--space-1);
+  /* The residual stylelint.config.mjs names: an unlisted property takes a raw
+     length. These two stand next to the anchored `margin-`/`padding-` entries. */
+  scroll-margin-top: 4px;
+  scroll-padding-top: 4px;
+  border-top-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-right-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-bottom-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-left-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-block-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-block-start-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-block-end-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-start-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-end-width: 1px; /* refused-by: scale-unlimited/declaration-strict-value */
+  border-inline-end-width: var(--line-sm);
+  border-image-width: 1;
+  -webkit-line-clamp: 3;
+
+  /* declaration-strict-value: ignoreValues, and ignoreFunctions: false */
+  color: currentColor;
+  color: currentcolor;
+  background: TRANSPARENT;
+  font-weight: 400; /* refused-by: scale-unlimited/declaration-strict-value */
+  line-height: 0.5; /* refused-by: scale-unlimited/declaration-strict-value */
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  margin: 0;
+  margin: auto;
+  color: initial;
+  color: unset;
+  margin: 0 auto;
+  padding: calc(var(--space-1) * 2); /* refused-by: scale-unlimited/declaration-strict-value */
+
+  /* declaration-property-value-disallowed-list, on properties the list above omits */
+  filter: drop-shadow(0 0 0 #abc); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #ABCD); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #123456); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #12345678); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #1a2); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #1a2b3c); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 #1a2b3c4d); /* refused-by: declaration-property-value-disallowed-list */
+  filter: url(#ab);
+  filter: url(#abcdef123);
+  filter: url(#decal);
+  filter: url(#fade-mask);
+  filter: url(#fade_mask);
+  filter: url(#abcde);
+  filter: url(#abcdef1);
+  filter: drop-shadow(0 0 0 rgb(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 rgba(0 0 0 / 50%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 hsl(0 0% 0%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 hsla(0 0% 0% / 50%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 oklch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 lab(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 lch(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 RGB(0 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 hwb(0 0% 0%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 oklab(0.5 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 color(srgb 1 0 0)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 alpha(from var(--color-ink) / 50%)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 color-mix(in srgb, red, blue)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 contrast-color(var(--color-ink))); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 device-cmyk(0 0 0 1)); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 light-dark(var(--color-ink), var(--color-surface))); /* refused-by: declaration-property-value-disallowed-list */
+  filter: matlab(0);
+  filter: --brand-rgb(0);
+  border-image-source: linear-gradient(#abc, transparent); /* refused-by: declaration-property-value-disallowed-list */
+  filter: drop-shadow(0 0 0 var(--color-ink));
+  grid-area: lab;
+
+  /* cram/var-references-only: a var() fallback is token references or empty */
+  color: var(--color-ink, red); /* refused-by: cram/var-references-only */
+  padding: var(--space-1, 4px); /* refused-by: cram/var-references-only */
+  width: var(--space-1, 4px); /* refused-by: cram/var-references-only */
+  width: VAR(--space-1, 4px); /* refused-by: cram/var-references-only */
+  color: var( --color-ink , red); /* refused-by: cram/var-references-only */
+  color: var(--color-ink, var(--color-surface, red)); /* refused-by: cram/var-references-only */
+  --probe-fallback: var(--space-1, 4px); /* refused-by: cram/var-references-only */
+  font-family: var(--font-family-body, var(--font-family-mono), serif); /* refused-by: cram/var-references-only */
+  width: calc(var(--space-1, 4px) * 2); /* refused-by: cram/var-references-only */
+  width: var(--space-1, calc(var(--space-2))); /* refused-by: cram/var-references-only */
+  width: var(--space-1, "4px"); /* refused-by: cram/var-references-only */
+  width: var(--space-1, var(--space-2):var(--space-3)); /* refused-by: cram/var-references-only */
+  color: var(--color-ink, var(--color-surface));
+  color: var(--color-ink, var(--color-surface), var(--color-accent));
+  width: var(--space-1, var(--space-2) / var(--space-3));
+  width: var(--space-1, var(--space-2) var(--space-3));
+  width: var(--space-1,/* a note */var(--space-2));
+  color: var(--color-ink,);
+  color: var(--color-ink, );
+  transition-property: var(--probe-a), opacity;
+  filter: --brand-var(0, 0);
+  filter: envvar(0, 0);
+
+  /* cram/var-references-only: a var() names a custom property and nothing else */
+  width: var(4px); /* refused-by: cram/var-references-only */
+  width: var(); /* refused-by: cram/var-references-only */
+  width: var(--space-1 4px); /* refused-by: cram/var-references-only */
+  width: var(--space-1 4px, var(--space-2)); /* refused-by: cram/var-references-only */
+  width: var(--space-1 / var(--space-2)); /* refused-by: cram/var-references-only */
+  width: var("--space-1"); /* refused-by: cram/var-references-only */
+  width: var( --space-1 );
+  width: var(--space-1/* a note */);
+
+  /* cram/var-references-only: a custom property only aliases */
+  --probe-alias: var(--space-1);
+  --probe-alias-case: VAR(--space-1);
+  --probe-list: var(--font-family-body), var(--font-family-mono);
+  --probe-slash: var(--space-1) / var(--space-2);
+  --probe-commented: var(--space-1) /* a note */;
+  --probe-name-commented: var(--space-1 /* a note */);
+  --probe-adjacent-comment: var(--space-1)/* a note */var(--space-2);
+  --probe-adjacent-comment-list: var(--space-1)/* a note */, var(--space-2);
+  --probe-raw: 4px; /* refused-by: cram/var-references-only */
+  --probe-calc: calc(var(--space-1) * 2); /* refused-by: cram/var-references-only */
+  --probe-trailing: var(--space-1) 4px; /* refused-by: cram/var-references-only */
+  --probe-leading: 4px var(--space-1); /* refused-by: cram/var-references-only */
+  --probe-string: "a"; /* refused-by: cram/var-references-only */
+  --probe-keyword: initial; /* refused-by: cram/var-references-only */
+  --probe-colon: var(--space-1):var(--space-2); /* refused-by: cram/var-references-only */
+  --probe-empty: ; /* refused-by: cram/var-references-only */
+  --probe-bare-word: var; /* refused-by: cram/var-references-only */
+}
+
+/* at-rule-disallowed-list: @property outside the tokens source */
+@property --probe-size { syntax: '<length>'; inherits: false; initial-value: 4px; } /* refused-by: at-rule-disallowed-list */
+@property --probe-colour { syntax: '<color>'; inherits: false; initial-value: red; } /* refused-by: at-rule-disallowed-list */
+@PROPERTY --probe-case { syntax: '<length>'; inherits: false; initial-value: 4px; } /* refused-by: at-rule-disallowed-list */
+@supports (display: grid) { @property --probe-nested { syntax: '*'; inherits: false; } } /* refused-by: at-rule-disallowed-list */
+.p { padding: var(--probe-size); color: var(--probe-colour); }
+/* The name is anchored: an at-rule whose name only contains it is not refused. */
+@xproperty --probe-prefixed {}
+@property-x --probe-suffixed {}
+
+/* selector-pseudo-class-disallowed-list: bare :focus only */
+.p:focus { color: var(--color-ink); } /* refused-by: selector-pseudo-class-disallowed-list */
+.p:focus-visible { color: var(--color-ink); }
+.p:focus-within { color: var(--color-ink); }

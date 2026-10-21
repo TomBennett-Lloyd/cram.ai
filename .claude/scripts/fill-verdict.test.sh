@@ -479,7 +479,7 @@ end
 mutant() {
   local dir="$TMP_ROOT/mutant-$1"
   must mkdir -p "$dir"
-  must cp "$SUBJECT" "$SCRIPTS/worktree-lib.sh" "$dir/"
+  must cp "$SUBJECT" "$SCRIPTS/worktree-lib.sh" "$SCRIPTS/pr-facts.mjs" "$dir/"
   must perl -pi -e "$2" "$dir/fill-verdict.sh"
   fixture_lacks "$dir/fill-verdict.sh" "$3"
   MUTANT="$dir/fill-verdict.sh"
