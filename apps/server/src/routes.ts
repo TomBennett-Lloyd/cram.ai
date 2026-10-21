@@ -12,7 +12,7 @@ const COURSE_ROUTES = {
   ask: { route: 'ask', method: 'POST' },
 } as const;
 
-const COURSES_PATH = '/courses';
+export const COURSES_PATH = '/courses';
 const COURSE_PATH = /^\/courses\/([^/]+)\/([^/]+)$/;
 
 const isRouteKey = (key: string): key is keyof typeof COURSE_ROUTES =>
