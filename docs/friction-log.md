@@ -130,3 +130,28 @@ Entry format:
 
 - Phase: review
 - Observed: the #276 lane argued away the plan's untracked-file arm during implementation by reasoning about module resolution, and the reviewer refuted the argument with a shadowing counterexample. An argument for deleting a planned guard needs a mutant shape drawn from the grammar list, not reasoning alone; one ticket so far, and ticket-agent § 4's hostile-corpus rule (PR #336) is the nearest home if it recurs.
+
+## 2026-11-02 — PR #394 (plan counts)
+
+- Phase: planning
+- Observed: the #282/#287/#288 batch's plan carried its prototype harness counts (181/211/241 rows) as each chunk's expected baseline and one rule the prototype had settled under bash (`endsPattern` keeping `#`); zsh, the oracle, contradicted the rule, and each implementer added rows past the count (6, 8 and 27) to kill survivors, so every later dispatch had to be told the new baseline by hand. A row count in a plan is a figure the first chunk's edit invalidates; the plan could name the harness and let each chunk report its own. One batch so far.
+
+## 2026-11-02 — PR #394 (plan hand-back)
+
+- Phase: planning
+- Observed: `.claude/agents/planner.md` returns the plan only as its final message (its tools are Read, Glob, Grep, Bash), and `.claude/skills/plan-issue/SKILL.md` step 5 posts a file, so the orchestrator re-typed about 20k characters of plan into a file to post it. One batch so far; filed as #412 (a `plan-<n>.md` scratch file, the shape `task-orchestrator.md` rule 8 (a) already names).
+
+## 2026-11-02 — PR #394 (curated history)
+
+- Phase: process
+- Observed: every review fix on the batch folded into its member's commit by `--fixup` and autosquash (or `--amend` at HEAD), and a fold onto an earlier member conflicted whenever a later member had edited nearby lines; each was resolved by hand at the earlier position with the intermediate tree harness-checked (200 and 246 rows passing), later positions resolved to the known final tree under a tree-equality check, and two message rewords needed an `exec git commit --amend -F` line injected through the sequence editor. Fix rounds ran per member so the folds stayed per member, which serialised them (one #288 round ran about 2.6 h). First batch to merge `--rebase` under the one-commit-per-member rule; the cost is the rule's, recorded so the next batch can price it.
+
+## 2026-11-02 — PR #394 (verify wall-clock)
+
+- Phase: verify
+- Observed: the batch's `pnpm verify` runs took about 15 minutes of wall-clock each under machine load (the round-2 record logged 2 to 10-plus minutes). Counts with PR #215 (9 to 15 minutes at load average 90 to 100) and PR #386 (10 to 13 minutes on the full tier) as the third lane to record the composite's cost under shared load.
+
+## 2026-11-02 — PR #394 (#349 reds)
+
+- Phase: verify
+- Observed: two `pnpm verify` runs went red on `packages/ingest`'s `stored-text.test.ts` 5 s timeout under machine load, #349's signature (still open), and both re-runs were green with no change to the tree; the batch merged on CI green. Counts toward #349, which has now cost a lane two re-runs in one batch.
