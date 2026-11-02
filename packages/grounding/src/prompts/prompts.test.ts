@@ -39,23 +39,29 @@ describe.each(prompts)('the %s prompt', (_, build) => {
 });
 
 describe('generationRequest', () => {
-  it('shows each retrieved slide under its id, then the question', () => {
+  it('shows each retrieved slide under its id, its lines numbered from 1, then the question', () => {
     const user = asked('What shape are cells?', [hive, comb]).messages[1]?.content ?? '';
     expect(user).toBe(
-      '<source id="l1/1">\nWorker bees are male.\n</source>\n\n' +
-        '<source id="l1/2">\nBees build comb from square cells.\n</source>\n\n' +
+      '<source id="l1/1">\n[1] Worker bees are male.\n</source>\n\n' +
+        '<source id="l1/2">\n[1] Bees build comb from square cells.\n</source>\n\n' +
         '<question>What shape are cells?</question>',
     );
   });
 
-  it('shows a slide’s non-blank fields one to a line: title, body, notes, captions', () => {
+  it('asks for no slide text to be copied, into a unit or a citation', () => {
+    expect(asked('Who are the workers?').messages[0].content).not.toMatch(
+      /\b(cop(y|ied|ying)|quot(e|es|ed|ing)|verbatim|word for word|exact(ly)?|character for character)\b/i,
+    );
+  });
+
+  it('numbers a slide’s non-blank lines in slideLines order: title, body, notes, captions', () => {
     const noted = slide('l1/3', 'Drones never forage.', {
       title: 'Castes',
       speakerNotes: 'Ask who feeds them.',
       imageCaptions: ['A drone at rest'],
     });
     expect(asked('Do drones forage?', [noted]).messages[1]?.content).toBe(
-      '<source id="l1/3">\nCastes\nDrones never forage.\nAsk who feeds them.\nA drone at rest\n</source>\n\n' +
+      '<source id="l1/3">\n[1] Castes\n[2] Drones never forage.\n[3] Ask who feeds them.\n[4] A drone at rest\n</source>\n\n' +
         '<question>Do drones forage?</question>',
     );
   });
