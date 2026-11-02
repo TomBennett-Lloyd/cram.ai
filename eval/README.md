@@ -1,18 +1,19 @@
 # eval
 
-The synthetic evaluation course: its deck, golden questions and hand labels. What each is for, and the categories the deck must hold, are `docs/adr/0005-evaluation-as-gate.md` § Decision (a)–(c)'s.
+The synthetic evaluation course: its deck, golden questions and two sets of hand labels. What each is for, and the categories the deck must hold, are `docs/adr/0005-evaluation-as-gate.md` § Decision (a)–(c)'s.
 
 - `eval/decks/hollowmere/` — the deck, one JSON file per lecture, parsed by `DeckLecture` (`eval/src/deck.ts`). The subject is a fictional guild's beekeeping course, self-written for this repository, which deliberately teaches things a general model believes false about bees: the subject class `docs/adr/0001-grounding-architecture.md` § Context names.
 - `eval/questions.jsonl` — the golden questions, one `GoldenQuestion` per line (`eval/src/golden-question.ts`, which also exports `inContradictionSet` and `firstForbiddenEntry`). A line may carry `misspelt` variants, which are retrieved and never asked (`docs/adr/0010-misspelt-golden-variants.md` § Decision (a)).
 - `eval/labels/verifier.jsonl` — the verifier hand labels, one `HandLabel` per line (`eval/src/hand-label.ts`).
+- `eval/labels/sentence-kind.jsonl` — the sentence-kind sample of `docs/adr/0009-explanation-answers.md` § Decision (o), one `SentenceKindLabel` per line (`eval/src/sentence-kind-label.ts`): a sentence, the slides it is judged against, and whether it is a course claim or an interpretation.
 
-`auditEvalCourse` (`eval/src/audit.ts`) checks the three against each other, and `eval/src/eval-course.test.ts` runs it over the committed files under `pnpm test`.
+`auditEvalCourse` (`eval/src/audit.ts`) checks the four against each other, and `eval/src/eval-course.test.ts` runs it over the committed files under `pnpm test`.
 
 `renderDeckPdfs` (`eval/src/render-deck.ts`) renders the deck to one PDF per lecture at test time, into a directory outside the checkout, for the ingest path: an `imageOnly` slide becomes a single image with no text layer. `eval/src/render-deck.test.ts` reads every rendering back through `@cram/ingest`'s `ingestPdf`. No rendering is tracked.
 
 ## The runner and its report
 
-`runEval` (`eval/src/run-eval.ts`) runs the whole pipeline over a course through any `ModelGateway` and returns an `EvalReport` (`eval/src/report.ts`), the report `docs/adr/0005-evaluation-as-gate.md` § Decision (f) describes. It asks every golden question at both depths of `docs/adr/0009-explanation-answers.md` § Decision (o), over one retrieved set: Ask's light depth, each sentence attributed through the open index (`eval/src/ask-depths.ts`), and the revision guide's deep depth under each of `DEEP_STRATEGIES` in `eval/src/run-eval.ts`, whose contradiction set is the gate. Which depth each surface runs at is `VERIFICATION_DEPTH`'s. `RecordingGateway` (`eval/src/recording-gateway.ts`) records a run's model calls in the form `FakeGateway` replays. `eval/src/run-eval.test.ts` records one run and replays it to the same report.
+`runEval` (`eval/src/run-eval.ts`) runs the whole pipeline over a course through any `ModelGateway` and returns an `EvalReport` (`eval/src/report.ts`), the report `docs/adr/0005-evaluation-as-gate.md` § Decision (f) describes. It asks every golden question at both depths of `docs/adr/0009-explanation-answers.md` § Decision (o), over one retrieved set: Ask's light depth, each sentence attributed through the open index (`eval/src/ask-depths.ts`), and the revision guide's deep depth under each of `DEEP_STRATEGIES` in `eval/src/run-eval.ts`, whose contradiction set is the gate. It also runs the deep depth's sentence-kind judge (`classifySentenceKinds`, `packages/grounding/src/classify-sentence-kinds.ts`) over the labelled sample, one call per sentence. Which depth each surface runs at is `VERIFICATION_DEPTH`'s. `RecordingGateway` (`eval/src/recording-gateway.ts`) records a run's model calls in the form `FakeGateway` replays. `eval/src/run-eval.test.ts` records one run and replays it to the same report.
 
 ## The live run
 
