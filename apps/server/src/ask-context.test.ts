@@ -63,14 +63,21 @@ const overBudget = ({ sourceId, record }: RetrievedSlide): LectureSummary =>
   });
 
 /** The `bio` course holding the hive deck, asked with `summaries` loaded in place of its own. */
-const asked = async (summaries: (retrieved: RetrievedSlide[]) => readonly LoadedSummary[]) => {
+const asked = async (
+  summaries: (retrieved: RetrievedSlide[]) => readonly LoadedSummary[],
+  covered = true,
+) => {
   const deck = await pdfDeck([['The Hive', 'Worker bees are male in this course.']]);
   const retrieved = await retrievedFrom(deck, 'bio', 'l1', 'hive.pdf');
   test = await startTestServer(
-    gatewayOf([
-      explained(QUESTION, retrieved, explanationReply(SENTENCE)),
-      marked([{ text: SENTENCE, slides: retrieved }], ENTAILED),
-    ]),
+    gatewayOf(
+      covered
+        ? [
+            explained(QUESTION, retrieved, explanationReply(SENTENCE)),
+            marked([{ text: SENTENCE, slides: retrieved }], ENTAILED),
+          ]
+        : [explained(QUESTION, retrieved, { status: 'content', content: '{"answer":null}' })],
+    ),
   );
   const { port } = test.server;
   await send(port, {
@@ -107,6 +114,18 @@ describe('POST /courses/:id/ask, the prompt’s context', () => {
       leftOut: retrieved.map(({ sourceId }) => sourceId),
     });
     expect(logs).toEqual([contextLine(retrieved, retrieved.length)]);
+  });
+
+  it('sends what was left out beside a not-covered reply', async () => {
+    const { reply, retrieved } = await asked(
+      (slides) =>
+        slides.slice(0, 1).map((slide) => ({ summary: overBudget(slide), slides: [slide] })),
+      false,
+    );
+    expect(reply.json).toMatchObject({
+      status: 'not-covered',
+      leftOut: retrieved.map(({ sourceId }) => sourceId),
+    });
   });
 
   it('leaves nothing out when the context fits', async () => {

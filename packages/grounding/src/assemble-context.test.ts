@@ -80,6 +80,14 @@ describe('assembleContext', () => {
     expect(assembleContext([b1], [], 0)).toEqual({ raw: [b1], summaries: [], leftOut: [] });
   });
 
+  it('leaves out a dropped slide of a lecture that has no summary', () => {
+    expect(assembleContext([b1, c1], [], rawCost([b1]))).toEqual({
+      raw: [b1],
+      summaries: [],
+      leftOut: [c1.sourceId],
+    });
+  });
+
   it('leaves out no slide of a lecture with no summary when another lecture’s summary drops', () => {
     expect(assembleContext([b1, a1], [sa], rawCost([b1, a1]))).toEqual({
       raw: [b1, a1],

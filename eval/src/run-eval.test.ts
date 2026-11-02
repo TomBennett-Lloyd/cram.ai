@@ -198,6 +198,17 @@ describe('runEval', () => {
       expect(row.status).toBe('not-measurable');
   });
 
+  it('asks with the stored summaries of the retrieved slides’ lectures', async () => {
+    const { recordings } = await recordRun(tutor(false));
+    const prompts = recordings.flatMap((recording) =>
+      recording.role === 'generator' && recording.request.output.name === 'explanation'
+        ? [recording.request.messages.at(-1)?.content ?? '']
+        : [],
+    );
+    expect(prompts.length).toBeGreaterThan(0);
+    for (const prompt of prompts) expect(prompt).toMatch(/<summary lecture="l1">/);
+  });
+
   it('carries per-item contradiction-set failures through to the report', async () => {
     const { report } = await recordRun(tutor(true));
     expect(report.metrics.contradictionSet).toMatchObject({

@@ -227,6 +227,21 @@ describe('explain’s context', () => {
     });
   });
 
+  it('drops a pointer to a slide the budget dropped, though retrieval returned it', async () => {
+    const [combLine] = comb.record.body.split('\n');
+    const result = await run(
+      [explained(combLine ?? '', [line('l1/2', 1)], [hive]), verified()],
+      light(),
+      retrieved,
+      [],
+      tokens(retrieved) - 1,
+    );
+    expect(result).toMatchObject({
+      explanation: { quotes: [], sources: [hive.sourceId] },
+      withheld: [{ reason: 'dangling-citation', sourceId: comb.sourceId }],
+    });
+  });
+
   it('never sends a prompt over a scripted budget unless one slide alone is over it', async () => {
     const budgets = [0, tokens([hive]), tokens(retrieved) - 1, tokens(retrieved, [hiveSummary])];
     for (const budget of budgets) {

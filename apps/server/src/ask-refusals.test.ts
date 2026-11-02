@@ -61,6 +61,7 @@ describe('POST /courses/:id/ask, before any model is asked', () => {
     const reply = await askBio(test);
     expect(reply.json).toEqual({ status: 'not-covered', withheld: [], slides: [], leftOut: [] });
     expect(statSync(path).size).toBe(0);
+    expect(test.logs).toEqual([]);
   });
 
   it('refuses a body that is not a JSON question', async () => {

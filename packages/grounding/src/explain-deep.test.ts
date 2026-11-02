@@ -1,3 +1,4 @@
+import { LectureSummary, type LoadedSummary } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import type { ExplainDepth } from './explain';
 import {
@@ -22,6 +23,7 @@ import {
   line,
   NEUTRAL,
   pairsOf,
+  slide,
   verifierRecording,
 } from './fake-gateway-fixture';
 
@@ -203,6 +205,42 @@ describe('explain at the deep depth', () => {
         slides: [...retrieved, drones],
         context: contextOf(retrieved, [hiveSummary]),
       });
+    });
+
+    it('names no slide a loaded unit cites unless a sentence credits it', async () => {
+      const queen = slide('l1/4', 'The queen lays the eggs.');
+      const QUEEN_UNIT = 'Only the queen lays.';
+      const twoUnits: LoadedSummary = {
+        summary: LectureSummary.parse({
+          lectureId: 'l1',
+          units: [
+            ...hiveSummary.summary.units,
+            {
+              text: QUEEN_UNIT,
+              citations: [{ sourceId: queen.sourceId, quote: queen.record.body }],
+              kind: 'lecture-summary',
+            },
+          ],
+        }),
+        slides: [drones, queen],
+      };
+      const result = await run(
+        [
+          explained(DRONES, [], retrieved, [twoUnits]),
+          verifierRecording(
+            [
+              ...pairsOf(DRONES, retrieved),
+              { premise: DRONES_UNIT, hypothesis: DRONES },
+              { premise: QUEEN_UNIT, hypothesis: DRONES },
+            ],
+            [NEUTRAL, NEUTRAL, ENTAILED, NEUTRAL],
+          ),
+        ],
+        deep(),
+        retrieved,
+        [twoUnits],
+      );
+      expect(result).toMatchObject({ slides: [...retrieved, drones] });
     });
 
     it('withholds a sentence only a summary unit contradicts, naming the slide it cites', async () => {
