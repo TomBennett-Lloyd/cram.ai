@@ -250,3 +250,33 @@ Entry format:
 
 - Phase: implementation
 - Observed: the #408 lane's mutant M8 (record the sha at classify, not at the ready verdict) was three edits, and its first run under a `408-mut-M8-*` name applied a copy of M7's edit instead; the lane caught it, re-ran it as `M8b`, and the PR body's table and the lane report's `wasted work` both say so. The cost was one run of the nine-case scratch harness the lane built because the committed one takes ~2 min a run (#434). `docs/standards/testing.md` rule 8's loop is apply, run the one test file, revert by the inverse edit; nothing in it checks that the edit applied is the mutant named, and a hand-applied multi-edit mutant is where that shows. One lane so far.
+
+## 2026-11-02 — PR #437 (A1 precision)
+
+- Phase: planning
+- Observed: the #420 plan's A1 check ran the pinned cross-encoder over one hazard sentence per covered set item against each expected slide's whole text and reported 11/11 at contradiction ≥ 0.5, so whole-slide premises stood for both depths; it ran no unrelated pair. The step-6 live run (`f9019d4`, every golden question, `dev-apple-silicon`, the pins) then showed the same checker scoring contradiction at 0.9–1.0 between a sentence and a retrieved slide on another subject: the deep contradiction set passed 11/22, 25 of 42 chat sentences carried a mark, none of them a forbidden sentence, and the lane stopped `BLOCKED` under `.claude/agents/ticket-agent.md` rule 5(b) at 14:26Z with steps 1–5 pushed (`f9019d4`, 14:17Z). The owner's answer — one entailing slide outweighs any contradiction — landed as `f20f038` at 15:04Z and amended ADR 0009 (d)/(g) in the same PR; steps 1–5 stood, and the lane's report reads wasted work as none. `.claude/agents/planner.md`'s `Assumption:` rule asks for the exact command that checks a value, and A1 had one; what it measured was the positive class alone. The `PR #407 (query_only lexicon)`, `PR #407 (PROCEED divergences)` and `PR #432 (oracle configuration)` entries are probes run under a setting the module does not run; this is a probe run under the right setting on half the input, the fourth pre-plan probe whose result did not hold at the first live run. Candidate rule if it recurs: a check that stands in for a classifier's verdict runs both classes — the pairs it must flag and a sample of the pairs it must not.
+
+## 2026-11-02 — PR #437 (prompt variants)
+
+- Phase: implementation
+- Observed: with the amended rule the deep contradiction set's two reds were "Are worker bees male or female?" (the slide's own line, entailed at 0.002 against 01/3's whole text and 0.995 against the line alone; now #439) and "How long does capped honey keep?", where the generator returns `null` at both depths. The lane tried two one-sentence prompt variants over the set — "If no source says anything that answers the question, the answer is null." scored 17/22 and "If a source says what the question asks, explain what it says. If none does …" 19/22 — each moving other items to `null`, and kept the prompt as written at 20/22; the lane report's wasted work is those two runs, and #216 keeps the `null`. PR #397's body recorded that this 4B generator at `{temperature: 0, seed: 0}` flips individual questions on a one-phrase prompt change (the `PR #397 (eval re-runs)` entry); this is the second lane to measure it and the first to spend set runs on it.
+
+## 2026-11-02 — PR #437 (#349 re-run)
+
+- Phase: verify
+- Observed: the lane's `pnpm verify` before the verdict commit (`fill-verdict.sh`'s run, lane report) went red once on `packages/ingest`'s `stored-text.test.ts` timeout, #349's signature (open since 2026-10-21), and the one sanctioned re-run passed with no change to the tree. With the `PR #394 (#349 reds)` entry's two, that is three re-runs bought by #349 across two lanes on 2026-11-02.
+
+## 2026-11-02 — PR #437 (red by design)
+
+- Phase: verify
+- Observed: the lane's BLOCKED report carries `Verify: rc=1` with one red leg, `eval/src/committed-run.test.ts`, because the committed `bc831ab` report and recordings predate the new prompt and report shape and `eval/README.md` says it fails until the tier-2 run re-records them; the lane then ran the legs after `pnpm test` one by one to show them green, and `f9019d4`'s commit body says the same. A ticket that moves the report shape has no green composite between its first eval edit and its tier-2 run, so its step commits (the `PR #432 (step commits)` entry: `.claude/agents/ticket-agent.md` rule 4's commit per step "whose gate is green") are made against a red one, and `CLAUDE.md` § Commands' "never hand-pick a subset" has no arm for a leg that is red by design. One ticket so far.
+
+## 2026-11-02 — PR #437 (PARTIAL Closes)
+
+- Phase: merge
+- Observed: the lane reported `STATUS: PARTIAL` on one acceptance row (the deep contradiction set at 20/22) and wrote `Part of #420` with no `Closes` line, as `.claude/agents/ticket-agent.md` rule 7 says partial progress is written; the classify step of `.claude/scripts/merge-pr.sh` refuses a lane report whose issue no `Closes` line names ("the lane report names #420 but no Closes line does"), on the same rule 7's sentence that the lane closes its own issue. The merge owner re-ran it with `--method squash` — the override the script's own comment reserves for "an operator who knows the lane" — and closed #420 by hand after the merge (`f69d224` at 16:40Z, the close at 16:41Z), the residual pointed at #216 and #439. The two texts disagree on what a PARTIAL lane writes when its residual is owned elsewhere: rule 7's `Part of` keeps the issue open, and the classify arm refuses an open issue. First lane PR to reach this arm (`docs/friction-log.md`, `docs/review-feedback.md` and `docs/tech-debt.md` on `main` carry no earlier `--method`); the refusal landed before `update-branch`, as the script's design puts it, so it cost one re-run and nothing else. Whether such a lane writes `Closes` with the residual's owners named, or the override and the hand-close stay the path, is one lane's evidence.
+
+## 2026-11-02 — PR #437 (dropped discovered)
+
+- Phase: process
+- Observed: the lane's BLOCKED report (14:26Z) read `Discovered: none filed.` and named one candidate — `splitClaims` does not split after a closing quote mark, "worth an issue once the gate decision is known" — and its final report's line reads `Discovered: #438.` and nothing else; no issue named the defect until this retro filed #444. The `Discovered:` line is contractual for each report and not cumulative, and the final report was written after a re-plan on the owner's decision, so a candidate a report held back on its own condition had nothing carrying it to the next report. One lane so far.
