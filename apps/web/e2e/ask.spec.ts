@@ -148,6 +148,19 @@ test('the contradiction label shows on hover over the sentence or its number, an
   await expect(label).toBeHidden();
 });
 
+test('a mouse press on the contradiction number leaves no label once the pointer leaves', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'the mouse arm runs on the desktop project');
+  await ask(page, CONTRADICTED_QUESTION);
+  const button = page.getByRole('button', { name: CONTRADICTION_BUTTON });
+  await button.click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(button).toBeFocused();
+  await page.getByRole('textbox', { name: 'Question' }).hover();
+  await expect(page.locator('.contradiction-label')).toBeHidden();
+});
+
 test('the contradiction number opens the contradicting slide, naming the sentence', async ({
   page,
 }) => {

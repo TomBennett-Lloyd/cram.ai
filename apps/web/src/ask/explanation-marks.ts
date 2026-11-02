@@ -2,7 +2,7 @@ import { type Explanation, type QuoteSpan, quoteSpan, type SourceId } from '@cra
 
 export interface Run {
   readonly text: string;
-  readonly quote?: { readonly sourceId: SourceId; readonly ends: boolean };
+  readonly quote?: { readonly sourceIds: readonly SourceId[]; readonly ends: boolean };
 }
 
 export interface MarkedSentence {
@@ -13,7 +13,7 @@ export interface MarkedSentence {
 }
 
 interface Located extends QuoteSpan {
-  readonly sourceId: SourceId;
+  readonly sourceIds: readonly SourceId[];
 }
 
 const sentenceSpans = (text: string, sentences: readonly string[]): (QuoteSpan | undefined)[] => {
@@ -31,13 +31,20 @@ const quoteSpans = ({ text, quotes }: Explanation): Located[] => {
   const located = quotes
     .flatMap(({ sourceId, quote }) => {
       const span = quoteSpan(text, quote);
-      return span === undefined ? [] : [{ ...span, sourceId }];
+      return span === undefined ? [] : [{ ...span, sourceIds: [sourceId] }];
     })
     .sort((a, b) => a.start - b.start);
   const kept: Located[] = [];
   for (const span of located) {
-    const last = kept.at(-1);
-    if (last === undefined || span.start >= last.end) kept.push(span);
+    const last = kept.pop();
+    if (last === undefined) kept.push(span);
+    else if (span.start >= last.end) kept.push(last, span);
+    else
+      kept.push({
+        start: last.start,
+        end: Math.max(last.end, span.end),
+        sourceIds: [...new Set([...last.sourceIds, ...span.sourceIds])],
+      });
   }
   return kept;
 };
@@ -54,17 +61,17 @@ const piecesOf = (text: string, { start, end }: QuoteSpan, quotes: readonly Loca
     const from = Math.max(quote.start, cursor);
     const to = Math.min(quote.end, end);
     if (to <= from) continue;
-    if (from > cursor) pieces.push({ text: text.slice(cursor, from) });
+    pieces.push({ text: text.slice(cursor, from) });
     pieces.push({ text: text.slice(from, to), quote });
     cursor = to;
   }
-  if (cursor < end) pieces.push({ text: text.slice(cursor, end) });
+  pieces.push({ text: text.slice(cursor, end) });
   return pieces;
 };
 
 /**
  * Sentences split into runs at quotes (`docs/adr/0009-explanation-answers.md` § Decision (i)); a quote
- * crossing a boundary marks a run in each, its number after the last.
+ * crossing a boundary marks a run in each, its numbers after the last. Overlapping quotes mark as one.
  */
 export const markExplanation = (explanation: Explanation): readonly MarkedSentence[] => {
   const { text, sentences } = explanation;
@@ -92,7 +99,7 @@ export const markExplanation = (explanation: Explanation): readonly MarkedSenten
           ? { text: piece.text }
           : {
               text: piece.text,
-              quote: { sourceId: piece.quote.sourceId, ends: last.get(piece.quote) === piece },
+              quote: { sourceIds: piece.quote.sourceIds, ends: last.get(piece.quote) === piece },
             },
       ),
       contradicts: sentence.contradicts,

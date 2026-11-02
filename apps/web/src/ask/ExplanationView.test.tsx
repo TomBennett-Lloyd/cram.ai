@@ -99,6 +99,19 @@ describe('ExplanationView', () => {
     expect(refsIn(view)).toEqual([['1', sourceRefLabel(1, HIVE.record)]]);
   });
 
+  it('follows a line two slides hold with both their numbers', () => {
+    const view = show({
+      text: 'Workers are female.',
+      quotes: [
+        { sourceId: id('s1'), quote: 'female' },
+        { sourceId: id('s2'), quote: 'female' },
+      ],
+      sentences: [sentence('Workers are female.', [])],
+      sources: [id('s1'), id('s2')],
+    });
+    expect(view.querySelector('.explanation-text')?.textContent).toBe('Workers are female12. ');
+  });
+
   it('shows no reference cluster after a sentence no search found a slide for', () => {
     const view = show({
       text: 'Workers are female. Bees are insects.',

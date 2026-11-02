@@ -90,7 +90,10 @@ const SentenceView = ({
     ) : (
       <Fragment key={index}>
         <q className="explanation-quote">{text}</q>
-        {quote.ends && <SourceRef sourceId={quote.sourceId} refs={refs} />}
+        {quote.ends &&
+          quote.sourceIds.map((sourceId) => (
+            <SourceRef key={sourceId} sourceId={sourceId} refs={refs} />
+          ))}
       </Fragment>
     ),
   );

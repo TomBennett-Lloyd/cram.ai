@@ -27,7 +27,9 @@ const runs = (value: Explanation) =>
   markExplanation(value).map((sentence) =>
     sentence.runs
       .map(({ text, quote }) =>
-        quote === undefined ? text : `[${text}|${quote.sourceId}${quote.ends ? '+' : ''}]`,
+        quote === undefined
+          ? text
+          : `[${text}|${quote.sourceIds.join(',')}${quote.ends ? '+' : ''}]`,
       )
       .join(''),
   );
@@ -101,6 +103,18 @@ describe('markExplanation', () => {
     expect(runs(value)).toEqual(['Drones are [male|s1+].', 'Drones are male.']);
   });
 
+  it('marks nothing in a sentence that starts where a quote ends', () => {
+    const value = explanation(
+      'Drones.Bees.',
+      [
+        ['Drones.', []],
+        ['Bees.', []],
+      ],
+      [['s1', 'Drones.']],
+    );
+    expect(runs(value)).toEqual(['[Drones.|s1+]', 'Bees.']);
+  });
+
   it('shows a sentence the text does not hold as its own words, unmarked', () => {
     const value = explanation(
       'Drones are male.',
@@ -113,7 +127,7 @@ describe('markExplanation', () => {
     expect(runs(value)).toEqual(['Queens are fed jelly.', 'Drones are male.']);
   });
 
-  it('leaves unmarked a quote the text does not hold, and one overlapping an earlier quote', () => {
+  it('leaves unmarked a quote the text does not hold, and marks overlapping quotes as one with every slide', () => {
     const text = 'Drones are male and do not forage.';
     const value = explanation(
       text,
@@ -125,7 +139,38 @@ describe('markExplanation', () => {
         ['s4', 'Queens'],
       ],
     );
-    expect(runs(value)).toEqual(['[Drones are male|s1+] and [do not forage|s3+].']);
+    expect(runs(value)).toEqual(['[Drones are male and do not forage|s1,s2,s3+].']);
+    const identical = explanation(
+      'Bees fly. Honey is sweet.',
+      [
+        ['Bees fly.', []],
+        ['Honey is sweet.', []],
+      ],
+      [
+        ['s1', 'Honey'],
+        ['s2', 'Honey'],
+        ['s3', 'sweet'],
+      ],
+    );
+    expect(runs(identical)).toEqual(['Bees fly.', '[Honey|s1,s2+] is [sweet|s3+].']);
+    const inside = explanation(
+      'Drones are male.',
+      [['Drones are male.', []]],
+      [
+        ['s1', 'Drones are male'],
+        ['s2', 'are'],
+      ],
+    );
+    expect(runs(inside)).toEqual(['[Drones are male|s1,s2+].']);
+    const sameSlide = explanation(
+      'Drones are male.',
+      [['Drones are male.', []]],
+      [
+        ['s1', 'Drones are'],
+        ['s1', 'are male'],
+      ],
+    );
+    expect(runs(sameSlide)).toEqual(['[Drones are male|s1+].']);
   });
 
   it('marks two quotes that touch as two', () => {
