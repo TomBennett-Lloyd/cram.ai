@@ -31,10 +31,10 @@
 # .claude/scripts/fill-verdict.sh, run on the branch once the owner has decided.
 #
 # What merges is the head whose checks were read, and for a --rebase batch the
-# head whose commits passed the curated-history check: one commit per issue on
-# main, deterministically — owner decision 2026-11-02 (#408), verbatim: "okay
-# yeah lets enable rebase merging but we need to ensure the merge process is
-# entirely deterministic to ensure that there's only ever one commit per issue".
+# head whose commits passed the curated-history check — owner decision
+# 2026-11-02 (#408), verbatim: "okay yeah lets enable rebase merging but we need
+# to ensure the merge process is entirely deterministic to ensure that there's
+# only ever one commit per issue". How exactly that check matches a member is #409.
 # The merge step enforces it, and its comment says how.
 #
 # Usage:

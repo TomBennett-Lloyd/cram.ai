@@ -5,8 +5,8 @@
 # is what GitHub says about a PR, so `gh` is stubbed — the WORKTREE_GH_CMD seam in
 # worktree-lib.sh is the precedent, and MERGE_PR_GH_CMD is the same idea. The stub
 # is a state directory rather than a fixed answer: `pr view` serves a SEQUENCE
-# (view.1, view.2, … falling back to view.default), and once `pr merge` has been
-# called it serves view.merged instead. That is what makes ordering assertable —
+# (view.1, view.2, … falling back to view.default), and once the `pr merge` arm
+# has written $state/merged it serves view.merged instead. That is what makes ordering assertable —
 # "the label came off after the merge" is a claim about two calls, not about one.
 #
 # Everything the stub is asked is appended to calls.log, so a case can assert both
@@ -174,7 +174,7 @@ write_view() { # write_view <slot: default|1|2|…|merged>
   printf '%s' "$V_FILES" | tr ',' '\n' >"$STATE/files"
 }
 
-# write_merged_view — the answer the stub serves once `pr merge` has been called.
+# write_merged_view — the answer the stub serves once $state/merged exists.
 # MERGED PRs really do report mergeStateStatus UNKNOWN (verified against cumulo#489),
 # so the fixture says so: a subject that read that field after the merge would be
 # reading a value that means nothing, and this is what makes that a red case.

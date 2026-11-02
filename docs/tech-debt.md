@@ -133,3 +133,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `lineOf` and `generatedFrom` in `packages/grounding/src/ground.test.ts`; `unitReply` in `apps/server/src/ask.test.ts`
 - What: each writes a quoted `Citation` as the line number the model emits, the inverse of `resolveCitations`' lookup, so a change to the generator's citation shape leaves both wrong the same way (`docs/standards/structure.md` rule 7). `@cram/grounding` exports no test-fixture entry point, so `apps/server/src/server-fixture.ts` already re-declares `cite` and `answer` from `packages/grounding/src/fake-gateway-fixture.ts`; the fix is that entry point.
 - Source: #367 review cycle 1
+
+## 2026-11-02 — the hand-typed merge chain carries no head pin
+
+- Where: `.claude/skills/review-loop/SKILL.md` step 5 (the merge sequence under branch protection); `.claude/skills/run-issue/SKILL.md` step 4
+- What: `.claude/scripts/merge-pr.sh` now passes `--match-head-commit` on every `gh pr merge` (#408). The prose chain a merge owner types by hand still ends in a bare "then merge", so a hand-run merge can land a head that was pushed after its checks were read. The owner decision of 2026-11-02 that #408 cites does not hold on that path.
+- Source: #408 review cycle 1
+
+## 2026-11-02 — merge-pr.sh and review-loop cite docs/design/task-orchestrator.md, which this repo does not have
+
+- Where: `.claude/scripts/merge-pr.sh` (the update-branch step's rebase-skip comment and the merge step's bounce comment); `.claude/skills/review-loop/SKILL.md`
+- What: `docs/design/` holds only `design-principles.md`. The citation came across in the cumulo port and points nowhere.
+- Source: #408 review cycle 1
