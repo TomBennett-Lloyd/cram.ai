@@ -13,7 +13,7 @@ import {
   retrievedSlide,
   WITHHELD,
 } from '../api/api-fixture';
-import { MODEL_FAILED, NOT_COVERED, PENDING, SLIDE_HAS_NO_TEXT } from '../copy';
+import { MODEL_FAILED, NOT_COVERED, PENDING, SEARCHED_FOR, SLIDE_HAS_NO_TEXT } from '../copy';
 import { AskScreen } from './AskScreen';
 
 const renderAsk = (api: ApiClient) =>
@@ -105,6 +105,26 @@ describe('AskScreen', () => {
     expect(panel?.textContent).toContain('Queens rule the hive.');
     expect(panel?.textContent).toContain('The cited slides don’t support it.');
     expect(answer().querySelector('.answer')?.textContent).not.toContain('Queens');
+  });
+
+  it('names what was searched when the reply corrected a typo, and nothing when it did not', async () => {
+    const searched = 'What are drones?';
+    const shown = () => answer().querySelector('.searched')?.textContent;
+    const first = await askWith(
+      { status: 200, body: { ...GROUNDED, searched } },
+      'What are dornes?',
+    );
+    expect(shown()).toBe(`${SEARCHED_FOR} ${searched}`);
+    expect(answer().querySelector('.searched q')?.textContent).toBe(searched);
+    first.view.unmount();
+    const second = await askWith({
+      status: 200,
+      body: { status: 'not-covered', withheld: [], slides: [], searched },
+    });
+    expect(shown()).toBe(`${SEARCHED_FOR} ${searched}`);
+    second.view.unmount();
+    await askWith({ status: 200, body: GROUNDED });
+    expect(answer().querySelector('.searched')).toBeNull();
   });
 
   it('shows no withheld panel when nothing was withheld', async () => {

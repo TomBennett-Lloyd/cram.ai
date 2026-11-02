@@ -1,6 +1,7 @@
-import { SourceId, TopicTag } from '@cram/shared';
+import { ChunkNo, SourceId, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  chunked,
   indexed,
   indexLectures,
   openOrFail,
@@ -8,6 +9,7 @@ import {
   tempCourse,
   vector,
   type TempCourse,
+  firstFact,
 } from './course-fixture';
 import { CANDIDATES_PER_LIST, RETRIEVAL_K, type CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
@@ -179,28 +181,55 @@ describe('CourseIndex.slides', () => {
 });
 
 describe('CourseIndex topics', () => {
+  const first = sourceIdOf(slide({ slideNo: 1 }));
+  const second = sourceIdOf(slide({ slideNo: 2 }));
+  const tags = (...texts: string[]) => texts.map((text) => TopicTag.parse(text));
   beforeEach(() => {
     indexLectures(course, [
-      indexed(slide({ slideNo: 2, body: 'second' }), AWAY),
+      chunked(slide({ slideNo: 2, body: 'second\nsecond again' }), AWAY, AWAY),
       indexed(slide({ slideNo: 1, body: 'first' }), AWAY),
     ]);
   });
 
-  it('replaces a slide’s tags, and lists tagged slides in deck order', () => {
-    const first = sourceIdOf(slide({ slideNo: 1 }));
-    const second = sourceIdOf(slide({ slideNo: 2 }));
-    course.setTopics(second, [TopicTag.parse('cells'), TopicTag.parse('water')]);
-    course.setTopics(first, [TopicTag.parse('cells')]);
-    course.setTopics(second, [TopicTag.parse('water')]);
+  it('replaces a fact’s tags of one origin, and lists tagged slides in deck order', () => {
+    course.setTopics(firstFact(second), 'tagger', tags('cells', 'water'));
+    course.setTopics(firstFact(first), 'tagger', tags('cells'));
+    course.setTopics(firstFact(second), 'tagger', tags('water'));
     expect(course.slidesTagged(TopicTag.parse('cells')).map((s) => s.body)).toEqual(['first']);
-    expect(course.slidesTagged(TopicTag.parse('water')).map((s) => s.body)).toEqual(['second']);
+    expect(course.slidesTagged(TopicTag.parse('water')).map((s) => s.body)).toEqual([
+      'second\nsecond again',
+    ]);
     expect(course.slidesTagged(TopicTag.parse('absent'))).toEqual([]);
   });
 
-  it('reports a slide the course does not hold', () => {
-    expect(course.setTopics(SourceId.parse('lecture-9/1'), [TopicTag.parse('cells')])).toEqual({
-      status: 'no-such-slide',
-    });
+  it('keeps the other origin’s tags and the slide’s other facts’ tags when one is replaced', () => {
+    const secondChunk = { sourceId: second, chunkNo: ChunkNo.parse(2) };
+    course.setTopics(firstFact(second), 'tagger', tags('cells', 'water'));
+    course.setTopics(firstFact(second), 'student', tags('osmosis'));
+    course.setTopics(secondChunk, 'tagger', tags('pressure'));
+    course.setTopics(firstFact(second), 'tagger', tags('water'));
+    expect(course.topics(second)).toEqual([
+      { chunkNo: 1, origin: 'student', tag: 'osmosis' },
+      { chunkNo: 1, origin: 'tagger', tag: 'water' },
+      { chunkNo: 2, origin: 'tagger', tag: 'pressure' },
+    ]);
+    course.setTopics(firstFact(second), 'student', []);
+    expect(course.topics(second).map(({ tag }) => tag)).toEqual(['water', 'pressure']);
+  });
+
+  it('reports a fact the course does not hold: an unknown slide, or a chunk past its last', () => {
+    for (const fact of [
+      firstFact(SourceId.parse('lecture-9/1')),
+      { sourceId: first, chunkNo: ChunkNo.parse(2) },
+    ])
+      expect(course.setTopics(fact, 'tagger', tags('cells'))).toEqual({ status: 'no-such-fact' });
+    expect(course.topics(first)).toEqual([]);
+    expect(course.topics(SourceId.parse('lecture-9/1'))).toEqual([]);
+  });
+
+  it('stores a tag given twice once', () => {
+    course.setTopics(firstFact(first), 'tagger', tags('cells', 'cells'));
+    expect(course.topics(first)).toEqual([{ chunkNo: 1, origin: 'tagger', tag: 'cells' }]);
   });
 });
 
@@ -233,5 +262,43 @@ describe('CourseIndex.replaceEmbedder', () => {
       ]);
     }).toThrow(/3 dimensions/);
     expect(course.search({ text: '', embedding: AWAY }, 2)).toHaveLength(2);
+  });
+});
+
+describe('CourseIndex.replaceEmbedder and topic tags', () => {
+  const one = slide({ slideNo: 1, body: 'one' });
+  const two = slide({ slideNo: 2, body: 'two\ntwo again' });
+  const dimension2 = (model: string) => EmbedderIdentity.parse({ model, dimension: 2 });
+  beforeEach(() => {
+    indexLectures(course, [indexed(one, AWAY), indexed(two, AWAY)]);
+    course.setTopics(firstFact(sourceIdOf(one)), 'student', [TopicTag.parse('cells')]);
+    course.setTopics(firstFact(sourceIdOf(two)), 'tagger', [TopicTag.parse('water')]);
+  });
+
+  it('keeps each tag on its fact when the slides are cut the same way', () => {
+    course.replaceEmbedder(dimension2('new'), [
+      indexed(one, vector(1, 0)),
+      indexed(two, vector(0, 1)),
+    ]);
+    expect(course.topics(sourceIdOf(one))).toEqual([
+      { chunkNo: 1, origin: 'student', tag: 'cells' },
+    ]);
+    expect(course.topics(sourceIdOf(two))).toEqual([
+      { chunkNo: 1, origin: 'tagger', tag: 'water' },
+    ]);
+  });
+
+  it('puts a re-cut slide’s tags on every new fact, and leaves an uncut slide’s alone', () => {
+    course.replaceEmbedder(dimension2('new'), [
+      indexed(one, vector(1, 0)),
+      chunked(two, vector(1, 0), vector(0, 1)),
+    ]);
+    expect(course.topics(sourceIdOf(two))).toEqual([
+      { chunkNo: 1, origin: 'tagger', tag: 'water' },
+      { chunkNo: 2, origin: 'tagger', tag: 'water' },
+    ]);
+    expect(course.topics(sourceIdOf(one))).toEqual([
+      { chunkNo: 1, origin: 'student', tag: 'cells' },
+    ]);
   });
 });

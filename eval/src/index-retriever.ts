@@ -84,9 +84,11 @@ export class IndexRetriever {
   }
 
   async retrieve(question: string): Promise<readonly RetrievedSlide[]> {
-    const [embedding] = await embedAll(this.#embedder, [question]);
+    const correction = this.#course.correctSpelling(question);
+    const text = correction.status === 'corrected' ? correction.searched : question;
+    const [embedding] = await embedAll(this.#embedder, [text]);
     if (embedding === undefined) throw new Error('IndexRetriever: no query vector');
-    return this.#course.search({ text: question, embedding }, this.#k);
+    return this.#course.search({ text, embedding }, this.#k);
   }
 
   close(): void {

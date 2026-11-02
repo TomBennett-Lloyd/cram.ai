@@ -1,10 +1,11 @@
 import Database from 'better-sqlite3';
 import { DiscardableTable, SlideKind } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { openOrFail, slide, tempCourse } from './course-fixture';
+import { indexed, indexLectures, openOrFail, slide, tempCourse } from './course-fixture';
 import { unreproducedTables } from './rebuild-course';
 import { classifySchema } from './schema';
 import { SLIDE_COLUMNS, slideRowValues } from './slide-row';
+import { TOPIC_ORIGINS } from './topics';
 
 describe('classifySchema', () => {
   it('treats an unversioned file as blank only when it holds nothing', () => {
@@ -40,6 +41,25 @@ describe('the slides table', () => {
       const kindColumn = SLIDE_COLUMNS.split(', ').indexOf('kind');
       const unknown = slideRowValues(slide({ slideNo: 9 })).with(kindColumn, 'appendix');
       expect(() => insert.run(...unknown)).toThrow(/CHECK constraint/);
+    } finally {
+      db.close();
+      temp.remove();
+    }
+  });
+});
+
+describe('the topics table', () => {
+  it('stores each origin, and refuses an origin outside that vocabulary', () => {
+    const temp = tempCourse();
+    const course = openOrFail(temp.spec);
+    indexLectures(course, [indexed(slide(), undefined)]);
+    course.close();
+    const db = new Database(temp.spec.path);
+    try {
+      const chunkId = db.prepare('select id from chunks').pluck().get();
+      const insert = db.prepare('insert into topics (chunk_id, origin, tag) values (?, ?, ?)');
+      for (const origin of TOPIC_ORIGINS) insert.run(chunkId, origin, 'cells');
+      expect(() => insert.run(chunkId, 'model', 'cells')).toThrow(/CHECK constraint/);
     } finally {
       db.close();
       temp.remove();

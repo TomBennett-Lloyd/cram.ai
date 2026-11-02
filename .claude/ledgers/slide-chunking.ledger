@@ -8,6 +8,7 @@ cite: splitChunk
 sweep: \bsplitChunk\b|\.claude/ledgers/slide-chunking\.ledger|0008-slide-chunking|\bCHUNK_WINDOW_FILL\b|(?i:one or more chunks|slide is the chunk|(never|not) (inside|mid)[ -]bullet|split(s|ting)? (a slide )?by heading)
 scope: :!pnpm-lock.yaml :!.claude/ledgers
 carrier: docs/adr/0008-slide-chunking.md
+carrier: docs/adr/0009-explanation-answers.md
 carrier: docs/adr/README.md
 carrier: docs/plan.md
 carrier: packages/shared/src/index.ts
@@ -22,4 +23,5 @@ carrier: packages/index/src/indexed-slide.ts
 carrier: packages/index/src/list-filter.ts
 carrier: packages/index/src/slide-chunks.test.ts
 carrier: packages/shared/src/slide-chunk.ts
+carrier: packages/index/src/topics.ts
 excluded: docs/review-feedback.md
