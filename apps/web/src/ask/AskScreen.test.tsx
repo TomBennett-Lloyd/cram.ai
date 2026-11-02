@@ -77,7 +77,7 @@ describe('AskScreen', () => {
   it('opens the contradicting slide from its button, naming the sentence', async () => {
     await askWith(explained(CONTRADICTED));
     const button = within(answer()).getByRole('button', {
-      name: contradictionRefLabel(HIVE.record),
+      name: contradictionRefLabel(1, HIVE.record),
     });
     button.focus();
     fireEvent.click(button);
@@ -103,7 +103,9 @@ describe('AskScreen', () => {
     fireEvent.click(number);
     const entry = within(answer()).getByRole('button', { name: /Slide 7/ });
     expect(document.activeElement).toBe(entry);
-    fireEvent.click(within(answer()).getByRole('button', { name: /Slide 4/ }));
+    const hive = within(answer()).getByRole('button', { name: /Slide 4/ });
+    hive.focus();
+    fireEvent.click(hive);
     const dialog = screen.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 4' });
     expect(within(dialog).getByRole('heading', { level: 2 })).toBe(document.activeElement);
     expect([...dialog.querySelectorAll('mark')].map((mark) => mark.textContent)).toEqual([
@@ -111,6 +113,7 @@ describe('AskScreen', () => {
     ]);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(hive);
   });
 
   it('closes the slide on Escape', async () => {

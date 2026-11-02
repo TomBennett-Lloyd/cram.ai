@@ -13,6 +13,7 @@ import {
   contradictionRefLabel,
   DERIVED_SOURCE,
   MAY_BE_RELEVANT,
+  SOURCE_MISSING,
   sourceRefLabel,
 } from '../copy';
 import { ExplanationView } from './ExplanationView';
@@ -130,7 +131,7 @@ describe('ExplanationView', () => {
     const contradiction = marked[0]?.nextElementSibling;
     expect(contradiction?.classList.contains('contradiction-refs')).toBe(true);
     expect(refsIn(contradiction ?? document.body)).toEqual([
-      ['1', contradictionRefLabel(HIVE.record)],
+      ['1', contradictionRefLabel(1, HIVE.record)],
     ]);
     const label = contradiction?.lastElementChild;
     expect(label?.classList.contains('contradiction-label')).toBe(true);
@@ -139,7 +140,31 @@ describe('ExplanationView', () => {
     const others = contradiction?.nextElementSibling;
     expect(others?.classList.contains('sentence-refs')).toBe(true);
     expect(refsIn(others ?? document.body)).toEqual([['2', sourceRefLabel(2, COMB.record)]]);
-    expect(screen.getByRole('button', { name: contradictionRefLabel(HIVE.record) })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: contradictionRefLabel(1, HIVE.record) }),
+    ).toBeDefined();
+  });
+
+  it('separates each cluster from the words before it', () => {
+    const view = show(CONTRADICTED);
+    expect(view.querySelector('.explanation-text')?.textContent).toBe(
+      `Workers are female. ${MAY_BE_RELEVANT}1 Drones forage for nectar. 1${APPEARS_TO_CONTRADICT} ${MAY_BE_RELEVANT}2 `,
+    );
+  });
+
+  it('says a source is missing where a slide the reply lacks would be, in the text and in the list', () => {
+    const view = show(
+      { ...CONTRADICTED, sources: [id('s1'), id('s2'), id('s9')] },
+      { slides: [COMB] },
+    );
+    expect(view.querySelector('.contradiction-refs')?.textContent).toBe(
+      `${SOURCE_MISSING}${APPEARS_TO_CONTRADICT}`,
+    );
+    expect(sourcesEntries()).toEqual([
+      `1${SOURCE_MISSING}`,
+      '2Lecture 1: The HiveSlide 7The comb',
+      `3${SOURCE_MISSING}`,
+    ]);
   });
 
   it('labels a sources entry whose text was read from the slide’s picture', () => {

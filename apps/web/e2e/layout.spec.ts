@@ -82,14 +82,16 @@ test('a marked answer fits the narrowest phone width, with its label showing', a
   await expect(page.locator('.contradicted')).toBeVisible();
   expect(await scrollsSideways(page)).toBe(false);
   const button = page.locator('.contradiction-refs .source-ref');
-  const atRest = await button.boundingBox();
+  const next = page.locator('.sentence-refs').nth(1).locator('.source-ref');
+  const atRest = [await button.boundingBox(), await next.boundingBox()];
   await page.getByRole('button', { name: 'Ask' }).focus();
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
+  for (let presses = 0; presses < 6; presses++) {
+    if (await button.evaluate((node) => node === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
   await expect(button).toBeFocused();
   await expect(page.locator('.contradiction-label')).toBeVisible();
-  expect(await button.boundingBox()).toEqual(atRest);
+  expect([await button.boundingBox(), await next.boundingBox()]).toEqual(atRest);
   expect(await scrollsSideways(page)).toBe(false);
   expect(await overflows(page, '.explanation-text')).toBe(false);
 });

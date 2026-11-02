@@ -19,7 +19,7 @@ const ask = async (page: Page, question: string) => {
   await page.getByRole('button', { name: 'Ask' }).click();
 };
 
-const CONTRADICTION_BUTTON = `${APPEARS_TO_CONTRADICT} Lecture 1: The Hive, slide 4`;
+const CONTRADICTION_BUTTON = `Source 1: ${APPEARS_TO_CONTRADICT} Lecture 1: The Hive, slide 4`;
 
 /** The underline a mark paints, its weight, and whether that weight is heavier than its parent's. */
 const treatment = (locator: Locator) =>
@@ -30,9 +30,22 @@ const treatment = (locator: Locator) =>
       line: own.textDecorationLine,
       style: own.textDecorationStyle,
       colour: own.textDecorationColor,
+      thickness: own.textDecorationThickness,
+      offset: own.textUnderlineOffset,
       heavier: Number(own.fontWeight) > Number(parent.fontWeight),
     };
   });
+
+/** A length token as the engine resolves it, in px. */
+const tokenLength = (page: Page, token: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement('span');
+    probe.style.paddingLeft = `var(${name})`;
+    document.body.append(probe);
+    const length = getComputedStyle(probe).paddingLeft;
+    probe.remove();
+    return length;
+  }, token);
 
 /** A token's colour as the engine resolves it, through a probe element. */
 const tokenColour = (page: Page, token: string) =>
@@ -54,12 +67,16 @@ test('an answer shows its prose with the quote marked, each sentence’s numbers
     'Workers are female, and comb cells are hexagonal.',
   );
   await expect(answer.locator('q.explanation-quote')).toHaveText(['Drones are male.']);
-  expect(await treatment(answer.locator('q.explanation-quote'))).toEqual({
+  const quote = answer.locator('q.explanation-quote');
+  expect(await treatment(quote)).toEqual({
     line: 'underline',
     style: 'solid',
     colour: await tokenColour(page, '--color-accent'),
+    thickness: await tokenLength(page, '--line-md'),
+    offset: 'auto',
     heavier: true,
   });
+  expect(await quote.evaluate((node) => getComputedStyle(node).quotes)).toBe('none');
   await expect(answer.locator('.sentence-refs')).toHaveText([
     'may be relevant1',
     'may be relevant12',
@@ -113,20 +130,25 @@ test('the close button returns focus to the sources entry', async ({ page }) => 
   await expect(card).toBeFocused();
 });
 
-test('a contradicted sentence carries a wavy danger underline in regular weight, told from the quote', async ({
+test('a contradicted sentence carries a wavy danger underline in regular weight, below a quote’s inside it', async ({
   page,
 }) => {
   await ask(page, CONTRADICTED_QUESTION);
   const marked = page.locator('.contradicted');
-  await expect(marked).toHaveText([CONTRADICTED_SENTENCE]);
+  await expect(marked).toHaveCount(1);
   expect(await treatment(marked)).toEqual({
     line: 'underline',
     style: 'wavy',
     colour: await tokenColour(page, '--color-danger'),
+    thickness: await tokenLength(page, '--line-sm'),
+    offset: await tokenLength(page, '--line-lg'),
     heavier: false,
   });
   expect(await marked.evaluate((node) => getComputedStyle(node).fontWeight)).toBe('400');
-  expect(await treatment(page.locator('q.explanation-quote'))).toMatchObject({ style: 'solid' });
+  expect(await treatment(marked.locator('q.explanation-quote'))).toMatchObject({
+    style: 'solid',
+    offset: 'auto',
+  });
   await expect(page.locator('.contradiction-label')).toBeHidden();
 });
 
@@ -138,10 +160,11 @@ test('the contradiction label shows on hover over the sentence or its number, an
   const label = page.locator('.contradiction-label');
   const button = page.getByRole('button', { name: CONTRADICTION_BUTTON });
   await expect(label).toBeHidden();
-  const atRest = await button.boundingBox();
+  const next = page.locator('.sentence-refs').nth(1).locator('.source-ref');
+  const atRest = [await button.boundingBox(), await next.boundingBox()];
   await page.locator('.contradicted').hover();
   await expect(label).toBeVisible();
-  expect(await button.boundingBox()).toEqual(atRest);
+  expect([await button.boundingBox(), await next.boundingBox()]).toEqual(atRest);
   await button.hover();
   await expect(label).toBeVisible();
   await page.getByRole('textbox', { name: 'Question' }).hover();
@@ -158,6 +181,20 @@ test('a mouse press on the contradiction number leaves no label once the pointer
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(button).toBeFocused();
   await page.getByRole('textbox', { name: 'Question' }).hover();
+  await expect(page.locator('.contradiction-label')).toBeHidden();
+});
+
+test('on a device with no hover, a pointer over the sentence shows no label', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'phone', 'the touch arm runs on the phone project');
+  const session = await page.context().newCDPSession(page);
+  await session.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'hover', value: 'none' }],
+  });
+  expect(await page.evaluate(() => matchMedia('(hover: none)').matches)).toBe(true);
+  await ask(page, CONTRADICTED_QUESTION);
+  await page.locator('.contradicted').hover();
   await expect(page.locator('.contradiction-label')).toBeHidden();
 });
 

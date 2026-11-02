@@ -52,18 +52,24 @@ export const GROUNDED_QUESTION = 'What are drones?';
 export const NOT_COVERED_QUESTION = 'Who wrote Hamlet?';
 /** Its answer's second sentence is marked against HIVE, whose speaker notes say drones do not forage. */
 export const CONTRADICTED_QUESTION = 'Do drones forage?';
-export const CONTRADICTED_SENTENCE = 'Drones forage for nectar in the comb.';
+export const CONTRADICTED_SENTENCE =
+  'Drones forage for nectar in the comb, whose cells are hexagonal.';
+/** A quote inside the contradicted sentence, so its underline and the mark's meet. */
+const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };
 
 const SENTENCES = [
   sentence('Drones are male.', ['s1']),
   sentence('Workers are female, and comb cells are hexagonal.', ['s1', 's2']),
 ];
 
-const grounded = (sentences: readonly ReturnType<typeof sentence>[]) => ({
+const grounded = (
+  sentences: readonly ReturnType<typeof sentence>[],
+  quotes: readonly { readonly sourceId: string; readonly quote: string }[] = [],
+) => ({
   status: 'grounded',
   explanation: {
     text: sentences.map(({ text }) => text).join(' '),
-    quotes: [{ sourceId: 's1', quote: 'Drones are male.' }],
+    quotes: [{ sourceId: 's1', quote: 'Drones are male.' }, ...quotes],
     sentences,
     sources: ['s1', 's2'],
   },
@@ -77,10 +83,13 @@ const askReply = (question: string) => {
     case NOT_COVERED_QUESTION:
       return { status: 'not-covered', withheld: [], slides: [COMB], leftOut: [] };
     case CONTRADICTED_QUESTION:
-      return grounded([
-        sentence('Drones are male.', ['s1']),
-        sentence(CONTRADICTED_SENTENCE, ['s2', 's1'], ['s1']),
-      ]);
+      return grounded(
+        [
+          sentence('Drones are male.', ['s1']),
+          sentence(CONTRADICTED_SENTENCE, ['s2', 's1'], ['s1']),
+        ],
+        [QUOTE_IN_MARK],
+      );
     default:
       return grounded(SENTENCES);
   }

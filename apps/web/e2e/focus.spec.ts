@@ -47,7 +47,7 @@ test('a keyboard reader who reaches the contradiction button sees its ring and t
 }) => {
   await answered(page, CONTRADICTED_QUESTION);
   const button = page.getByRole('button', {
-    name: `${APPEARS_TO_CONTRADICT} Lecture 1: The Hive, slide 4`,
+    name: `Source 1: ${APPEARS_TO_CONTRADICT} Lecture 1: The Hive, slide 4`,
   });
   const label = page.locator('.contradiction-label');
   await expect(label).toBeHidden();
@@ -94,6 +94,60 @@ test('a tap paints no ring on the dialog it opens, or on the card after it', asy
   await page.getByRole('button', { name: 'Close' }).tap();
   await expect(card).toBeFocused();
   expect(await ringed(card)).toBe(false);
+});
+
+const COMB_NUMBER = 'Source 2: Lecture 1: The Hive, slide 7';
+const COMB_ENTRY = /Slide 7/;
+
+test('a keyboard reader who presses Enter on a number lands on its sources entry, ringed', async ({
+  page,
+}) => {
+  await answered(page);
+  const number = page.getByRole('button', { name: COMB_NUMBER });
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  for (let presses = 0; presses < 6; presses++) {
+    if (await number.evaluate((node) => node === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await page.keyboard.press('Enter');
+  const entry = page.getByRole('button', { name: COMB_ENTRY });
+  await expect(entry).toBeFocused();
+  expect(await ringed(entry)).toBe(true);
+});
+
+test('a mouse press on a number lands on its sources entry with no ring', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'the mouse arm runs on the desktop project');
+  await answered(page);
+  await page.getByRole('button', { name: COMB_NUMBER }).click();
+  const entry = page.getByRole('button', { name: COMB_ENTRY });
+  await expect(entry).toBeFocused();
+  expect(await ringed(entry)).toBe(false);
+});
+
+test('a tap on a number lands on its sources entry with no ring', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'the touch arm runs on the phone project');
+  await answered(page);
+  await page.getByRole('button', { name: COMB_NUMBER }).tap();
+  const entry = page.getByRole('button', { name: COMB_ENTRY });
+  await expect(entry).toBeFocused();
+  expect(await ringed(entry)).toBe(false);
+});
+
+test('a tap on the contradiction number, then on Close, leaves no ring and no label', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'phone', 'the touch arm runs on the phone project');
+  await answered(page, CONTRADICTED_QUESTION);
+  const button = page.getByRole('button', {
+    name: `Source 1: ${APPEARS_TO_CONTRADICT} Lecture 1: The Hive, slide 4`,
+  });
+  await button.tap();
+  await page.getByRole('button', { name: 'Close' }).tap();
+  await expect(button).toBeFocused();
+  expect(await ringed(button)).toBe(false);
+  await expect(page.locator('.contradiction-label')).toBeHidden();
 });
 
 /** The decks screen with a rebuild report showing, and the picker its dismissal lands on. */

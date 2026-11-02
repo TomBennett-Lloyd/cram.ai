@@ -184,13 +184,8 @@ input:not([type='file']) {
   margin: 0;
 }
 
-/* The slide's words, in the slide panel's `mark` treatment rather than with quotation glyphs (design.md rule 9). */
 .explanation-quote {
   quotes: none;
-  font-weight: var(--font-weight-semibold);
-  text-decoration-line: underline;
-  text-decoration-color: var(--color-accent);
-  text-decoration-thickness: var(--line-md);
 }
 
 /* Told from the quote by style, weight and hue (`docs/adr/0009-explanation-answers.md` § Decision (i)). */
@@ -200,6 +195,8 @@ input:not([type='file']) {
   text-decoration-style: wavy;
   text-decoration-color: var(--color-danger);
   text-decoration-thickness: var(--line-sm);
+  /* Below a quote's underline, which a quote inside the sentence would otherwise paint over it. */
+  text-underline-offset: var(--line-lg);
 }
 
 .contradiction-label,
@@ -213,15 +210,20 @@ input:not([type='file']) {
   color: var(--color-text-muted);
 }
 
-/* Inline after the numbers in an inline cluster, so it wraps rather than clipping at a phone's edge and never moves the button; the button's name carries it at rest. */
+/* Its box is held at rest, so showing it moves nothing (design.md rule 6; e2e/ask.spec.ts, e2e/layout.spec.ts). */
 .contradiction-label {
-  display: none;
+  visibility: hidden;
 }
 
-.contradicted:hover + .contradiction-refs .contradiction-label,
-.contradiction-refs:hover .contradiction-label,
+@media (hover: hover) {
+  .contradicted:hover + .contradiction-refs .contradiction-label,
+  .contradiction-refs:hover .contradiction-label {
+    visibility: visible;
+  }
+}
+
 .contradiction-refs:has(.source-ref:focus-visible) .contradiction-label {
-  display: inline;
+  visibility: visible;
 }
 
 .source-ref {
@@ -432,11 +434,13 @@ input:not([type='file']) {
   font-weight: var(--font-weight-medium);
 }
 
-mark {
+mark,
+.explanation-quote {
   background: transparent;
   color: inherit;
   font-weight: var(--font-weight-semibold);
   text-decoration-line: underline;
   text-decoration-color: var(--color-accent);
   text-decoration-thickness: var(--line-md);
+  text-underline-offset: auto;
 }

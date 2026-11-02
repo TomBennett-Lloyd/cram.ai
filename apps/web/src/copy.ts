@@ -36,12 +36,16 @@ export const SOURCES = 'Sources';
 export const ATTRIBUTED_NOTE =
   'Written from your slides. Each sentence is checked only for whether a slide appears to contradict it; the slides listed below are where to look.';
 export const DERIVED_SOURCE = 'Text read from the picture';
-export const SLIDE_CONTRADICTION = 'This sentence of the answer appears to contradict this slide:';
 
 type SlideName = Pick<SlideRecord, 'slideNo' | 'lectureTitle'>;
 
-export const contradictionRefLabel = ({ slideNo, lectureTitle }: SlideName): string =>
-  `${APPEARS_TO_CONTRADICT} ${lectureTitle}, slide ${String(slideNo)}`;
+export const SLIDE_CONTRADICTION = `This sentence of the answer ${APPEARS_TO_CONTRADICT} this slide:`;
+
+export const contradictionRefLabel = (
+  number: number,
+  { slideNo, lectureTitle }: SlideName,
+): string =>
+  `Source ${String(number)}: ${APPEARS_TO_CONTRADICT} ${lectureTitle}, slide ${String(slideNo)}`;
 
 export const sourceRefLabel = (number: number, { slideNo, lectureTitle }: SlideName): string =>
   `Source ${String(number)}: ${lectureTitle}, slide ${String(slideNo)}`;

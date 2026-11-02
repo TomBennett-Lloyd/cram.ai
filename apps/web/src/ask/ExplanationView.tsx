@@ -59,7 +59,7 @@ const ContradictionRefs = ({
           key={sourceId}
           type="button"
           className="source-ref"
-          aria-label={contradictionRefLabel(found.cited.slide.record)}
+          aria-label={contradictionRefLabel(found.number, found.cited.slide.record)}
           onClick={() => {
             refs.onOpen({ ...found.cited, contradicted: sentence.text });
           }}
@@ -68,7 +68,6 @@ const ContradictionRefs = ({
         </button>
       );
     })}
-    {/* After the numbers, so showing it never moves the button under the pointer or the ring. */}
     <span className="contradiction-label" aria-hidden="true">
       {APPEARS_TO_CONTRADICT}
     </span>
