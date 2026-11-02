@@ -2,10 +2,10 @@ import type { ChatRequest, ChatResult, GeneratorReply } from '@cram/gateway';
 import { ChunkNo, type SlideChunk, SourceId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { estimateTokens } from './prompt-budget';
-import { fakeGateway, generatorRecording, generatorReplies } from './fake-gateway-fixture';
+import { fakeGateway, generatorRecording, generatorReplies, slide } from './fake-gateway-fixture';
 import { tagRequest } from './prompts/tag-prompt';
 import { slideText } from './slide-text';
-import { type TagFact, tagFacts } from './tag-facts';
+import { lectureFacts, type TagFact, tagFacts } from './tag-facts';
 
 const LECTURE = 'The apiary year';
 
@@ -144,5 +144,31 @@ describe('tagFacts', () => {
 
   it('propagates a rejected call, which is a bug or a replay miss', async () => {
     await expect(tagFacts([swarm], fakeGateway([]))).rejects.toThrow(/no generator recording/);
+  });
+});
+
+describe('lectureFacts', () => {
+  it('reads every chunk of each slide but a references slide’s, under the slide’s lecture title', () => {
+    const queen = slide('l1/1', 'One queen per colony');
+    const references = slide('l1/2', 'Guild handbook', { kind: 'references' });
+    const comb = slide('l1/3', 'Square cells', { kind: 'image-only', derived: true });
+    const chunks = (id: string) => [
+      swarm.chunk,
+      { ...swarm.chunk, chunkNo: ChunkNo.parse(2), body: id },
+    ];
+    const read: string[] = [];
+    const facts = lectureFacts([queen, references, comb], (id) => {
+      read.push(id);
+      return chunks(id);
+    });
+    expect(read).toEqual(['l1/1', 'l1/3']);
+    expect(
+      facts.map(({ sourceId, lectureTitle, chunk }) => [sourceId, lectureTitle, chunk.chunkNo]),
+    ).toEqual([
+      ['l1/1', 'The Hive', 1],
+      ['l1/1', 'The Hive', 2],
+      ['l1/3', 'The Hive', 1],
+      ['l1/3', 'The Hive', 2],
+    ]);
   });
 });

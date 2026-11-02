@@ -4,7 +4,7 @@ import { z } from 'zod';
 /** Tags one fact's reply may hold; provisional, and #426's eval run reports what it produced. */
 export const TAGS_PER_FACT = 6;
 
-/** Characters one tag may hold, so the backend cannot fit a sentence into a tag (`docs/adr/0001-grounding-architecture.md` § Decision (b)). */
+/** Characters one tag may hold; a short statement still fits, so the prompt is what keeps a tag a noun phrase (`docs/adr/0001-grounding-architecture.md` § Decision (b)). */
 export const TAG_MAX_CHARS = 40;
 
 const INSTRUCTIONS = `You name the topics a passage of a student's lecture slides is about, so the student can find the passage again by topic.

@@ -1,8 +1,11 @@
 import type { ChatRequest, ChatResult, Generator, ModelGateway } from '@cram/gateway';
 import { openCourse } from '@cram/index';
-import { CourseId, SourceId } from '@cram/shared';
+import { rmSync } from 'node:fs';
+import { CourseId, LectureId, SourceId } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
+import { tagStored, taggingLogOutcome } from './fact-tagging';
+import { markOlder, seededDataDir } from './repair-fixture';
 import {
   gatewayOf,
   PDF,
@@ -88,12 +91,12 @@ const storedTags = async ({ dataDir }: TestServer, sourceIds: readonly string[])
 
 describe('the tag pass at upload', () => {
   it('stores each chunk’s tags as the tagger’s before the upload reads indexed, skipping a references slide', async () => {
-    const bytes = await pdfDeck([QUEEN, SWARM, READING]);
+    const bytes = await pdfDeck([QUEEN, SWARM, READING, []]);
     const passages: string[] = [];
     const server = await started(tagging(gatewayOf([]), named, passages));
     const { uploads } = await upload(server, bytes);
     expect(uploads.map(({ progress }) => progress.state)).toEqual(['indexed']);
-    expect(await storedTags(server, ['l1/1', 'l1/2', 'l1/3'])).toEqual([
+    expect(await storedTags(server, ['l1/1', 'l1/2', 'l1/3', 'l1/4'])).toEqual([
       [
         { chunkNo: 1, origin: 'tagger', tag: 'castes' },
         { chunkNo: 1, origin: 'tagger', tag: 'the queen' },
@@ -102,6 +105,7 @@ describe('the tag pass at upload', () => {
         { chunkNo: 1, origin: 'tagger', tag: 'bloom count' },
         { chunkNo: 1, origin: 'tagger', tag: 'swarming' },
       ],
+      [],
       [],
     ]);
     expect(passages).toHaveLength(2);
@@ -128,6 +132,21 @@ describe('the tag pass at upload', () => {
     ]);
   });
 
+  it('names each reason once, sorted, when a pass both fails a reply and stops at a backend failure', async () => {
+    const bytes = await pdfDeck([QUEEN, SWARM, ['The stilling', 'Bees sleep through the winter']]);
+    const server = await started(
+      tagging(gatewayOf([]), (passage) =>
+        passage.includes('queen')
+          ? { status: 'invalid-output', content: 'x', issue: 'not JSON' }
+          : { status: 'backend-failed', reason: 'connection refused' },
+      ),
+    );
+    await upload(server, bytes);
+    expect(server.logs).toEqual([
+      { operation: 'tag', courseId: 'bio', outcome: 'untagged 3/3 backend-failed,invalid-output' },
+    ]);
+  });
+
   it('keeps the upload indexed when the tag pass throws, logging it by name', async () => {
     const bytes = await pdfDeck([QUEEN]);
     const server = await started(
@@ -151,5 +170,18 @@ describe('the tag pass at upload', () => {
         { chunkNo: 1, origin: 'tagger', tag: 'swarming' },
       ],
     ]);
+  });
+
+  it('reports a course file it cannot open as unavailable, calling nothing', async () => {
+    const dataDir = await seededDataDir([QUEEN]);
+    markOlder(dataDir);
+    const calls: string[] = [];
+    const gateway = tagging(gatewayOf([]), named, calls);
+    const files = { dataDir, embedder: await embedderIdentity(gateway.embedder) };
+    const outcome = await tagStored(BIO, LectureId.parse('l1'), { files, gateway });
+    rmSync(dataDir, { recursive: true, force: true });
+    expect(outcome).toEqual({ status: 'course-unavailable', problem: 'older-schema' });
+    expect(taggingLogOutcome(outcome)).toBe('course-unavailable');
+    expect(calls).toEqual([]);
   });
 });

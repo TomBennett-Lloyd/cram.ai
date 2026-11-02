@@ -10,7 +10,7 @@ apps/server/src/course-repair.ts	384
 apps/server/src/data-directory.ts	652
 apps/server/src/dev-proxy.ts	967
 apps/server/src/dev.ts	232
-apps/server/src/fact-tagging.ts	263
+apps/server/src/fact-tagging.ts	0
 apps/server/src/gateway-config.ts	574
 apps/server/src/handlers.ts	120
 apps/server/src/http-body.ts	188

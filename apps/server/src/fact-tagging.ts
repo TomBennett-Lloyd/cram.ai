@@ -5,7 +5,6 @@ import type { IngestDeps } from './ingest-deck';
 
 export type TaggingOutcome =
   | { readonly status: 'tagged'; readonly facts: readonly FactTagging[] }
-  | { readonly status: 'no-such-lecture' }
   | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
 export const tagStored = async (
@@ -17,8 +16,6 @@ export const tagStored = async (
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   const { course } = opened;
   try {
-    const lecture = course.lectures().find((stored) => stored.lectureId === lectureId);
-    if (lecture === undefined) return { status: 'no-such-lecture' };
     const facts = lectureFacts(course.lectureSlides(lectureId), (id) => course.chunks(id));
     const tagged = await tagFacts(facts, { generator: deps.gateway.generator });
     for (const fact of tagged)
@@ -30,7 +27,6 @@ export const tagStored = async (
   }
 };
 
-/** `undefined` when nothing failed; never a tag, which is course text (`server-log.ts`). */
 export const taggingLogOutcome = (outcome: TaggingOutcome): string | undefined => {
   if (outcome.status !== 'tagged') return outcome.status;
   const failed = outcome.facts.flatMap((fact) =>
