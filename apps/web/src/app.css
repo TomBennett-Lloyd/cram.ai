@@ -137,8 +137,8 @@ input:not([type='file']) {
 
 .course-list,
 .upload-list,
-.answer,
 .citations,
+.sources,
 .withheld ul {
   margin: 0;
   padding: 0;
@@ -173,20 +173,87 @@ input:not([type='file']) {
   gap: var(--space-4);
 }
 
-.answer {
+.explanation {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 
-.unit {
+.explanation-text,
+.attributed-note {
+  margin: 0;
+}
+
+.explanation-quote {
+  quotes: none;
+}
+
+/* Told from the quote by style, weight and hue (`docs/adr/0009-explanation-answers.md` § Decision (i)). */
+.contradicted {
+  font-weight: var(--font-weight-regular);
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: var(--color-danger);
+  text-decoration-thickness: var(--line-sm);
+  /* Below a quote's underline, which a quote inside the sentence would otherwise paint over it. */
+  text-underline-offset: var(--line-lg);
+}
+
+.contradiction-label,
+.sentence-refs-label {
+  padding-inline: var(--space-1);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.sentence-refs-label {
+  color: var(--color-text-muted);
+}
+
+/* Its box is held at rest, so showing it moves nothing (design.md rule 6; e2e/ask.spec.ts, e2e/layout.spec.ts). */
+.contradiction-label {
+  visibility: hidden;
+}
+
+@media (hover: hover) {
+  .contradicted:hover + .contradiction-refs .contradiction-label,
+  .contradiction-refs:hover .contradiction-label {
+    visibility: visible;
+  }
+}
+
+.contradiction-refs:has(.source-ref:focus-visible) .contradiction-label {
+  visibility: visible;
+}
+
+.source-ref {
+  padding: 0 var(--space-2);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.attributed-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.sources {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.sources-entry {
+  display: flex;
+  align-items: baseline;
   gap: var(--space-2);
 }
 
-.unit-text {
-  margin: 0;
+.sources-number {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .citations {
@@ -238,6 +305,15 @@ input:not([type='file']) {
 .slide-card-title {
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
+}
+
+.slide-card-derived {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.slide-contradiction {
+  margin: var(--space-3) 0 0;
 }
 
 .withheld summary {
@@ -358,11 +434,13 @@ input:not([type='file']) {
   font-weight: var(--font-weight-medium);
 }
 
-mark {
+mark,
+.explanation-quote {
   background: transparent;
   color: inherit;
   font-weight: var(--font-weight-semibold);
   text-decoration-line: underline;
   text-decoration-color: var(--color-accent);
   text-decoration-thickness: var(--line-md);
+  text-underline-offset: auto;
 }
