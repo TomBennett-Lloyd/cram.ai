@@ -121,12 +121,12 @@ packages/grounding/src/ground.ts	253
 packages/grounding/src/index.ts	0
 packages/grounding/src/model-failure.ts	0
 packages/grounding/src/nli-verdict.ts	769
-packages/grounding/src/prompts/generation-prompt.ts	408
+packages/grounding/src/prompts/generation-prompt.ts	392
 packages/grounding/src/prompts/rewrite-prompt.ts	526
 packages/grounding/src/prompts/statement-block.ts	0
 packages/grounding/src/prompts/verifier-prompt.ts	434
-packages/grounding/src/resolve-citations.ts	192
-packages/grounding/src/slide-text.ts	1666
+packages/grounding/src/resolve-citations.ts	178
+packages/grounding/src/slide-text.ts	1538
 packages/grounding/src/verifier-input.ts	1666
 packages/grounding/src/verify.ts	327
 packages/index/src/chunk-row.ts	555
