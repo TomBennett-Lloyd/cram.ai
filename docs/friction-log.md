@@ -155,3 +155,23 @@ Entry format:
 
 - Phase: verify
 - Observed: two `pnpm verify` runs went red on `packages/ingest`'s `stored-text.test.ts` 5 s timeout under machine load, #349's signature (still open), and both re-runs were green with no change to the tree; the batch merged on CI green. Counts toward #349, which has now cost a lane two re-runs in one batch.
+
+## 2026-11-02 — PR #397 (eval re-runs)
+
+- Phase: implementation
+- Observed: the #367 lane lost two `pnpm eval` runs (about 5 min each) to `eval/src/live-run.measure.test.ts`'s `one call answered two ways` refusal on "What is the third step of the guild's inspection checklist?": the run at `261729f`, then the first attempt at `bfa07b7`, both on the pinned Qwen3-4B over loopback Ollama at `{temperature: 0, seed: 0}`. The second attempt at `bfa07b7` recorded cleanly and is the committed run. The refusal keeps a recording that cannot replay out of the tree, and its only remedy is the `re-run` it names, so each occurrence costs a full run to find out; the PR body separately records that at temperature 0 this 4B model flips individual questions on a one-phrase prompt change. One lane so far.
+
+## 2026-11-02 — PR #397 (measuredCommit regex)
+
+- Phase: planning
+- Observed: before any edit, the #367 lane measured the issue's two defects through a scratch harness that ran `runEval` (`eval/src/run-eval.ts`) against the live backends, and lost one 6-minute live run because the scratch report's `measuredCommit` failed `EvalReport`'s sha regex in `eval/src/report.ts`. The committed runner derives that value through `eval/src/measured-commit.ts`, which the scratch harness did not go through. The measurement was the right call: it showed neither defect has the cause the issue proposes, which is what stopped the lane (next entry). One lane so far on a scratch harness handing a committed schema a value the runner derives for it.
+
+## 2026-11-02 — PR #397 (BLOCKED for the owner)
+
+- Phase: planning
+- Observed: the #367 lane stopped before any edit with `STATUS: BLOCKED — owner decision` (its first lane report, 2026-10-21 18:20Z), under ticket-agent rule 2 (an owner-only question) and rule 5(b) (the cause the issue proposes is not what the disk shows), after its measured run showed a unit stating the first sentence of a two-sentence bullet is supported by both verifier arms and that the prompt-only fix cost shown units (58 → 34) and answered questions (22 → 20). Of its three questions the owner answered Q1 (the withheld reason was `dangling-citation`) and redirected Q2 and Q3 to #366; the coordinator relayed that as a scoped PROCEED, the lane re-planned once, and PR #397 opened at 20:43Z, 2 h 24 min after the BLOCKED report. The lane's own Friction line names the cause: the issue's acceptance implied an ADR 0001 (d) / ADR 0003 (d) change but carried no `adr` label, so two of its three questions were the owner's. The stop is the shape PR #118's entry names as correct; recorded as an instance of it.
+
+## 2026-11-02 — PR #397 (footprint)
+
+- Phase: planning
+- Observed: the #367 plan's `Files:` list named `packages/grounding/src/slide-text.ts` but not the test its new `slideLines` would need, and named `apps/server/src/server-fixture.ts` "and its callers" and `eval/src/*-fixture.ts` where the diff changed `apps/server/src/ask.test.ts` and `eval/src/run-eval.test.ts` and no fixture; with `docs/tech-debt.md` (the review's one SYSTEMIC finding) and `.claude/comment-density.baseline.tsv`, that is a five-file `Footprint change:` on a 23-file PR. The baseline rows were not owed: the PR adds no scanned source file (its one new `.ts` is a `.test.ts`), so the four lowered rows came from a `--ratchet` run the lane chose, and the lane's Friction line then records that run's cost — a code line shortened after a mid-lane ratchet reads as a rise. One lane so far on each; the ratchet-ordering half is commented on #404.
