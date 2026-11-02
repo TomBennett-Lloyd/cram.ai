@@ -908,6 +908,34 @@ expect_not_merged squash
 end
 
 # ==========================================================================================
+# 6b. the repo's own humanAlways list classifies a .claude/settings.json PR HUMAN
+# ==========================================================================================
+# Every other case classifies against HUMAN_ALWAYS_DEFAULT; this one reads the live
+# list, because settings.json grants every session's permissions and, being JSON,
+# would otherwise auto-merge unread (#440). The gitignored settings.local.json rides
+# along so a widened pattern shows as a second hit.
+begin "the shipped humanAlways list classifies a PR touching .claude/settings.json HUMAN"
+live_list=$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).merge.humanAlways))' "$SCRIPTS/../workflow.json") ||
+  { echo "harness: cannot read merge.humanAlways from $SCRIPTS/../workflow.json" >&2; exit 2; }
+fixture live-list "$live_list"
+V_FILES=".claude/settings.json,.claude/settings.local.json"
+cat >"$STATE/diff" <<'EOF'
+diff --git a/.claude/settings.json b/.claude/settings.json
+--- a/.claude/settings.json
++++ b/.claude/settings.json
+@@ -1,0 +2,1 @@
++  "permissions": {}
+EOF
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stdout 'HUMAN (humanAlways: .claude/settings.json)'
+expect_stderr 'adds no lines to docs/review-feedback.md'
+expect_not_merged squash
+end
+
+# ==========================================================================================
 # 7. BEHIND: update-branch runs first, and the merge is taken from the refreshed head
 # ==========================================================================================
 begin "a BEHIND PR is updated first and merges from the new head"
