@@ -91,7 +91,9 @@ your issue's comments; the top-level never posts them for you.
    acting on it: release is the merge owner's call and a wrong one is theirs to retract.
 4. **Sub-agent dispatch is yours, and every dispatch is synchronous**: planner (fable — first
    read ~/.local/state/claude-budget/mode per CLAUDE.md Model tiers; conserve → opus, note the
-   downgrade in the plan comment), implementers (opus; a chunk of a trim-campaign issue under
+   downgrade in the plan comment; its plan arrives as the file its first line names, which
+   plan-issue step 5 posts, `.claude/agents/planner.md`),
+   implementers (opus; a chunk of a trim-campaign issue under
    `docs/standards/prose.md` § Trim batches goes out with `model: 'sonnet'` in the Agent call,
    cumulo#607), reviewer (opus)
    for each full cycle, confirmation-reviewer for every confirmation pass, consultant (fable,

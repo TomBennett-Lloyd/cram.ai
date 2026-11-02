@@ -23,7 +23,7 @@ import { type Clock, latencySummary, timed } from './latency';
 import { attributionRecall, contradictionSetLight, lightFlagRate } from './light-rows';
 import { notMeasurable } from './metric-row';
 import { EvalReport, type MachineClass } from './report';
-import { retrievalRecall } from './retrieval-recall';
+import { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
 import { summaryRows } from './summary-rows';
 import { TimedGateway } from './timed-gateway';
 import { type JudgedLabel, verifierAccuracy } from './verifier-accuracy';
@@ -101,7 +101,7 @@ const NOT_YET = {
   generatorTiming: 'Generator.chat reports neither first-token time nor token counts (#138)',
 };
 
-/** One whole run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), both depths over one retrieved set; a recording miss rejects it. */
+/** One whole run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), both depths over one retrieved set, misspelt variants retrieved only; a recording miss rejects it. */
 export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   const gateway = new TimedGateway(spec.gateway, spec.clock);
   const retriever = await IndexRetriever.open({
@@ -118,18 +118,29 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
         thresholds: PROVISIONAL_NLI_THRESHOLDS,
       });
       const retrievals: Retrieved[] = [];
-      for (const question of spec.questions)
+      const misspelt: Retrieved[] = [];
+      for (const question of spec.questions) {
         retrievals.push({ question, retrieved: await retriever.retrieve(question.question) });
+        for (const variant of question.misspelt)
+          misspelt.push({ question, retrieved: await retriever.retrieve(variant) });
+      }
       const light = await askLight(retrievals, retriever, gateway, spec.clock);
       const deep = await byStrategy(DEEP_STRATEGIES, (strategy) =>
         askDeep(retrievals, gateway, strategy),
       );
-      return { summaries, retrievals, light, deep, wide: await widened(light.asked, gateway) };
+      return {
+        summaries,
+        retrievals,
+        misspelt,
+        light,
+        deep,
+        wide: await widened(light.asked, gateway),
+      };
     } finally {
       retriever.close();
     }
   })();
-  const { summaries, retrievals, light, deep, wide } = ran;
+  const { summaries, retrievals, misspelt, light, deep, wide } = ran;
   const labels = await byStrategy(LABEL_STRATEGIES, (strategy) =>
     judgeAll(spec.labels, gateway, strategy, spec.clock),
   );
@@ -172,6 +183,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       citationValidity: citationValidity([...light.asked, ...headline]),
       contradictionSet: contradictionSet(headline),
       retrievalRecall: retrievalRecall(retrievals, RETRIEVAL_K),
+      misspeltRetrievalRecall: misspeltRetrievalRecall(misspelt, RETRIEVAL_K),
       verifierPrecision: headlineAccuracy.precision,
       verifierRecall: headlineAccuracy.recall,
       examAnswerability: notMeasurable(NOT_YET.exams),

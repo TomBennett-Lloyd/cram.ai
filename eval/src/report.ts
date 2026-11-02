@@ -55,6 +55,7 @@ export const EvalReport = z.strictObject({
     citationValidity: CitationValidityRow,
     contradictionSet: ContradictionSetRow,
     retrievalRecall: BaselineRow,
+    misspeltRetrievalRecall: BaselineRow,
     verifierPrecision: BaselineRow,
     verifierRecall: BaselineRow,
     examAnswerability: BaselineRow,
