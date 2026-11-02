@@ -214,6 +214,20 @@ describe('explain at the deep depth', () => {
     });
   });
 
+  it('names a quoted slide among the sources when another slide entails its sentence', async () => {
+    const result = await run(
+      [explained(FIRST, [line('l1/1', 1)]), verified(scored(FIRST, retrieved, NEUTRAL, ENTAILED))],
+      deep(),
+    );
+    expect(result).toMatchObject({
+      explanation: {
+        sentences: [{ slides: ['l1/2'] }],
+        quotes: [{ sourceId: 'l1/1' }],
+        sources: ['l1/2', 'l1/1'],
+      },
+    });
+  });
+
   it('withholds a neutral sentence as unsupported', async () => {
     const result = await run(
       [

@@ -63,6 +63,11 @@ describe('quotesIn', () => {
     expect(quotesIn(text, second, [quote])).toEqual([quote]);
   });
 
+  it('leaves out a quote the text does not hold', () => {
+    if (first === undefined) throw new Error('two sentences');
+    expect(quotesIn(text, first, [cite('l1/1', 'Workers are female.')])).toEqual([]);
+  });
+
   it('leaves a quote out of a sentence it only touches', () => {
     const at = cite('l1/1', 'Drones are female.');
     if (first === undefined || second === undefined) throw new Error('two sentences');

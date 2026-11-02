@@ -33,7 +33,6 @@ export const attributionSet = ({ result }: AskedQuestion): readonly SourceId[] =
       ]
     : [];
 
-/** The mirror of `retrievalRecall` over each answer's attribution set. */
 export const attributionRecall = (asked: readonly AskedQuestion[]): BaselineRow => {
   let expected = 0;
   let found = 0;
@@ -97,9 +96,7 @@ export const contradictionSetLight = (asked: readonly AskedQuestion[]): LightSet
 };
 
 export const lightFlagRate = (asked: readonly AskedQuestion[]): BaselineRow => {
-  const shown = asked
-    .filter(({ question }) => inContradictionSet(question))
-    .filter((item) => forbiddenSentences(item).length > 0);
+  const shown = asked.filter((item) => forbiddenSentences(item).length > 0);
   const marked = shown.filter((item) =>
     forbiddenSentences(item).every(({ sentence }) => flagged(item, sentence)),
   );

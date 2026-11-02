@@ -53,7 +53,7 @@ apps/web/src/shell/async-states.tsx	416
 apps/web/src/shell/route.ts	357
 apps/web/src/shell/use-route.ts	0
 apps/web/src/theme.ts	909
-eval/src/ask-depths.ts	256
+eval/src/ask-depths.ts	175
 eval/src/asked-question.ts	1250
 eval/src/audit.ts	560
 eval/src/citation-validity.ts	0
@@ -71,7 +71,7 @@ eval/src/index.ts	0
 eval/src/ingested-course.ts	263
 eval/src/json-text.ts	0
 eval/src/latency.ts	652
-eval/src/light-rows.ts	196
+eval/src/light-rows.ts	101
 eval/src/live-config.ts	697
 eval/src/live-gateway.ts	243
 eval/src/measured-commit.ts	769
@@ -124,7 +124,7 @@ packages/grounding/src/fake-gateway-fixture.ts	0
 packages/grounding/src/generate-units.ts	400
 packages/grounding/src/ground.ts	253
 packages/grounding/src/index.ts	0
-packages/grounding/src/mark-contradictions.ts	294
+packages/grounding/src/mark-contradictions.ts	250
 packages/grounding/src/model-failure.ts	0
 packages/grounding/src/nli-verdict.ts	769
 packages/grounding/src/prompts/explanation-prompt.ts	606
@@ -138,7 +138,7 @@ packages/grounding/src/resolve-quotes.ts	1764
 packages/grounding/src/slide-text.ts	1538
 packages/grounding/src/verification-depth.ts	1666
 packages/grounding/src/verifier-input.ts	1666
-packages/grounding/src/verify-explanation.ts	238
+packages/grounding/src/verify-explanation.ts	165
 packages/grounding/src/verify.ts	327
 packages/index/src/chunk-row.ts	555
 packages/index/src/common-words.ts	444

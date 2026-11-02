@@ -10,7 +10,7 @@ import {
 import { ATTRIBUTION_K } from '@cram/index';
 import type { RetrievedSlide } from '@cram/shared';
 import type { AskedQuestion } from './asked-question';
-import { type GoldenQuestion, inContradictionSet } from './golden-question';
+import type { GoldenQuestion } from './golden-question';
 import type { IndexRetriever } from './index-retriever';
 import { type Clock, timed } from './latency';
 import { forbiddenSentences } from './light-rows';
@@ -61,7 +61,6 @@ export const askLight = async (
   return { asked, durationsMs, overLengthPairs: tally.overLength };
 };
 
-/** The revision guide's depth over the same retrieved sets; the second opinion is every arm's but the cross-encoder's alone. */
 export const askDeep = async (
   retrievals: readonly Retrieved[],
   gateway: ModelGateway,
@@ -88,11 +87,7 @@ export const widened = async (
   for (const item of light) {
     const { result, retrieved } = item;
     const forbidden = forbiddenSentences(item);
-    if (
-      result.status !== 'grounded' ||
-      !inContradictionSet(item.question) ||
-      forbidden.length === 0
-    ) {
+    if (result.status !== 'grounded' || forbidden.length === 0) {
       wide.push(item);
       continue;
     }
@@ -103,7 +98,9 @@ export const widened = async (
         text: sentence.text,
         slides: [
           ...retrieved,
-          ...slidesOf(sentence.slides).filter((slide) => !retrieved.includes(slide)),
+          ...slidesOf(sentence.slides).filter(
+            ({ sourceId }) => !retrieved.some((slide) => slide.sourceId === sourceId),
+          ),
         ],
       })),
       (request) => gateway.verifier.entail(request),

@@ -61,6 +61,18 @@ describe('verifyExplanation', () => {
     });
   });
 
+  it('keeps a sentence entailed at exactly entailedAt, asking no second opinion beside it', async () => {
+    const at: EntailmentResult = {
+      status: 'scored',
+      scores: { entailment: PROVISIONAL_NLI_THRESHOLDS.entailedAt, neutral: 0.5, contradiction: 0 },
+    };
+    await expect(
+      verify([judged(SENTENCE, retrieved, at, OVER_LENGTH)], true),
+    ).resolves.toMatchObject({
+      kept: [{ slides: ['l1/1'] }],
+    });
+  });
+
   it('keeps a sentence one slide entails though another contradicts it', async () => {
     await expect(verify([judged(SENTENCE, retrieved, CONTRADICTED, ENTAILED)])).resolves.toEqual({
       status: 'verified',

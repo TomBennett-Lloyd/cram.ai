@@ -31,6 +31,29 @@ const spec = (overrides: Partial<IndexRetrieverSpec> = {}): IndexRetrieverSpec =
 const open = (slides: readonly SlideRecord[], k = 2) =>
   IndexRetriever.open(spec({ lectures: [{ deck, slides }], k }));
 
+describe('IndexRetriever.searchSentence', () => {
+  it('searches a sentence uncorrected at its own k, and finds nothing for one over the embedder’s length', async () => {
+    const short: Embedder = {
+      pin: embedder.pin,
+      embed: async (request) =>
+        (await embedder.embed(request)).map((result, index) =>
+          (request.texts[index] ?? '').length > 40
+            ? { status: 'over-length', inputTokens: 600, maxInputTokens: 512 }
+            : result,
+        ),
+    };
+    const retriever = await IndexRetriever.open(spec({ embedder: short }));
+    const hits = await retriever.searchSentence('Worker bees are male.', 1);
+    const long = await retriever.searchSentence(
+      'Worker bees are male, and they build the comb.',
+      1,
+    );
+    retriever.close();
+    expect(hits.map(({ record: slide }) => slide.slideNo)).toEqual([2]);
+    expect(long).toEqual([]);
+  });
+});
+
 describe('IndexRetriever', () => {
   it('returns at most k slides, nearest first', async () => {
     const retriever = await open(SLIDES);

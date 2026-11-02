@@ -6,6 +6,7 @@ import {
   type Recording,
   RecordingMissError,
 } from '@cram/gateway';
+import { ATTRIBUTION_K } from '@cram/index';
 import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -188,6 +189,14 @@ describe('runEval', () => {
       verifierPrecision: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
       verifierRecall: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
     });
+    expect(report.attributionK).toBe(ATTRIBUTION_K);
+    expect(report.metrics).toMatchObject({
+      attributionRecall: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      contradictionSetLight: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
+      lightFlagRate: { status: 'not-measurable' },
+      lightFlagRateWide: { status: 'not-measurable' },
+    });
+    expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });
     expect(report.servedGenerator).toEqual(SERVED);
     expect(report.verifierArms).toMatchObject({
@@ -254,6 +263,8 @@ describe('runEval', () => {
     });
     expect(nliThenLlm.contradictionSet).toMatchObject({ ratio: { numerator: 4, denominator: 4 } });
     expect(report.metrics.contradictionSet).toEqual(nliThenLlm.contradictionSet);
+    expect(report.attribution.overLengthPairs).toBeGreaterThan(0);
+    expect(report.attribution.pairs).toBeLessThan(4 * report.attribution.sentences);
     expect(nli.accuracy.precision).not.toEqual(nliThenLlm.accuracy.precision);
     expect(report.metrics.verifierPrecision).toEqual(nliThenLlm.accuracy.precision);
   });
