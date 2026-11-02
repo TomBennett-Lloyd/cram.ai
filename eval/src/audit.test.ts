@@ -61,6 +61,50 @@ describe('auditEvalCourse', () => {
     ]);
   });
 
+  it('accepts a misspelt variant one letter from its question', () => {
+    const questions = [question({ misspelt: ['What shape are cels?'] })];
+    expect(auditEvalCourse(course({ questions }))).toEqual([]);
+  });
+
+  it('reports a misspelt variant of a question with no expected slide', () => {
+    const questions = [question({ expectedCitations: [], misspelt: ['What shape are cels?'] })];
+    expect(auditEvalCourse(course({ questions }))).toEqual([
+      {
+        kind: 'variant-of-uncovered',
+        question: 'What shape are cells?',
+        variant: 'What shape are cels?',
+      },
+    ]);
+  });
+
+  it.each([
+    ['its own question, up to case and whitespace', [' what  SHAPE are\tcells? '], []],
+    ['a later question', ['What colour are cells?'], ['What colour are cells?']],
+    ['another variant of the same question', ['What shape are cels?', 'What shape are cels?'], []],
+  ])('reports a misspelt variant equal to %s', (_, misspelt, later) => {
+    const questions = [
+      question({ misspelt }),
+      ...later.map((text) => question({ question: text })),
+    ];
+    expect(auditEvalCourse(course({ questions }))).toEqual([
+      { kind: 'duplicate-variant', question: 'What shape are cells?', variant: misspelt.at(-1) },
+    ]);
+  });
+
+  it('reports a misspelt variant another question already carries', () => {
+    const questions = [
+      question({ misspelt: ['What shape are cels?'] }),
+      question({ question: 'What size are cells?', misspelt: ['what shape are cels?'] }),
+    ];
+    expect(auditEvalCourse(course({ questions }))).toEqual([
+      {
+        kind: 'duplicate-variant',
+        question: 'What size are cells?',
+        variant: 'what shape are cels?',
+      },
+    ]);
+  });
+
   it('accepts a label quote that spans bullets once whitespace is normalised', () => {
     const deck = [lecture('l1', [slide({ body: ['Cells are', 'square.'] })])];
     expect(auditEvalCourse(course({ deck, labels: [label()] }))).toEqual([]);
