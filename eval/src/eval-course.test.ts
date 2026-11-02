@@ -12,6 +12,7 @@ import {
   QUESTIONS_FILE,
   readEvalCourse,
   SENTENCE_KINDS_FILE,
+  TOPICS_FILE,
 } from './read-eval-course';
 
 const committed = (): EvalCourse => {
@@ -66,6 +67,14 @@ describe('the committed eval course', () => {
     expect([...verdicts].sort()).toEqual([...Verdict.options].sort());
   });
 
+  // #426: a topic carried only by an example embedded in a slide about another topic.
+  it('labels a slide with the topic of the example it uses', () => {
+    const swarming = committed().topicLabels.find(
+      ({ lectureId, slideNo }) => lectureId === 'lecture-05' && slideNo === 3,
+    );
+    expect(swarming?.tags).toEqual(['swarming', 'the bloom count']);
+  });
+
   it('labels both sentence kinds', () => {
     const kinds = new Set(committed().sentenceKinds.map((label) => label.kind));
     expect([...kinds].sort()).toEqual([...SentenceKind.options].sort());
@@ -103,6 +112,7 @@ describe('readEvalCourse', () => {
     premises: [{ lectureId: 'l1', slideNo: 1 }],
     kind: 'interpretation',
   });
+  const topicLine = JSON.stringify({ lectureId: 'l1', slideNo: 1, tags: ['cells'] });
 
   it('reads a deck, its questions and its labels', () => {
     const dir = root({
@@ -110,6 +120,7 @@ describe('readEvalCourse', () => {
       [QUESTIONS_FILE]: `${questionLine}\n`,
       [LABELS_FILE]: `${labelLine}\n`,
       [SENTENCE_KINDS_FILE]: `${kindLine}\n`,
+      [TOPICS_FILE]: `${topicLine}\n`,
     });
     expect(readEvalCourse(dir)).toMatchObject({
       status: 'read',
@@ -118,6 +129,7 @@ describe('readEvalCourse', () => {
         questions: [{ question: 'q' }],
         labels: [{ text: 't' }],
         sentenceKinds: [{ sentence: 's' }],
+        topicLabels: [{ tags: ['cells'] }],
       },
     });
   });
@@ -131,6 +143,7 @@ describe('readEvalCourse', () => {
       [QUESTIONS_FILE]: '',
       [LABELS_FILE]: '',
       [SENTENCE_KINDS_FILE]: '',
+      [TOPICS_FILE]: '',
     });
     const read = readEvalCourse(dir);
     expect(read.status === 'read' && read.course.deck.map((l) => l.lectureId)).toEqual([
@@ -199,5 +212,20 @@ describe('readEvalCourse', () => {
       status: 'invalid',
       where: `${SENTENCE_KINDS_FILE}:2`,
     });
+  });
+
+  it('names a missing topics file, and the line of it that does not parse', () => {
+    const files = {
+      [`${DECK_DIR}/lecture-01.json`]: lecture,
+      [QUESTIONS_FILE]: '',
+      [LABELS_FILE]: '',
+      [SENTENCE_KINDS_FILE]: '',
+    };
+    expect(readEvalCourse(root(files))).toMatchObject({ status: 'invalid', where: TOPICS_FILE });
+    const bad = root({
+      ...files,
+      [TOPICS_FILE]: `${topicLine}\n{"lectureId":"l1","slideNo":1,"tags":[" cells"]}\n`,
+    });
+    expect(readEvalCourse(bad)).toMatchObject({ status: 'invalid', where: `${TOPICS_FILE}:2` });
   });
 });

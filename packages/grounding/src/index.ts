@@ -54,6 +54,7 @@ export { type QuoteResolution, resolveQuotes } from './resolve-quotes';
 export { slideLines, slideText } from './slide-text';
 export {
   type FactTagging,
+  lectureFacts,
   type TagDeps,
   type TagFact,
   tagFacts,

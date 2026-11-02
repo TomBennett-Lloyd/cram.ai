@@ -1,10 +1,5 @@
-import { type FactTagging, type TagFact, tagFacts } from '@cram/grounding';
-import {
-  type CourseId,
-  type CourseUnavailableProblem,
-  type LectureId,
-  SlideKind,
-} from '@cram/shared';
+import { type FactTagging, lectureFacts, tagFacts } from '@cram/grounding';
+import type { CourseId, CourseUnavailableProblem, LectureId } from '@cram/shared';
 import { openForWrite } from './course-file';
 import type { IngestDeps } from './ingest-deck';
 
@@ -13,7 +8,6 @@ export type TaggingOutcome =
   | { readonly status: 'no-such-lecture' }
   | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
-/** Tags each chunk of the lecture's slides but a references one, which `search` leaves out (`docs/plan.md` §3.2). */
 export const tagStored = async (
   courseId: CourseId,
   lectureId: LectureId,
@@ -25,14 +19,7 @@ export const tagStored = async (
   try {
     const lecture = course.lectures().find((stored) => stored.lectureId === lectureId);
     if (lecture === undefined) return { status: 'no-such-lecture' };
-    const facts: TagFact[] = course
-      .lectureSlides(lectureId)
-      .filter(({ record }) => record.kind !== SlideKind.enum.references)
-      .flatMap(({ sourceId, record }) =>
-        course
-          .chunks(sourceId)
-          .map((chunk) => ({ sourceId, lectureTitle: record.lectureTitle, chunk })),
-      );
+    const facts = lectureFacts(course.lectureSlides(lectureId), (id) => course.chunks(id));
     const tagged = await tagFacts(facts, { generator: deps.gateway.generator });
     for (const fact of tagged)
       if (fact.status === 'tagged')

@@ -9,6 +9,7 @@ export {
 } from './course-index';
 export {
   type FactRef,
+  namedTags,
   type SetTopicsResult,
   type TagRow,
   TOPIC_ORIGINS,

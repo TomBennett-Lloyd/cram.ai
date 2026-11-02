@@ -1,5 +1,12 @@
 import type { Generator } from '@cram/gateway';
-import { type ChunkNo, type SlideChunk, type SourceId, TopicTag } from '@cram/shared';
+import {
+  type ChunkNo,
+  type RetrievedSlide,
+  type SlideChunk,
+  SlideKind,
+  type SourceId,
+  TopicTag,
+} from '@cram/shared';
 import type { ModelFailure } from './model-failure';
 import { estimateTokens, PROMPT_TOKEN_BUDGET } from './prompt-budget';
 import { tagRequest } from './prompts/tag-prompt';
@@ -29,6 +36,16 @@ const tagsOf = (topics: readonly string[]): readonly TopicTag[] => {
     if (topic !== '' && !kept.has(topic.toLowerCase())) kept.set(topic.toLowerCase(), topic);
   return [...kept.values()].map((topic) => TopicTag.parse(topic));
 };
+
+export const lectureFacts = (
+  slides: readonly RetrievedSlide[],
+  chunksOf: (sourceId: SourceId) => readonly SlideChunk[],
+): readonly TagFact[] =>
+  slides
+    .filter(({ record }) => record.kind !== SlideKind.enum.references)
+    .flatMap(({ sourceId, record }) =>
+      chunksOf(sourceId).map((chunk) => ({ sourceId, lectureTitle: record.lectureTitle, chunk })),
+    );
 
 const promptTokens = (fact: TagFact): number =>
   tagRequest(fact.lectureTitle, slideText(fact.chunk)).messages.reduce(

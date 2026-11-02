@@ -3,12 +3,14 @@ import { slideText, type Deck } from './deck';
 import { firstForbiddenEntry, type GoldenQuestion, normaliseForMatch } from './golden-question';
 import type { HandLabel } from './hand-label';
 import type { SentenceKindLabel } from './sentence-kind-label';
+import type { TopicLabel } from './topic-label';
 
 export interface EvalCourse {
   readonly deck: Deck;
   readonly questions: readonly GoldenQuestion[];
   readonly labels: readonly HandLabel[];
   readonly sentenceKinds: readonly SentenceKindLabel[];
+  readonly topicLabels: readonly TopicLabel[];
 }
 
 /** A way the committed eval files can disagree with each other or with themselves. */
@@ -40,6 +42,11 @@ export type AuditProblem =
   | {
       readonly kind: 'unknown-premise';
       readonly sentence: string;
+      readonly lectureId: LectureId;
+      readonly slideNo: SlideNo;
+    }
+  | {
+      readonly kind: 'unknown-topic-slide' | 'duplicate-topic-slide';
       readonly lectureId: LectureId;
       readonly slideNo: SlideNo;
     };
@@ -138,9 +145,24 @@ const premiseProblems = (deck: Deck, labels: readonly SentenceKindLabel[]): Audi
   );
 };
 
+const topicProblems = (deck: Deck, labels: readonly TopicLabel[]): AuditProblem[] => {
+  const slides = new Set(
+    deck.flatMap((lecture) => lecture.slides.map((s) => slideKey(lecture.lectureId, s.slideNo))),
+  );
+  const seen = new Set<string>();
+  return labels.flatMap(({ lectureId, slideNo }): AuditProblem[] => {
+    const key = slideKey(lectureId, slideNo);
+    const problems: AuditProblem[] = [];
+    if (!slides.has(key)) problems.push({ kind: 'unknown-topic-slide', lectureId, slideNo });
+    if (seen.has(key)) problems.push({ kind: 'duplicate-topic-slide', lectureId, slideNo });
+    seen.add(key);
+    return problems;
+  });
+};
+
 /**
  * Every disagreement among the deck, the golden questions, their misspelt variants
- * (`docs/adr/0010-misspelt-golden-variants.md` § Decision (c)) and both label files. A
+ * (`docs/adr/0010-misspelt-golden-variants.md` § Decision (c)) and the three label files. A
  * `mustNotContain` entry is checked against the whole deck because a unit faithfully
  * reporting any slide that contains it would fail its item.
  */
@@ -150,4 +172,5 @@ export const auditEvalCourse = (course: EvalCourse): readonly AuditProblem[] => 
   ...variantProblems(course.questions),
   ...labelProblems(course.deck, course.labels),
   ...premiseProblems(course.deck, course.sentenceKinds),
+  ...topicProblems(course.deck, course.topicLabels),
 ];

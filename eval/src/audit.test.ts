@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { auditEvalCourse } from './audit';
-import { course, kindLabel, label, lecture, question, slide } from './eval-fixture';
+import { course, kindLabel, label, lecture, question, slide, topicLabel } from './eval-fixture';
 
 describe('auditEvalCourse', () => {
   it('finds nothing in a consistent course', () => {
@@ -133,6 +133,21 @@ describe('auditEvalCourse', () => {
     expect(auditEvalCourse(course({ sentenceKinds }))).toEqual([
       { kind: 'unknown-premise', sentence, lectureId: 'l1', slideNo: 2 },
       { kind: 'unknown-premise', sentence, lectureId: 'l9', slideNo: 1 },
+    ]);
+  });
+
+  it('reports a topic label on a slide the deck does not have, and a slide labelled twice', () => {
+    const deck = [lecture('l1', [slide(), slide({ slideNo: 2 })])];
+    const topics = [
+      topicLabel({ lectureId: 'l1', slideNo: 2 }),
+      topicLabel({ lectureId: 'l1', slideNo: 3 }),
+      topicLabel({ lectureId: 'l9', slideNo: 1 }),
+      topicLabel({ lectureId: 'l1', slideNo: 2, tags: ['cells'] }),
+    ];
+    expect(auditEvalCourse(course({ deck, topicLabels: topics }))).toEqual([
+      { kind: 'unknown-topic-slide', lectureId: 'l1', slideNo: 3 },
+      { kind: 'unknown-topic-slide', lectureId: 'l9', slideNo: 1 },
+      { kind: 'duplicate-topic-slide', lectureId: 'l1', slideNo: 2 },
     ]);
   });
 

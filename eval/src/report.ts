@@ -69,6 +69,7 @@ export const EvalReport = z.strictObject({
     lightFlagRateWide: BaselineRow,
     summaryYield: BaselineRow,
     summaryUnitYield: BaselineRow,
+    tagRecall: BaselineRow,
     sentenceKindPrecision: BaselineRow,
     sentenceKindRecall: BaselineRow,
   }),

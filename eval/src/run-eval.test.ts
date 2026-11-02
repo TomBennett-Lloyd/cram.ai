@@ -7,7 +7,7 @@ import {
 import { ATTRIBUTION_K } from '@cram/index';
 import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { kindLabel, label, question } from './eval-fixture';
+import { kindLabel, label, question, topicLabel } from './eval-fixture';
 import { RecordingGateway } from './recording-gateway';
 import { runEval, type EvalRunSpec } from './run-eval';
 import { indexedLecture as lecture, record } from './run-fixture';
@@ -82,6 +82,11 @@ const SENTENCE_KINDS = [
   }),
 ];
 
+const TOPICS = [
+  topicLabel({ lectureId: 'l1', slideNo: 1, tags: ['comb'] }),
+  topicLabel({ lectureId: 'l1', slideNo: 2, tags: ['workers', 'castes'] }),
+];
+
 const steppingClock = () => {
   let now = 0;
   return () => (now += 1);
@@ -108,6 +113,7 @@ const spec = (
   questions: QUESTIONS,
   labels: LABELS,
   sentenceKinds: SENTENCE_KINDS,
+  topicLabels: TOPICS,
   gateway,
   clock: steppingClock(),
   ...overrides,
@@ -152,6 +158,7 @@ describe('runEval', () => {
       lightFlagRate: { status: 'not-measurable' },
       lightFlagRateWide: { status: 'not-measurable' },
       summaryYield: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      tagRecall: { status: 'measured', ratio: { numerator: 2, denominator: 3 } },
       summaryUnitYield: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
     });
     expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });

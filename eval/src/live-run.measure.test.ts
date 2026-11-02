@@ -47,6 +47,7 @@ describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
           questions: read.course.questions,
           labels: read.course.labels,
           sentenceKinds: read.course.sentenceKinds,
+          topicLabels: read.course.topicLabels,
           gateway: recorder,
           clock: () => performance.now(),
         });

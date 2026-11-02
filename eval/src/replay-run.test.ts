@@ -52,6 +52,7 @@ const liveRun = async (): Promise<EvalRun> => {
     questions: COURSE.questions,
     labels: COURSE.labels,
     sentenceKinds: COURSE.sentenceKinds,
+    topicLabels: COURSE.topicLabels,
     gateway: recorder,
     clock: () => (now += 3),
   });
