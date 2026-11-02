@@ -330,3 +330,33 @@ Entry format:
 
 - Phase: merge
 - Observed: with the FILL committed (`6534123`, 18:25:50Z) and `main` at `903c78c` (PR #455's three members, 18:21:53Z) the branch was BEHIND again; the merge owner's retro brief records the lane attempting `git merge -F -`, the commit message on stdin, which the lane's environment did not support, and leaving the BEHIND state rather than retrying, so the merge owner's `gh pr update-branch` made `b91e4f8` (committer GitHub, 18:33:54Z) and the squash followed at 18:38:31Z. The lane's two earlier merges of `origin/main` (`f60add1`, `63e003f`) carried their messages inline, so the form was the lane's choice, not a gap. Recorded because the stop was the right one and cost 8 minutes, and because the `PR #418 (CI silence)` entry priced the same update-branch as the merge owner's cheapest clear.
+
+## 2026-11-02 — PR #449 (queue re-order)
+
+- Phase: merge
+- Observed: the #433/#413 batch's PR opened at 17:26Z and was green on `633cc45` and BEHIND at its first report; it took three curate rounds with no content change in any: `633cc45` → `4542b3f` onto `7345e00` (the initial BEHIND), then `4542b3f` → `0629ceb` onto `903c78c` after the merge owner moved #455 (merged 18:21:53Z) ahead of it, then `0629ceb` → `eb0c95d` onto `2cfea7e` after #443 (owner-approved, merged 18:38:31Z) was moved ahead too; the batch merged at 18:46:11Z. Each round cost the lane a rebase, a whole local `pnpm verify` (about 12 min at load 36–46) and a CI run (about 6 min), while other merges were held. Neither re-order was a key (1) case — no lane depended on #455 or #443 — and at each one the batch's checks were mid-run or about to start, which is the one wait key (2) of the `**Merge order**` paragraph this very PR adds to `.claude/skills/run-issue/SKILL.md` prices ("waits for that one CI run"). Rounds 2 and 3 were the merge owner's decision to re-order mid-curate, the race #413 recorded on PR #394, repeated on the PR that writes its rule; the cost is the merge owner's, not the batch's. First observation of that wait being bypassed, taken while the clause was still on the branch.
+
+## 2026-11-02 — PR #449 (overlap-read control)
+
+- Phase: planning
+- Observed: the #413 plan prescribed the overlap read as a four-command sequence for the merge owner to run — `T=$(git merge-tree --write-tree origin/main origin/<R>)`, `git commit-tree "$T"`, then two `merge-tree` reads — and its positive control was `R=origin/408-merge-pin-head` against `H=origin/297-merge-union-logs`, two already-merged branches, recorded as "RC=1 on both calls"; it was never run on a conflicted pair. On one, the first command exits 1 and `$T` captures the conflict listing with the tree, so `commit-tree` breaks on a log-only conflict, and the C2 implementer rewrote around it rather than stopping; the merged text reads `out=$(…); rc=$?; T=${out%%$'\n'*}`. Cycle 1 returned 6 FIX-NOWs, every one in that paragraph (the capture, `origin/<H>` unreadable for a lane that has pushed nothing, a head-pin misattribution, a near-hold sentence). `.claude/skills/plan-issue/SKILL.md` step 4 asks that every prescribed mutant is shown to bite and that literal code has cleared the real gate; it asks nothing of a command sequence a plan prescribes for someone else to run. Filed as #461 beside #458, which is the same step's other unchecked claim.
+
+## 2026-11-02 — PR #449 (fixes at cap)
+
+- Phase: review
+- Observed: the batch's review ran 3 cycles with FIX-NOW counts 6, 2 and 1, then a confirmation APPROVE, and cycles 2 and 3 each found that the previous cycle's fix text asserted behaviour no agent file provides — a mid-run `REBASE —` bounce, then a pre-report rebase (cycle 3 found one of cycle 2's own fixes doing the same). The orchestrator's prose fixes, written at cap pressure, minted false claims faster than they closed them; the move that converged was deleting the claim and citing #448, the `discovered` issue that owns the missing entry. The `cumulo#398` lesson in `.claude/skills/review-loop/SKILL.md`'s exit conditions names this shape for derived figures ("delete the derived figures rather than track them"); here the derived thing was a promised mechanism. One batch so far on a merge-owner rule whose fixes promise what no lane implements.
+
+## 2026-11-02 — PR #449 (local verify red)
+
+- Phase: verify
+- Observed: on the batch's last three curated trees the local whole `pnpm verify` went red only on load timeouts owned by open issues while CI's `verify:full` passed on every pushed head. At `633cc45`: red twice (`eval/src/ingested-course.test.ts` → #441; `packages/ingest/src/stored-text.test.ts` → #349; load average about 46), RC=0 on the third whole run. On the `903c78c` tree: red twice (`eval/src/render-deck.test.ts` hook timeout at 10000 ms, a new file in the class; `ingested-course.test.ts` again; load about 36–42), both files passing in isolation in 6.5 s. At `eb0c95d`: RC=1 on a single `stored-text.test.ts` timeout. The orchestrator pushed ahead of a green local RC twice to keep the merge hold short — once before reading the first red run's RC at all, once force-pushing `0629ceb` — and let CI be the verdict; harmless on an unchanged tree, but the order is read the RC, then push. Counts with the `PR #455 (verify under load)` and `PR #443 (#441 reds)` entries, five more red runs to the class on the same day; `render-deck.test.ts` is the third file in it after #349's and #441's.
+
+## 2026-11-02 — PR #449 (BSD grep bound)
+
+- Phase: implementation
+- Observed: the plan's C2 acceptance grep `curate onto latest main[^.]{0,300}Merge order` cannot run under macOS BSD grep, whose repetition bound caps at 255, and the `tr '\n' ' '`-joined form the implementer reached for misses phrases wrapped across lines, because the wrapped lines' indent joins into the phrase. Each cost a re-wrap of the pattern or a perl fallback. One batch so far on a plan acceptance pattern written for GNU grep's bounds on a tree whose owner runs BSD grep.
+
+## 2026-11-02 — PR #449 (perl encoding)
+
+- Phase: implementation
+- Observed: the orchestrator's one inline perl edit to `.claude/skills/run-issue/SKILL.md`, run without `-CSD`, double-encoded the whole file once; `git diff --stat` showed 99/69 lines against the expected 33/3, and the edit was reversed line by line. Its later inline edits went through python with explicit utf-8. One batch so far.
