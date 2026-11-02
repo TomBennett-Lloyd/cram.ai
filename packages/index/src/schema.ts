@@ -8,16 +8,13 @@ import { STORED_DECK_TABLES } from './stored-deck';
 
 /**
  * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
- * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too:
- * `packages/ingest/src/stored-output-pin.test.ts` (#257) and `packages/index/src/confirmation.test.ts`'s `textHashOf` pin fail
- * until it has. Carriers:
- * `.claude/ledgers/schema-version.ledger`.
+ * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too.
+ * Carriers: `.claude/ledgers/schema-version.ledger`.
  */
 export const SCHEMA_VERSION = 10;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
-/** What a file holds before its version is read: nothing, this app's `course` table, or anything else. */
 export type FileContents = 'empty' | 'course' | 'other';
 
 export const classifySchema = (

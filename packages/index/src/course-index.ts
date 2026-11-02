@@ -69,7 +69,6 @@ export interface SearchQuery {
 
 /** A listing exam generation can draw its target slides from (`docs/plan.md` §3.5). */
 export interface SlideListing {
-  /** On for exam generation only, as `SearchQuery.excludeUnconfirmedDerived` is. */
   readonly excludeUnconfirmedDerived?: boolean;
 }
 
@@ -105,7 +104,6 @@ export class CourseIndex {
     this.#embedder = embedder;
   }
 
-  /** Deletes a slide's chunks and their index rows, keeping the slide. */
   #dropIndexRows(slideId: number): void {
     const chunkIds = RowIds.parse(
       this.#db.prepare('select id from chunks where slide_id = ?').pluck().all(slideId),
@@ -123,7 +121,6 @@ export class CourseIndex {
       .run(BigInt(id), embedding);
   }
 
-  /** Refuses a batch before anything is written. */
   #checkBatch(operation: string, slides: readonly IndexedSlide[]): void {
     const seen = new Set<SourceId>();
     for (const { record, chunks } of slides) {
@@ -153,7 +150,6 @@ export class CourseIndex {
     }
   }
 
-  /** Each slide and its chunks; the caller holds the transaction and has dropped the lecture's rows. */
   #writeSlides(slides: readonly IndexedSlide[]): void {
     const insert = this.#db.prepare(INSERT_SLIDE).pluck();
     for (const { record, chunks } of slides) {
@@ -162,7 +158,6 @@ export class CourseIndex {
     }
   }
 
-  /** Deletes the lecture's slides and every index and tag row keyed on them; the caller holds the transaction. */
   #dropLectureSlides(lectureId: LectureId): void {
     const ids = RowIds.parse(
       this.#db.prepare('select id from slides where lecture_id = ?').pluck().all(lectureId),
@@ -178,7 +173,6 @@ export class CourseIndex {
    * Replaces the lecture's deck, slide images and slides in one transaction, so a re-uploaded deck
    * with fewer slides leaves none of the old ones behind (#71). Topic tags go with the old slides.
    * The only slide write, so every slide has a stored deck to rebuild from (rebuild-course.ts, #93).
-   * A confirmation outlives it while its slide's text does.
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
     this.#checkBatch('replaceLecture', slides);
@@ -214,14 +208,12 @@ export class CourseIndex {
       .map((row) => slideFromRow(row, this.#courseId));
   }
 
-  /** Every slide in the course, by lecture then slide number. */
   slides(listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(`where true ${listed(listing)} order by lecture_id, slide_no`).map(
       (slide) => slide.record,
     );
   }
 
-  /** The chunks a slide is indexed as, in order; none for a slide the course lacks. */
   chunks(sourceId: SourceId): readonly SlideChunk[] {
     return this.#db
       .prepare(
@@ -234,8 +226,6 @@ export class CourseIndex {
 
   /**
    * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
-   * Each list leaves out what the query excludes before it is cut to depth: references slides unless
-   * included, and unconfirmed derived slides when asked.
    */
   search(query: SearchQuery, k: number = RETRIEVAL_K): readonly RetrievedSlide[] {
     if (!Number.isInteger(k) || k < 1)
@@ -301,7 +291,6 @@ export class CourseIndex {
     return confirmationState(this.#db, sourceId);
   }
 
-  /** Every slide tagged `tag`, by lecture then slide number. */
   slidesTagged(tag: TopicTag, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
       `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
@@ -311,7 +300,7 @@ export class CourseIndex {
 
   /**
    * Swaps every slide's chunks and vectors and the recorded embedder in one transaction, so a new
-   * embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)). `slides` names every slide.
+   * embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)).
    */
   replaceEmbedder(embedder: EmbedderIdentity, slides: readonly IndexedSlide[]): void {
     const bySource = new Map(slides.map((slide) => [sourceIdOf(slide.record), slide]));
@@ -338,7 +327,6 @@ export class CourseIndex {
     this.#embedder = embedder;
   }
 
-  /** Every lecture with a deck (`storedLectures`). */
   lectures(): readonly StoredLecture[] {
     return storedLectures(this.#db);
   }
@@ -348,7 +336,6 @@ export class CourseIndex {
     return rebuildReportOf(this.#db);
   }
 
-  /** Written by `rebuildCourse` into the file it rebuilt. */
   recordRebuildReport(discarded: readonly DiscardedTable[]): void {
     recordRebuildReport(this.#db, discarded);
   }
