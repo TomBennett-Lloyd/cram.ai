@@ -4,6 +4,7 @@ import type { CourseId, Deck, DiscardedTable, LectureId, SlideRecord } from '@cr
 import { z } from 'zod';
 import { CHUNK_TABLE_NAME } from './chunk-row';
 import type { CourseIndex } from './course-index';
+import { LECTURE_SUMMARY_TABLE_NAME } from './lecture-summaries';
 import {
   embedSlides,
   openCourse,
@@ -49,14 +50,16 @@ const REPRODUCED_TABLES: ReadonlySet<string> = new Set([
   REBUILD_REPORT_TABLE_NAME,
 ]);
 
+const REMADE_TABLES: ReadonlySet<string> = new Set([LECTURE_SUMMARY_TABLE_NAME]);
+
 const TableList = z.array(z.object({ name: z.string(), type: z.string() }));
 
 const quoted = (name: string): string => `"${name.replaceAll('"', '""')}"`;
 
 /**
- * The tables of `db` a rebuild does not reproduce. Ordinary tables only: a virtual table indexes
- * rows held elsewhere, and its shadow tables are named `<virtual>_<suffix>`; `vec0` names some
- * that SQLite itself lists as ordinary.
+ * The tables of `db` a rebuild neither reproduces nor leaves its caller to re-make (`docs/adr/0009-explanation-answers.md`
+ * § Decision (l)). Ordinary tables only: a virtual table indexes rows held elsewhere, and its shadow tables are
+ * named `<virtual>_<suffix>`; `vec0` names some that SQLite itself lists as ordinary.
  */
 export const unreproducedTables = (db: Database.Database): readonly string[] => {
   const tables = TableList.parse(db.pragma('table_list'));
@@ -67,6 +70,7 @@ export const unreproducedTables = (db: Database.Database): readonly string[] => 
         type === 'table' &&
         !name.startsWith('sqlite_') &&
         !REPRODUCED_TABLES.has(name) &&
+        !REMADE_TABLES.has(name) &&
         !virtual.some((prefix) => name.startsWith(prefix)),
     )
     .map(({ name }) => name);

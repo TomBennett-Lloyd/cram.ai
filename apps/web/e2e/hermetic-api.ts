@@ -153,7 +153,7 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
     const progress =
       ingestReads < 2
         ? { state: 'ingesting' }
-        : { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] };
+        : { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [], summarised: false };
     return json(route, 200, {
       courseId: 'bio',
       stored: { state: 'read', lectures: [], report },
@@ -161,6 +161,7 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
       uploads: rebuildReport
         ? []
         : [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
+      remakes: [],
     });
   });
 };

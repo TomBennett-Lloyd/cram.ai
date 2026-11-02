@@ -22,8 +22,7 @@ import { verifierRequest } from './prompts/verifier-prompt';
 import type { Quotes } from './verifier-input';
 import type { VerifierStrategy } from './verify';
 
-const QUESTION = 'Who are the workers?';
-const task = { kind: 'answer-sentence', question: QUESTION } as const;
+const task = { kind: 'lecture-summary', lectureTitle: 'The Hive', maxUnits: 4 } as const;
 const retrieved = [
   slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.'),
   slide('l1/2', 'Bees build comb from square cells.'),
@@ -201,8 +200,12 @@ describe('ground', () => {
     });
   });
 
-  it('is not-covered, with nothing withheld, when the model finds the slides do not cover the question', async () => {
-    await expect(run([generated()])).resolves.toEqual({ status: 'not-covered', withheld: [] });
+  it('reports an empty reply to a lecture-summary call, which its own slides always cover, as a model failure at the generate stage', async () => {
+    await expect(run([generated()])).resolves.toMatchObject({
+      status: 'model-failed',
+      stage: 'generate',
+      failure: { status: 'invalid-output' },
+    });
   });
 
   it('is not-covered without asking the generator when nothing was retrieved', async () => {

@@ -54,10 +54,10 @@ export const tutor =
         });
       }
       case 'units': {
-        const asked = words(/<question>(.*)<\/question>/.exec(prompt)?.[1] ?? '');
-        const units = sourcesOf(prompt)
-          .filter(({ text }) => eager || words(text).some((word) => asked.includes(word)))
-          .map(({ id, line }) => ({ text: line, citations: [{ sourceId: id, line: CITED_LINE }] }));
+        const units = sourcesOf(prompt).map(({ id, line }) => ({
+          text: line,
+          citations: [{ sourceId: id, line: CITED_LINE }],
+        }));
         return content({ units });
       }
       case 'verdict': {

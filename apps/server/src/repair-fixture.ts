@@ -26,7 +26,14 @@ export const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 export const HIVE_STORED = {
   state: 'read',
   lectures: [
-    { lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2], unembedded: [] },
+    {
+      lectureId: 'l1',
+      lectureTitle: 'The Hive',
+      slideCount: 2,
+      imageOnly: [2],
+      unembedded: [],
+      summarised: false,
+    },
   ],
   report: { state: 'none' },
 };

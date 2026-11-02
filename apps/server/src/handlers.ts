@@ -9,16 +9,24 @@ import {
   NonBlankText,
   RebuildReportRevision,
   SlideNo,
+  SummaryRemakeRequest,
 } from '@cram/shared';
 import { z } from 'zod';
 import { type AskDeps, askCourse } from './ask-course';
-import { courseExists, storedCourses, storedLectures, storedSlideImage } from './course-file';
+import {
+  courseExists,
+  storedCourses,
+  storedLectures,
+  storedSlideImage,
+  storedSummaries,
+} from './course-file';
 import { readBody, sendBytes, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 
 /** Ceilings on what one request may send; a deck is a whole lecture, a question is a sentence or two. */
 export const MAX_DECK_BYTES = 256 * 1024 * 1024;
 export const MAX_ASK_BYTES = 64 * 1024;
+export const MAX_REMAKE_BYTES = 4 * 1024;
 
 export interface HandlerContext extends AskDeps {
   readonly queue: IngestQueue;
@@ -126,8 +134,22 @@ export const ingestStatus = (route: RouteRequest, context: HandlerContext): void
     stored: storedLectures(context.files, courseId),
     repair: context.queue.repairOf(courseId),
     uploads: [...uploads],
+    remakes: [...context.queue.remakes(courseId)],
   };
   sendJson(route.response, 200, status);
+};
+
+export const courseSummaries = (route: RouteRequest, context: HandlerContext): void => {
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  if (!courseExists(context.files, courseId)) {
+    sendRefusal(route.response, 404, { status: 'no-such-course' });
+    return;
+  }
+  const summaries = storedSummaries(context.files, courseId);
+  if (summaries.state === 'course-unavailable')
+    sendRefusal(route.response, 409, { status: 'course-unavailable', problem: summaries.problem });
+  else sendJson(route.response, 200, summaries);
 };
 
 const SlideNoParam = z
@@ -171,21 +193,63 @@ const parsedJson = (bytes: Uint8Array): unknown => {
   }
 };
 
+type JsonBody =
+  { readonly status: 'parsed'; readonly value: unknown } | { readonly status: 'refused' };
+
 /** JSON only, so a cross-site form post cannot reach it: a form cannot send `application/json`. */
-export const askQuestion = async (route: RouteRequest, context: HandlerContext): Promise<void> => {
-  const { request, response } = route;
-  const courseId = courseIdOf(route);
-  if (courseId === undefined) return;
+const jsonBody = async (
+  { request, response }: RouteRequest,
+  maxBytes: number,
+): Promise<JsonBody> => {
   if (mediaTypeOf(request) !== 'application/json') {
     sendRefusal(response, 415, { status: 'unsupported-media-type' });
-    return;
+    return { status: 'refused' };
   }
-  const body = await readBody(request, MAX_ASK_BYTES);
+  const body = await readBody(request, maxBytes);
   if (body.status === 'too-large') {
     sendRefusal(response, 413, { status: 'payload-too-large' });
+    return { status: 'refused' };
+  }
+  return { status: 'parsed', value: parsedJson(body.bytes) };
+};
+
+export const remakeSummary = async (
+  route: RouteRequest,
+  context: HandlerContext,
+): Promise<void> => {
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  const body = await jsonBody(route, MAX_REMAKE_BYTES);
+  if (body.status === 'refused') return;
+  const parsed = SummaryRemakeRequest.safeParse(body.value);
+  if (!parsed.success) {
+    badRequest(route.response, z.prettifyError(parsed.error));
     return;
   }
-  const parsed = AskRequest.safeParse(parsedJson(body.bytes));
+  if (!courseExists(context.files, courseId)) {
+    sendRefusal(route.response, 404, { status: 'no-such-course' });
+    return;
+  }
+  const stored = storedLectures(context.files, courseId);
+  if (stored.state === 'course-unavailable') {
+    sendRefusal(route.response, 409, { status: 'course-unavailable', problem: stored.problem });
+    return;
+  }
+  const { lectureId } = parsed.data;
+  if (!stored.lectures.some((lecture) => lecture.lectureId === lectureId)) {
+    sendRefusal(route.response, 404, { status: 'not-found' });
+    return;
+  }
+  sendJson(route.response, 202, context.queue.remake(courseId, lectureId));
+};
+
+export const askQuestion = async (route: RouteRequest, context: HandlerContext): Promise<void> => {
+  const { response } = route;
+  const courseId = courseIdOf(route);
+  if (courseId === undefined) return;
+  const body = await jsonBody(route, MAX_ASK_BYTES);
+  if (body.status === 'refused') return;
+  const parsed = AskRequest.safeParse(body.value);
   if (!parsed.success) {
     badRequest(response, z.prettifyError(parsed.error));
     return;

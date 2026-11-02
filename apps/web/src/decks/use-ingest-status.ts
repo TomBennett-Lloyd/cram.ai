@@ -1,4 +1,4 @@
-import type { CourseId, CourseRepair, IngestStatus } from '@cram/shared';
+import type { CourseId, CourseRepair, IngestStatus, SummaryRemake } from '@cram/shared';
 import { useEffect, useState } from 'react';
 import type { ApiClient } from '../api/api-client';
 import type { ApiFailure } from '../api/api-result';
@@ -14,9 +14,15 @@ export type IngestState =
 export const repairing = ({ state }: CourseRepair): boolean =>
   state === 'queued' || state === 'running';
 
-const inFlight = ({ repair, uploads }: Omit<IngestStatus, 'courseId'>): boolean =>
+export const remaking = ({ state }: SummaryRemake['progress']): boolean =>
+  state === 'queued' || state === 'running';
+
+const UPLOAD_IN_FLIGHT: ReadonlySet<string> = new Set(['queued', 'ingesting', 'summarising']);
+
+const inFlight = ({ repair, uploads, remakes }: Omit<IngestStatus, 'courseId'>): boolean =>
   repairing(repair) ||
-  uploads.some(({ progress }) => progress.state === 'queued' || progress.state === 'ingesting');
+  uploads.some(({ progress }) => UPLOAD_IN_FLIGHT.has(progress.state)) ||
+  remakes.some(({ progress }) => remaking(progress));
 
 /** A course nobody has uploaded to is `no-such-course`, which on this screen is an empty list. */
 const stateOf = (result: Awaited<ReturnType<ApiClient['ingestStatus']>>): IngestState => {
@@ -28,12 +34,13 @@ const stateOf = (result: Awaited<ReturnType<ApiClient['ingestStatus']>>): Ingest
         stored: { state: 'read', lectures: [], report: { state: 'none' } },
         repair: { state: 'none' },
         uploads: [],
+        remakes: [],
       },
     };
   return { status: 'failed', failure: result };
 };
 
-/** Re-reads while the course's repair or any upload is queued or under way; `revision` restarts the read after an upload. */
+/** Re-reads while `inFlight`; `revision` restarts the read after an upload or a re-make. */
 export const useIngestStatus = (
   api: ApiClient,
   courseId: CourseId,

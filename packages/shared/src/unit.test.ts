@@ -7,7 +7,7 @@ type UnitInput = z.input<typeof Unit>;
 const unit = (overrides: Partial<UnitInput> = {}): UnitInput => ({
   text: 'Slide 3 says the cell has a nucleus.',
   citations: [{ sourceId: 'slide-3', quote: 'the cell has a nucleus' }],
-  kind: 'answer-sentence',
+  kind: 'lecture-summary',
   ...overrides,
 });
 
@@ -23,6 +23,7 @@ describe('Unit', () => {
   it('refuses a kind outside the closed set', () => {
     expect(Unit.safeParse({ ...unit(), kind: 'caveat' }).success).toBe(false);
     expect(Unit.safeParse({ ...unit(), kind: 'note-bullet' }).success).toBe(false);
+    expect(Unit.safeParse({ ...unit(), kind: 'answer-sentence' }).success).toBe(false);
   });
 
   it('refuses a unit carrying a citation with a blank quote', () => {

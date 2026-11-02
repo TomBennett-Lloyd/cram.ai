@@ -37,7 +37,13 @@ describe('DecksScreen', () => {
       status(upload('l1.pdf', { state: 'queued' })),
       status(upload('l1.pdf', { state: 'ingesting' })),
       status(
-        upload('l1.pdf', { state: 'indexed', slideCount: 12, imageOnly: [3, 9], unembedded: [] }),
+        upload('l1.pdf', {
+          state: 'indexed',
+          slideCount: 12,
+          imageOnly: [3, 9],
+          unembedded: [],
+          summarised: true,
+        }),
       ),
     ];
     const { api, sent } = fakeApi(() => replies[Math.min(reads(sent) - 1, 2)] ?? status());
@@ -64,11 +70,29 @@ describe('DecksScreen', () => {
     const { api } = fakeApi(() =>
       status(
         upload('a.pdf', { state: 'unreadable', reason: 'encrypted', detail: '' }),
-        upload('b.pdf', { state: 'indexed', slideCount: 88, imageOnly: [], unembedded: [87] }),
+        upload('b.pdf', {
+          state: 'indexed',
+          slideCount: 88,
+          imageOnly: [],
+          unembedded: [87],
+          summarised: true,
+        }),
         upload('c.pdf', { state: 'course-unavailable', problem: 'embedder-mismatch' }),
         upload('d.pdf', { state: 'failed' }),
-        upload('e.pdf', { state: 'indexed', slideCount: 1, imageOnly: [1], unembedded: [] }),
-        upload('f.pdf', { state: 'indexed', slideCount: 6, imageOnly: [3], unembedded: [2, 5] }),
+        upload('e.pdf', {
+          state: 'indexed',
+          slideCount: 1,
+          imageOnly: [1],
+          unembedded: [],
+          summarised: true,
+        }),
+        upload('f.pdf', {
+          state: 'indexed',
+          slideCount: 6,
+          imageOnly: [3],
+          unembedded: [2, 5],
+          summarised: true,
+        }),
         upload('g.pdf', { state: 'unreadable', reason: 'not-a-deck', detail: 'no slides' }),
       ),
     );
@@ -216,7 +240,13 @@ describe('DecksScreen', () => {
     const { api } = fakeApi(() =>
       storedStatus(
         stored,
-        upload('l2', { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] }),
+        upload('l2', {
+          state: 'indexed',
+          slideCount: 2,
+          imageOnly: [],
+          unembedded: [],
+          summarised: true,
+        }),
         upload('l3', { state: 'unreadable', reason: 'encrypted', detail: '' }),
       ),
     );

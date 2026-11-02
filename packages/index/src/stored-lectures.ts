@@ -1,6 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { SlideKind, StoredLecture } from '@cram/shared';
 import { z } from 'zod';
+import { LECTURE_SUMMARY_TABLE_NAME } from './lecture-summaries';
 
 /** A deck and one of its slides; a deck with no slides is one row with no slide. */
 const LectureSlideRow = z.object({
@@ -9,28 +10,32 @@ const LectureSlideRow = z.object({
   slide_no: z.number().nullable(),
   kind: SlideKind.nullable(),
   embedded: z.number().nullable(),
+  summarised: z.number(),
 });
 
 const LECTURE_SLIDES = `select decks.lecture_id, decks.lecture_title, slides.slide_no, slides.kind,
-    slides.id in (select slide_id from chunks where id in (select rowid from slide_vec)) as embedded
+    slides.id in (select slide_id from chunks where id in (select rowid from slide_vec)) as embedded,
+    decks.lecture_id in (select lecture_id from ${LECTURE_SUMMARY_TABLE_NAME}) as summarised
   from decks left join slides on slides.lecture_id = decks.lecture_id
   order by decks.lecture_id, slides.slide_no`;
 
 /**
- * Every lecture with a deck, by lecture id: its title, slide count, `image-only` slides, and the
- * other slides stored without a vector (`IndexedSlide`, #338). A `references` slide is never in that
- * last list: search leaves it out of the vector list unless asked (`SearchQuery.includeReferences`).
+ * Every lecture with a deck, by lecture id: title, slide count, `image-only` slides, other slides with no vector (`IndexedSlide`,
+ * #338), and whether it is summarised. A `references` slide is never in `unembedded`: search leaves it out of the vector list
+ * unless asked (`SearchQuery.includeReferences`).
  */
 export const storedLectures = (db: Database): readonly StoredLecture[] => {
   const lectures = new Map<string, z.input<typeof StoredLecture>>();
   for (const row of db.prepare(LECTURE_SLIDES).all()) {
-    const { lecture_id, lecture_title, slide_no, kind, embedded } = LectureSlideRow.parse(row);
+    const { lecture_id, lecture_title, slide_no, kind, embedded, summarised } =
+      LectureSlideRow.parse(row);
     const lecture = lectures.get(lecture_id) ?? {
       lectureId: lecture_id,
       lectureTitle: lecture_title,
       slideCount: 0,
       imageOnly: [],
       unembedded: [],
+      summarised: summarised === 1,
     };
     lectures.set(lecture_id, lecture);
     if (slide_no === null) continue;

@@ -33,6 +33,12 @@ export {
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { TopicTag } from './topic-tag';
 export { Unit, UnitKind } from './unit';
+export {
+  CourseSummaries,
+  LectureSummary,
+  SummaryRemakeRequest,
+  SummaryUnit,
+} from './lecture-summary';
 export { AttributedSentence, Explanation, ExplanationSurface } from './explanation';
 export { PartialPolicy, Verdict, VerificationDepth, WithheldReason } from './verification';
 export { WithheldSentence, WithheldUnit } from './withheld';
@@ -50,6 +56,7 @@ export {
   RebuildReportRevision,
   StoredLecture,
   StoredLectures,
+  SummaryRemake,
   Upload,
   UploadId,
   UploadProgress,

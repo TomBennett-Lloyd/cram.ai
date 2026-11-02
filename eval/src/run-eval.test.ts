@@ -151,6 +151,8 @@ describe('runEval', () => {
       contradictionSetLight: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
       lightFlagRate: { status: 'not-measurable' },
       lightFlagRateWide: { status: 'not-measurable' },
+      summaryYield: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      summaryUnitYield: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
     });
     expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });

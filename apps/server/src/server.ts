@@ -3,10 +3,12 @@ import type { ModelGateway } from '@cram/gateway';
 import { storedCourses } from './course-file';
 import {
   askQuestion,
+  courseSummaries,
   dismissRebuildReport,
   type HandlerContext,
   ingestStatus,
   listCourses,
+  remakeSummary,
   sendSlideImage,
   uploadDeck,
 } from './handlers';
@@ -69,6 +71,12 @@ const handleRequest = async (
         return;
       case 'slide-image':
         sendSlideImage(route, context);
+        return;
+      case 'course-summaries':
+        courseSummaries(route, context);
+        return;
+      case 'remake-summary':
+        await remakeSummary(route, context);
     }
   } catch (error) {
     context.log({
@@ -127,7 +135,7 @@ export class CramServer {
 export const startServer = async (spec: ServerSpec): Promise<CramServer> => {
   const { gateway, dataDir, log } = spec;
   const files = { dataDir, embedder: await embedderIdentity(gateway.embedder) };
-  const queue = new IngestQueue({ files, embedder: gateway.embedder }, log);
+  const queue = new IngestQueue({ files, gateway }, log);
   for (const courseId of storedCourses(files)) queue.repair(courseId);
   const context: HandlerContext = { files, gateway, log, queue };
   const server = createServer((request, response) => {

@@ -28,7 +28,7 @@ const parseStored: ParseDeck = async (deck, courseId) => {
 const embedStored =
   (deps: IngestDeps): EmbedSlides =>
   (slides) =>
-    embedSlides(deps.embedder, slides);
+    embedSlides(deps.gateway.embedder, slides);
 
 /** What one repair did, for the log; `open` is a file that needed nothing. */
 export type RepairOutcome =

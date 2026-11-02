@@ -26,6 +26,7 @@ import { attributionRecall, contradictionSetLight, lightFlagRate } from './light
 import { notMeasurable } from './metric-row';
 import { EvalReport, type MachineClass } from './report';
 import { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
+import { summaryRows } from './summary-rows';
 import { type JudgedKind, sentenceKindAccuracy } from './sentence-kind-accuracy';
 import type { SentenceKindLabel } from './sentence-kind-label';
 import { TimedGateway } from './timed-gateway';
@@ -139,6 +140,11 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   });
   const ran = await (async () => {
     try {
+      const summaries = await retriever.summarise({
+        gateway,
+        strategy: PROVISIONAL_VERIFIER_STRATEGY,
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      });
       const retrievals: Retrieved[] = [];
       const misspelt: Retrieved[] = [];
       for (const question of spec.questions) {
@@ -150,12 +156,19 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       const deep = await byStrategy(DEEP_STRATEGIES, (strategy) =>
         askDeep(retrievals, gateway, strategy),
       );
-      return { retrievals, misspelt, light, deep, wide: await widened(light.asked, gateway) };
+      return {
+        summaries,
+        retrievals,
+        misspelt,
+        light,
+        deep,
+        wide: await widened(light.asked, gateway),
+      };
     } finally {
       retriever.close();
     }
   })();
-  const { retrievals, misspelt, light, deep, wide } = ran;
+  const { summaries, retrievals, misspelt, light, deep, wide } = ran;
   const labels = await byStrategy(LABEL_STRATEGIES, (strategy) =>
     judgeAll(spec.labels, gateway, strategy, spec.clock),
   );
@@ -213,6 +226,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       lightFlagRateWide: lightFlagRate(wide),
       sentenceKindPrecision: kinds.precision,
       sentenceKindRecall: kinds.recall,
+      ...summaryRows(summaries),
     },
     depths: {
       light: {

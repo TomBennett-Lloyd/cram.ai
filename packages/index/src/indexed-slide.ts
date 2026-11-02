@@ -1,11 +1,14 @@
 import {
   ChunkNo,
   chunkLines,
+  type CourseId,
   type SlideChunk,
   type SlideRecord,
+  type SourceId,
   wholeSlideChunk,
 } from '@cram/shared';
 import type { EmbedderIdentity } from './embedder-identity';
+import { sourceIdOf } from './slide-row';
 
 export interface IndexedChunk {
   readonly chunk: SlideChunk;
@@ -62,4 +65,24 @@ export const requireSlideChunks = (
     throw new Error(
       `${operation}(${record.lectureId}/${String(record.slideNo)}): its chunks do not hold exactly its slide's lines in order`,
     );
+};
+
+export const requireBatch = (
+  operation: string,
+  slides: readonly IndexedSlide[],
+  courseId: CourseId,
+  embedder: EmbedderIdentity,
+): void => {
+  const seen = new Set<SourceId>();
+  for (const { record, chunks } of slides) {
+    const sourceId = sourceIdOf(record);
+    if (record.courseId !== courseId) {
+      throw new Error(
+        `${operation}: ${sourceId} belongs to course ${record.courseId}, not ${courseId}`,
+      );
+    }
+    if (seen.has(sourceId)) throw new Error(`${operation}: ${sourceId} appears twice in one batch`);
+    seen.add(sourceId);
+    requireSlideChunks(operation, record, chunks, embedder);
+  }
 };

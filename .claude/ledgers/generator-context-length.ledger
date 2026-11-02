@@ -13,3 +13,5 @@ carrier: .claude/scripts/models-pull.test.sh
 carrier: packages/gateway/src/index.ts
 carrier: docs/adr/0003-model-roles-and-backends.md
 carrier: docs/adr/0009-explanation-answers.md
+carrier: packages/grounding/src/prompt-budget.ts
+carrier: packages/grounding/src/prompt-budget.test.ts

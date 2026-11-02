@@ -3,6 +3,7 @@ import { SlideKind, type CourseId } from '@cram/shared';
 import { CHUNK_TABLE } from './chunk-row';
 import { CONFIRMATION_TABLE } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
+import { LECTURE_SUMMARY_TABLE } from './lecture-summaries';
 import { REBUILD_REPORT_TABLE } from './rebuild-report';
 import { STORED_DECK_TABLES } from './stored-deck';
 import { TOPIC_ORIGINS } from './topics';
@@ -12,7 +13,7 @@ import { TOPIC_ORIGINS } from './topics';
  * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too.
  * Carriers: `.claude/ledgers/schema-version.ledger`.
  */
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -85,6 +86,7 @@ export const createSchema = (
     db.exec(TABLES);
     db.exec(CHUNK_TABLE);
     db.exec(STORED_DECK_TABLES);
+    db.exec(LECTURE_SUMMARY_TABLE);
     db.exec(CONFIRMATION_TABLE);
     db.exec(REBUILD_REPORT_TABLE);
     createVectorTable(db, embedder.dimension);

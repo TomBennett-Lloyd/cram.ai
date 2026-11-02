@@ -17,7 +17,15 @@ export const PENDING = {
   answer: 'Checking your slides…',
   repair: 'Updating this course’s stored decks…',
   dismissal: 'Dismissing…',
+  summary: 'Loading the summary…',
+  remake: 'Making the summary…',
 } as const;
+
+export const SUMMARY = 'Summary';
+export const NO_SUMMARY = 'No summary yet.';
+export const SUMMARY_FAILED = 'The summary couldn’t be made.';
+export const MAKE_SUMMARY = 'Make the summary';
+export const SUMMARY_REPLACED = 'This lecture’s summary has changed. Close and reopen it.';
 
 /** The fixed system string for a question no shown explanation answers (`docs/standards/grounding.md` rule 5). */
 export const NOT_COVERED = 'Your slides don’t cover this.';
@@ -179,6 +187,8 @@ export const progressMessage = (progress: UploadProgress): string => {
       return 'Waiting to be read…';
     case 'ingesting':
       return 'Reading slides…';
+    case 'summarising':
+      return 'Summarising the lecture…';
     case 'indexed':
       return indexedMessage(progress);
     case 'unreadable':

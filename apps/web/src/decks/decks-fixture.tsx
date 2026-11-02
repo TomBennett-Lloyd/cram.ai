@@ -24,7 +24,16 @@ export const repairStatus = (
   ...uploads: Upload[]
 ): Reply => ({
   status: 200,
-  body: { courseId: 'bio', stored, repair, uploads },
+  body: { courseId: 'bio', stored, repair, uploads, remakes: [] },
+});
+
+export const remakeStatus = (
+  stored: StoredLectures,
+  remakes: readonly unknown[],
+  ...uploads: Upload[]
+): Reply => ({
+  status: 200,
+  body: { courseId: 'bio', stored, repair: NO_REPAIR, uploads, remakes },
 });
 
 export const storedStatus = (stored: StoredLectures, ...uploads: Upload[]): Reply =>
@@ -37,6 +46,7 @@ export const lecture = (
   slideCount: number,
   imageOnly: number[],
   unembedded: number[] = [],
+  summarised = false,
 ): StoredLecture =>
   StoredLecture.parse({
     lectureId,
@@ -44,11 +54,14 @@ export const lecture = (
     slideCount,
     imageOnly,
     unembedded,
+    summarised,
   });
 
 export const rows = () =>
   [...document.querySelectorAll('.upload')].map((row) =>
-    [...row.children].map((node) => node.textContent),
+    [row.querySelector('.upload-file'), row.querySelector('.upload-progress')].map(
+      (node) => node?.textContent,
+    ),
   );
 
 export const renderDecks = (api: ApiClient) =>

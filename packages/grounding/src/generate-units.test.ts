@@ -10,7 +10,7 @@ import {
 import { generateUnits } from './generate-units';
 import { generationRequest } from './prompts/generation-prompt';
 
-const task = { kind: 'answer-sentence', question: 'Who are the workers?' } as const;
+const task = { kind: 'lecture-summary', lectureTitle: 'The Hive', maxUnits: 4 } as const;
 const slides = [slide('l1/1', 'Worker bees are male.')];
 const request = generationRequest(task, slides);
 
@@ -24,11 +24,11 @@ describe('generateUnits', () => {
     });
   });
 
-  it('returns no units when the model finds the sources do not cover the request', async () => {
+  it('reports an empty reply as invalid output, since a summary call always writes a unit', async () => {
     const gateway = fakeGateway([generatorReplies(request, { units: [] })]);
-    await expect(generateUnits(task, slides, gateway.generator)).resolves.toEqual({
-      status: 'generated',
-      units: [],
+    await expect(generateUnits(task, slides, gateway.generator)).resolves.toMatchObject({
+      status: 'model-failed',
+      failure: { status: 'invalid-output' },
     });
   });
 

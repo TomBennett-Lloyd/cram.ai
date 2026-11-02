@@ -93,13 +93,13 @@ export const line = (id: string, n: number): LineCitation => ({
 export const draft = (text: string, citations: readonly LineCitation[]): DraftUnit => ({
   text,
   citations: [...citations],
-  kind: 'answer-sentence',
+  kind: 'lecture-summary',
 });
 
 export const answer = (text: string, citations: readonly Citation[]): Unit => ({
   text,
   citations: [...citations],
-  kind: 'answer-sentence',
+  kind: 'lecture-summary',
 });
 
 export const pairsOf = (hypothesis: string, slides: readonly RetrievedSlide[]): EntailmentPair[] =>

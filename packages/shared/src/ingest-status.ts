@@ -14,16 +14,18 @@ export const CourseUnavailableProblem = z.enum([
 ]);
 export type CourseUnavailableProblem = z.infer<typeof CourseUnavailableProblem>;
 
-const INDEXED_SLIDES = {
+const INDEXED_LECTURE = {
   slideCount: z.number().int().nonnegative(),
   imageOnly: z.array(SlideNo),
   unembedded: z.array(SlideNo),
+  summarised: z.boolean(),
 };
 
 export const UploadProgress = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('queued') }),
   z.strictObject({ state: z.literal('ingesting') }),
-  z.strictObject({ state: z.literal('indexed'), ...INDEXED_SLIDES }),
+  z.strictObject({ state: z.literal('summarising') }),
+  z.strictObject({ state: z.literal('indexed'), ...INDEXED_LECTURE }),
   z.strictObject({ state: z.literal('unreadable'), reason: NonBlankText, detail: z.string() }),
   z.strictObject({ state: z.literal('course-unavailable'), problem: CourseUnavailableProblem }),
   z.strictObject({ state: z.literal('failed') }),
@@ -41,7 +43,7 @@ export type Upload = z.infer<typeof Upload>;
 export const StoredLecture = z.strictObject({
   lectureId: LectureId,
   lectureTitle: NonBlankText,
-  ...INDEXED_SLIDES,
+  ...INDEXED_LECTURE,
 });
 export type StoredLecture = z.infer<typeof StoredLecture>;
 
@@ -94,12 +96,24 @@ export const CourseRepair = z.discriminatedUnion('state', [
 ]);
 export type CourseRepair = z.infer<typeof CourseRepair>;
 
-/** `stored` is what the course file holds; `repair` and `uploads` are since the server started. */
+export const SummaryRemake = z.strictObject({
+  lectureId: LectureId,
+  progress: z.discriminatedUnion('state', [
+    z.strictObject({ state: z.literal('queued') }),
+    z.strictObject({ state: z.literal('running') }),
+    z.strictObject({ state: z.literal('done'), summarised: z.boolean() }),
+    z.strictObject({ state: z.literal('failed') }),
+  ]),
+});
+export type SummaryRemake = z.infer<typeof SummaryRemake>;
+
+/** `stored` is what the course file holds; `repair`, `uploads` and `remakes` are since the server started. */
 export const IngestStatus = z.strictObject({
   courseId: CourseId,
   stored: StoredLectures,
   repair: CourseRepair,
   uploads: z.array(Upload),
+  remakes: z.array(SummaryRemake),
 });
 export type IngestStatus = z.infer<typeof IngestStatus>;
 

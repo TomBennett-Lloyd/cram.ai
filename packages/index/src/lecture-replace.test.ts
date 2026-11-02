@@ -204,6 +204,7 @@ describe('CourseIndex.lectures', () => {
         slideCount: 0,
         imageOnly: [],
         unembedded: [],
+        summarised: false,
       },
       {
         lectureId: 'lecture-1',
@@ -211,6 +212,7 @@ describe('CourseIndex.lectures', () => {
         slideCount: 4,
         imageOnly: [2, 10],
         unembedded: [],
+        summarised: false,
       },
       {
         lectureId: 'lecture-2',
@@ -218,6 +220,7 @@ describe('CourseIndex.lectures', () => {
         slideCount: 1,
         imageOnly: [],
         unembedded: [],
+        summarised: false,
       },
     ]);
   });
