@@ -13,6 +13,7 @@ import type { DraftUnit } from './generate-units';
 import type { SearchSentence } from './explain';
 import type { EntailmentScores } from './nli-verdict';
 import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
+import { type SentenceKind, sentenceKindRequest } from './prompts/sentence-kind-prompt';
 import { slideText } from './slide-text';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
@@ -115,4 +116,18 @@ export const scriptedSearch = (
       return Promise.resolve(candidates[sentence] ?? []);
     },
   };
+};
+
+export const kindsRecording = (
+  sentences: readonly string[],
+  slides: readonly RetrievedSlide[],
+  reply: readonly SentenceKind[] | GeneratorReply,
+): Recording => {
+  const request = sentenceKindRequest(
+    sentences,
+    slides.map((slide) => slideText(slide.record)),
+  );
+  return 'status' in reply
+    ? generatorRecording(request, reply)
+    : generatorReplies(request, { kinds: reply });
 };

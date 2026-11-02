@@ -9,6 +9,7 @@ import { attempt } from './file-attempt';
 import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { parseJsonLines } from './json-text';
+import { SentenceKindLabel } from './sentence-kind-label';
 
 export const EVAL_COURSE_ID = CourseId.parse('hollowmere');
 
@@ -17,6 +18,7 @@ export const EVAL_ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const DECK_DIR = 'decks/hollowmere';
 export const QUESTIONS_FILE = 'questions.jsonl';
 export const LABELS_FILE = 'labels/verifier.jsonl';
+export const SENTENCE_KINDS_FILE = 'labels/sentence-kind.jsonl';
 
 interface Invalid {
   readonly status: 'invalid';
@@ -66,8 +68,15 @@ export const readEvalCourse = (root: string = EVAL_ROOT): EvalCourseRead => {
   if (questions.status === 'invalid') return questions;
   const labels = readJsonLines(root, LABELS_FILE, HandLabel);
   if (labels.status === 'invalid') return labels;
+  const sentenceKinds = readJsonLines(root, SENTENCE_KINDS_FILE, SentenceKindLabel);
+  if (sentenceKinds.status === 'invalid') return sentenceKinds;
   return {
     status: 'read',
-    course: { deck: deck.deck, questions: questions.value, labels: labels.value },
+    course: {
+      deck: deck.deck,
+      questions: questions.value,
+      labels: labels.value,
+      sentenceKinds: sentenceKinds.value,
+    },
   };
 };

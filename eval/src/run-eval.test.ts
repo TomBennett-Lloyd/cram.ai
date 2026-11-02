@@ -1,7 +1,5 @@
 import {
-  type ChatWireRequest,
   FakeGateway,
-  type GeneratorReply,
   PROVISIONAL_DEFAULT_PINS,
   type Recording,
   RecordingMissError,
@@ -9,12 +7,12 @@ import {
 import { ATTRIBUTION_K } from '@cram/index';
 import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
-import { label, question } from './eval-fixture';
+import { kindLabel, label, question } from './eval-fixture';
 import { RecordingGateway } from './recording-gateway';
 import { runEval, type EvalRunSpec } from './run-eval';
 import { indexedLecture as lecture, record } from './run-fixture';
 import { type Respond, SAMPLING, ScriptedGateway, SERVED } from './scripted-gateway-fixture';
+import { credulous, tutor } from './scripted-tutor-fixture';
 
 const COURSE = CourseId.parse('hollowmere');
 
@@ -61,78 +59,33 @@ const LABELS = [
   }),
 ];
 
-const StatementBlock = z.strictObject({ quotes: z.array(z.string()), statement: z.string() });
-
-const words = (text: string): readonly string[] => text.toLowerCase().match(/[a-z]{5,}/g) ?? [];
-
-const content = (value: unknown): GeneratorReply => ({
-  status: 'content',
-  content: JSON.stringify(value),
-});
-
-interface Source {
-  readonly id: string;
-  readonly line: string;
-  readonly text: string;
-}
-
-/** The line a scripted unit cites: the second shown, the first after the title. */
-const CITED_LINE = 2;
-
-const sourcesOf = (prompt: string): readonly Source[] =>
-  [...prompt.matchAll(/<source id="([^"]+)">\n([\s\S]*?)\n<\/source>/g)].map(([, id, text]) => ({
-    id: id ?? '',
-    text: text ?? '',
-    line: (text ?? '').split('\n')[CITED_LINE - 1]?.replace(/^\[\d+\] /, '') ?? '',
-  }));
-
-/** Answers from each source sharing a long word with the question, or from every source when `eager`. */
-const tutor =
-  (eager: boolean): Respond =>
-  (wire: ChatWireRequest) => {
-    const prompt = wire.messages.at(-1)?.content ?? '';
-    switch (wire.output.name) {
-      case 'explanation': {
-        const asked = words(/<question>(.*)<\/question>/.exec(prompt)?.[1] ?? '');
-        const from = sourcesOf(prompt).filter(
-          ({ text }) => eager || words(text).some((word) => asked.includes(word)),
-        );
-        return content({
-          answer:
-            from.length === 0
-              ? null
-              : {
-                  text: from.map(({ line }) => line).join(' '),
-                  quotes: from.map(({ id }) => ({ sourceId: id, line: CITED_LINE })),
-                },
-        });
-      }
-      case 'units': {
-        const units = sourcesOf(prompt).map(({ id, line }) => ({
-          text: line,
-          citations: [{ sourceId: id, line: CITED_LINE }],
-        }));
-        return content({ units });
-      }
-      case 'verdict': {
-        const { quotes, statement } = StatementBlock.parse(JSON.parse(prompt));
-        return content({
-          verdict: quotes.join(' ').includes(statement) ? 'supported' : 'unsupported',
-        });
-      }
-      default:
-        return { status: 'backend-failed', reason: `unscripted output ${wire.output.name}` };
-    }
-  };
+const SENTENCE_KINDS = [
+  kindLabel({
+    sentence: 'So a comb is a sheet of cells.',
+    premises: [{ lectureId: 'l1', slideNo: 1 }],
+    kind: 'interpretation',
+  }),
+  kindLabel({
+    sentence: 'So workers forage.',
+    premises: [{ lectureId: 'l1', slideNo: 1 }],
+    kind: 'course-claim',
+  }),
+  kindLabel({
+    sentence: 'So a forager is a worker that gathers.',
+    premises: [{ lectureId: 'l2', slideNo: 1 }],
+    kind: 'interpretation',
+  }),
+  kindLabel({
+    sentence: 'A cell is one compartment of a comb.',
+    premises: [{ lectureId: 'l1', slideNo: 1 }],
+    kind: 'interpretation',
+  }),
+];
 
 const steppingClock = () => {
   let now = 0;
   return () => (now += 1);
 };
-
-/** Says every statement is supported. */
-const credulous: Respond = (wire) =>
-  wire.output.name === 'verdict' ? content({ verdict: 'supported' }) : tutor(false)(wire);
 
 /** A slide whose whole text is over the scripted cross-encoder's length. */
 const LONG = record({
@@ -154,6 +107,7 @@ const spec = (
   lectures: LECTURES,
   questions: QUESTIONS,
   labels: LABELS,
+  sentenceKinds: SENTENCE_KINDS,
   gateway,
   clock: steppingClock(),
   ...overrides,
@@ -304,6 +258,21 @@ describe('runEval', () => {
     expect(report.metrics.retrievalRecall).toMatchObject({
       ratio: { numerator: 3, denominator: 3 },
     });
+  });
+
+  it('judges each sentence-kind label against its premises’ slide text, interpretation the positive class', async () => {
+    const { report } = await recordRun(tutor(false));
+    expect(report.metrics).toMatchObject({
+      sentenceKindPrecision: { status: 'measured', ratio: { numerator: 1, denominator: 2 } },
+      sentenceKindRecall: { status: 'measured', ratio: { numerator: 1, denominator: 3 } },
+    });
+  });
+
+  it('rejects a sentence-kind label whose premise is not in the course', async () => {
+    const stray = kindLabel({ premises: [{ lectureId: 'l1', slideNo: 9 }] });
+    await expect(
+      runEval(spec(new ScriptedGateway(tutor(false)), { sentenceKinds: [stray] })),
+    ).rejects.toThrow('no slide l1#9 for a sentence-kind label');
   });
 
   it('rejects a hand label with no quote rather than verifying it against nothing', async () => {

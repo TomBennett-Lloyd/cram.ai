@@ -69,6 +69,8 @@ export const EvalReport = z.strictObject({
     lightFlagRateWide: BaselineRow,
     summaryYield: BaselineRow,
     summaryUnitYield: BaselineRow,
+    sentenceKindPrecision: BaselineRow,
+    sentenceKindRecall: BaselineRow,
   }),
   depths: z.strictObject({ light: DepthRows, deep: DepthRows }),
   attribution: AttributionCounts,

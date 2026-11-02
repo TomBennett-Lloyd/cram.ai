@@ -5,6 +5,7 @@ import { slide } from '../fake-gateway-fixture';
 import { explanationRequest, GeneratedExplanation } from './explanation-prompt';
 import { generationRequest } from './generation-prompt';
 import { rewriteRequest } from './rewrite-prompt';
+import { sentenceKindRequest } from './sentence-kind-prompt';
 import { verifierRequest } from './verifier-prompt';
 
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -25,6 +26,10 @@ const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unkn
   ],
   ['verifier', (n) => verifierRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
   ['rewrite', (n) => rewriteRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
+  [
+    'sentence-kind',
+    (n) => (n === 0 ? sentenceKindRequest(['a'], ['q']) : sentenceKindRequest(['b', 'c'], ['r'])),
+  ],
 ];
 
 const TRUTH_OR_CAVEAT =
@@ -133,5 +138,35 @@ describe('the verifier prompt', () => {
     const system = verifierRequest(injected).messages[0].content;
     for (const verdict of Verdict.options)
       expect(system).toMatch(new RegExp(`^- ${verdict}: `, 'm'));
+  });
+});
+
+describe('sentenceKindRequest', () => {
+  it('numbers the sentences from 1 beside the premises', () => {
+    const request = sentenceKindRequest(['First.', 'Second.'], ['Slide one.', 'Slide two.']);
+    expect(JSON.parse(request.messages[1]?.content ?? '')).toEqual({
+      premises: ['Slide one.', 'Slide two.'],
+      sentences: [
+        { number: 1, text: 'First.' },
+        { number: 2, text: 'Second.' },
+      ],
+    });
+  });
+
+  it('constrains the reply to exactly one kind per sentence', () => {
+    const { schema } = sentenceKindRequest(['a', 'b', 'c'], ['q']).output;
+    expect(
+      chatWireRequest(sentenceKindRequest(['a', 'b', 'c'], ['q'])).output.jsonSchema,
+    ).toMatchObject({
+      properties: { kinds: { minItems: 3, maxItems: 3 } },
+    });
+    expect(
+      schema.safeParse({ kinds: ['interpretation', 'course-claim', 'course-claim'] }),
+    ).toMatchObject({
+      success: true,
+    });
+    expect(schema.safeParse({ kinds: ['interpretation', 'course-claim'] })).toMatchObject({
+      success: false,
+    });
   });
 });

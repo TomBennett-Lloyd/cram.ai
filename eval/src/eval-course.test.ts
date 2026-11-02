@@ -1,11 +1,18 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { SentenceKind } from '@cram/grounding';
 import { Verdict } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { auditEvalCourse, type EvalCourse } from './audit';
 import { inContradictionSet } from './golden-question';
-import { DECK_DIR, LABELS_FILE, QUESTIONS_FILE, readEvalCourse } from './read-eval-course';
+import {
+  DECK_DIR,
+  LABELS_FILE,
+  QUESTIONS_FILE,
+  readEvalCourse,
+  SENTENCE_KINDS_FILE,
+} from './read-eval-course';
 
 const committed = (): EvalCourse => {
   const read = readEvalCourse();
@@ -58,6 +65,11 @@ describe('the committed eval course', () => {
     const verdicts = new Set(committed().labels.map((label) => label.verdict));
     expect([...verdicts].sort()).toEqual([...Verdict.options].sort());
   });
+
+  it('labels both sentence kinds', () => {
+    const kinds = new Set(committed().sentenceKinds.map((label) => label.kind));
+    expect([...kinds].sort()).toEqual([...SentenceKind.options].sort());
+  });
 });
 
 describe('readEvalCourse', () => {
@@ -86,12 +98,18 @@ describe('readEvalCourse', () => {
     mustNotContain: [],
   });
   const labelLine = JSON.stringify({ text: 't', quotes: ['Cells'], verdict: 'supported' });
+  const kindLine = JSON.stringify({
+    sentence: 's',
+    premises: [{ lectureId: 'l1', slideNo: 1 }],
+    kind: 'interpretation',
+  });
 
   it('reads a deck, its questions and its labels', () => {
     const dir = root({
       [`${DECK_DIR}/lecture-01.json`]: lecture,
       [QUESTIONS_FILE]: `${questionLine}\n`,
       [LABELS_FILE]: `${labelLine}\n`,
+      [SENTENCE_KINDS_FILE]: `${kindLine}\n`,
     });
     expect(readEvalCourse(dir)).toMatchObject({
       status: 'read',
@@ -99,6 +117,7 @@ describe('readEvalCourse', () => {
         deck: [{ lectureId: 'l1' }],
         questions: [{ question: 'q' }],
         labels: [{ text: 't' }],
+        sentenceKinds: [{ sentence: 's' }],
       },
     });
   });
@@ -111,6 +130,7 @@ describe('readEvalCourse', () => {
       [`${DECK_DIR}/notes.txt`]: 'not a lecture',
       [QUESTIONS_FILE]: '',
       [LABELS_FILE]: '',
+      [SENTENCE_KINDS_FILE]: '',
     });
     const read = readEvalCourse(dir);
     expect(read.status === 'read' && read.course.deck.map((l) => l.lectureId)).toEqual([
@@ -162,5 +182,22 @@ describe('readEvalCourse', () => {
       [LABELS_FILE]: '{"text":"t"}\n',
     });
     expect(readEvalCourse(dir)).toMatchObject({ status: 'invalid', where: `${LABELS_FILE}:1` });
+  });
+
+  it('names a missing sentence-kind file, and the line of it that does not parse', () => {
+    const files = {
+      [`${DECK_DIR}/lecture-01.json`]: lecture,
+      [QUESTIONS_FILE]: '',
+      [LABELS_FILE]: '',
+    };
+    expect(readEvalCourse(root(files))).toMatchObject({
+      status: 'invalid',
+      where: SENTENCE_KINDS_FILE,
+    });
+    const bad = root({ ...files, [SENTENCE_KINDS_FILE]: `${kindLine}\n{"sentence":"s"}\n` });
+    expect(readEvalCourse(bad)).toMatchObject({
+      status: 'invalid',
+      where: `${SENTENCE_KINDS_FILE}:2`,
+    });
   });
 });

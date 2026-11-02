@@ -46,6 +46,7 @@ describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
           lectures: await ingestedCourse(read.course.deck, EVAL_COURSE_ID, dir),
           questions: read.course.questions,
           labels: read.course.labels,
+          sentenceKinds: read.course.sentenceKinds,
           gateway: recorder,
           clock: () => performance.now(),
         });
