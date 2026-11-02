@@ -226,10 +226,13 @@ case "\$1 \$2" in
       # committed during this very run. Substituted from the lane worktree at call time,
       # which is what lets a case assert what the await gate compares against.
       real=\$(git -C "$ROOT/wt" rev-parse HEAD)
-      sed "s/\"headRefOid\":\"[^\"]*\"/\"headRefOid\":\"\$real\"/" "\$slot"
+      sed "s/\"headRefOid\":\"[^\"]*\"/\"headRefOid\":\"\$real\"/" "\$slot" | tee "\$state/answer"
     else
-      cat "\$slot"
+      tee "\$state/answer" <"\$slot"
     fi
+    # The head GitHub holds is the one it last answered, unless a case moved it after
+    # that answer (merge.head): what \`pr merge --match-head-commit\` is compared to.
+    sed -n 's/.*"headRefOid":"\([^"]*\)".*/\1/p' "\$state/answer" >"\$state/head"
     rc=0
     [ -f "\$state/view.\$n.rc" ] && read -r rc <"\$state/view.\$n.rc"
     exit "\$rc"
@@ -262,6 +265,17 @@ case "\$1 \$2" in
     exit "\$rc"
     ;;
   "pr merge")
+    # GitHub refuses a pinned merge whose sha is not the head (#408). The message is
+    # a fixture: the subject reports gh's answer and never parses it.
+    if [ "\$5" = "--match-head-commit" ]; then
+      head=""
+      [ -f "\$state/head" ] && read -r head <"\$state/head"
+      [ -f "\$state/merge.head" ] && read -r head <"\$state/merge.head"
+      if [ "\$6" != "\$head" ]; then
+        printf 'GraphQL: Head branch was modified. Review and try the merge again. (mergePullRequest)\n' >&2
+        exit 1
+      fi
+    fi
     : >"\$state/merged"
     exit 0
     ;;
@@ -407,6 +421,19 @@ expect_called() {
 
 expect_not_called() {
   ! called "$1" || bad "gh should not have been called as: $1"
+}
+
+# A merge is asserted by method, and the positive form requires the pin: every
+# \`gh pr merge\` the subject issues carries --match-head-commit (#408). The
+# negative form matches the method with any arguments after it.
+expect_merged() { # expect_merged <squash|rebase> [sha]
+  grep -qxE -- "pr merge $PR --$1 --match-head-commit ${2:-[^ ]+}" "$STATE/calls.log" ||
+    bad "gh was never called as: pr merge $PR --$1 --match-head-commit ${2:-<sha>} (log: $(tr '\n' '|' <"$STATE/calls.log"))"
+}
+
+expect_not_merged() { # expect_not_merged <squash|rebase>
+  ! grep -qE -- "^pr merge $PR --$1( |\$)" "$STATE/calls.log" ||
+    bad "gh should not have been called as: pr merge $PR --$1 …"
 }
 
 call_line() { # call_line <prefix> -> 1-based line number of the first matching call, or 0
@@ -722,7 +749,7 @@ conflict_always() {
 # what it pushed is that file byte for byte, read out of the origin.
 expect_union() {
   expect_rc 0
-  expect_called "pr merge $PR --squash"
+  expect_merged squash
   [ "$(origin_branch_file "$1")" = "$(printf '%s' "$2")" ] ||
     bad "the union pushed for $1 is not the expected file; got:
 $(origin_branch_file "$1")"
@@ -740,7 +767,7 @@ expect_union_refused() {
   for fragment in "$@"; do
     expect_stderr "$fragment"
   done
-  expect_not_called "pr merge $PR --squash"
+  expect_not_merged squash
   expect_branch_unpushed "$before"
   expect_no_merge_in_progress
   [ ! -f "$STATE/prettier.log" ] || bad "prettier ran on a resolution that was refused"
@@ -775,8 +802,8 @@ expect_stdout 'merged squash (rc=0), state MERGED'
 expect_stdout 'closed by the merge: #12'
 expect_stdout "none holds '$HEAD_REF'"
 expect_stdout "done — PR #$PR MERGED"
-expect_called "pr merge $PR --squash"
-expect_not_called "pr merge $PR --rebase"
+expect_merged squash
+expect_not_merged rebase
 end
 
 # ==========================================================================================
@@ -839,7 +866,7 @@ expect_rc 1
 expect_stderr 'feedback — FAILED'
 expect_stderr 'still reads the literal "pending — filled at merge"'
 expect_stdout 'HUMAN (humanAlways: docs/adr/0007-thing.md)'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_not_called "pr update-branch $PR"
 [ -f "$STATE/merged" ] && bad "the PR was merged despite the placeholder"
 end
@@ -863,7 +890,7 @@ run_merge
 expect_rc 1
 expect_stderr 'feedback — FAILED'
 expect_stderr 'adds no lines to docs/review-feedback.md'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -877,7 +904,7 @@ run_merge
 expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr 'unsupported humanAlways pattern: docs/*.md'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -899,7 +926,7 @@ expect_rc 0
 expect_called "pr update-branch $PR"
 expect_stdout 'updated onto the base (attempt 1)'
 expect_stdout '2 check(s) complete on bbb222'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 update_at=$(call_line "pr update-branch $PR")
 merge_at=$(call_line "pr merge $PR")
 if [ "$update_at" -le 0 ] || [ "$update_at" -ge "$merge_at" ]; then
@@ -925,7 +952,7 @@ expect_rc 1
 expect_stdout 'already up to date with the base'
 expect_stderr 'merge — FAILED'
 expect_stderr "mergeStateStatus is 'BEHIND', not CLEAN"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -946,8 +973,8 @@ expect_rc 0
 expect_stdout 'batch of 2 issues (#21 #22) -> rebase'
 expect_stdout "skipped — a --rebase batch is curated and force-pushed by its owner"
 expect_not_called "pr update-branch $PR"
-expect_called "pr merge $PR --rebase"
-expect_not_called "pr merge $PR --squash"
+expect_merged rebase
+expect_not_merged squash
 expect_stdout 'closed by the merge: #21 #22'
 end
 
@@ -970,8 +997,8 @@ run_merge
 expect_rc 0
 expect_stdout "single issue #21 by head branch '21-lane', also closing #22 -> squash"
 expect_not_stdout 'batch of 2 issues'
-expect_called "pr merge $PR --squash"
-expect_not_called "pr merge $PR --rebase"
+expect_merged squash
+expect_not_merged rebase
 expect_stdout 'closed by the merge: #21 #22'
 HEAD_REF=$saved_head_ref
 end
@@ -991,7 +1018,7 @@ run_merge
 expect_rc 0
 expect_stdout 'batch of 2 issues (#21 #22) -> rebase'
 expect_not_stdout 'by head branch'
-expect_called "pr merge $PR --rebase"
+expect_merged rebase
 HEAD_REF=$saved_head_ref
 end
 
@@ -1032,8 +1059,8 @@ run_merge
 expect_rc 0
 expect_stdout 'batch of 2 issues (#21 #22) -> rebase'
 expect_not_stdout 'by head branch'
-expect_called "pr merge $PR --rebase"
-expect_not_called "pr merge $PR --squash"
+expect_merged rebase
+expect_not_merged squash
 HEAD_REF=$saved_head_ref
 end
 
@@ -1050,7 +1077,7 @@ run_merge
 expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr 'curated history: 1 commit(s) for 2 member issue(s)'
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 expect_not_called "pr update-branch $PR"
 end
 
@@ -1084,7 +1111,7 @@ expect_stderr 'classify — FAILED'
 expect_stderr 'a --rebase PR classifies HUMAN (humanAlways: CLAUDE.md)'
 expect_stderr 'orchestration.routeRule'
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 end
 
 begin "a HUMAN batch carrying its verdict commit is told routeRule, not the commit count"
@@ -1098,7 +1125,7 @@ run_merge
 expect_rc 1
 expect_stderr 'a --rebase PR classifies HUMAN (humanAlways: docs/adr/0007-thing.md)'
 expect_not_stderr 'curated history'
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 end
 
 begin "--method rebase on a single HUMAN PR is refused the same way"
@@ -1110,7 +1137,7 @@ MERGE_METHOD=rebase run_merge
 expect_rc 1
 expect_stderr 'a --rebase PR classifies HUMAN (humanAlways: .claude/workflow.json)'
 expect_stderr 'or pass --method squash if this PR is a single issue'
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 end
 
 # A run against a HUMAN batch someone already merged has nothing left to refuse, and
@@ -1155,7 +1182,7 @@ expect_rc 1
 expect_stderr 'merge — FAILED'
 expect_stderr 'curate onto latest main'
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 end
 
 # ==========================================================================================
@@ -1176,7 +1203,7 @@ expect_rc 1
 expect_stderr 'merge — FAILED'
 expect_stderr "mergeStateStatus is 'BLOCKED', not CLEAN"
 expect_not_stderr 'curate onto latest main'
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 end
 
 # ==========================================================================================
@@ -1195,8 +1222,8 @@ MERGE_METHOD=squash run_merge
 expect_rc 0
 expect_stdout 'overridden to squash'
 expect_called "pr update-branch $PR"
-expect_called "pr merge $PR --squash"
-expect_not_called "pr merge $PR --rebase"
+expect_merged squash
+expect_not_merged rebase
 end
 
 # ==========================================================================================
@@ -1216,7 +1243,7 @@ expect_stderr 'classify — FAILED'
 expect_stderr 'no Closes line in the PR body'
 expect_stderr 'pass --method squash|rebase'
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1238,8 +1265,8 @@ expect_rc 0
 expect_stdout 'ticket-agent lane for #21 -> squash'
 expect_not_stdout 'batch of 2 issues'
 expect_called "pr update-branch $PR"
-expect_called "pr merge $PR --squash"
-expect_not_called "pr merge $PR --rebase"
+expect_merged squash
+expect_not_merged rebase
 expect_stdout 'closed by the merge: #21 #22'
 end
 
@@ -1258,7 +1285,7 @@ expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr 'the lane report names #21 but no Closes line does'
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 begin "a lane report whose issue is missing from its Closes lines is refused at classify"
@@ -1269,7 +1296,7 @@ write_merged_view
 run_merge
 expect_rc 1
 expect_stderr 'the lane report names #21 but no Closes line does'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1287,8 +1314,8 @@ run_merge
 expect_rc 0
 expect_stdout 'task-orchestrator batch, anchor #21 -> rebase'
 expect_not_called "pr update-branch $PR"
-expect_called "pr merge $PR --rebase"
-expect_not_called "pr merge $PR --squash"
+expect_merged rebase
+expect_not_merged squash
 end
 
 begin "a batch TASK REPORT header with one surviving member still merges --rebase"
@@ -1301,8 +1328,8 @@ run_merge
 expect_rc 0
 expect_stdout 'task-orchestrator batch, anchor #21 -> rebase'
 expect_not_stdout 'single issue #21 -> squash'
-expect_called "pr merge $PR --rebase"
-expect_not_called "pr merge $PR --squash"
+expect_merged rebase
+expect_not_merged squash
 end
 
 begin "a lane report beside a batch TASK REPORT header is refused at classify"
@@ -1315,8 +1342,8 @@ run_merge
 expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr '2 lane declarations'
-expect_not_called "pr merge $PR --rebase"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged rebase
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1335,8 +1362,8 @@ expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr '2 lane declarations'
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --squash"
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged squash
+expect_not_merged rebase
 end
 
 # ==========================================================================================
@@ -1351,7 +1378,7 @@ run_merge
 expect_rc 1
 expect_stderr 'checks — FAILED'
 expect_stderr "check 'web-e2e' concluded FAILURE"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1376,7 +1403,7 @@ expect_rc 1
 expect_stderr 'checks — FAILED'
 expect_stderr 'timed out'
 expect_stderr '0 of an expected 2 check(s) present'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1410,7 +1437,7 @@ expect_not_stdout 'complete on aaa111'
 expect_stderr 'head=aaa111 await_new_head=1 merge_state=BLOCKED'
 expect_stderr 'head=bbb222 await_new_head=0 merge_state=CLEAN verdict=ready:2'
 expect_not_stderr "mergeStateStatus is 'BLOCKED'"
-expect_called "pr merge $PR --squash"
+expect_merged squash
 # The stale answer was re-read rather than believed: classify, the stale poll, the
 # fresh poll and the post-merge confirmation are four reads. A subject that took
 # the first post-update answer never reaches the fourth — it breaks the poll on the
@@ -1444,7 +1471,7 @@ expect_stderr 'checks — FAILED'
 expect_stderr 'the head still reads aaa111'
 expect_stderr "gh answered \"$UPDATE_WROTE\""
 expect_stderr 'no-op spelling update-branch does not recognise'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 [ -f "$STATE/merged" ] && bad "the PR merged on a head that never moved"
 end
 
@@ -1467,7 +1494,7 @@ run_merge
 POLL_TIMEOUT=30
 expect_rc 0
 expect_stdout '2 check(s) complete on aaa111'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -1492,7 +1519,7 @@ run_merge
 POLL_TIMEOUT=30
 expect_rc 0
 expect_stdout '3 check(s) complete on bbb222'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -1508,7 +1535,7 @@ write_merged_view
 run_merge
 expect_rc 1
 expect_stderr "check 'gitleaks' concluded FAILURE"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1534,7 +1561,7 @@ for order in "checks:IN_PROGRESS:@$T_NEW,checks:COMPLETED:SUCCESS@$T_NEW" \
   expect_stderr '1 still pending'
   expect_stderr 'head=aaa111 await_new_head=0 merge_state=CLEAN'
   expect_stderr 'waiting_on=[checks=IN_PROGRESS]'
-  expect_not_called "pr merge $PR --squash"
+  expect_not_merged squash
 done
 case_ctx=""
 end
@@ -1558,7 +1585,7 @@ for unset in "" "@0001-01-01T00:00:00Z"; do
   expect_rc 1
   expect_stderr '1 still pending'
   expect_stderr 'waiting_on=[checks=QUEUED]'
-  expect_not_called "pr merge $PR --squash"
+  expect_not_merged squash
 done
 case_ctx=""
 end
@@ -1576,7 +1603,7 @@ run_merge
 POLL_TIMEOUT=30
 expect_rc 1
 expect_stderr '2 of an expected 2 check(s) present, 1 still pending'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1599,7 +1626,7 @@ expect_rc 1
 expect_stderr 'checks — FAILED'
 expect_stderr '3 consecutive reads failed'
 expect_stderr 'api.github.com'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 [ -f "$STATE/merged" ] && bad "the failed run merged anyway"
 
 for n in 2 3 4; do must rm -f "$STATE/view.$n" "$STATE/view.$n.rc"; done
@@ -1607,7 +1634,7 @@ reset_calls
 run_merge
 expect_rc 0
 expect_called "pr update-branch $PR"
-expect_called "pr merge $PR --squash"
+expect_merged squash
 expect_stdout "done — PR #$PR MERGED"
 end
 
@@ -1632,7 +1659,7 @@ expect_stderr 'checks — FAILED'
 expect_stderr 'read failed (2 of 3 attempts)'
 expect_stderr '3 consecutive reads failed'
 expect_stderr "did not answer within ${GH_TIMEOUT}s"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
 [ "$views" -eq 4 ] || bad "expected classify plus three failed reads, got $views pr view calls"
 [ "$elapsed" -lt 45 ] || bad "the run took ${elapsed}s, so the box did not cut the 90 s of hangs short"
@@ -1653,7 +1680,7 @@ run_merge
 FAKE_BOX=""
 expect_rc 0
 expect_stderr 'read failed (1 of 3 attempts)'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 expect_stdout "done — PR #$PR MERGED"
 end
 
@@ -1677,7 +1704,7 @@ expect_stderr 'whether it wrote is unknown'
 expect_stderr "did not answer within ${GH_TIMEOUT}s"
 ubs=$(grep -c -- "^pr update-branch $PR" "$STATE/calls.log")
 [ "$ubs" -eq 1 ] || bad "a write of unknown outcome was retried: $ubs update-branch calls"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1696,7 +1723,7 @@ write_merged_view
 run_merge
 expect_rc 0
 expect_stderr 'read failed (2 of 3 attempts)'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -1715,7 +1742,7 @@ write_merged_view
 READ_DEFAULT=1 run_merge
 expect_rc 0
 expect_stderr 'read failed (3 of 4 attempts)'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 case_ctx="a 4th failed read"
 must rm -f "$STATE/merged"
 must printf 'error connecting to api.github.com\n' >"$STATE/view.5"
@@ -1724,7 +1751,7 @@ reset_calls
 READ_DEFAULT=1 run_merge
 expect_rc 1
 expect_stderr '4 consecutive reads failed'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 case_ctx=""
 end
 
@@ -1743,7 +1770,7 @@ expect_stdout 'skipped (PR is already MERGED)'
 expect_stdout "'awaiting-review' removed, after the merge"
 expect_stdout "done — PR #$PR MERGED"
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_called "pr edit $PR --remove-label awaiting-review"
 end
 
@@ -1762,7 +1789,7 @@ expect_stderr 'is merged, but the chain did not finish clean'
 expect_stderr 'did not close #12'
 # The merge itself still happened, and the steps after the issue check still ran:
 # once the PR is merged there is nothing left to stop, only to report.
-expect_called "pr merge $PR --squash"
+expect_merged squash
 expect_stdout "none holds '$HEAD_REF'"
 end
 
@@ -1839,7 +1866,7 @@ run_merge
 expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr 'came back empty'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1869,7 +1896,7 @@ write_merged_view
 run_merge
 expect_rc 0
 expect_stdout 'entry on the branch, both placeholders filled'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -1892,7 +1919,7 @@ run_merge
 expect_rc 1
 expect_stderr 'feedback — FAILED'
 expect_stderr 'no "- **Verdict**:" line'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1935,7 +1962,7 @@ run_merge
 expect_rc 1
 expect_stderr 'classify — FAILED'
 expect_stderr 'CLOSED without being merged'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_not_called "pr update-branch $PR"
 end
 
@@ -1967,7 +1994,7 @@ expect_rc 0
 expect_stdout 'skipped (the PR was merged elsewhere while this run was working)'
 expect_stdout "'awaiting-review' removed, after the merge"
 expect_stdout "done — PR #$PR MERGED"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -1987,7 +2014,7 @@ run_merge
 expect_rc 0
 expect_stdout 'already up to date with the base'
 expect_not_stdout 'updated onto the base'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -2006,7 +2033,7 @@ run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'the head moved under every one of 3 attempts'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 # Retried, not refused on the first answer: three attempts, one call each.
 attempts=$(grep -c -- "^pr update-branch $PR\$" "$STATE/calls.log")
 [ "$attempts" = "3" ] || bad "expected 3 update-branch attempts, got $attempts"
@@ -2032,7 +2059,7 @@ run_merge
 expect_rc 1
 expect_stderr 'feedback — FAILED'
 expect_stderr 'no "- **Category**:" line'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 end
 
 # ==========================================================================================
@@ -2048,7 +2075,7 @@ write_merged_view
 run_merge
 expect_rc 1
 expect_stderr "merge — FAILED: mergeStateStatus is 'UNKNOWN', not CLEAN"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 views=$(grep -c -- "^pr view $PR " "$STATE/calls.log")
 [ "$views" -eq 3 ] || bad "expected classify, the poll and 1 re-read, got $views pr view calls"
 end
@@ -2065,7 +2092,7 @@ write_view 3
 write_merged_view
 run_merge
 expect_rc 0
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -2133,7 +2160,7 @@ for b in $BASHES; do
   MERGE_BASH="$b" run_merge
   expect_rc 0
   expect_stdout "single issue #$PR by head branch '$HEAD_REF', also closing #12 -> squash"
-  expect_called "pr merge $PR --squash"
+  expect_merged squash
   end
 done
 
@@ -2158,7 +2185,7 @@ expect_stdout 'gh reports a conflict; asking whether it is an append-only-log co
 expect_stdout "$TD unioned and pushed"
 expect_stdout 'base appended 1 entr(ies), the branch 1'
 expect_stdout 'the update moved the head'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 expect_stdout "done — PR #$PR MERGED"
 # What actually landed on the branch, read out of the origin rather than off stdout.
 [ "$(origin_branch_sha)" != "$before_sha" ] || bad "the resolution was never pushed"
@@ -2249,7 +2276,7 @@ expect_stderr 'the conflicted set is'
 expect_stderr 'notes.txt'
 expect_stderr 'this step resolves only the append-only logs'
 expect_stderr 'and notes.txt is not one'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 end
@@ -2273,7 +2300,7 @@ expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'is not clean'
 expect_stderr 'scratch.txt'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 [ -f "$ROOT/wt/scratch.txt" ] || bad "the refusal removed the uncommitted work it refused over"
@@ -2295,7 +2322,7 @@ run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr "no worktree holds '$HEAD_REF'"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 end
 
@@ -2352,7 +2379,7 @@ expect_rc 1
 expect_stdout "$TD unioned and pushed"
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'reports a conflict again after the'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 # Two attempts, not three: the second conflict ends the run rather than consuming the
 # rest of MERGE_PR_UPDATE_RETRIES.
 attempts=$(grep -c -- "^pr update-branch $PR\$" "$STATE/calls.log")
@@ -2377,7 +2404,7 @@ expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr 'gh pr update-branch exited 1'
 expect_not_stdout 'asking whether it is'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 end
 
@@ -2404,7 +2431,7 @@ expect_stderr 'merge — FAILED'
 expect_stderr 'curate onto latest main'
 expect_not_stdout 'asking whether it is'
 expect_not_called "pr update-branch $PR"
-expect_not_called "pr merge $PR --rebase"
+expect_not_merged rebase
 expect_branch_unpushed "$before_sha"
 end
 
@@ -2429,7 +2456,7 @@ run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr "prettier exited 3 over $TD"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 st=$(git -C "$ROOT/wt" status --porcelain)
@@ -2454,7 +2481,7 @@ run_merge
 expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr "the resolved $TD still holds conflict markers"
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 end
@@ -2478,7 +2505,7 @@ expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr "but the PR's head is aaa111"
 expect_stderr 'push it by hand and re-run'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 end
 
@@ -2505,7 +2532,7 @@ capture -C "$REPO" env \
 expect_rc 0
 expect_stdout "$TD unioned and pushed"
 expect_not_stderr 'gave up after'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -2539,7 +2566,7 @@ expect_stdout "$TD unioned and pushed"
 expect_stdout 'updated onto the base (attempt 1)'
 expect_stdout '2 check(s) complete on ddd444'
 expect_not_stderr "mergeStateStatus is 'BLOCKED'"
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -2580,7 +2607,7 @@ expect_stdout "$TD unioned and pushed"
 expect_stdout '2 check(s) complete on eee555'
 expect_not_stdout "complete on $pre_union_head"
 expect_not_stderr "mergeStateStatus is 'BLOCKED'"
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -2611,7 +2638,7 @@ union_sha=$(git -C "$ROOT/wt" rev-parse HEAD)
 expect_rc 0
 expect_stdout "$TD unioned and pushed"
 expect_stdout "2 check(s) complete on $union_sha"
-expect_called "pr merge $PR --squash"
+expect_merged squash
 end
 
 # ==========================================================================================
@@ -2635,7 +2662,7 @@ expect_rc 0
 expect_stdout "$TD unioned and pushed"
 expect_stdout 'base appended 1 entr(ies), the branch 1'
 expect_stdout 'the header above the first entry had moved and merged cleanly'
-expect_called "pr merge $PR --squash"
+expect_merged squash
 [ "$(origin_branch_sha)" != "$before_sha" ] || bad "the resolution was never pushed"
 resolved=$(origin_branch_td)
 case "$resolved" in
@@ -2671,7 +2698,7 @@ expect_stderr 'update-branch — FAILED'
 expect_stderr 'the conflict is not one this script may resolve'
 expect_stderr "$TD: the header above the first entry was changed on both sides"
 expect_stderr 'does not merge: git merge-file leaves 1 conflict(s) there'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 [ -f "$STATE/merged" ] && bad "the PR merged despite the refusal"
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
@@ -2754,7 +2781,7 @@ expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr "$TD: the merge-base copy holds 2 entries headed"
 expect_stderr 'a heading repeated verbatim matches nothing'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 end
@@ -2777,7 +2804,7 @@ expect_rc 1
 expect_stderr 'update-branch — FAILED'
 expect_stderr "$TD: the branch copy holds 2 entries headed"
 expect_stderr 'a heading repeated verbatim matches nothing'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 end
@@ -3036,7 +3063,7 @@ expect_rc 1
 expect_stderr 'the conflict is not one this script may resolve'
 expect_stderr 'git diff HEAD --check rejected the resolution'
 expect_stderr 'trailing whitespace'
-expect_not_called "pr merge $PR --squash"
+expect_not_merged squash
 expect_branch_unpushed "$before_sha"
 expect_no_merge_in_progress
 [ "$(git -C "$ROOT/wt" log -1 --format=%s)" = 'the lane logs its own finding' ] ||
@@ -3098,6 +3125,85 @@ for log in "$RF" "$TD" "$FL"; do
     bad "the label came off at call $edit_at, the merge at call $merge_at — the label must come off after"
   end
 done
+
+# ==========================================================================================
+# 23. the merge is pinned to the head whose checks were read (#408)
+# ==========================================================================================
+# A "curate onto latest main" bounce is a force-push, and it can land between classify
+# and the merge. What merges must be the head the poll read, and for a batch the head
+# whose commits pass the curated-history check.
+begin "a batch force-pushed to an uncurated head after classify is refused at merge"
+fixture pin-batch-uncurated
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second"
+write_view 1
+V_OID="bbb222"
+V_COMMITS="#21: the first,#22: the second,#22: a fixup"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'merge — FAILED: curated history: 3 commit(s) for 2 member issue(s)'
+expect_stderr 'on head bbb222'
+expect_not_merged rebase
+expect_not_merged squash
+end
+
+begin "a batch force-pushed to a curated head after classify merges that head, pinned"
+fixture pin-batch-curated
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS="#21: the first,#22: the second"
+write_view 1
+V_OID="ccc333"
+V_COMMITS="#21: the first rebased,#22: the second rebased"
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged rebase ccc333
+end
+
+# The UNKNOWN re-reads refresh headRefOid after the poll broke on its ready verdict.
+begin "a head that moves during the UNKNOWN re-reads is refused, not merged"
+fixture pin-moved-unknown
+write_view 1
+V_MSST="UNKNOWN"
+write_view 2
+V_OID="bbb222"
+V_MSST="CLEAN"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'merge — FAILED: the head moved aaa111 -> bbb222 after the checks step read its checks'
+expect_not_merged squash
+end
+
+# A push after the subject's last read: only GitHub can see it, through the pin.
+begin "a merge GitHub refuses because the head moved after the last read fails at merge"
+fixture pin-moved-after-read
+write_view default
+write_merged_view
+must printf 'ddd444\n' >"$STATE/merge.head"
+run_merge
+expect_rc 1
+expect_stderr 'merge — FAILED: gh pr merge --squash --match-head-commit aaa111 exited 1: GraphQL: Head branch was modified'
+expect_merged squash aaa111
+[ -f "$STATE/merged" ] && bad "the stub merged a head the pin did not name"
+expect_not_stdout 'label —'
+end
+
+# --match-head-commit "" pins nothing.
+begin "a poll that read no head sha is refused rather than merged unpinned"
+fixture pin-empty-sha
+V_OID=""
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'merge — FAILED: no head sha was read with the checks'
+expect_not_merged squash
+end
 
 # ==========================================================================================
 # 18. usage
