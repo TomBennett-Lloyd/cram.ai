@@ -22,8 +22,7 @@ import { verifierRequest } from './prompts/verifier-prompt';
 import type { Quotes } from './verifier-input';
 import type { VerifierStrategy } from './verify';
 
-const QUESTION = 'Who are the workers?';
-const task = { kind: 'answer-sentence', question: QUESTION } as const;
+const task = { kind: 'lecture-summary', lectureTitle: 'The Hive', maxUnits: 4 } as const;
 const retrieved = [
   slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.'),
   slide('l1/2', 'Bees build comb from square cells.'),

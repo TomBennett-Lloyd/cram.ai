@@ -4,6 +4,7 @@ import type { CourseId, Deck, DiscardedTable, LectureId, SlideRecord } from '@cr
 import { z } from 'zod';
 import { CHUNK_TABLE_NAME } from './chunk-row';
 import type { CourseIndex } from './course-index';
+import { LECTURE_SUMMARY_TABLE_NAME } from './lecture-summaries';
 import {
   embedSlides,
   openCourse,
@@ -47,6 +48,7 @@ const REPRODUCED_TABLES: ReadonlySet<string> = new Set([
   CHUNK_TABLE_NAME,
   ...STORED_DECK_TABLE_NAMES,
   REBUILD_REPORT_TABLE_NAME,
+  LECTURE_SUMMARY_TABLE_NAME,
 ]);
 
 const TableList = z.array(z.object({ name: z.string(), type: z.string() }));

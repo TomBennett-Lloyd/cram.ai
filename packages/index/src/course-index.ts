@@ -4,6 +4,7 @@ import {
   type Deck,
   type DiscardedTable,
   type LectureId,
+  type LectureSummary,
   type RebuildReportRevision,
   type RetrievedSlide,
   type SlideChunk,
@@ -28,9 +29,11 @@ import type { EmbedderIdentity } from './embedder-identity';
 import {
   type IndexedChunk,
   type IndexedSlide,
+  requireBatch,
   requireDimension,
   requireSlideChunks,
 } from './indexed-slide';
+import { dropSummary, readSummaries, readSummary, writeSummary } from './lecture-summaries';
 import { listed, listFilters, type SlideListing } from './list-filter';
 import { vectorList, wordList } from './ranked-lists';
 import { fuseByReciprocalRank } from './reciprocal-rank';
@@ -130,22 +133,6 @@ export class CourseIndex {
       .run(BigInt(id), embedding);
   }
 
-  #checkBatch(operation: string, slides: readonly IndexedSlide[]): void {
-    const seen = new Set<SourceId>();
-    for (const { record, chunks } of slides) {
-      const sourceId = sourceIdOf(record);
-      if (record.courseId !== this.#courseId) {
-        throw new Error(
-          `${operation}: ${sourceId} belongs to course ${record.courseId}, not ${this.#courseId}`,
-        );
-      }
-      if (seen.has(sourceId))
-        throw new Error(`${operation}: ${sourceId} appears twice in one batch`);
-      seen.add(sourceId);
-      requireSlideChunks(operation, record, chunks, this.#embedder);
-    }
-  }
-
   /** A slide's chunks, their text rows and the vectors they have; the caller holds the transaction. */
   #writeChunks(slideId: number, lectureTitle: string, chunks: readonly IndexedChunk[]): void {
     const insert = this.#db.prepare(INSERT_CHUNK).pluck();
@@ -177,11 +164,11 @@ export class CourseIndex {
 
   /**
    * Replaces the lecture's deck, slide images and slides in one transaction, so a re-uploaded deck
-   * with fewer slides leaves none of the old ones behind (#71). Topic tags go with the old slides.
+   * with fewer slides leaves none of the old ones behind (#71). Topic tags and summary go with them.
    * The only slide write, so every slide has a stored deck to rebuild from (rebuild-course.ts, #93).
    */
   replaceLecture(deck: Deck, images: readonly SlideImage[], slides: readonly IndexedSlide[]): void {
-    this.#checkBatch('replaceLecture', slides);
+    requireBatch('replaceLecture', slides, this.#courseId, this.#embedder);
     requireDistinctSlideImages('replaceLecture', deck.lectureId, images);
     for (const { record } of slides) {
       if (record.lectureId !== deck.lectureId)
@@ -190,6 +177,7 @@ export class CourseIndex {
         );
     }
     this.#db.transaction(() => {
+      dropSummary(this.#db, deck.lectureId);
       this.#dropLectureSlides(deck.lectureId);
       writeDeck(this.#db, deck, images);
       this.#writeSlides(slides);
@@ -197,9 +185,10 @@ export class CourseIndex {
     })();
   }
 
-  /** Deletes the lecture's slides, deck and slide images in one transaction, so no rebuild brings it back. */
+  /** Deletes the lecture's summary, slides, deck and slide images in one transaction, so no rebuild brings it back. */
   removeLecture(lectureId: LectureId): RemoveLectureResult {
     const removed = this.#db.transaction(() => {
+      dropSummary(this.#db, lectureId);
       this.#dropLectureSlides(lectureId);
       dropVoidConfirmations(this.#db);
       return deleteDeck(this.#db, lectureId);
@@ -218,6 +207,24 @@ export class CourseIndex {
     return this.#storedSlides(`where true ${listed(listing)} order by lecture_id, slide_no`).map(
       (slide) => slide.record,
     );
+  }
+
+  lectureSlides(lectureId: LectureId): readonly RetrievedSlide[] {
+    return this.#storedSlides('where lecture_id = ? order by slide_no', lectureId).map(
+      ({ sourceId, record }) => ({ sourceId, record }),
+    );
+  }
+
+  setSummary(summary: LectureSummary): void {
+    writeSummary(this.#db, summary, this.lectureSlides(summary.lectureId));
+  }
+
+  summary(lectureId: LectureId): LectureSummary | undefined {
+    return readSummary(this.#db, lectureId);
+  }
+
+  summaries(): readonly LectureSummary[] {
+    return readSummaries(this.#db);
   }
 
   chunks(sourceId: SourceId): readonly SlideChunk[] {

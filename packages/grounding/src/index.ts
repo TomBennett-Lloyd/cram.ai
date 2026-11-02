@@ -27,12 +27,12 @@ export {
   PROVISIONAL_NLI_THRESHOLDS,
 } from './nli-verdict';
 export {
-  type AskTask,
   GeneratedUnits,
   type GenerationTask,
   generationRequest,
   LineCitation,
   SlideLineNo,
+  type SummaryTask,
 } from './prompts/generation-prompt';
 export { explanationRequest, GeneratedExplanation } from './prompts/explanation-prompt';
 export { rewriteRequest, RewriteReply } from './prompts/rewrite-prompt';
@@ -46,6 +46,21 @@ export {
 } from './resolve-citations';
 export { type QuoteResolution, resolveQuotes } from './resolve-quotes';
 export { slideLines, slideText } from './slide-text';
+export {
+  estimateTokens,
+  PROMPT_CHARS_PER_TOKEN,
+  PROMPT_TOKEN_BUDGET,
+  REPLY_TOKEN_RESERVE,
+} from './prompt-budget';
+export {
+  SUMMARY_MAX_UNITS,
+  type SummaryDeps,
+  type SummaryLecture,
+  type SummaryOutcome,
+  summariseLecture,
+  summaryParts,
+  type UnsummarisedReason,
+} from './summarise-lecture';
 export { VERIFICATION_DEPTH } from './verification-depth';
 export { type DeepDeps, type DeepVerification, verifyExplanation } from './verify-explanation';
 export {

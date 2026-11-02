@@ -12,17 +12,18 @@ export const LineCitation = z.strictObject({
 });
 export type LineCitation = z.infer<typeof LineCitation>;
 
-export const GeneratedUnits = z.strictObject({
-  units: z.array(z.strictObject({ text: Unit.shape.text, citations: z.array(LineCitation) })),
-});
+const GeneratedUnit = z.strictObject({ text: Unit.shape.text, citations: z.array(LineCitation) });
+
+export const GeneratedUnits = z.strictObject({ units: z.array(GeneratedUnit) });
 export type GeneratedUnits = z.infer<typeof GeneratedUnits>;
 
-export interface AskTask {
-  readonly kind: 'answer-sentence';
-  readonly question: string;
+export interface SummaryTask {
+  readonly kind: 'lecture-summary';
+  readonly lectureTitle: string;
+  readonly maxUnits: number;
 }
 
-export type GenerationTask = AskTask;
+export type GenerationTask = SummaryTask;
 
 const RULES = `You write study material for a student, using only the student's own lecture slides.
 You are given the slides that matter for this request, each inside a <source> tag with its id, one line to a row with the line's number in square brackets before it, and then the request.
@@ -35,12 +36,10 @@ Rules:
 - A unit's cited lines, read on their own without the rest of the source, must say everything the unit says. A line that leaves its subject to the source's title or to another line, such as one that begins "She", "They" or "It", or one that gives an instruction, does not say it on its own: cite that title or line as well. For example, if a source's line [1] is "The kettle" and its line [3] is "It boils in two minutes", the unit "The kettle boils in two minutes." cites lines 1 and 3.
 - If the sources do not cover the request, return no units.`;
 
-const TASK_LINES: Record<GenerationTask['kind'], string> = {
-  'answer-sentence':
-    "The request is the student's question. Answer it in units of one sentence each.",
-};
+const taskLine = (task: GenerationTask): string =>
+  `The request is the title of the lecture the sources come from, and the sources are that lecture's own slides. Summarise what the lecture teaches in at most ${String(task.maxUnits)} units, drawn from the whole lecture, its last slides as well as its first. Each unit is one full sentence stating one fact or instruction a slide gives, plainly and with nothing added: no definition, reason, example or consequence the slide does not give. A slide's title, or a topic in a list of the lecture's topics, is not a unit, and no unit says what the lecture covers. A line's number is the one in square brackets at the start of its row. Cite the line that states the fact or instruction, and the slide's title as well when the unit needs it to make sense. Return no units only if no slide teaches anything.`;
 
-const requestLine = (task: GenerationTask): string => `<question>${task.question}</question>`;
+const requestLine = (task: GenerationTask): string => `<lecture>${task.lectureTitle}</lecture>`;
 
 const GENERATED_UNITS = OutputName.parse('units');
 
@@ -50,8 +49,11 @@ export const generationRequest = (
   slides: readonly RetrievedSlide[],
 ): ChatRequest<GeneratedUnits> => ({
   messages: [
-    { role: 'system', content: `${RULES}\n\n${TASK_LINES[task.kind]}` },
+    { role: 'system', content: `${RULES}\n\n${taskLine(task)}` },
     { role: 'user', content: [...slides.map(sourceBlock), requestLine(task)].join('\n\n') },
   ],
-  output: { name: GENERATED_UNITS, schema: GeneratedUnits },
+  output: {
+    name: GENERATED_UNITS,
+    schema: z.strictObject({ units: z.array(GeneratedUnit).max(task.maxUnits) }),
+  },
 });

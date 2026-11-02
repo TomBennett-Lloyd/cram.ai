@@ -26,7 +26,7 @@ describe('AskReply', () => {
 
   it('refuses a withheld unit where a withheld sentence belongs', () => {
     const reply = { status: 'not-covered', slides: [], leftOut: [] };
-    const unit = { text: 'Worker bees are male.', citations: [], kind: 'answer-sentence' };
+    const unit = { text: 'Worker bees are male.', citations: [], kind: 'lecture-summary' };
     expect(
       AskReply.safeParse({ ...reply, withheld: [{ reason: 'unsupported', unit }] }).success,
     ).toBe(false);

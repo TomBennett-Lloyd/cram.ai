@@ -3,18 +3,27 @@ import { type IncomingHttpHeaders, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  type ChatRequest,
+  type ChatResult,
   chatWireRequest,
   type Embedder,
   type EmbeddingResult,
   type EmbedRequest,
   type EntailmentResult,
   FakeGateway,
+  type Generator,
   type GeneratorReply,
   type ModelGateway,
   PROVISIONAL_DEFAULT_PINS,
   type Recording,
+  RecordingMissError,
 } from '@cram/gateway';
-import { explanationRequest, slideText } from '@cram/grounding';
+import {
+  explanationRequest,
+  generationRequest,
+  slideText,
+  SUMMARY_MAX_UNITS,
+} from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
 import { ingestPdf } from '@cram/ingest';
 import { CourseId, LectureId, type RetrievedSlide } from '@cram/shared';
@@ -94,13 +103,55 @@ export class GatedEmbedder extends WordEmbedder {
 
 const sampling = { temperature: 0, seed: 0 };
 
+/** A lecture-summary call no test recorded writes no units, so a test can upload without scripting one. */
+class UnscriptedSummaries implements Generator {
+  readonly #inner: Generator;
+  readonly pin: Generator['pin'];
+  readonly sampling: Generator['sampling'];
+  readonly served: Generator['served'];
+
+  constructor(inner: Generator) {
+    this.#inner = inner;
+    this.pin = inner.pin;
+    this.sampling = inner.sampling;
+    this.served = inner.served;
+  }
+
+  async chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
+    try {
+      return await this.#inner.chat(request);
+    } catch (error) {
+      if (!(error instanceof RecordingMissError) || request.output.name !== 'units') throw error;
+      return { status: 'completed', value: request.output.schema.parse({ units: [] }) };
+    }
+  }
+}
+
 export const gatewayOf = (
   recordings: readonly Recording[],
   embedder: Embedder = new WordEmbedder(),
 ): ModelGateway => {
   const fake = new FakeGateway({ pins: PROVISIONAL_DEFAULT_PINS, sampling, recordings });
-  return { generator: fake.generator, verifier: fake.verifier, embedder, reranker: null };
+  const generator = new UnscriptedSummaries(fake.generator);
+  return { generator, verifier: fake.verifier, embedder, reranker: null };
 };
+
+export const summarised = (
+  lectureTitle: string,
+  slides: readonly RetrievedSlide[],
+  reply: GeneratorReply,
+): Recording => ({
+  role: 'generator',
+  pin: PROVISIONAL_DEFAULT_PINS.generator,
+  sampling,
+  request: chatWireRequest(
+    generationRequest(
+      { kind: 'lecture-summary', lectureTitle, maxUnits: SUMMARY_MAX_UNITS },
+      slides,
+    ),
+  ),
+  reply,
+});
 
 export interface TestServer {
   readonly server: CramServer;
@@ -173,13 +224,13 @@ export const pdfDeck = async (pages: readonly (readonly string[])[]): Promise<Ui
   return doc.save();
 };
 
-/** Polls the ingest status until no upload or repair is still queued, ingesting or running. */
+/** Polls the ingest status until no upload, summary or repair is still queued, under way or running. */
 export const settledStatus = async (port: number, courseId: string): Promise<Received> => {
   for (let attempt = 0; attempt < 500; attempt++) {
     const status = await send(port, { method: 'GET', path: `/courses/${courseId}/ingest` });
     const text = JSON.stringify(status.json);
-    if (!['"queued"', '"ingesting"', '"running"'].some((state) => text.includes(state)))
-      return status;
+    const busy = ['"queued"', '"ingesting"', '"summarising"', '"running"'];
+    if (!busy.some((state) => text.includes(state))) return status;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error(`settledStatus: ${courseId} never settled`);

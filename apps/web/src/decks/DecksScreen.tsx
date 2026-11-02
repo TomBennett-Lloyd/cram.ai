@@ -1,6 +1,7 @@
 import type {
   CourseId,
   IngestStatus,
+  LectureId,
   RebuildReportRevision,
   StoredLecture,
   Upload,
@@ -19,8 +20,12 @@ import {
   repairFailedMessage,
   storedUnavailableMessage,
 } from '../copy';
+import type { CitedSlide } from '../ask/cited-slide';
+import { SlideDialog } from '../ask/SlideDialog';
 import { type Dismissible, Empty, Failed, Pending } from '../shell/async-states';
-import { repairing, useIngestStatus } from './use-ingest-status';
+import { NoSummary, SummaryDetails } from './LectureSummary';
+import { remaking, repairing, useIngestStatus } from './use-ingest-status';
+import { type SummariesState, useSummaries } from './use-summaries';
 
 /** Where dismissing the rebuild report has got to; a refused or failed call is reported in the alert. */
 type Dismissal =
@@ -50,14 +55,14 @@ const uploadAll = async (
   return refused;
 };
 
-/** A stored lecture with an `indexed` upload this session is left to that upload's row, which names its file. */
+/** A stored lecture with an upload this session past its indexing is left to that upload's row, which names its file. */
 const unlistedLectures = (
   lectures: readonly StoredLecture[],
   uploads: readonly Upload[],
 ): readonly StoredLecture[] => {
   const indexed = new Set(
     uploads
-      .filter(({ progress }) => progress.state === 'indexed')
+      .filter(({ progress }) => progress.state === 'indexed' || progress.state === 'summarising')
       .map(({ lectureId }) => lectureId),
   );
   return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
@@ -75,7 +80,68 @@ const storedMessages = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): rea
 const awaitingRepair = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): boolean =>
   stored.state === 'course-unavailable' && repairing(repair);
 
-const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> }) => {
+type Ingest = Omit<IngestStatus, 'courseId'>;
+
+/** What the decks screen does for a lecture's summary: read the lines, open a slide, make one again. */
+interface SummaryActs {
+  readonly summaries: SummariesState;
+  readonly loadSummaries: () => void;
+  readonly onOpen: (cited: CitedSlide) => void;
+  readonly requested: ReadonlySet<LectureId>;
+  readonly onRemake: (lectureId: LectureId) => void;
+}
+
+/** Changes whenever a stored summary may have, so lines read before it are read again. */
+const summaryStamp = ({ stored, uploads, remakes }: Ingest): string =>
+  JSON.stringify([
+    stored.state === 'read'
+      ? stored.lectures.map(({ lectureId, summarised }) => [lectureId, summarised])
+      : [],
+    uploads.map(({ uploadId, progress }) => [uploadId, progress.state]),
+    remakes.map(({ lectureId, progress }) => [lectureId, progress.state]),
+  ]);
+
+/** The lecture's summary lines, or why it has none; a lecture the file does not list has neither. */
+const SummaryArea = ({
+  lectureId,
+  ingest,
+  acts,
+}: {
+  readonly lectureId: LectureId;
+  readonly ingest: Ingest;
+  readonly acts: SummaryActs;
+}) => {
+  const { stored, uploads, remakes } = ingest;
+  const lecture =
+    stored.state === 'read'
+      ? stored.lectures.find((each) => each.lectureId === lectureId)
+      : undefined;
+  if (lecture === undefined) return null;
+  if (lecture.summarised)
+    return (
+      <SummaryDetails
+        lectureId={lectureId}
+        state={acts.summaries}
+        onLoad={acts.loadSummaries}
+        onOpen={acts.onOpen}
+      />
+    );
+  const remake = remakes.find((each) => each.lectureId === lectureId)?.progress;
+  const tried =
+    remake !== undefined ||
+    uploads.some((upload) => upload.lectureId === lectureId && upload.progress.state === 'indexed');
+  return (
+    <NoSummary
+      busy={acts.requested.has(lectureId) || (remake !== undefined && remaking(remake))}
+      tried={tried}
+      onRemake={() => {
+        acts.onRemake(lectureId);
+      }}
+    />
+  );
+};
+
+const DeckList = ({ ingest, acts }: { readonly ingest: Ingest; readonly acts: SummaryActs }) => {
   const { stored, uploads } = ingest;
   const lectures = stored.state === 'read' ? unlistedLectures(stored.lectures, uploads) : [];
   if (lectures.length === 0 && uploads.length === 0)
@@ -88,12 +154,16 @@ const DeckList = ({ ingest }: { readonly ingest: Omit<IngestStatus, 'courseId'> 
         <li key={`lecture:${lecture.lectureId}`} className="upload" data-state="indexed">
           <span className="upload-file">{lecture.lectureId}</span>
           <span className="upload-progress">{indexedMessage(lecture)}</span>
+          <SummaryArea lectureId={lecture.lectureId} ingest={ingest} acts={acts} />
         </li>
       ))}
       {uploads.map((upload) => (
         <li key={upload.uploadId} className="upload" data-state={upload.progress.state}>
           <span className="upload-file">{upload.fileName}</span>
           <span className="upload-progress">{progressMessage(upload.progress)}</span>
+          {upload.progress.state === 'indexed' && (
+            <SummaryArea lectureId={upload.lectureId} ingest={ingest} acts={acts} />
+          )}
         </li>
       ))}
     </ul>
@@ -105,10 +175,35 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const [revision, setRevision] = useState(0);
   const [refused, setRefused] = useState<readonly Refused[]>([]);
   const [dismissal, setDismissal] = useState<Dismissal>({ status: 'idle' });
+  const [requested, setRequested] = useState<ReadonlySet<LectureId>>(new Set());
+  const [remakeFailure, setRemakeFailure] = useState<ApiFailure | undefined>(undefined);
+  const [open, setOpen] = useState<CitedSlide | null>(null);
   const picker = useRef<HTMLInputElement>(null);
   const state = useIngestStatus(api, courseId, revision);
+  const summaries = useSummaries(
+    api,
+    courseId,
+    state.status === 'ready' ? summaryStamp(state.ingest) : '',
+  );
   const reread = (): void => {
     setRevision((value) => value + 1);
+  };
+  /** The request's answer is the re-make's queued state, which the re-read that follows shows. */
+  const remake = (lectureId: LectureId): void => {
+    setRequested((held) => new Set([...held, lectureId]));
+    setRemakeFailure(undefined);
+    void api.remakeSummary(courseId, lectureId).then((result) => {
+      setRequested((held) => new Set([...held].filter((each) => each !== lectureId)));
+      if (result.status !== 'ok') setRemakeFailure(result);
+      reread();
+    });
+  };
+  const acts: SummaryActs = {
+    summaries: summaries.state,
+    loadSummaries: summaries.load,
+    onOpen: setOpen,
+    requested,
+    onRemake: remake,
   };
   /**
    * The server's report is empty once it answers, so the notice is hidden rather than re-read: a
@@ -165,6 +260,7 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
     dismissal.status === 'dismissed'
       ? []
       : [failureMessage(dismissal)]),
+    ...(remakeFailure === undefined ? [] : [failureMessage(remakeFailure)]),
     ...(state.status === 'ready' ? storedMessages(state.ingest) : []),
   ];
   return (
@@ -195,7 +291,15 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
       {state.status === 'pending' ? (
         <Pending label={PENDING.decks} />
       ) : (
-        state.status === 'ready' && <DeckList ingest={state.ingest} />
+        state.status === 'ready' && <DeckList ingest={state.ingest} acts={acts} />
+      )}
+      {open !== null && (
+        <SlideDialog
+          cited={open}
+          onClose={() => {
+            setOpen(null);
+          }}
+        />
       )}
     </main>
   );

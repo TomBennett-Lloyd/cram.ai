@@ -10,6 +10,7 @@ carrier: packages/index/src/reembed-course.test.ts
 carrier: packages/index/src/confirmation.test.ts
 carrier: packages/index/src/rebuild-course.test.ts
 carrier: packages/index/src/rebuild-report.test.ts
+carrier: packages/index/src/lecture-summaries.test.ts
 carrier: packages/ingest/src/stored-output-pin.test.ts
 carrier: apps/server/src/repair-fixture.ts
 carrier: apps/server/src/repair-outcome.test.ts

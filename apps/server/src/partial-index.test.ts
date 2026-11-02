@@ -58,7 +58,7 @@ describe('an upload with slides longer than the embedder takes', () => {
     ]);
     const { uploads } = await settled(server);
     expect(uploads.map(({ progress }) => progress)).toEqual([
-      { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] },
+      { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [], summarised: false },
     ]);
     const opened = openCourse({
       path: courseFilePath(server.dataDir, BIO),
@@ -87,7 +87,7 @@ describe('an upload with slides longer than the embedder takes', () => {
     );
     const { uploads } = await settled(server);
     expect(uploads.map(({ progress }) => progress)).toEqual([
-      { state: 'indexed', slideCount: 5, imageOnly: [], unembedded: [5] },
+      { state: 'indexed', slideCount: 5, imageOnly: [], unembedded: [5], summarised: false },
     ]);
   });
 
@@ -103,7 +103,7 @@ describe('an upload with slides longer than the embedder takes', () => {
     ]);
     const { uploads } = await settled(server);
     expect(uploads.map(({ progress }) => progress)).toEqual([
-      { state: 'indexed', slideCount: 1, imageOnly: [], unembedded: [] },
+      { state: 'indexed', slideCount: 1, imageOnly: [], unembedded: [], summarised: false },
     ]);
     const opened = openCourse({
       path: courseFilePath(server.dataDir, BIO),
@@ -129,10 +129,10 @@ describe('an upload with slides longer than the embedder takes', () => {
       ],
       'l2',
     );
-    const l2 = { slideCount: 3, imageOnly: [], unembedded: [2] };
+    const l2 = { slideCount: 3, imageOnly: [], unembedded: [2], summarised: false };
     const { uploads, stored } = await settled(server);
     expect(uploads.map(({ progress }) => progress)).toEqual([
-      { state: 'indexed', slideCount: 1, imageOnly: [], unembedded: [] },
+      { state: 'indexed', slideCount: 1, imageOnly: [], unembedded: [], summarised: false },
       { state: 'indexed', ...l2 },
     ]);
     expect(stored).toMatchObject({

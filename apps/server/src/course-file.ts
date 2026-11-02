@@ -9,6 +9,7 @@ import {
 } from '@cram/index';
 import {
   CourseId,
+  type CourseSummaries,
   type CourseUnavailableProblem,
   type LectureId,
   type RebuildReportDismissed,
@@ -77,6 +78,30 @@ export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLe
     };
   } finally {
     opened.course.close();
+  }
+};
+
+const NO_SUMMARIES: CourseSummaries = { state: 'read', summaries: [], slides: [] };
+
+/** Every stored summary, with each slide its lines cite; the caller has checked `courseExists`. */
+export const storedSummaries = (files: CourseFiles, courseId: CourseId): CourseSummaries => {
+  const opened = openToRead(files, courseId);
+  if (opened.status === 'blank') return NO_SUMMARIES;
+  if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
+  const { course } = opened;
+  try {
+    const summaries = course.summaries();
+    const cited = new Set(
+      summaries.flatMap(({ units }) =>
+        units.flatMap(({ citations }) => citations.map(({ sourceId }) => sourceId)),
+      ),
+    );
+    const slides = summaries.flatMap(({ lectureId }) =>
+      course.lectureSlides(lectureId).filter(({ sourceId }) => cited.has(sourceId)),
+    );
+    return { state: 'read', summaries: [...summaries], slides };
+  } finally {
+    course.close();
   }
 };
 

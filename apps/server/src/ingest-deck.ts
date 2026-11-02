@@ -1,4 +1,4 @@
-import type { Embedder } from '@cram/gateway';
+import type { ModelGateway } from '@cram/gateway';
 import { type DeckFile, ingestPdf, ingestPptx, UNTITLED_LECTURE } from '@cram/ingest';
 import {
   type CourseId,
@@ -19,9 +19,11 @@ export interface IngestJob {
   readonly bytes: Uint8Array;
 }
 
+export type IngestGateway = Pick<ModelGateway, 'embedder' | 'generator' | 'verifier'>;
+
 export interface IngestDeps {
   readonly files: CourseFiles;
-  readonly embedder: Embedder;
+  readonly gateway: IngestGateway;
 }
 
 const ADAPTERS = {
@@ -41,13 +43,13 @@ export const lectureDeck = (job: IngestJob, records: readonly SlideRecord[]): De
     content: job.bytes,
   });
 
-/** Ingest → embed → index one deck, replacing its lecture whole (`CourseIndex.replaceLecture`). */
+/** Ingest → embed → index one deck, replacing its lecture whole (`CourseIndex.replaceLecture`), its old summary with it. */
 export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<UploadProgress> => {
   const ingested = await ingestFile(job.mediaType, job);
   if (ingested.status === 'unreadable')
     return { state: 'unreadable', reason: ingested.reason, detail: ingested.detail };
   const records = ingested.slides;
-  const slides = await embedSlides(deps.embedder, records);
+  const slides = await embedSlides(deps.gateway.embedder, records);
   const opened = openForWrite(deps.files, job.courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
@@ -55,8 +57,8 @@ export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<Uplo
     const stored = opened.course.lectures().find(({ lectureId }) => lectureId === job.lectureId);
     if (stored === undefined)
       throw new Error(`ingestDeck: lecture ${job.lectureId} was not stored`);
-    const { slideCount, imageOnly, unembedded } = stored;
-    return { state: 'indexed', slideCount, imageOnly, unembedded };
+    const { slideCount, imageOnly, unembedded, summarised } = stored;
+    return { state: 'indexed', slideCount, imageOnly, unembedded, summarised };
   } finally {
     opened.course.close();
   }

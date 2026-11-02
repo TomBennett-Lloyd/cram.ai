@@ -1,15 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { CourseRepair, IngestStatus, StoredLectures, UploadProgress } from './ingest-status';
+import {
+  CourseRepair,
+  IngestStatus,
+  StoredLectures,
+  SummaryRemake,
+  UploadProgress,
+} from './ingest-status';
 
 describe('UploadProgress', () => {
   it('reports image-only and unembedded pages by slide number, counted from 1', () => {
     const counted = { state: 'indexed', slideCount: 2 };
-    const indexed = { ...counted, imageOnly: [], unembedded: [] };
+    const indexed = { ...counted, imageOnly: [], unembedded: [], summarised: true };
     expect(UploadProgress.safeParse({ ...indexed, imageOnly: [2] }).success).toBe(true);
     expect(UploadProgress.safeParse({ ...indexed, imageOnly: [0] }).success).toBe(false);
     expect(UploadProgress.safeParse({ ...indexed, unembedded: [2] }).success).toBe(true);
     expect(UploadProgress.safeParse({ ...indexed, unembedded: [0] }).success).toBe(false);
     expect(UploadProgress.safeParse({ ...counted, imageOnly: [] }).success).toBe(false);
+  });
+
+  it('says whether the indexed lecture was summarised, and has a state for the summary call', () => {
+    const indexed = { state: 'indexed', slideCount: 1, imageOnly: [], unembedded: [] };
+    expect(UploadProgress.safeParse({ ...indexed, summarised: false }).success).toBe(true);
+    expect(UploadProgress.safeParse(indexed).success).toBe(false);
+    expect(UploadProgress.safeParse({ state: 'summarising' }).success).toBe(true);
   });
 
   it('has no whole-deck over-length state: an over-length slide refuses only itself (#338)', () => {
@@ -38,16 +51,17 @@ describe('IngestStatus', () => {
     slideCount: 2,
     imageOnly: [2],
     unembedded: [],
+    summarised: false,
   };
 
   it('carries the course file’s lectures beside the uploads, and refuses a status without them', () => {
     const stored = { state: 'read', lectures: [lecture], report: { state: 'none' } };
     const repair = { state: 'none' };
-    expect(IngestStatus.safeParse({ courseId: 'bio', stored, repair, uploads: [] }).success).toBe(
-      true,
-    );
-    expect(IngestStatus.safeParse({ courseId: 'bio', repair, uploads: [] }).success).toBe(false);
-    expect(IngestStatus.safeParse({ courseId: 'bio', stored, uploads: [] }).success).toBe(false);
+    const status = { courseId: 'bio', stored, repair, uploads: [], remakes: [] };
+    expect(IngestStatus.safeParse(status).success).toBe(true);
+    expect(IngestStatus.safeParse({ ...status, stored: undefined }).success).toBe(false);
+    expect(IngestStatus.safeParse({ ...status, repair: undefined }).success).toBe(false);
+    expect(IngestStatus.safeParse({ ...status, remakes: undefined }).success).toBe(false);
   });
 
   it('names why a course file cannot be read, and each lecture by a title, never blank', () => {
@@ -66,6 +80,7 @@ describe('IngestStatus', () => {
     expect(read({ imageOnly: [0] })).toBe(false);
     expect(read({ unembedded: [0] })).toBe(false);
     expect(read({ lectureTitle: ' ' })).toBe(false);
+    expect(read({ summarised: undefined })).toBe(false);
   });
 });
 
@@ -105,5 +120,17 @@ describe('CourseRepair', () => {
       expect(CourseRepair.safeParse({ state }).success).toBe(true);
     expect(CourseRepair.safeParse({ state: 'rebuilt' }).success).toBe(false);
     expect(CourseRepair.safeParse({ state: 'done', discarded: [] }).success).toBe(false);
+  });
+});
+
+describe('SummaryRemake', () => {
+  it('names its lecture, and says once done whether a summary was stored', () => {
+    const remake = (progress: unknown) =>
+      SummaryRemake.safeParse({ lectureId: 'l1', progress }).success;
+    for (const state of ['queued', 'running', 'failed']) expect(remake({ state })).toBe(true);
+    expect(remake({ state: 'done', summarised: false })).toBe(true);
+    expect(remake({ state: 'done' })).toBe(false);
+    expect(remake({ state: 'indexed' })).toBe(false);
+    expect(SummaryRemake.safeParse({ progress: { state: 'queued' } }).success).toBe(false);
   });
 });

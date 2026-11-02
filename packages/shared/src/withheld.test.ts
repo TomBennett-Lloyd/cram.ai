@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WithheldReason } from './verification';
 import { WithheldSentence, WithheldUnit } from './withheld';
 
-const unit = { text: 'Worker bees are male.', citations: [], kind: 'answer-sentence' };
+const unit = { text: 'Worker bees are male.', citations: [], kind: 'lecture-summary' };
 const reasonsOf = (arms: readonly { shape: { reason: { value: string } } }[]) =>
   arms.map((arm) => arm.shape.reason.value);
 

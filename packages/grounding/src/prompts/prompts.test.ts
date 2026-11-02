@@ -10,15 +10,12 @@ import { verifierRequest } from './verifier-prompt';
 const hive = slide('l1/1', 'Worker bees are male.');
 const comb = slide('l1/2', 'Bees build comb from square cells.');
 
-const asked = (question: string, slides = [hive]) =>
-  generationRequest({ kind: 'answer-sentence', question }, slides);
+const summarised = (lectureTitle: string, slides = [hive], maxUnits = 4) =>
+  generationRequest({ kind: 'lecture-summary', lectureTitle, maxUnits }, slides);
 const statement = (text: string, quote: string) => ({ text, quotes: [quote] as const });
 
 const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unknown>])[] = [
-  [
-    'generation',
-    (n) => (n === 0 ? asked('Who are the workers?') : asked('What shape are cells?', [hive, comb])),
-  ],
+  ['generation', (n) => (n === 0 ? summarised('The Hive') : summarised('Comb', [hive, comb]))],
   [
     'explanation',
     (n) =>
@@ -47,17 +44,25 @@ describe.each(prompts)('the %s prompt', (_, build) => {
 });
 
 describe('generationRequest', () => {
-  it('shows each retrieved slide under its id, its lines numbered from 1, then the question', () => {
-    const user = asked('What shape are cells?', [hive, comb]).messages[1]?.content ?? '';
+  it('shows each slide under its id, its lines numbered from 1, then the lecture’s title', () => {
+    const user = summarised('Comb', [hive, comb]).messages[1]?.content ?? '';
     expect(user).toBe(
       '<source id="l1/1">\n[1] Worker bees are male.\n</source>\n\n' +
         '<source id="l1/2">\n[1] Bees build comb from square cells.\n</source>\n\n' +
-        '<question>What shape are cells?</question>',
+        '<lecture>Comb</lecture>',
     );
   });
 
+  it('bounds the units in the output schema and in the task line alike', () => {
+    const request = summarised('The Hive', [hive], 2);
+    const unit = { text: 'Workers are male.', citations: [{ sourceId: 'l1/1', line: 1 }] };
+    expect(request.output.schema.safeParse({ units: [unit, unit] }).success).toBe(true);
+    expect(request.output.schema.safeParse({ units: [unit, unit, unit] }).success).toBe(false);
+    expect(request.messages[0].content).toMatch(/\bat most 2 units\b/);
+  });
+
   it('asks for no slide text to be copied, into a unit or a citation', () => {
-    expect(asked('Who are the workers?').messages[0].content).not.toMatch(
+    expect(summarised('The Hive').messages[0].content).not.toMatch(
       /\b(cop(y|ied|ying)|quot(e|es|ed|ing)|verbatim|word for word|exact(ly)?|character for character)\b/i,
     );
   });
@@ -68,17 +73,19 @@ describe('generationRequest', () => {
       speakerNotes: 'Ask who feeds them.',
       imageCaptions: ['A drone at rest'],
     });
-    expect(asked('Do drones forage?', [noted]).messages[1]?.content).toBe(
+    expect(summarised('Castes', [noted]).messages[1]?.content).toBe(
       '<source id="l1/3">\n[1] Castes\n[2] Drones never forage.\n[3] Ask who feeds them.\n[4] A drone at rest\n</source>\n\n' +
-        '<question>Do drones forage?</question>',
+        '<lecture>Castes</lecture>',
     );
   });
 });
 
 describe('explanationRequest', () => {
   it('shows the slides as the unit prompt does, then the question', () => {
+    const units = summarised('Comb', [hive, comb]).messages[1]?.content ?? '';
+    const sources = units.slice(0, -'<lecture>Comb</lecture>'.length);
     expect(explanationRequest('What shape are cells?', [hive, comb]).messages[1]?.content).toBe(
-      asked('What shape are cells?', [hive, comb]).messages[1]?.content,
+      `${sources}<question>What shape are cells?</question>`,
     );
   });
 

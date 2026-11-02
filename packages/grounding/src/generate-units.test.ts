@@ -10,7 +10,7 @@ import {
 import { generateUnits } from './generate-units';
 import { generationRequest } from './prompts/generation-prompt';
 
-const task = { kind: 'answer-sentence', question: 'Who are the workers?' } as const;
+const task = { kind: 'lecture-summary', lectureTitle: 'The Hive', maxUnits: 4 } as const;
 const slides = [slide('l1/1', 'Worker bees are male.')];
 const request = generationRequest(task, slides);
 

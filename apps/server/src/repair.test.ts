@@ -90,6 +90,7 @@ describe('start-up repair', () => {
             slideCount: 2,
             imageOnly: [1],
             unembedded: [],
+            summarised: false,
           },
         ],
         report: { state: 'none' },

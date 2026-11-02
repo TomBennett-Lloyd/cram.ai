@@ -3,12 +3,14 @@ import {
   AskReply,
   type CourseId,
   CourseList,
+  CourseSummaries,
   type DeckMediaType,
   IngestStatus,
   type LectureId,
   RebuildReportDismissed,
   type RebuildReportRevision,
   type SlideRecord,
+  SummaryRemake,
   Upload,
 } from '@cram/shared';
 import type { z } from 'zod';
@@ -95,6 +97,23 @@ export class ApiClient {
       `/courses/${courseId}/decks?${query.toString()}`,
       { method: 'POST', headers, body: deck.file },
       Upload,
+    );
+  }
+
+  summaries(courseId: CourseId): Promise<ApiResult<CourseSummaries>> {
+    return this.#call(`/courses/${courseId}/summaries`, { method: 'GET' }, CourseSummaries);
+  }
+
+  /** Queues the lecture's summary to be made again, behind every write the server holds. */
+  remakeSummary(courseId: CourseId, lectureId: LectureId): Promise<ApiResult<SummaryRemake>> {
+    return this.#call(
+      `/courses/${courseId}/remakes`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lectureId }),
+      },
+      SummaryRemake,
     );
   }
 

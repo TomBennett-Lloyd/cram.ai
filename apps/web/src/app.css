@@ -139,6 +139,7 @@ input:not([type='file']) {
 .upload-list,
 .answer,
 .citations,
+.summary-lines,
 .withheld ul {
   margin: 0;
   padding: 0;
@@ -240,10 +241,24 @@ input:not([type='file']) {
   overflow-wrap: anywhere;
 }
 
-.withheld summary {
+.withheld summary,
+.lecture-summary summary {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   cursor: pointer;
+}
+
+.summary-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block-start: var(--space-3);
+}
+
+.lecture-summary-state {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .withheld ul {

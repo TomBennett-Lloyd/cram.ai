@@ -25,7 +25,14 @@ const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
 const HIVE_STORED = {
   state: 'read',
   lectures: [
-    { lectureId: 'l1', lectureTitle: 'The Hive', slideCount: 2, imageOnly: [2], unembedded: [] },
+    {
+      lectureId: 'l1',
+      lectureTitle: 'The Hive',
+      slideCount: 2,
+      imageOnly: [2],
+      unembedded: [],
+      summarised: false,
+    },
   ],
   report: { state: 'none' },
 };
@@ -118,9 +125,16 @@ describe('POST /courses/:id/decks', () => {
           uploadId: (accepted.json as { uploadId: string }).uploadId,
           lectureId: 'l1',
           fileName: 'hive.pdf',
-          progress: { state: 'indexed', slideCount: 2, imageOnly: [2], unembedded: [] },
+          progress: {
+            state: 'indexed',
+            slideCount: 2,
+            imageOnly: [2],
+            unembedded: [],
+            summarised: false,
+          },
         },
       ],
+      remakes: [],
     });
   });
 
@@ -222,6 +236,7 @@ describe('the course file an upload writes', () => {
       stored: HIVE_STORED,
       repair: { state: 'done' },
       uploads: [],
+      remakes: [],
     });
   });
 });
@@ -239,6 +254,7 @@ describe('GET /courses/:id/ingest', () => {
       stored: { state: 'course-unavailable', problem: 'not-a-course-file' },
       repair: { state: 'none' },
       uploads: [],
+      remakes: [],
     });
   });
 
