@@ -8,11 +8,12 @@ export const SlideRef = z.strictObject({
 });
 export type SlideRef = z.infer<typeof SlideRef>;
 
-/** A line of `eval/questions.jsonl`: `docs/adr/0005-evaluation-as-gate.md` § Decision (c). */
+/** A line of `eval/questions.jsonl`: `docs/adr/0005-evaluation-as-gate.md` § Decision (c); `misspelt`, `docs/adr/0010-misspelt-golden-variants.md` § Decision (a). */
 export const GoldenQuestion = z.strictObject({
   question: NonBlankText,
   expectedCitations: z.array(SlideRef),
   mustNotContain: z.array(NonBlankText),
+  misspelt: z.array(NonBlankText).default([]),
 });
 export type GoldenQuestion = z.infer<typeof GoldenQuestion>;
 
@@ -20,7 +21,8 @@ export type GoldenQuestion = z.infer<typeof GoldenQuestion>;
 export const inContradictionSet = (item: GoldenQuestion): boolean =>
   item.mustNotContain.length > 0 || item.expectedCitations.length === 0;
 
-const normaliseForMatch = (text: string): string => text.replace(/\s+/g, ' ').trim().toLowerCase();
+export const normaliseForMatch = (text: string): string =>
+  text.replace(/\s+/g, ' ').trim().toLowerCase();
 
 /** The first `mustNotContain` entry `text` contains, by § Decision (c)'s matching rule. */
 export const firstForbiddenEntry = (

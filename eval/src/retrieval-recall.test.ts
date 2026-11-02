@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { question } from './eval-fixture';
-import { retrievalRecall } from './retrieval-recall';
+import { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
 import { asked, NOT_COVERED, record } from './run-fixture';
 
 const s1 = record({ slideNo: 1 });
@@ -39,6 +39,33 @@ describe('retrievalRecall', () => {
     const uncovered = question({ expectedCitations: [] });
     expect(retrievalRecall([asked(NOT_COVERED, [s1], uncovered)], 8)).toMatchObject({
       status: 'not-measurable',
+    });
+  });
+});
+
+describe('misspeltRetrievalRecall', () => {
+  it('pools per variant, so one variant missing a slide is not hidden by its sibling', () => {
+    const variants = [
+      asked(NOT_COVERED, [s1, s3], twoExpected),
+      asked(NOT_COVERED, [s1], twoExpected),
+    ];
+    expect(misspeltRetrievalRecall(variants, 8)).toMatchObject({
+      ratio: { numerator: 3, denominator: 4 },
+    });
+  });
+
+  it('counts only the top k', () => {
+    expect(
+      misspeltRetrievalRecall([asked(NOT_COVERED, [s2, s1, s3], twoExpected)], 2),
+    ).toMatchObject({
+      ratio: { numerator: 1, denominator: 2 },
+    });
+  });
+
+  it('says why when no question carries a variant', () => {
+    expect(misspeltRetrievalRecall([], 8)).toEqual({
+      status: 'not-measurable',
+      reason: 'no golden question carries a misspelt variant',
     });
   });
 });

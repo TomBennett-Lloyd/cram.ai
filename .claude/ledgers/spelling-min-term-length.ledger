@@ -4,3 +4,4 @@ claim: a token is corrected only from MIN_TERM_LENGTH letters, and earns one edi
 cite: MIN_TERM_LENGTH
 sweep: \bMIN_TERM_LENGTH\b|\.claude/ledgers/spelling-min-term-length\.ledger|(?i:minimum term length|shortest token corrected)
 carrier: packages/index/src/spelling-correction.test.ts
+carrier: docs/adr/0010-misspelt-golden-variants.md
