@@ -19,3 +19,5 @@ excluded: packages/grounding/src/explain.test.ts
 excluded: packages/grounding/src/mark-contradictions.ts
 excluded: packages/shared/src/verification.test.ts
 excluded: docs/tech-debt.md
+carrier: apps/web/src/ask/ask-depth.ts
+excluded: apps/web/src/ask/ExplanationView.test.tsx

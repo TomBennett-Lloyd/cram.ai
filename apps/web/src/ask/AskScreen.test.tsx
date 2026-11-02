@@ -1,10 +1,11 @@
-import { CourseId } from '@cram/shared';
+import { CourseId, type Explanation } from '@cram/shared';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { ApiClient } from '../api/api-client';
 import { ApiContext } from '../api/api-context';
 import {
   COMB,
+  CONTRADICTED,
   fakeApi,
   GROUNDED,
   HIVE,
@@ -13,7 +14,17 @@ import {
   sentence,
   WITHHELD,
 } from '../api/api-fixture';
-import { MODEL_FAILED, NOT_COVERED, PENDING, SEARCHED_FOR, SLIDE_HAS_NO_TEXT } from '../copy';
+import {
+  ATTRIBUTED_NOTE,
+  contradictionRefLabel,
+  MODEL_FAILED,
+  NOT_COVERED,
+  PENDING,
+  SEARCHED_FOR,
+  SLIDE_CONTRADICTION,
+  SLIDE_HAS_NO_TEXT,
+  sourceRefLabel,
+} from '../copy';
 import { AskScreen } from './AskScreen';
 
 const renderAsk = (api: ApiClient) =>
@@ -38,6 +49,12 @@ const askWith = async (reply: Reply, question = 'What are drones?') => {
 
 const answer = () => screen.getByRole('region', { name: 'Answer' });
 
+/** A grounded reply over HIVE (s1) and COMB (s2) with the given explanation. */
+const explained = (explanation: Explanation): Reply => ({
+  status: 200,
+  body: { ...GROUNDED, explanation },
+});
+
 describe('AskScreen', () => {
   it('mounts no live region and refuses a blank question', () => {
     const { api, sent } = fakeApi(() => ({ status: 200, body: GROUNDED }));
@@ -52,32 +69,41 @@ describe('AskScreen', () => {
     expect(sent).toEqual([]);
   });
 
-  it('shows each sentence of the explanation with a card per slide it names', async () => {
+  it('renders the explanation at Ask’s depth, the attributed note beneath it', async () => {
     await askWith({ status: 200, body: GROUNDED });
-    const units = within(answer())
-      .getAllByRole('listitem')
-      .filter((item) => item.classList.contains('unit'));
-    expect(units.map((unit) => unit.querySelector('.unit-text')?.textContent)).toEqual([
-      'Workers are female.',
-      'Drones are male, and comb cells are hexagonal.',
-    ]);
-    const cards = (index: number) =>
-      within(units[index] ?? document.body)
-        .getAllByRole('button')
-        .map((card) => card.textContent);
-    expect(cards(0)).toEqual(['Lecture 1: The HiveSlide 4Castes']);
-    expect(cards(1)).toEqual([
-      'Lecture 1: The HiveSlide 4Castes',
-      'Lecture 1: The HiveSlide 7The comb',
-    ]);
+    expect(within(answer()).getByText(ATTRIBUTED_NOTE)).toBeDefined();
   });
 
-  it('opens a slide with the explanation’s quotes from it marked, and returns focus to its card on close', async () => {
+  it('opens the contradicting slide from its button, naming the sentence', async () => {
+    await askWith(explained(CONTRADICTED));
+    const button = within(answer()).getByRole('button', {
+      name: contradictionRefLabel(HIVE.record),
+    });
+    button.focus();
+    fireEvent.click(button);
+    const dialog = screen.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 4' });
+    const line = dialog.querySelector('.slide-contradiction');
+    expect(line?.textContent).toBe(`${SLIDE_CONTRADICTION} Drones forage for nectar.`);
+    expect(line?.querySelector('.contradicted')?.textContent).toBe('Drones forage for nectar.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('names no contradiction in a slide opened from its sources entry', async () => {
+    await askWith(explained(CONTRADICTED));
+    fireEvent.click(
+      within(answer()).getAllByRole('button', { name: /Slide 4/ })[0] ?? document.body,
+    );
+    expect(screen.getByRole('dialog').querySelector('.slide-contradiction')).toBeNull();
+  });
+
+  it('moves focus from a number to its sources entry, which opens the slide with its quotes marked and takes focus back', async () => {
     await askWith({ status: 200, body: GROUNDED });
-    const card = within(answer()).getAllByRole('button', { name: /Slide 4/ })[1];
-    if (card === undefined) throw new Error('no second card for slide 4');
-    card.focus();
-    fireEvent.click(card);
+    const number = within(answer()).getByRole('button', { name: sourceRefLabel(2, COMB.record) });
+    fireEvent.click(number);
+    const entry = within(answer()).getByRole('button', { name: /Slide 7/ });
+    expect(document.activeElement).toBe(entry);
+    fireEvent.click(within(answer()).getByRole('button', { name: /Slide 4/ }));
     const dialog = screen.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 4' });
     expect(within(dialog).getByRole('heading', { level: 2 })).toBe(document.activeElement);
     expect([...dialog.querySelectorAll('mark')].map((mark) => mark.textContent)).toEqual([
@@ -85,14 +111,11 @@ describe('AskScreen', () => {
     ]);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(card);
   });
 
   it('closes the slide on Escape', async () => {
     await askWith({ status: 200, body: GROUNDED });
-    fireEvent.click(
-      within(answer()).getAllByRole('button', { name: /Slide 7/ })[0] ?? document.body,
-    );
+    fireEvent.click(within(answer()).getByRole('button', { name: /Slide 7/ }));
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -104,7 +127,7 @@ describe('AskScreen', () => {
     expect(panel?.querySelector('summary')?.textContent).toBe('Withheld (1)');
     expect(panel?.textContent).toContain('Queens rule the hive.');
     expect(panel?.textContent).toContain('No slide this answer was written from says it.');
-    expect(answer().querySelector('.answer')?.textContent).not.toContain('Queens');
+    expect(answer().querySelector('.explanation')?.textContent).not.toContain('Queens');
   });
 
   it('names what was searched when the reply corrected a typo, and nothing when it did not', async () => {
@@ -197,6 +220,6 @@ describe('AskScreen', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.getByRole('alert').textContent).toBe(MODEL_FAILED);
-    expect(answer().querySelector('.answer')).toBeNull();
+    expect(answer().querySelector('.explanation')).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { PENDING } from '../src/copy';
-import { GROUNDED_QUESTION, stubApi } from './hermetic-api';
+import { APPEARS_TO_CONTRADICT, PENDING } from '../src/copy';
+import { CONTRADICTED_QUESTION, GROUNDED_QUESTION, stubApi } from './hermetic-api';
 
 /** Whether the element paints a focus ring now: an outline style other than `none`. */
 const ringed = (locator: Locator) =>
@@ -11,11 +11,11 @@ const ringed = (locator: Locator) =>
 const IN_TRANSIT_MS = 500;
 
 /**
- * The first slide card of a rendered answer (#231). It waits for the card because a Tab pressed
- * while the reply is pending leaves the document, and focus never returns when the cards land
+ * The first sources entry of a rendered answer (#231). It waits for the entry because a Tab pressed
+ * while the reply is pending leaves the document, and focus never returns when the answer lands
  * (#228).
  */
-const answered = async (page: Page) => {
+const answered = async (page: Page, question = GROUNDED_QUESTION) => {
   let release = (): void => undefined;
   const released = new Promise<void>((resolve) => {
     release = resolve;
@@ -23,22 +23,49 @@ const answered = async (page: Page) => {
   const askReplyAfter = released.then(() => delay(IN_TRANSIT_MS));
   await stubApi(page, { askReplyAfter });
   await page.goto('/#/courses/bio');
-  await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
+  await page.getByRole('textbox', { name: 'Question' }).fill(question);
   await page.getByRole('button', { name: 'Ask' }).click();
   const reply = page.getByRole('region', { name: 'Answer' });
   await expect(reply.locator('[aria-busy="true"]')).toHaveText(PENDING.answer);
   release();
-  const card = reply.locator('.slide-card').first();
+  const card = reply.locator('.sources-entry .slide-card').first();
   await expect(card).toBeVisible();
   return card;
 };
 
-test('a keyboard reader sees the ring on a slide card', async ({ page }) => {
-  const card = await answered(page);
+test('a keyboard reader sees the ring on a source number', async ({ page }) => {
+  await answered(page);
   await page.getByRole('button', { name: 'Ask' }).focus();
   await page.keyboard.press('Tab');
-  await expect(card).toBeFocused();
-  expect(await ringed(card)).toBe(true);
+  const number = page.locator('.source-ref').first();
+  await expect(number).toBeFocused();
+  expect(await ringed(number)).toBe(true);
+});
+
+test('a keyboard reader who reaches the contradiction button sees its ring and the label, gone once focus moves on', async ({
+  page,
+}) => {
+  await answered(page, CONTRADICTED_QUESTION);
+  const button = page.getByRole('button', {
+    name: `${APPEARS_TO_CONTRADICT} Lecture 1: The Hive, slide 4`,
+  });
+  const label = page.locator('.contradiction-label');
+  await expect(label).toBeHidden();
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  for (
+    let presses = 0;
+    presses < 5 && !(await button.evaluate((node) => node === document.activeElement));
+    presses++
+  )
+    await page.keyboard.press('Tab');
+  await expect(button).toBeFocused();
+  expect(await ringed(button)).toBe(true);
+  await expect(label).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(label).toBeHidden();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 4' })).toBeVisible();
 });
 
 test('a mouse press paints no ring on the dialog it opens, or on the card after it', async ({
