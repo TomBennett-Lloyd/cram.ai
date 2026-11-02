@@ -23,3 +23,4 @@ carrier: .claude/scripts/fill-verdict.sh
 carrier: .github/workflows/ci.yml
 excluded: docs/review-feedback.md
 excluded: docs/friction-log.md
+excluded: docs/tech-debt.md
