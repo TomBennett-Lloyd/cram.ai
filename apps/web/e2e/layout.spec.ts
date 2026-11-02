@@ -95,3 +95,18 @@ test('a marked answer fits the narrowest phone width, with its label showing', a
   expect(await scrollsSideways(page)).toBe(false);
   expect(await overflows(page, '.explanation-text')).toBe(false);
 });
+
+test('the panel a contradiction number opens names the sentence above the fold, unclipped, at the narrowest width', async ({
+  page,
+}) => {
+  await page.goto('/#/courses/bio');
+  await page.getByRole('textbox', { name: 'Question' }).fill(CONTRADICTED_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).click();
+  await page.locator('.contradiction-refs .source-ref').click();
+  const line = page.getByRole('dialog').locator('.slide-contradiction');
+  await expect(line).toBeVisible();
+  const box = await line.boundingBox();
+  expect((box?.y ?? Infinity) + (box?.height ?? 0) <= NARROWEST.height).toBe(true);
+  expect(await overflows(page, '.slide-contradiction')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
+});
