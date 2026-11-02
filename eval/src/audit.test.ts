@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { auditEvalCourse } from './audit';
-import { course, label, lecture, question, slide } from './eval-fixture';
+import { course, kindLabel, label, lecture, question, slide } from './eval-fixture';
 
 describe('auditEvalCourse', () => {
   it('finds nothing in a consistent course', () => {
@@ -61,6 +61,54 @@ describe('auditEvalCourse', () => {
     ]);
   });
 
+  it.each(['What shape are cels?', 'What shape are cells'])(
+    'accepts the misspelt variant %j',
+    (variant) => {
+      const questions = [question({ misspelt: [variant] })];
+      expect(auditEvalCourse(course({ questions }))).toEqual([]);
+    },
+  );
+
+  it('reports a misspelt variant of a question with no expected slide', () => {
+    const questions = [question({ expectedCitations: [], misspelt: ['What shape are cels?'] })];
+    expect(auditEvalCourse(course({ questions }))).toEqual([
+      {
+        kind: 'variant-of-uncovered',
+        question: 'What shape are cells?',
+        variant: 'What shape are cels?',
+      },
+    ]);
+  });
+
+  it.each([
+    ['its own question, up to case and whitespace', [' what  SHAPE are\tcells? '], []],
+    ['its own question, up to a no-break space', ['What\u00a0shape are cells?'], []],
+    ['a later question', ['What colour are cells?'], ['What colour are cells?']],
+    ['another variant of the same question', ['What shape are cels?', 'What shape are cels?'], []],
+  ])('reports a misspelt variant equal to %s', (_, misspelt, later) => {
+    const questions = [
+      question({ misspelt }),
+      ...later.map((text) => question({ question: text })),
+    ];
+    expect(auditEvalCourse(course({ questions }))).toEqual([
+      { kind: 'duplicate-variant', question: 'What shape are cells?', variant: misspelt.at(-1) },
+    ]);
+  });
+
+  it('reports a misspelt variant another question already carries', () => {
+    const questions = [
+      question({ misspelt: ['What shape are cels?'] }),
+      question({ question: 'What size are cells?', misspelt: ['what shape are cels?'] }),
+    ];
+    expect(auditEvalCourse(course({ questions }))).toEqual([
+      {
+        kind: 'duplicate-variant',
+        question: 'What size are cells?',
+        variant: 'what shape are cels?',
+      },
+    ]);
+  });
+
   it('accepts a label quote that spans bullets once whitespace is normalised', () => {
     const deck = [lecture('l1', [slide({ body: ['Cells are', 'square.'] })])];
     expect(auditEvalCourse(course({ deck, labels: [label()] }))).toEqual([]);
@@ -69,6 +117,23 @@ describe('auditEvalCourse', () => {
   it('accepts a label quote whose own whitespace differs from the slide', () => {
     const labels = [label({ quotes: ['Cells  are\nsquare.'] })];
     expect(auditEvalCourse(course({ labels }))).toEqual([]);
+  });
+
+  it('reports a sentence-kind premise the deck does not have, by lecture and by slide', () => {
+    const sentenceKinds = [
+      kindLabel({
+        premises: [
+          { lectureId: 'l1', slideNo: 1 },
+          { lectureId: 'l1', slideNo: 2 },
+          { lectureId: 'l9', slideNo: 1 },
+        ],
+      }),
+    ];
+    const sentence = 'So a cell is one compartment of the comb.';
+    expect(auditEvalCourse(course({ sentenceKinds }))).toEqual([
+      { kind: 'unknown-premise', sentence, lectureId: 'l1', slideNo: 2 },
+      { kind: 'unknown-premise', sentence, lectureId: 'l9', slideNo: 1 },
+    ]);
   });
 
   it('reports a label quote that is not verbatim in any slide', () => {

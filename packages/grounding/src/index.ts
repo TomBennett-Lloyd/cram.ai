@@ -14,6 +14,7 @@ export {
   type ExplainStage,
   type SearchSentence,
 } from './explain';
+export { classifySentenceKinds } from './classify-sentence-kinds';
 export { type DraftUnit, type GenerationOutcome, generateUnits } from './generate-units';
 export { ground, type GroundingDeps, type GroundingResult, type GroundingStage } from './ground';
 export { markContradictions } from './mark-contradictions';
@@ -37,6 +38,11 @@ export {
 export { explanationRequest, GeneratedExplanation } from './prompts/explanation-prompt';
 export { rewriteRequest, RewriteReply } from './prompts/rewrite-prompt';
 export { VerdictReply, verifierRequest } from './prompts/verifier-prompt';
+export {
+  SentenceKind,
+  type SentenceKindReply,
+  sentenceKindRequest,
+} from './prompts/sentence-kind-prompt';
 export {
   quoteResolves,
   quotesResolve,

@@ -1,0 +1,26 @@
+# The humanAlways path list, owned by `merge.humanAlways` in .claude/workflow.json, which
+# points here from `merge.humanAlwaysLedger` (docs/standards/architecture.md rule 9; #440).
+# Adding or removing a member moves three carriers: CLAUDE.md § Workflow copies the list,
+# merge-pr.sh § classify computes with it, and merge-pr.test.sh case 6b asserts one member
+# against the live list. The other carriers name the list by reference ("a humanAlways
+# path"), so a member change leaves them true; they move only if the key is renamed.
+# Inside the owner, merge.humanAlwaysRule gives one reason per member and moves with it.
+owner: .claude/workflow.json
+claim: the paths whose PRs wait for the owner's review before merging, whatever their file type
+cite: humanAlways
+sweep: \bhumanAlways|\.claude/ledgers/human-always-paths\.ledger
+carrier: CLAUDE.md
+carrier: .claude/scripts/merge-pr.sh
+carrier: .claude/scripts/merge-pr.test.sh
+carrier: .claude/skills/review-loop/SKILL.md
+carrier: .claude/skills/run-issue/SKILL.md
+carrier: .claude/skills/plan-issue/SKILL.md
+carrier: .claude/agents/ticket-agent.md
+carrier: .claude/agents/task-orchestrator.md
+carrier: .claude/agents/planner.md
+carrier: .claude/scripts/check-no-network-egress.sh
+carrier: .claude/scripts/fill-verdict.sh
+carrier: .github/workflows/ci.yml
+excluded: docs/review-feedback.md
+excluded: docs/friction-log.md
+excluded: docs/tech-debt.md

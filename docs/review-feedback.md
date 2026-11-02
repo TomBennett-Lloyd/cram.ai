@@ -475,3 +475,32 @@ A category going quiet across consecutive reviews is the evidence for graduating
   2. The deep second opinion's `unsupported` reads as neutral, not contradicted.
   3. `docs/adr/README.md` § Amendments forbids an amendment that touches reasoning. This change is a decision narrowed by the owner, so the owner may prefer a superseding ADR. That question is logged in `docs/tech-debt.md`.
 - **Verdict**: approved 2026-11-02 — "approve 437"; the three extras approved as they stand, and the ADR change stays an amendment
+
+## 2026-11-02 — issue #395 — adr-0010-misspelt-golden-variants
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/395#issuecomment-6578823493 in chat on 2026-11-02. PROCEED, verbatim: "proceed 395". It answered the plan's three questions as recommended: a new ADR 0010 with 0005 untouched, the Decision outline (a)–(i), and the six-variant sample. The PR asks the owner to decide only the extras beyond that plan:
+  - two ledger carrier lines, `carrier: docs/adr/0010-misspelt-golden-variants.md`, in `spelling-max-edits.ledger` and `spelling-min-term-length.ledger` under `.claude/ledgers/`. `check:ledgers` requires them once (b) cites the two correction bounds by symbol, as the outline says. The plan comment declared them only after the PROCEED, in a later `Footprint change:` line.
+  - (e) states the outline's tier-1 point accurately. The outline said a new variant without a new run "is a recording miss". A variant that corrects to its question's text sends a request the recordings already hold, so (e) says instead that such a commit turns `eval/src/committed-run.test.ts` red. Option E drops "and a recording at tier 1" for the same reason.
+  - (g) points at `docs/plan.md` §4, where the trued line sits. The outline said §7.
+- **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` counts a ledger carrier change, and a § Decision point that states something its plan point did not, as extras. That sends the PR to the owner, limited to those extras.
+- **How applied**: the PR as proposed, with ADR 0010 at `proposed`. It is revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-02 — "approve 443"; the three extras approved as they stand
+
+## 2026-11-02 — issue #411 — systemic-findings-route-in-a-batch
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to approve one edit to `CLAUDE.md`'s Workflow bullet on the review loop: `Systemic findings go to docs/tech-debt.md` becomes a pointer, `Systemic findings go where /review-loop step 2 routes them`. The bullet's `max 3 cycles` bound is unchanged. The rest of the PR is the rule the owner approved in chat on 2026-11-02 ("approve 410 411 412 427"): review-loop step 2 sends a batch's SYSTEMIC findings to `discovered` issues, and the task-orchestrator report template follows it.
+- **Why**: a batch merges `--rebase` on exactly one commit per member (`.claude/scripts/merge-pr.sh`'s curated-history check), and a `docs/tech-debt.md` append is a commit that belongs to no member. After step 2 changes, the bullet would state a destination a batch may not use. `CLAUDE.md` is a `humanAlways` path, so the edit could not ride in the #410 batch, and #411 left that batch at its plan checkpoint.
+- **How applied**: a pointer rather than a qualified restatement, so `CLAUDE.md` carries no copy of the route and no restatement ledger is needed (`docs/standards/architecture.md` rule 9). Plan and sweep: https://github.com/TomBennett-Lloyd/cram.ai/issues/411#issuecomment-6582091940.
+- **Verdict**: approved 2026-11-02 — "approve 454 and 445"; the CLAUDE.md:55 pointer stands
+
+## 2026-11-02 — issue #440 — settings-json-human-always
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR carries out two owner directions from chat on 2026-11-02, quoted in #440's body: "settings.json humanAlways", and on the classifier refusals in #427, "fix the permissions so this doesn't happen again, this seems like a reasonable thing to allow". It asks the owner to decide:
+  - accept `.claude/settings.json` joining `.claude/workflow.json` → `merge.humanAlways`, with one reason clause in `merge.humanAlwaysRule`, the path added to `CLAUDE.md` § Workflow's merge-policy list, and `.claude/skills/review-loop/SKILL.md` step 5's two subset restatements ("nothing under `docs/adr/`", "any ADR") repointed at the list;
+  - accept the three committed `permissions.allow` rules in `.claude/settings.json`, which are `Bash(gh issue comment:*)`, `Bash(gh pr comment:*)` and `Bash(bash .claude/scripts/fill-verdict.sh:*)`. Until now they existed only in the owner's gitignored `.claude/settings.local.json`. Committed, they apply to every session and worktree that loads this repo's settings.
+- **Why**: `.claude/settings.json` grants every session permissions and hooks. It is JSON, which carries no source extension, so before this PR it auto-merged on green CI with nobody reading it. That is how the #410 batch's permission edit would have landed, and why its checkpoint held it.
+- **How applied**: the list gains the path, and `merge-pr.sh`'s classify step reads that list at run time, so the script needs no edit. `.claude/scripts/merge-pr.test.sh` case 6b classifies against the repo's live list rather than the harness default, and a PR touching `.claude/settings.json` comes out `HUMAN`. The allow rules were merged into the existing object with `jq`. `.claude/ledgers/human-always-paths.ledger` banks the list's carriers so `check:ledgers` re-runs the sweep.
+- **Verdict**: approved 2026-11-02 — "approve 454 and 445"; the committed allow rules ship

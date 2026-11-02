@@ -56,6 +56,7 @@ export {
   EVAL_ROOT,
   LABELS_FILE,
   QUESTIONS_FILE,
+  SENTENCE_KINDS_FILE,
   readEvalCourse,
   type EvalCourseRead,
 } from './read-eval-course';
@@ -67,7 +68,9 @@ export {
   type RecordingsResult,
 } from './recording-gateway';
 export { EvalReport, MachineClass } from './report';
-export { retrievalRecall } from './retrieval-recall';
+export { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
+export { type JudgedKind, sentenceKindAccuracy } from './sentence-kind-accuracy';
+export { SentenceKindLabel } from './sentence-kind-label';
 export { type EvalRunFacts, type EvalRunSpec, runEval } from './run-eval';
 export { TimedGateway } from './timed-gateway';
 export { type JudgedLabel, verifierAccuracy, type VerifierAccuracy } from './verifier-accuracy';

@@ -91,7 +91,9 @@ your issue's comments; the top-level never posts them for you.
    acting on it: release is the merge owner's call and a wrong one is theirs to retract.
 4. **Sub-agent dispatch is yours, and every dispatch is synchronous**: planner (fable — first
    read ~/.local/state/claude-budget/mode per CLAUDE.md Model tiers; conserve → opus, note the
-   downgrade in the plan comment), implementers (opus; a chunk of a trim-campaign issue under
+   downgrade in the plan comment; its plan arrives as the file its first line names, which
+   plan-issue step 5 posts, `.claude/agents/planner.md`),
+   implementers (opus; a chunk of a trim-campaign issue under
    `docs/standards/prose.md` § Trim batches goes out with `model: 'sonnet'` in the Agent call,
    cumulo#607), reviewer (opus)
    for each full cycle, confirmation-reviewer for every confirmation pass, consultant (fable,
@@ -202,9 +204,9 @@ Review loop: VERDICT APPROVE | CAP-REACHED | CAP-REACHED+CONFIRMED-APPROVE — c
     a cycle, so it never moves the /3 above. Report bare CAP-REACHED only if the pass has
     not returned APPROVE — that is what routes the PR to human review.
   FIX-NOW found/resolved: <n>/<n>
-  Demoted at cap (pure-quality, logged to tech-debt): <titles | none>
+  Demoted at cap (pure-quality, filed as discovered issues — review-loop Exit conditions): <#numbers | none>
   Correctness residue: NONE (mandatory NONE — a known bug never reaches this report as DONE)
-  SYSTEMIC → docs/tech-debt.md: <n> entries: <slugs | none>
+  SYSTEMIC → discovered issues: <n>: <#numbers | none>
 
 Classification (.claude/workflow.json):
   AUTO | HUMAN
@@ -233,8 +235,7 @@ Sub-dispatches: <agent (model): reason>, one per dispatch | none — the model e
 Consultant dispatches: <n> (model, budget mode) | none
 Discovered issues filed: #<a> #<b> | none
 Open questions only the owner can answer: <list | NONE>
-Merge cautions for the merge owner: <e.g. "docs/tech-debt.md appended — expect the
-  union+marker-sweep+prettier-seam routine"; "overlaps in-flight #m on <file>" | none>
+Merge cautions for the merge owner: <e.g. "overlaps in-flight #m on <file>" | none>
 This round: <initial | bounce: what came back, what changed in response — or "n/a">
 
 Agent: <this agent's name/id — parked and addressable until RELEASE>

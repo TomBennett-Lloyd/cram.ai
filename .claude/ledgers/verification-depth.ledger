@@ -16,6 +16,7 @@ carrier: eval/README.md
 excluded: docs/review-feedback.md
 excluded: eval/src/depth-rows.ts
 excluded: packages/grounding/src/explain.test.ts
+excluded: packages/grounding/src/explain-deep.test.ts
 excluded: packages/grounding/src/mark-contradictions.ts
 excluded: packages/shared/src/verification.test.ts
 excluded: docs/tech-debt.md

@@ -30,6 +30,7 @@ export const replayRun = (spec: ReplaySpec): Promise<EvalReport> =>
     lectures: spec.lectures,
     questions: spec.course.questions,
     labels: spec.course.labels,
+    sentenceKinds: spec.course.sentenceKinds,
     gateway: new FakeGateway({
       pins: LIVE_PINS,
       sampling: LIVE_SAMPLING,
