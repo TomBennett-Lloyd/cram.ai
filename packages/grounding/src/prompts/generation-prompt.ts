@@ -1,7 +1,7 @@
 import { type ChatRequest, OutputName } from '@cram/gateway';
 import { type RetrievedSlide, SourceId, Unit } from '@cram/shared';
 import { z } from 'zod';
-import { slideLines } from '../slide-text';
+import { sourceBlock } from './source-block';
 
 export const SlideLineNo = z.number().int().brand<'SlideLineNo'>();
 export type SlideLineNo = z.infer<typeof SlideLineNo>;
@@ -22,7 +22,6 @@ export interface AskTask {
   readonly question: string;
 }
 
-/** One arm per feature that generates; each feature's task line joins `TASK_LINES`. */
 export type GenerationTask = AskTask;
 
 const RULES = `You write study material for a student, using only the student's own lecture slides.
@@ -42,11 +41,6 @@ const TASK_LINES: Record<GenerationTask['kind'], string> = {
 };
 
 const requestLine = (task: GenerationTask): string => `<question>${task.question}</question>`;
-
-const sourceBlock = (slide: RetrievedSlide): string => {
-  const rows = slideLines(slide.record).map((line, index) => `[${String(index + 1)}] ${line}`);
-  return `<source id="${slide.sourceId}">\n${rows.join('\n')}\n</source>`;
-};
 
 const GENERATED_UNITS = OutputName.parse('units');
 

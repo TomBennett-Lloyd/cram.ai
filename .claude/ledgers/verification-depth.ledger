@@ -1,0 +1,14 @@
+# Each explanation surface's verification depth (docs/standards/architecture.md rule 9; #420).
+owner: packages/grounding/src/verification-depth.ts
+claim: chat (Ask) explains at the light depth — attributed and marked, nothing cut — and revision guides at the deep depth, as VERIFICATION_DEPTH declares it
+cite: `VERIFICATION_DEPTH`
+sweep: VERIFICATION_DEPTH|`VerificationDepth`|0009-explanation-answers\.md`? § Decision \(f\)|\.claude/ledgers/verification-depth\.ledger
+carrier: CLAUDE.md
+carrier: docs/plan.md
+carrier: docs/adr/0009-explanation-answers.md
+carrier: docs/standards/grounding.md
+carrier: packages/grounding/src/ask.ts
+carrier: eval/src/ask-depths.ts
+excluded: packages/grounding/src/index.ts
+excluded: packages/grounding/src/attribute-sentences.ts
+excluded: packages/index/src/course-index.ts

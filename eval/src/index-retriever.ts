@@ -91,6 +91,14 @@ export class IndexRetriever {
     return this.#course.search({ text, embedding }, this.#k);
   }
 
+  async searchSentence(sentence: string, k: number): Promise<readonly RetrievedSlide[]> {
+    const [result] = await this.#embedder.embed({ texts: [sentence] });
+    if (result === undefined) throw new Error('IndexRetriever: no sentence vector');
+    return result.status === 'embedded'
+      ? this.#course.search({ text: sentence, embedding: result.vector }, k)
+      : [];
+  }
+
   close(): void {
     this.#course.close();
   }

@@ -1,6 +1,12 @@
-import type { GroundingResult } from '@cram/grounding';
+import type { ExplainResult } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
-import { type Citation, Deck, type RetrievedSlide, SlideRecord, type Unit } from '@cram/shared';
+import {
+  type AttributedSentence,
+  type Citation,
+  Deck,
+  type RetrievedSlide,
+  SlideRecord,
+} from '@cram/shared';
 import type { z } from 'zod';
 import type { AskedQuestion } from './asked-question';
 import { question } from './eval-fixture';
@@ -46,22 +52,42 @@ export const citing = (slide: SlideRecord, quote: string): Citation => ({
   quote,
 });
 
-export const unit = (text: string, citations: readonly Citation[]): Unit => ({
+export const sentence = (
+  text: string,
+  slides: readonly SlideRecord[],
+  contradicts: readonly SlideRecord[] = [],
+): AttributedSentence => ({
   text,
-  citations: [...citations],
-  kind: 'answer-sentence',
+  slides: slides.map(sourceIdOf),
+  contradicts: contradicts.map(sourceIdOf),
 });
 
-export const grounded = (...shown: [Unit, ...Unit[]]): GroundingResult => ({
-  status: 'grounded',
-  shown,
-  withheld: [],
-});
+export const grounded = (
+  sentences: readonly AttributedSentence[],
+  slides: readonly SlideRecord[] = [record()],
+  quotes: readonly Citation[] = [],
+): ExplainResult => {
+  const [first, ...rest] = [
+    ...new Set([...sentences.flatMap((s) => s.slides), ...quotes.map((q) => q.sourceId)]),
+  ];
+  if (first === undefined) throw new Error('grounded: an explanation names a slide');
+  return {
+    status: 'grounded',
+    explanation: {
+      text: sentences.map(({ text }) => text).join(' '),
+      quotes: [...quotes],
+      sentences: [...sentences],
+      sources: [first, ...rest],
+    },
+    withheld: [],
+    slides: slides.map(retrieved),
+  };
+};
 
-export const NOT_COVERED: GroundingResult = { status: 'not-covered', withheld: [] };
+export const NOT_COVERED: ExplainResult = { status: 'not-covered', withheld: [] };
 
 export const asked = (
-  result: GroundingResult,
+  result: ExplainResult,
   slides: readonly SlideRecord[] = [record()],
   golden: GoldenQuestion = question(),
 ): AskedQuestion => ({ question: golden, retrieved: slides.map(retrieved), result });

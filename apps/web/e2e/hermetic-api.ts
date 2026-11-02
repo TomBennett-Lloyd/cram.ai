@@ -38,31 +38,30 @@ const COMB = slide('s2', 7, COMB_TITLE, 'Cells are hexagonal.');
 /** One unbroken word wider than a phone, so the decks list must wrap it. */
 export const LONG_FILE_NAME = `${'lecture-01-the-hive-castes-and-the-comb'.repeat(2)}.pdf`;
 
-const unit = (text: string, citations: readonly (readonly [string, string])[]) => ({
-  text,
-  kind: 'answer-sentence',
-  citations: citations.map(([sourceId, quote]) => ({ sourceId, quote })),
-});
+const sentence = (text: string, slides: readonly string[]) => ({ text, slides, contradicts: [] });
 
 export const GROUNDED_QUESTION = 'What are drones?';
 export const NOT_COVERED_QUESTION = 'Who wrote Hamlet?';
 
+const SENTENCES = [
+  sentence('Drones are male.', ['s1']),
+  sentence('Workers are female, and comb cells are hexagonal.', ['s1', 's2']),
+];
+
 const askReply = (question: string) =>
   question === NOT_COVERED_QUESTION
-    ? { status: 'not-covered', withheld: [], slides: [COMB] }
+    ? { status: 'not-covered', withheld: [], slides: [COMB], leftOut: [] }
     : {
         status: 'grounded',
-        shown: [
-          unit('Drones are male.', [['s1', 'Drones are male.']]),
-          unit('Workers are female, and comb cells are hexagonal.', [
-            ['s1', 'Worker bees are female.'],
-            ['s2', 'Cells are hexagonal.'],
-          ]),
-        ],
-        withheld: [
-          { reason: 'unsupported', unit: unit('Queens rule the hive.', [['s1', 'Castes']]) },
-        ],
+        explanation: {
+          text: SENTENCES.map(({ text }) => text).join(' '),
+          quotes: [{ sourceId: 's1', quote: 'Drones are male.' }],
+          sentences: SENTENCES,
+          sources: ['s1', 's2'],
+        },
+        withheld: [{ reason: 'unsupported', text: 'Queens rule the hive.' }],
         slides: [HIVE, COMB],
+        leftOut: [],
       };
 
 /** A stand-in for a stored slide rendering: an SVG, since what is measured is its box, not its pixels. */

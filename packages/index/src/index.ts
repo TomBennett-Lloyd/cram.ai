@@ -1,4 +1,5 @@
 export {
+  ATTRIBUTION_K,
   CANDIDATES_PER_LIST,
   type CourseIndex,
   RETRIEVAL_K,

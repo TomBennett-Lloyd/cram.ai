@@ -55,6 +55,9 @@ import {
 /** Slides `search` returns by default; provisional until recall@k against the eval deck tunes it (#69). */
 export const RETRIEVAL_K = 8;
 
+/** Slides one explanation sentence's search names (`docs/adr/0009-explanation-answers.md` § Decision (f)); chosen by `attributionRecall` across k (#420). */
+export const ATTRIBUTION_K = 3;
+
 /** Chunks each ranked list reads before its dedupe to slides (`docs/adr/0008-slide-chunking.md` § Decision (f)); provisional as `RETRIEVAL_K` is. */
 export const CANDIDATES_PER_LIST = 50;
 
@@ -294,10 +297,7 @@ export class CourseIndex {
     ).map((slide) => slide.record);
   }
 
-  /**
-   * Swaps every slide's chunks and vectors and the recorded embedder in one transaction, so a new
-   * embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)).
-   */
+  /** Swaps every slide's chunks, vectors and recorded embedder in one transaction, so a new embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)). */
   replaceEmbedder(embedder: EmbedderIdentity, slides: readonly IndexedSlide[]): void {
     const bySource = new Map(slides.map((slide) => [sourceIdOf(slide.record), slide]));
     const stored = this.#storedSlides('');

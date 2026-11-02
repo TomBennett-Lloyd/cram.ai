@@ -7,8 +7,8 @@ import {
   SlideNo,
   SourceHash,
   SourceId,
-  type Unit,
-  type WithheldUnit,
+  type AttributedSentence,
+  type WithheldSentence,
 } from '@cram/shared';
 import { ApiClient, type Fetch } from './api-client';
 
@@ -59,10 +59,10 @@ export const HOLLOWMERE_COMB_CHART = retrievedSlide('h3-3', {
   kind: 'image-only',
 });
 
-export const answerUnit = (text: string, citations: readonly [string, string][]): Unit => ({
+export const sentence = (text: string, slides: readonly string[]): AttributedSentence => ({
   text,
-  kind: 'answer-sentence',
-  citations: citations.map(([sourceId, quote]) => ({ sourceId: SourceId.parse(sourceId), quote })),
+  slides: slides.map((id) => SourceId.parse(id)),
+  contradicts: [],
 });
 
 export const HIVE = retrievedSlide('s1', {
@@ -76,21 +76,26 @@ export const COMB = retrievedSlide('s2', {
   body: 'Cells are hexagonal.',
 });
 
-export const WITHHELD: WithheldUnit[] = [
-  { reason: 'unsupported', unit: answerUnit('Queens rule the hive.', [['s1', 'Castes']]) },
+export const WITHHELD: WithheldSentence[] = [
+  { reason: 'unsupported', text: 'Queens rule the hive.' },
 ];
 
-export const GROUNDED: AskReply = {
+const SENTENCES = [
+  sentence('Workers are female.', ['s1']),
+  sentence('Drones are male, and comb cells are hexagonal.', ['s1', 's2']),
+];
+
+export const GROUNDED: Extract<AskReply, { status: 'grounded' }> = {
   status: 'grounded',
-  shown: [
-    answerUnit('Workers are female.', [['s1', 'Worker bees are female.']]),
-    answerUnit('Drones are male, and comb cells are hexagonal.', [
-      ['s1', 'Drones are male.'],
-      ['s2', 'Cells are hexagonal.'],
-    ]),
-  ],
+  explanation: {
+    text: SENTENCES.map(({ text }) => text).join(' '),
+    quotes: [{ sourceId: SourceId.parse('s1'), quote: 'Drones are male.' }],
+    sentences: SENTENCES,
+    sources: [SourceId.parse('s1'), SourceId.parse('s2')],
+  },
   withheld: WITHHELD,
   slides: [HIVE, COMB],
+  leftOut: [],
 };
 
 export interface Reply {

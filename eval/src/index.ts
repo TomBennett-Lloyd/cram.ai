@@ -1,4 +1,4 @@
-export { type AskedQuestion, survivingUnits } from './asked-question';
+export { type AskedQuestion, namesExpected, shownSentences } from './asked-question';
 export { auditEvalCourse, type AuditProblem, type EvalCourse } from './audit';
 export { CitationFailure, citationValidity, CitationValidityRow } from './citation-validity';
 export {
@@ -7,6 +7,14 @@ export {
   contradictionSet,
   ContradictionSetRow,
 } from './contradiction-set';
+export {
+  AttributionCounts,
+  attributionCounts,
+  DepthRows,
+  explanationEntailed,
+  explanationWithheld,
+  quotedShare,
+} from './depth-rows';
 export { DeckLecture, DeckSlide, parseDeck, slideText, type Deck, type DeckFile } from './deck';
 export {
   DerivedCoverageRow,
@@ -33,6 +41,15 @@ export { HandLabel } from './hand-label';
 export { type IndexedLecture, IndexRetriever, type IndexRetrieverSpec } from './index-retriever';
 export { parseJsonLines } from './json-text';
 export { type Clock, LatencySummary, latencySummary } from './latency';
+export {
+  attributionRecall,
+  attributionSet,
+  contradictionSetLight,
+  type ForbiddenSentence,
+  forbiddenSentences,
+  lightFlagRate,
+  LightSetRow,
+} from './light-rows';
 export { BaselineRow, NotMeasurable, passed, Ratio } from './metric-row';
 export {
   DECK_DIR,

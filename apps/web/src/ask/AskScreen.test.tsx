@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest';
 import type { ApiClient } from '../api/api-client';
 import { ApiContext } from '../api/api-context';
 import {
-  answerUnit,
   COMB,
   fakeApi,
   GROUNDED,
   HIVE,
   type Reply,
   retrievedSlide,
+  sentence,
   WITHHELD,
 } from '../api/api-fixture';
 import { MODEL_FAILED, NOT_COVERED, PENDING, SEARCHED_FOR, SLIDE_HAS_NO_TEXT } from '../copy';
@@ -52,7 +52,7 @@ describe('AskScreen', () => {
     expect(sent).toEqual([]);
   });
 
-  it('shows each answer unit with a card per cited slide', async () => {
+  it('shows each sentence of the explanation with a card per slide it names', async () => {
     await askWith({ status: 200, body: GROUNDED });
     const units = within(answer())
       .getAllByRole('listitem')
@@ -72,7 +72,7 @@ describe('AskScreen', () => {
     ]);
   });
 
-  it('opens a cited slide with the unit’s quotes marked, and returns focus to its card on close', async () => {
+  it('opens a slide with the explanation’s quotes from it marked, and returns focus to its card on close', async () => {
     await askWith({ status: 200, body: GROUNDED });
     const card = within(answer()).getAllByRole('button', { name: /Slide 4/ })[1];
     if (card === undefined) throw new Error('no second card for slide 4');
@@ -103,7 +103,7 @@ describe('AskScreen', () => {
     expect(panel?.open).toBe(false);
     expect(panel?.querySelector('summary')?.textContent).toBe('Withheld (1)');
     expect(panel?.textContent).toContain('Queens rule the hive.');
-    expect(panel?.textContent).toContain('The cited slides don’t support it.');
+    expect(panel?.textContent).toContain('No slide this answer was written from says it.');
     expect(answer().querySelector('.answer')?.textContent).not.toContain('Queens');
   });
 
@@ -119,7 +119,7 @@ describe('AskScreen', () => {
     first.view.unmount();
     const second = await askWith({
       status: 200,
-      body: { status: 'not-covered', withheld: [], slides: [], searched },
+      body: { status: 'not-covered', withheld: [], slides: [], leftOut: [], searched },
     });
     expect(shown()).toBe(`${SEARCHED_FOR} ${searched}`);
     second.view.unmount();
@@ -135,7 +135,7 @@ describe('AskScreen', () => {
   it('answers a question no slide supports with the fixed string and the closest slides', async () => {
     await askWith({
       status: 200,
-      body: { status: 'not-covered', withheld: WITHHELD, slides: [COMB, HIVE] },
+      body: { status: 'not-covered', withheld: WITHHELD, slides: [COMB, HIVE], leftOut: [] },
     });
     expect(within(answer()).getByText(NOT_COVERED)).toBeDefined();
     const cards = within(answer())
@@ -151,7 +151,10 @@ describe('AskScreen', () => {
 
   it('says a slide with no text has none to show', async () => {
     const blank = retrievedSlide('s3', { slideNo: 9, kind: 'image-only' });
-    await askWith({ status: 200, body: { status: 'not-covered', withheld: [], slides: [blank] } });
+    await askWith({
+      status: 200,
+      body: { status: 'not-covered', withheld: [], slides: [blank], leftOut: [] },
+    });
     fireEvent.click(within(answer()).getByRole('button', { name: /Slide 9/ }));
     expect(screen.getByRole('dialog').textContent).toContain(SLIDE_HAS_NO_TEXT);
   });
@@ -166,9 +169,12 @@ describe('AskScreen', () => {
     expect(screen.getByRole('alert').textContent).toContain('at most 512 tokens');
   });
 
-  it('marks a citation whose slide the reply did not return as missing', async () => {
-    const shown = [answerUnit('Drones are male.', [['s9', 'Drones are male.']])];
-    await askWith({ status: 200, body: { ...GROUNDED, shown } });
+  it('marks a slide a sentence names but the reply did not return as missing', async () => {
+    const explanation = {
+      ...GROUNDED.explanation,
+      sentences: [sentence('Drones are male.', ['s9'])],
+    };
+    await askWith({ status: 200, body: { ...GROUNDED, explanation } });
     expect(within(answer()).getByText('Source not returned')).toBeDefined();
   });
 

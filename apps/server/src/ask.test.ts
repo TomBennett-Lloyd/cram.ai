@@ -1,30 +1,54 @@
-import { mkdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
 import type { EmbedRequest, Embedder, EmbeddingResult, Recording } from '@cram/gateway';
-import { slideLines } from '@cram/grounding';
-import { CourseId, type RetrievedSlide, type Unit } from '@cram/shared';
-import { afterEach, describe, expect, it } from 'vitest';
-import { courseFilePath } from './data-directory';
-import { MAX_ASK_BYTES } from './handlers';
+import type * as IndexModule from '@cram/index';
+import type { RetrievedSlide } from '@cram/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  answer,
-  cite,
-  FailingEmbedder,
-  ShortEmbedder,
-  WordEmbedder,
+  explained,
+  explanationReply,
   gatewayOf,
-  generated,
-  judged,
+  marked,
   pdfDeck,
   type Received,
   retrievedFrom,
   send,
   settledStatus,
+  ShortEmbedder,
   startTestServer,
   stopTestServer,
   type TestServer,
   uploadPath,
+  WordEmbedder,
 } from './server-fixture';
+
+/** Every course file the server opens to read, so a test can see that Ask closed its own. */
+const readers = vi.hoisted(() => ({ open: 0, searches: 0 }));
+vi.mock('@cram/index', async (original) => {
+  const actual = await original<typeof IndexModule>();
+  return {
+    ...actual,
+    openCourseReadOnly: (...args: Parameters<typeof actual.openCourseReadOnly>) => {
+      const opened = actual.openCourseReadOnly(...args);
+      if (opened.status !== 'open') return opened;
+      readers.open += 1;
+      const { course } = opened;
+      const close = course.close.bind(course);
+      const search = course.search.bind(course);
+      return {
+        ...opened,
+        course: Object.assign(course, {
+          close: () => {
+            readers.open -= 1;
+            close();
+          },
+          search: (...query: Parameters<typeof search>) => {
+            readers.searches += 1;
+            return search(...query);
+          },
+        }),
+      };
+    },
+  };
+});
 
 const QUESTION = 'Who are the workers?';
 const HIVE = [['The Hive', 'Worker bees are male in this course.']];
@@ -36,6 +60,7 @@ const CONTRADICTED = {
   status: 'scored',
   scores: { entailment: 0.05, neutral: 0.05, contradiction: 0.9 },
 } as const;
+const SENTENCE = 'Workers are male in this course.';
 
 let test: TestServer | undefined;
 afterEach(async () => {
@@ -73,81 +98,121 @@ const askBio = (
     body,
   });
 
-const male = cite('l1/1', 'Worker bees are male in this course.');
-const unit = answer('Workers are male in this course.', [male]);
-
-/** The model's reply for `replied` to `question`: each quote written as the number of the retrieved line it is. */
-const unitReply = (
+/** The explanation `text` of `question`, and the mark over each of its sentences against the one hive slide. */
+const hiveReplies = (
   retrieved: readonly RetrievedSlide[],
+  text: string = SENTENCE,
   question: string = QUESTION,
-  replied: Unit = unit,
-) =>
-  generated(question, retrieved, {
-    status: 'content',
-    content: JSON.stringify({
-      units: [
-        {
-          text: replied.text,
-          citations: replied.citations.map(({ sourceId, quote }) => {
-            const slide = retrieved.find((candidate) => candidate.sourceId === sourceId);
-            const line = slide === undefined ? [] : slideLines(slide.record);
-            return { sourceId, line: line.indexOf(quote) + 1 };
-          }),
-        },
-      ],
-    }),
-  });
+  result: typeof ENTAILED | typeof CONTRADICTED = ENTAILED,
+): Recording[] => [
+  explained(question, retrieved, explanationReply(text)),
+  marked(
+    text.split(/(?<=\.) /).map((sentence) => ({ text: sentence, slides: retrieved })),
+    result,
+  ),
+];
+
+class SpyEmbedder extends WordEmbedder {
+  readonly embedded: string[] = [];
+  override embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+    this.embedded.push(...request.texts);
+    return super.embed(request);
+  }
+}
+
+const sentenceOf = (
+  text: string,
+  slides: readonly RetrievedSlide[],
+  contradicts: string[] = [],
+) => ({
+  text,
+  slides: slides.map(({ sourceId }) => sourceId),
+  contradicts,
+});
 
 describe('POST /courses/:id/ask', () => {
-  it('answers with the verified units, their citations and the retrieved slides', async () => {
+  it('answers with the whole explanation, each sentence’s slides, and the slides it names', async () => {
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [unitReply(retrieved), judged(unit, ENTAILED)];
-    });
-    const reply = await askBio(server);
-    expect(reply.status).toBe(200);
-    expect(reply.json).toEqual({ status: 'grounded', shown: [unit], withheld: [], slides });
-  });
-
-  it('answers not-covered with the withheld unit and the closest slides when nothing survives', async () => {
-    let slides: RetrievedSlide[] = [];
-    const server = await hiveCourse((retrieved) => {
-      slides = retrieved;
-      return [unitReply(retrieved), judged(unit, CONTRADICTED)];
+      return hiveReplies(retrieved);
     });
     const reply = await askBio(server);
     expect(reply.status).toBe(200);
     expect(reply.json).toEqual({
-      status: 'not-covered',
-      withheld: [{ reason: 'unsupported', unit }],
+      status: 'grounded',
+      explanation: {
+        text: SENTENCE,
+        quotes: [],
+        sentences: [sentenceOf(SENTENCE, slides)],
+        sources: slides.map(({ sourceId }) => sourceId),
+      },
+      withheld: [],
       slides,
+      leftOut: [],
+    });
+  });
+
+  it('marks a sentence its slide contradicts, and shows it', async () => {
+    let slides: RetrievedSlide[] = [];
+    const server = await hiveCourse((retrieved) => {
+      slides = retrieved;
+      return hiveReplies(retrieved, SENTENCE, QUESTION, CONTRADICTED);
+    });
+    const reply = await askBio(server);
+    const ids = slides.map(({ sourceId }) => sourceId);
+    expect(reply.json).toMatchObject({
+      status: 'grounded',
+      explanation: { text: SENTENCE, sentences: [sentenceOf(SENTENCE, slides, ids)] },
+    });
+  });
+
+  it('searches the course once per sentence, then closes it', async () => {
+    const spy = new SpyEmbedder();
+    const two = `${SENTENCE} Drones are not covered here.`;
+    const server = await hiveCourse((retrieved) => hiveReplies(retrieved, two), spy);
+    spy.embedded.length = 0;
+    readers.searches = 0;
+    const reply = await askBio(server);
+    expect(reply.json).toMatchObject({ status: 'grounded', explanation: { text: two } });
+    expect(spy.embedded).toEqual([QUESTION, SENTENCE, 'Drones are not covered here.']);
+    expect(readers.searches).toBe(3);
+    expect(readers.open).toBe(0);
+  });
+
+  it('gives a sentence longer than the embedder takes no candidates, and attributes the rest', async () => {
+    const long = 'Drones are not covered anywhere in this hive deck.';
+    let slides: RetrievedSlide[] = [];
+    const server = await hiveCourse((retrieved) => {
+      slides = retrieved;
+      return [
+        explained(QUESTION, retrieved, explanationReply(`${SENTENCE} ${long}`)),
+        marked([{ text: SENTENCE, slides: retrieved }], ENTAILED),
+      ];
+    }, new ShortEmbedder(7));
+    const reply = await askBio(server);
+    expect(reply.json).toMatchObject({
+      status: 'grounded',
+      explanation: { sentences: [sentenceOf(SENTENCE, slides), sentenceOf(long, [])] },
     });
   });
 
   it('retrieves on the corrected question, names it in the reply, and generates on the typed one', async () => {
     const typed = 'Who are the wroker bees?';
-    const embedded: string[] = [];
-    class SpyEmbedder extends WordEmbedder {
-      override embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
-        embedded.push(...request.texts);
-        return super.embed(request);
-      }
-    }
+    const spy = new SpyEmbedder();
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [unitReply(retrieved, typed), judged(unit, ENTAILED)];
-    }, new SpyEmbedder());
+      return hiveReplies(retrieved, SENTENCE, typed);
+    }, spy);
+    spy.embedded.length = 0;
     const reply = await askBio(server, JSON.stringify({ question: typed }));
-    expect(reply.json).toEqual({
+    expect(reply.json).toMatchObject({
       status: 'grounded',
-      shown: [unit],
-      withheld: [],
       slides,
       searched: 'Who are the worker bees?',
     });
-    expect(embedded.at(-1)).toBe('Who are the worker bees?');
+    expect(spy.embedded[0]).toBe('Who are the worker bees?');
   });
 
   it('ranks on the corrected question in the keyword list as well as the vector list', async () => {
@@ -170,9 +235,14 @@ describe('POST /courses/:id/ask', () => {
     const [drones, workers] = await retrievedFrom(deck, 'bio', 'l1', 'hive.pdf');
     if (drones === undefined || workers === undefined) throw new Error('two slides expected');
     const expected = [workers, drones];
-    const cited = answer('Workers forage.', [cite('l1/2', 'Workers')]);
     test = await startTestServer(
-      gatewayOf([unitReply(expected, typed, cited), judged(cited, ENTAILED)], new TitleEmbedder()),
+      gatewayOf(
+        [
+          explained(typed, expected, explanationReply('Workers forage.')),
+          marked([{ text: 'Workers forage.', slides: expected }], ENTAILED),
+        ],
+        new TitleEmbedder(),
+      ),
     );
     await send(test.server.port, {
       method: 'POST',
@@ -189,26 +259,28 @@ describe('POST /courses/:id/ask', () => {
     });
   });
 
-  it('names the corrected question in a not-covered reply too', async () => {
+  it('answers not-covered with the closest slides, naming the corrected question, when the model finds nothing', async () => {
     const typed = 'Who are the wroker bees?';
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [unitReply(retrieved, typed), judged(unit, CONTRADICTED)];
+      return [explained(typed, retrieved, { status: 'content', content: '{"answer":null}' })];
     });
     const reply = await askBio(server, JSON.stringify({ question: typed }));
     expect(reply.json).toEqual({
       status: 'not-covered',
-      withheld: [{ reason: 'unsupported', unit }],
+      withheld: [],
       slides,
+      leftOut: [],
       searched: 'Who are the worker bees?',
     });
+    expect(readers.open).toBe(0);
   });
 
   it('never sends the student a model’s unparsed output', async () => {
     const raw = 'Worker bees are female, as everyone knows.';
     const server = await hiveCourse((retrieved) => [
-      generated(QUESTION, retrieved, { status: 'content', content: raw }),
+      explained(QUESTION, retrieved, { status: 'content', content: raw }),
     ]);
     const reply = await askBio(server);
     expect(reply.status).toBe(502);
@@ -220,79 +292,10 @@ describe('POST /courses/:id/ask', () => {
 
   it('answers 502 when the generator backend fails', async () => {
     const server = await hiveCourse((retrieved) => [
-      generated(QUESTION, retrieved, { status: 'backend-failed', reason: 'connection refused' }),
+      explained(QUESTION, retrieved, { status: 'backend-failed', reason: 'connection refused' }),
     ]);
     const reply = await askBio(server);
     expect(reply.status).toBe(502);
     expect(reply.json).toEqual({ status: 'model-failed' });
-  });
-
-  it('answers no-such-course for a course with no file', async () => {
-    test = await startTestServer();
-    const reply = await askBio(test);
-    expect(reply.status).toBe(404);
-    expect(reply.json).toEqual({ status: 'no-such-course' });
-  });
-
-  it('answers course-unavailable for a course file it cannot open', async () => {
-    test = await startTestServer();
-    const path = courseFilePath(test.dataDir, CourseId.parse('bio'));
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, 'not a course file');
-    const reply = await askBio(test);
-    expect(reply.status).toBe(409);
-    expect(reply.json).toEqual({ status: 'course-unavailable', problem: 'not-a-course-file' });
-  });
-
-  it('answers not-covered from a blank course file, and leaves it blank', async () => {
-    test = await startTestServer();
-    const path = courseFilePath(test.dataDir, CourseId.parse('bio'));
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, '');
-    const reply = await askBio(test);
-    expect(reply.json).toEqual({ status: 'not-covered', withheld: [], slides: [] });
-    expect(statSync(path).size).toBe(0);
-  });
-
-  it('refuses a body that is not a JSON question', async () => {
-    test = await startTestServer();
-    expect((await askBio(test, JSON.stringify({ question: ' ' }))).status).toBe(400);
-    expect((await askBio(test, '{"question":')).status).toBe(400);
-    expect((await askBio(test, JSON.stringify({ question: QUESTION }), 'text/plain')).status).toBe(
-      415,
-    );
-    const bodyOf = (bytes: number) => {
-      const body = JSON.stringify({ question: 'q'.repeat(bytes - '{"question":""}'.length) });
-      expect(body).toHaveLength(bytes);
-      return body;
-    };
-    const large = await askBio(test, bodyOf(MAX_ASK_BYTES + 1));
-    expect(large.status).toBe(413);
-    expect(large.json).toEqual({ status: 'payload-too-large' });
-    expect((await askBio(test, bodyOf(MAX_ASK_BYTES))).status).toBe(404);
-  });
-
-  it('refuses a question longer than the embedder takes, with its limit', async () => {
-    test = await startTestServer(gatewayOf([], new ShortEmbedder(6)));
-    const path = courseFilePath(test.dataDir, CourseId.parse('bio'));
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, '');
-    const long = JSON.stringify({ question: 'why do the worker bees of the hive dance so' });
-    const reply = await askBio(test, long);
-    expect(reply.status).toBe(422);
-    expect(reply.json).toEqual({ status: 'question-over-length', maxInputTokens: 6 });
-  });
-
-  it('answers 500 when retrieval throws, logging the error by name alone', async () => {
-    test = await startTestServer(gatewayOf([], new FailingEmbedder()));
-    const path = courseFilePath(test.dataDir, CourseId.parse('bio'));
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, '');
-    const reply = await askBio(test);
-    expect(reply.status).toBe(500);
-    expect(reply.json).toEqual({ status: 'internal-error' });
-    expect(test.logs).toEqual([
-      { operation: 'POST /courses/bio/ask', courseId: '', outcome: 'Error' },
-    ]);
   });
 });

@@ -1,22 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { answerUnit } from './api/api-fixture';
-import { CourseUnavailableProblem } from '@cram/shared';
+import { CourseUnavailableProblem, SourceId, WithheldSentence } from '@cram/shared';
 import { discardedMessage, storedUnavailableMessage, withheldMessage } from './copy';
 
-const unit = answerUnit('Drones forage.', []);
+const sourceId = SourceId.parse('s1');
+const text = 'Drones forage.';
 
 describe('withheldMessage', () => {
-  it('gives each withheld reason, and each partial policy, its own sentence', () => {
-    const sentences = [
-      withheldMessage({ reason: 'dangling-citation', unit }),
-      withheldMessage({ reason: 'unsupported', unit }),
-      withheldMessage({ reason: 'partial', policy: 'drop', unit }),
-      withheldMessage({ reason: 'partial', policy: 'rewrite-once', unit }),
+  it('gives each reason an explanation withholds for its own sentence', () => {
+    const entries: WithheldSentence[] = [
+      { reason: 'dangling-citation', text, sourceId },
+      { reason: 'contradicted', text, sourceId },
+      { reason: 'unsupported', text },
+      { reason: 'ungrounded', text },
     ];
+    expect(entries.map(({ reason }) => reason).sort()).toEqual(
+      WithheldSentence.options.map((arm) => arm.shape.reason.value).sort(),
+    );
+    const sentences = entries.map(withheldMessage);
     expect(new Set(sentences).size).toBe(sentences.length);
-    expect(sentences[0]).toMatch(/^It cites no slide, or one of its citations/);
-    expect(sentences[0]).toMatch(/a line that slide doesn’t have\.$/);
-    expect(sentences[3]).toContain('even after one rewrite');
+    expect(sentences[0]).toMatch(/^The answer marked this line as a quote/);
+    expect(sentences[1]).toBe('A slide this answer was written from says otherwise.');
   });
 });
 
