@@ -2,11 +2,13 @@ import { type LectureId, quoteSpan, type SlideNo } from '@cram/shared';
 import { slideText, type Deck } from './deck';
 import { firstForbiddenEntry, type GoldenQuestion } from './golden-question';
 import type { HandLabel } from './hand-label';
+import type { SentenceKindLabel } from './sentence-kind-label';
 
 export interface EvalCourse {
   readonly deck: Deck;
   readonly questions: readonly GoldenQuestion[];
   readonly labels: readonly HandLabel[];
+  readonly sentenceKinds: readonly SentenceKindLabel[];
 }
 
 /** A way the committed eval files can disagree with each other or with themselves. */
@@ -32,7 +34,13 @@ export type AuditProblem =
       readonly lectureId: LectureId;
       readonly slideNo: SlideNo;
     }
-  | { readonly kind: 'unquotable'; readonly text: string; readonly quote: string };
+  | { readonly kind: 'unquotable'; readonly text: string; readonly quote: string }
+  | {
+      readonly kind: 'unknown-premise';
+      readonly sentence: string;
+      readonly lectureId: LectureId;
+      readonly slideNo: SlideNo;
+    };
 
 const slideKey = (lectureId: LectureId, slideNo: SlideNo): string =>
   `${lectureId}#${String(slideNo)}`;
@@ -102,8 +110,19 @@ const labelProblems = (deck: Deck, labels: readonly HandLabel[]): AuditProblem[]
   );
 };
 
+const premiseProblems = (deck: Deck, labels: readonly SentenceKindLabel[]): AuditProblem[] => {
+  const slides = new Set(
+    deck.flatMap((lecture) => lecture.slides.map((s) => slideKey(lecture.lectureId, s.slideNo))),
+  );
+  return labels.flatMap(({ sentence, premises }) =>
+    premises
+      .filter((ref) => !slides.has(slideKey(ref.lectureId, ref.slideNo)))
+      .map((ref): AuditProblem => ({ kind: 'unknown-premise', sentence, ...ref })),
+  );
+};
+
 /**
- * Every disagreement among the deck, the golden questions and the hand labels. A
+ * Every disagreement among the deck, the golden questions and both label files. A
  * `mustNotContain` entry is checked against the whole deck because a unit faithfully
  * reporting any slide that contains it would fail its item.
  */
@@ -111,4 +130,5 @@ export const auditEvalCourse = (course: EvalCourse): readonly AuditProblem[] => 
   ...deckProblems(course.deck),
   ...questionProblems(course.deck, course.questions),
   ...labelProblems(course.deck, course.labels),
+  ...premiseProblems(course.deck, course.sentenceKinds),
 ];
