@@ -30,6 +30,13 @@
 # a gate rather than a convenience. The fill itself is
 # .claude/scripts/fill-verdict.sh, run on the branch once the owner has decided.
 #
+# What merges is the head whose checks were read, and for a --rebase batch the
+# head whose commits passed the curated-history check — owner decision
+# 2026-11-02 (#408), verbatim: "okay yeah lets enable rebase merging but we need
+# to ensure the merge process is entirely deterministic to ensure that there's
+# only ever one commit per issue". How exactly that check matches a member is #409.
+# The merge step enforces it, and its comment says how.
+#
 # Usage:
 #   merge-pr.sh [--method squash|rebase] <pr-number> [repo-root]
 #
@@ -1230,6 +1237,8 @@ pre_update_sha=""
 superseded_union_sha=""
 await_new_head=0
 update_answer=""
+# The head the checks step's ready verdict was read on; the merge step pins to it.
+checked_head_sha=""
 
 # The append-only-log union is attempted AT MOST ONCE per run. A second conflict after a
 # resolution that reported success means either main moved again — which a re-run
@@ -1477,6 +1486,7 @@ else
     if [ "$await_new_head" = "0" ]; then
       case "$verdict" in
         ready:*)
+          checked_head_sha="$pr_head_sha"
           step 'checks' "${verdict#ready:} check(s) complete on $pr_head_sha, none pending, none failing"
           break
           ;;
@@ -1503,10 +1513,6 @@ fi
 if [ "$already_merged" = "1" ]; then
   step 'merge' 'skipped (PR is already MERGED)'
 else
-  # The curated-history check ran at classify time; re-running it here would read
-  # the same commits. What is re-read is the merge state, which the poll may have
-  # moved.
-  #
   # mergeStateStatus is eventually consistent: GitHub answers UNKNOWN while it is
   # still computing the merge, so that one state is re-read rather than refused —
   # MERGE_PR_CONFIRM_RETRIES reads in all, the poll's last read being the first.
@@ -1527,6 +1533,19 @@ if [ "$already_merged" = "0" ] && [ "$pr_state" = "MERGED" ]; then
   already_merged=1
   step 'merge' 'skipped (the PR was merged elsewhere while this run was working)'
 elif [ "$already_merged" = "0" ]; then
+  # The pin (the header's invariant, #408). The re-reads above refresh headRefOid,
+  # so a head that moved after its checks were read is refused here; a push after
+  # this read is refused by GitHub through --match-head-commit. An empty sha would
+  # pass --match-head-commit "" and pin nothing. The batch's commit list is re-checked
+  # because classify read an earlier head's: a "curate onto latest main" bounce is
+  # a force-push, and this list and pr_head_sha come from one `gh pr view` answer.
+  [ -n "$checked_head_sha" ] || fail 'merge' "no head sha was read with the checks, so there is nothing to pin the merge to"
+  [ "$pr_head_sha" = "$checked_head_sha" ] || fail 'merge' \
+    "the head moved $checked_head_sha -> $pr_head_sha after the checks step read its checks; a re-run reads the new head's"
+  if [ "$merge_method" = "--rebase" ]; then
+    curated_reason=$(curated_history_ok) || fail 'merge' "$curated_reason, on head $pr_head_sha"
+  fi
+
   # The bounce is prescribed only for the two states it is the repair for. The
   # rule is scoped that way at both its carriers — run-issue step 4 and
   # docs/design/task-orchestrator.md both say "a batch that is BEHIND or
@@ -1550,9 +1569,9 @@ elif [ "$already_merged" = "0" ]; then
   fi
   [ "$pr_merge_state" = "CLEAN" ] || fail 'merge' "mergeStateStatus is '$pr_merge_state', not CLEAN — a merge is only ever taken from CLEAN"
 
-  merge_out=$(gh_call pr merge "$pr_number" "$merge_method" 2>&1)
+  merge_out=$(gh_call pr merge "$pr_number" "$merge_method" --match-head-commit "$checked_head_sha" 2>&1)
   merge_rc=$?
-  [ "$merge_rc" -eq 0 ] || fail 'merge' "gh pr merge $merge_method exited $merge_rc: $merge_out"
+  [ "$merge_rc" -eq 0 ] || fail 'merge' "gh pr merge $merge_method --match-head-commit $checked_head_sha exited $merge_rc: $merge_out"
 
   # Merged is not what gh's exit code says; it is what the PR says.
   attempt=1
