@@ -126,7 +126,7 @@ describe('search over chunked slides', () => {
     expect(top).not.toContain(3);
   });
 
-  it('leaves every chunk of an excluded slide out of both lists', () => {
+  it('leaves every chunk of an excluded slide out of the words and vector lists', () => {
     const references = slide({ slideNo: 1, kind: 'references', body: 'nectar\nnectar again' });
     const derived = slide({ slideNo: 2, derived: true, body: 'nectar\nnectar too' });
     indexLectures(course, [

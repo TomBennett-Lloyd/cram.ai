@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { sourceIdOf } from '@cram/index';
-import { StoredLectures, TopicTag } from '@cram/shared';
+import { ChunkNo, StoredLectures, TopicTag } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import {
@@ -111,7 +111,9 @@ describe('start-up repair', () => {
     if (seeded.status !== 'open') throw new Error(`course file: ${seeded.status}`);
     const [first] = seeded.course.slides();
     if (first === undefined) throw new Error('seeded course has no slides');
-    seeded.course.setTopics(sourceIdOf(first), [TopicTag.parse('castes')]);
+    seeded.course.setTopics({ sourceId: sourceIdOf(first), chunkNo: ChunkNo.parse(1) }, 'tagger', [
+      TopicTag.parse('castes'),
+    ]);
     seeded.course.close();
     markOlder(dataDir);
     const server = await restarted(dataDir);

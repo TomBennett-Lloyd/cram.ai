@@ -5,13 +5,14 @@ import { CONFIRMATION_TABLE } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
 import { REBUILD_REPORT_TABLE } from './rebuild-report';
 import { STORED_DECK_TABLES } from './stored-deck';
+import { TOPIC_ORIGINS } from './topics';
 
 /**
  * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
  * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too.
  * Carriers: `.claude/ledgers/schema-version.ledger`.
  */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 
@@ -28,7 +29,10 @@ export const classifySchema = (
   return fileVersion < appVersion ? 'older' : 'current';
 };
 
-const KINDS = SlideKind.options.map((kind) => `'${kind}'`).join(', ');
+const quotedList = (values: readonly string[]): string =>
+  values.map((value) => `'${value}'`).join(', ');
+const KINDS = quotedList(SlideKind.options);
+const ORIGINS = quotedList(TOPIC_ORIGINS);
 
 /** The `topics` table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/topics-table.ledger`. */
 const TABLES = `
@@ -58,9 +62,10 @@ const TABLES = `
     content = '', contentless_delete = 1
   );
   create table topics (
-    slide_id integer not null references slides (id),
+    chunk_id integer not null references chunks (id),
+    origin text not null check (origin in (${ORIGINS})),
     tag text not null,
-    primary key (slide_id, tag)
+    primary key (chunk_id, origin, tag)
   ) strict;
   create index topics_by_tag on topics (tag);
 `;

@@ -23,4 +23,5 @@ carrier: packages/index/src/indexed-slide.ts
 carrier: packages/index/src/list-filter.ts
 carrier: packages/index/src/slide-chunks.test.ts
 carrier: packages/shared/src/slide-chunk.ts
+carrier: packages/index/src/topics.ts
 excluded: docs/review-feedback.md

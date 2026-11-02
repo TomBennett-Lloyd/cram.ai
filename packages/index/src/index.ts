@@ -4,8 +4,15 @@ export {
   RETRIEVAL_K,
   type RemoveLectureResult,
   type SearchQuery,
-  type SetTopicsResult,
+  TOPIC_LIST_WEIGHT,
 } from './course-index';
+export {
+  type FactRef,
+  type SetTopicsResult,
+  type TagRow,
+  TOPIC_ORIGINS,
+  type TopicOrigin,
+} from './topics';
 export { type SlideListing } from './list-filter';
 export { type ConfirmationState, type ConfirmResult } from './confirmation';
 export { embedSlideChunks, type EmbedTextResult, type EmbedTexts } from './embed-chunks';

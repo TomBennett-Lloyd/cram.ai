@@ -1,7 +1,7 @@
 import { SlideKind } from '@cram/shared';
 import { UNCONFIRMED_DERIVED } from './confirmation';
 
-/** What a query leaves out of both ranked lists, before each is cut to depth. */
+/** What a query leaves out of every ranked list, before each is cut to depth. */
 export interface ListExclusions {
   readonly references: boolean;
   readonly unconfirmedDerived: boolean;
@@ -10,6 +10,7 @@ export interface ListExclusions {
 export interface ListFilters {
   readonly bm25: string;
   readonly vector: string;
+  readonly topic: string;
 }
 
 const REFERENCES = `kind = '${SlideKind.enum.references}'`;
@@ -23,11 +24,13 @@ export const listFilters = (exclusions: ListExclusions): ListFilters => {
     ...(exclusions.references ? [REFERENCES] : []),
     ...(exclusions.unconfirmedDerived ? [UNCONFIRMED_DERIVED] : []),
   ];
-  if (left.length === 0) return { bm25: '', vector: '' };
+  if (left.length === 0) return { bm25: '', vector: '', topic: '' };
   const leftOut = left.map((condition) => `(${condition})`).join(' or ');
+  const kept = `(select id from chunks where slide_id in (select id from slides where not (${leftOut})))`;
   return {
     bm25: `and rowid not in (select id from chunks where slide_id in (select id from slides where ${leftOut}))`,
-    vector: `and rowid in (select id from chunks where slide_id in (select id from slides where not (${leftOut})))`,
+    vector: `and rowid in ${kept}`,
+    topic: `and chunk_id in ${kept}`,
   };
 };
 
