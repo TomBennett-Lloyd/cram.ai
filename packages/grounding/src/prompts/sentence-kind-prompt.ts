@@ -19,7 +19,7 @@ const SENTENCE_KINDS = OutputName.parse('sentence-kinds');
 const reply = (count: number) => z.strictObject({ kinds: z.array(SentenceKind).length(count) });
 export type SentenceKindReply = z.infer<ReturnType<typeof reply>>;
 
-/** The judge call of `docs/adr/0009-explanation-answers.md` § Decision (e); the reply's length is the schema's, so the backend is constrained to it (#366's A13). */
+/** The judge call of `docs/adr/0009-explanation-answers.md` § Decision (e); the reply's length is the schema's, so the backend is constrained to it (#424's plan comment, A13). */
 export const sentenceKindRequest = (
   sentences: readonly string[],
   premises: readonly string[],
