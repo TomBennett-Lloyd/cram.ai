@@ -38,31 +38,62 @@ const COMB = slide('s2', 7, COMB_TITLE, 'Cells are hexagonal.');
 /** One unbroken word wider than a phone, so the decks list must wrap it. */
 export const LONG_FILE_NAME = `${'lecture-01-the-hive-castes-and-the-comb'.repeat(2)}.pdf`;
 
-const sentence = (text: string, slides: readonly string[]) => ({ text, slides, contradicts: [] });
+const sentence = (
+  text: string,
+  slides: readonly string[],
+  contradicts: readonly string[] = [],
+) => ({
+  text,
+  slides,
+  contradicts,
+});
 
 export const GROUNDED_QUESTION = 'What are drones?';
 export const NOT_COVERED_QUESTION = 'Who wrote Hamlet?';
+/** Its answer's second sentence is marked against HIVE, whose speaker notes say drones do not forage. */
+export const CONTRADICTED_QUESTION = 'Do drones forage?';
+export const CONTRADICTED_SENTENCE =
+  'Drones forage for nectar in the comb, whose cells are hexagonal.';
+/** A quote inside the contradicted sentence, so its underline and the mark's meet. */
+const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };
 
 const SENTENCES = [
   sentence('Drones are male.', ['s1']),
   sentence('Workers are female, and comb cells are hexagonal.', ['s1', 's2']),
 ];
 
-const askReply = (question: string) =>
-  question === NOT_COVERED_QUESTION
-    ? { status: 'not-covered', withheld: [], slides: [COMB], leftOut: [] }
-    : {
-        status: 'grounded',
-        explanation: {
-          text: SENTENCES.map(({ text }) => text).join(' '),
-          quotes: [{ sourceId: 's1', quote: 'Drones are male.' }],
-          sentences: SENTENCES,
-          sources: ['s1', 's2'],
-        },
-        withheld: [{ reason: 'unsupported', text: 'Queens rule the hive.' }],
-        slides: [HIVE, COMB],
-        leftOut: [],
-      };
+const grounded = (
+  sentences: readonly ReturnType<typeof sentence>[],
+  quotes: readonly { readonly sourceId: string; readonly quote: string }[] = [],
+) => ({
+  status: 'grounded',
+  explanation: {
+    text: sentences.map(({ text }) => text).join(' '),
+    quotes: [{ sourceId: 's1', quote: 'Drones are male.' }, ...quotes],
+    sentences,
+    sources: ['s1', 's2'],
+  },
+  withheld: [{ reason: 'unsupported', text: 'Queens rule the hive.' }],
+  slides: [HIVE, COMB],
+  leftOut: [],
+});
+
+const askReply = (question: string) => {
+  switch (question) {
+    case NOT_COVERED_QUESTION:
+      return { status: 'not-covered', withheld: [], slides: [COMB], leftOut: [] };
+    case CONTRADICTED_QUESTION:
+      return grounded(
+        [
+          sentence('Drones are male.', ['s1']),
+          sentence(CONTRADICTED_SENTENCE, ['s2', 's1'], ['s1']),
+        ],
+        [QUOTE_IN_MARK],
+      );
+    default:
+      return grounded(SENTENCES);
+  }
+};
 
 /** A stand-in for a stored slide rendering: an SVG, since what is measured is its box, not its pixels. */
 const SLIDE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="100%" height="100%" fill="white"/><text x="80" y="160" font-size="96">Castes</text></svg>`;

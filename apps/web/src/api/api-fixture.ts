@@ -8,6 +8,7 @@ import {
   SourceHash,
   SourceId,
   type AttributedSentence,
+  type Explanation,
   type WithheldSentence,
 } from '@cram/shared';
 import { ApiClient, type Fetch } from './api-client';
@@ -96,6 +97,19 @@ export const GROUNDED: Extract<AskReply, { status: 'grounded' }> = {
   withheld: WITHHELD,
   slides: [HIVE, COMB],
   leftOut: [],
+};
+
+export const CONTRADICTED: Explanation = {
+  text: 'Workers are female. Drones forage for nectar.',
+  quotes: [],
+  sentences: [
+    sentence('Workers are female.', ['s1']),
+    {
+      ...sentence('Drones forage for nectar.', ['s2', 's1']),
+      contradicts: [SourceId.parse('s1')],
+    },
+  ],
+  sources: [SourceId.parse('s1'), SourceId.parse('s2')],
 };
 
 export interface Reply {

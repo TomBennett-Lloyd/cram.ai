@@ -51,8 +51,8 @@ const Lines = ({
     {summary.units.map((unit, index) => {
       const { cited, missing } = lineSlides(unit, slides);
       return (
-        <li key={index} className="unit">
-          <p className="unit-text">{unit.text}</p>
+        <li key={index} className="summary-line">
+          <p className="summary-line-text">{unit.text}</p>
           <ul className="citations" aria-label="Sources">
             {cited.map((entry) => (
               <li key={entry.slide.sourceId}>
