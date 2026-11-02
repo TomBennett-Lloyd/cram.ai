@@ -911,9 +911,9 @@ end
 # 6b. the repo's own humanAlways list classifies a .claude/settings.json PR HUMAN
 # ==========================================================================================
 # Every other case classifies against a list the harness writes; this one reads the
-# live list, because settings.json grants every session's permissions and, being JSON,
-# would otherwise auto-merge unread (#440). The gitignored settings.local.json rides
-# along so a widened pattern shows as a second hit.
+# live list, so .claude/settings.json dropping out of it is red here
+# (merge.humanAlwaysRule gives the reason; #440). The gitignored settings.local.json
+# rides along so a widened pattern shows as a second hit.
 begin "the shipped humanAlways list classifies a PR touching .claude/settings.json HUMAN"
 live_list=$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).merge.humanAlways))' "$SCRIPTS/../workflow.json") ||
   { echo "harness: cannot read merge.humanAlways from $SCRIPTS/../workflow.json" >&2; exit 2; }
