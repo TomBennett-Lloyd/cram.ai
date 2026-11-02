@@ -67,7 +67,7 @@ export {
   type RecordingsResult,
 } from './recording-gateway';
 export { EvalReport, MachineClass } from './report';
-export { retrievalRecall } from './retrieval-recall';
+export { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
 export { type EvalRunFacts, type EvalRunSpec, runEval } from './run-eval';
 export { TimedGateway } from './timed-gateway';
 export { type JudgedLabel, verifierAccuracy, type VerifierAccuracy } from './verifier-accuracy';
