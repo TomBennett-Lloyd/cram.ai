@@ -1,4 +1,5 @@
 import type { Embedder } from '@cram/gateway';
+import { summariseLecture, type SummaryDeps, type SummaryOutcome } from '@cram/grounding';
 import {
   type CourseIndex,
   embedSlideChunks,
@@ -81,6 +82,20 @@ export class IndexRetriever {
     for (const { lecture, slides } of embedded)
       opened.course.replaceLecture(lecture.deck, [], slides);
     return new IndexRetriever(opened.course, spec.embedder, spec.k);
+  }
+
+  async summarise(deps: SummaryDeps): Promise<readonly SummaryOutcome[]> {
+    const outcomes: SummaryOutcome[] = [];
+    for (const lecture of this.#course.lectures()) {
+      const outcome = await summariseLecture(
+        lecture,
+        this.#course.lectureSlides(lecture.lectureId),
+        deps,
+      );
+      if (outcome.status === 'summarised') this.#course.setSummary(outcome.summary);
+      outcomes.push(outcome);
+    }
+    return outcomes;
   }
 
   async retrieve(question: string): Promise<readonly RetrievedSlide[]> {

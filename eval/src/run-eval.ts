@@ -24,6 +24,7 @@ import { attributionRecall, contradictionSetLight, lightFlagRate } from './light
 import { notMeasurable } from './metric-row';
 import { EvalReport, type MachineClass } from './report';
 import { retrievalRecall } from './retrieval-recall';
+import { summaryRows } from './summary-rows';
 import { TimedGateway } from './timed-gateway';
 import { type JudgedLabel, verifierAccuracy } from './verifier-accuracy';
 import { verifierArmDecisions } from './verifier-arms';
@@ -111,6 +112,11 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   });
   const ran = await (async () => {
     try {
+      const summaries = await retriever.summarise({
+        gateway,
+        strategy: PROVISIONAL_VERIFIER_STRATEGY,
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      });
       const retrievals: Retrieved[] = [];
       for (const question of spec.questions)
         retrievals.push({ question, retrieved: await retriever.retrieve(question.question) });
@@ -118,12 +124,12 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       const deep = await byStrategy(DEEP_STRATEGIES, (strategy) =>
         askDeep(retrievals, gateway, strategy),
       );
-      return { retrievals, light, deep, wide: await widened(light.asked, gateway) };
+      return { summaries, retrievals, light, deep, wide: await widened(light.asked, gateway) };
     } finally {
       retriever.close();
     }
   })();
-  const { retrievals, light, deep, wide } = ran;
+  const { summaries, retrievals, light, deep, wide } = ran;
   const labels = await byStrategy(LABEL_STRATEGIES, (strategy) =>
     judgeAll(spec.labels, gateway, strategy, spec.clock),
   );
@@ -177,6 +183,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       contradictionSetLight: contradictionSetLight(light.asked),
       lightFlagRate: lightFlagRate(light.asked),
       lightFlagRateWide: lightFlagRate(wide),
+      ...summaryRows(summaries),
     },
     depths: {
       light: {

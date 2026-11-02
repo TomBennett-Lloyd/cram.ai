@@ -107,10 +107,10 @@ const tutor =
         });
       }
       case 'units': {
-        const asked = words(/<question>(.*)<\/question>/.exec(prompt)?.[1] ?? '');
-        const units = sourcesOf(prompt)
-          .filter(({ text }) => eager || words(text).some((word) => asked.includes(word)))
-          .map(({ id, line }) => ({ text: line, citations: [{ sourceId: id, line: CITED_LINE }] }));
+        const units = sourcesOf(prompt).map(({ id, line }) => ({
+          text: line,
+          citations: [{ sourceId: id, line: CITED_LINE }],
+        }));
         return content({ units });
       }
       case 'verdict': {
@@ -195,6 +195,8 @@ describe('runEval', () => {
       contradictionSetLight: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
       lightFlagRate: { status: 'not-measurable' },
       lightFlagRateWide: { status: 'not-measurable' },
+      summaryYield: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      summaryUnitYield: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
     });
     expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });
