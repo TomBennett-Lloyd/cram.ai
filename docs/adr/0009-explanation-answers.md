@@ -1,6 +1,6 @@
 # 0009 — Explanation answers: the tutor explains the course in its own words, quotes are marked pointers, and verification depth is chosen by surface
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-02
 - **Issue:** #366
 

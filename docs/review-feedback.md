@@ -459,8 +459,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-02 — issue #366 — adr-0009-explanation-answers
 
-- **Category**: pending — filled at merge
+- **Category**: approved-at-plan
 - **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/366#issuecomment-6322810351 in chat on 2026-11-02. PROCEED, verbatim: "can the appears to contradict be on hover not permanent, other than that it sounds good to proceed". The PROCEED's one amendment is in ADR 0009 § Decision (i): the "appears to contradict" label shows on hover and on keyboard focus, never permanently, and the wavy underline stays the always-visible mark.
 - **Why**: `docs/adr/**` and `CLAUDE.md` are `humanAlways` paths. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR carrying nothing beyond the approved plan merge on that plan's PROCEED.
 - **How applied**: ADR 0009 as the plan's eighteen points, (1)→(a) to (18)→(r). The PR also flips ADR 0001's Status line to superseded and adds both index rows. It makes the prose true-ups the plan named in `CLAUDE.md`, `README.md`, `docs/plan.md` and `docs/standards/grounding.md`. It moves the contradiction-set-bar ledger's claim, and adds ADR 0009 as a carrier on the four ledgers the plan predicted.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved at plan 2026-11-02 — can the appears to contradict be on hover not permanent, other than that it sounds good to proceed
