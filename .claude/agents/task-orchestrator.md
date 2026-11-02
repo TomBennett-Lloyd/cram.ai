@@ -204,9 +204,9 @@ Review loop: VERDICT APPROVE | CAP-REACHED | CAP-REACHED+CONFIRMED-APPROVE — c
     a cycle, so it never moves the /3 above. Report bare CAP-REACHED only if the pass has
     not returned APPROVE — that is what routes the PR to human review.
   FIX-NOW found/resolved: <n>/<n>
-  Demoted at cap (pure-quality, logged to tech-debt): <titles | none>
+  Demoted at cap (pure-quality, filed as discovered issues — review-loop Exit conditions): <#numbers | none>
   Correctness residue: NONE (mandatory NONE — a known bug never reaches this report as DONE)
-  SYSTEMIC → docs/tech-debt.md: <n> entries: <slugs | none>
+  SYSTEMIC → discovered issues: <n>: <#numbers | none>
 
 Classification (.claude/workflow.json):
   AUTO | HUMAN
@@ -235,8 +235,7 @@ Sub-dispatches: <agent (model): reason>, one per dispatch | none — the model e
 Consultant dispatches: <n> (model, budget mode) | none
 Discovered issues filed: #<a> #<b> | none
 Open questions only the owner can answer: <list | NONE>
-Merge cautions for the merge owner: <e.g. "docs/tech-debt.md appended — expect the
-  union+marker-sweep+prettier-seam routine"; "overlaps in-flight #m on <file>" | none>
+Merge cautions for the merge owner: <e.g. "overlaps in-flight #m on <file>" | none>
 This round: <initial | bounce: what came back, what changed in response — or "n/a">
 
 Agent: <this agent's name/id — parked and addressable until RELEASE>
