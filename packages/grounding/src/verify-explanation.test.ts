@@ -17,6 +17,7 @@ import {
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
 import { verifierRequest } from './prompts/verifier-prompt';
 import { slideText } from './slide-text';
+import { slidePremise } from './premise';
 import { verifyExplanation } from './verify-explanation';
 
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -39,7 +40,7 @@ const verify = (
   withSecondOpinion = false,
   sentences = [SENTENCE],
 ) =>
-  verifyExplanation(sentences, retrieved, {
+  verifyExplanation(sentences, retrieved.map(slidePremise), {
     gateway: fakeGateway(recordings),
     thresholds: PROVISIONAL_NLI_THRESHOLDS,
     secondOpinion: withSecondOpinion,
@@ -267,7 +268,7 @@ describe('verifyExplanation', () => {
     const { generator, verifier } = fakeGateway([]);
     const short = { pin: verifier.pin, entail: () => Promise.resolve([ENTAILED]) };
     await expect(
-      verifyExplanation([SENTENCE], retrieved, {
+      verifyExplanation([SENTENCE], retrieved.map(slidePremise), {
         gateway: { generator, verifier: short },
         thresholds: PROVISIONAL_NLI_THRESHOLDS,
         secondOpinion: false,

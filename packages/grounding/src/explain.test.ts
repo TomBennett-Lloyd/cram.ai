@@ -1,4 +1,6 @@
-import type { GeneratorReply } from '@cram/gateway';
+import type { ChatRequest, ChatResult, GeneratorReply } from '@cram/gateway';
+import type { LoadedSummary, RetrievedSlide } from '@cram/shared';
+import { explain } from './explain';
 import { describe, expect, it } from 'vitest';
 import { ask } from './ask';
 import {
@@ -16,6 +18,8 @@ import {
   scored,
   verified,
   run,
+  contextOf,
+  hiveSummary,
 } from './explain-fixture';
 import {
   CONTRADICTED,
@@ -27,6 +31,7 @@ import {
   scriptedSearch,
 } from './fake-gateway-fixture';
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
+import { requestTokens } from './prompt-budget';
 import { explanationRequest } from './prompts/explanation-prompt';
 
 describe('explain at the light depth', () => {
@@ -58,6 +63,7 @@ describe('explain at the light depth', () => {
       },
       withheld: [],
       slides: [hive, comb, winter],
+      context: contextOf(),
     });
   });
 
@@ -99,6 +105,7 @@ describe('explain at the light depth', () => {
         { reason: 'dangling-citation', text: '[9]', sourceId: 'l1/2' },
       ],
       slides: retrieved,
+      context: contextOf(),
     });
   });
 
@@ -107,6 +114,7 @@ describe('explain at the light depth', () => {
     await expect(run([uncovered], { depth: 'light', searchSentence: search })).resolves.toEqual({
       status: 'not-covered',
       withheld: [],
+      context: contextOf(),
     });
     expect(asked).toEqual([]);
   });
@@ -116,6 +124,7 @@ describe('explain at the light depth', () => {
     await expect(run([], { depth: 'light', searchSentence: search }, [])).resolves.toEqual({
       status: 'not-covered',
       withheld: [],
+      context: contextOf([]),
     });
   });
 
@@ -136,7 +145,7 @@ describe('explain at the light depth', () => {
     const failure: GeneratorReply = { status: 'backend-failed', reason: 'connection refused' };
     const { search } = scriptedSearch({});
     await expect(
-      run([generatorRecording(explanationRequest(QUESTION, retrieved), failure)], {
+      run([generatorRecording(explanationRequest(QUESTION, contextOf()), failure)], {
         depth: 'light',
         searchSentence: search,
       }),
@@ -145,11 +154,94 @@ describe('explain at the light depth', () => {
 
   it('is what ask runs', async () => {
     const { search } = scriptedSearch({ [MALE]: [hive] });
-    const result = await ask(QUESTION, retrieved, {
-      gateway: fakeGateway([explained(MALE), verified(scored(MALE, [hive], CONTRADICTED))]),
-      thresholds: PROVISIONAL_NLI_THRESHOLDS,
-      searchSentence: search,
-    });
+    const result = await ask(
+      QUESTION,
+      { retrieved, summaries: [] },
+      {
+        gateway: fakeGateway([explained(MALE), verified(scored(MALE, [hive], CONTRADICTED))]),
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+        searchSentence: search,
+      },
+    );
     expect(result).toMatchObject({ explanation: { sentences: [{ contradicts: ['l1/1'] }] } });
+  });
+});
+
+/** A gateway whose generator records each request and fails it, so a test reads what was sent. */
+const capturing = () => {
+  const sent: ChatRequest<unknown>[] = [];
+  const { generator, verifier } = fakeGateway([]);
+  const chat = <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
+    sent.push(request);
+    return Promise.resolve({ status: 'backend-failed', reason: 'captured' });
+  };
+  return { sent, gateway: { verifier, generator: { ...generator, chat } } };
+};
+
+describe('explain’s context', () => {
+  const tokens = (raw: readonly RetrievedSlide[], summaries: readonly LoadedSummary[] = []) =>
+    requestTokens(explanationRequest(QUESTION, contextOf(raw, summaries)));
+  const light = () => ({ depth: 'light' as const, searchSentence: scriptedSearch({}).search });
+  const sources = { retrieved, summaries: [hiveSummary] };
+
+  it('sends the retrieved slides, then their lectures’ summaries, when the budget holds them', async () => {
+    const result = await run(
+      [explained(SQUARE, [], retrieved, [hiveSummary]), verified()],
+      light(),
+      retrieved,
+      [hiveSummary],
+    );
+    expect(result).toMatchObject({
+      status: 'grounded',
+      context: contextOf(retrieved, [hiveSummary]),
+    });
+  });
+
+  it('drops the summary first under a scripted budget, leaving out each ranked slide of its lecture', async () => {
+    const budget = tokens(retrieved, [hiveSummary]) - 1;
+    const result = await run(
+      [explained(SQUARE), verified()],
+      light(),
+      retrieved,
+      [hiveSummary],
+      budget,
+    );
+    expect(result).toMatchObject({
+      context: contextOf(retrieved, [], [hive.sourceId, comb.sourceId]),
+    });
+  });
+
+  it('then drops slides from the bottom, never the last, and a pointer to a dropped slide dangles', async () => {
+    const result = await run(
+      [explained(MALE, [line('l1/2', 1)], [hive]), verified()],
+      light(),
+      retrieved,
+      [hiveSummary],
+      tokens(retrieved) - 1,
+    );
+    expect(result).toMatchObject({
+      status: 'grounded',
+      explanation: { quotes: [] },
+      withheld: [{ reason: 'dangling-citation', sourceId: 'l1/2' }],
+      context: contextOf([hive], [], [hive.sourceId, comb.sourceId]),
+    });
+  });
+
+  it('never sends a prompt over a scripted budget unless one slide alone is over it', async () => {
+    const budgets = [0, tokens([hive]), tokens(retrieved) - 1, tokens(retrieved, [hiveSummary])];
+    for (const budget of budgets) {
+      const { sent, gateway } = capturing();
+      const result = await explain(QUESTION, sources, light(), {
+        gateway,
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+        budget,
+      });
+      const [request] = sent;
+      if (request === undefined) throw new Error('nothing was sent');
+      expect(result).toMatchObject({ status: 'model-failed', stage: 'generate' });
+      expect(result.context.raw.length).toBeGreaterThan(0);
+      if (requestTokens(request) > budget) expect(result.context.raw).toEqual([hive]);
+      expect(request).toEqual(explanationRequest(QUESTION, result.context));
+    }
   });
 });

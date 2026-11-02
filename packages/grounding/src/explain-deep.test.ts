@@ -10,8 +10,20 @@ import {
   scored,
   verified,
   run,
+  contextOf,
+  drones,
+  DRONES_UNIT,
+  hiveSummary,
 } from './explain-fixture';
-import { CONTRADICTED, ENTAILED, kindsRecording, line, NEUTRAL } from './fake-gateway-fixture';
+import {
+  CONTRADICTED,
+  ENTAILED,
+  kindsRecording,
+  line,
+  NEUTRAL,
+  pairsOf,
+  verifierRecording,
+} from './fake-gateway-fixture';
 
 describe('explain at the deep depth', () => {
   const deep = (secondOpinion = false): ExplainDepth => ({ depth: 'deep', secondOpinion });
@@ -37,6 +49,7 @@ describe('explain at the deep depth', () => {
       },
       withheld: [{ reason: 'contradicted', text: FIRST, sourceId: 'l1/1' }],
       slides: retrieved,
+      context: contextOf(),
     });
   });
 
@@ -115,6 +128,7 @@ describe('explain at the deep depth', () => {
       },
       withheld: [],
       slides: retrieved,
+      context: contextOf(),
     });
   });
 
@@ -136,6 +150,7 @@ describe('explain at the deep depth', () => {
         { reason: 'contradicted', text: FIRST, sourceId: 'l1/2' },
         { reason: 'ungrounded', text: SQUARE },
       ],
+      context: contextOf(),
     });
   });
 
@@ -154,6 +169,65 @@ describe('explain at the deep depth', () => {
         { reason: 'dangling-citation', text: '[9]', sourceId: 'l1/2' },
         { reason: 'ungrounded', text: SQUARE },
       ],
+      context: contextOf(),
+    });
+  });
+
+  describe('with a loaded summary', () => {
+    const DRONES = 'Drones are the males.';
+    const againstAll = (sentence: string, ...results: Parameters<typeof verifierRecording>[1]) =>
+      verifierRecording(
+        [...pairsOf(sentence, retrieved), { premise: DRONES_UNIT, hypothesis: sentence }],
+        results,
+      );
+
+    it('keeps a sentence only a summary unit entails, crediting the slide that unit cites', async () => {
+      const result = await run(
+        [
+          explained(DRONES, [], retrieved, [hiveSummary]),
+          againstAll(DRONES, NEUTRAL, NEUTRAL, ENTAILED),
+        ],
+        deep(),
+        retrieved,
+        [hiveSummary],
+      );
+      expect(result).toEqual({
+        status: 'grounded',
+        explanation: {
+          text: DRONES,
+          quotes: [],
+          sentences: [{ text: DRONES, slides: ['l1/3'], contradicts: [] }],
+          sources: ['l1/3'],
+        },
+        withheld: [],
+        slides: [...retrieved, drones],
+        context: contextOf(retrieved, [hiveSummary]),
+      });
+    });
+
+    it('withholds a sentence only a summary unit contradicts, naming the slide it cites', async () => {
+      const result = await run(
+        [
+          explained(TEXT, [], retrieved, [hiveSummary]),
+          verifierRecording(
+            [
+              ...pairsOf(FIRST, retrieved),
+              { premise: DRONES_UNIT, hypothesis: FIRST },
+              ...pairsOf(SQUARE, retrieved),
+              { premise: DRONES_UNIT, hypothesis: SQUARE },
+            ],
+            [NEUTRAL, NEUTRAL, CONTRADICTED, NEUTRAL, ENTAILED, NEUTRAL],
+          ),
+        ],
+        deep(),
+        retrieved,
+        [hiveSummary],
+      );
+      expect(result).toMatchObject({
+        status: 'grounded',
+        withheld: [{ reason: 'contradicted', text: FIRST, sourceId: 'l1/3' }],
+        slides: [...retrieved, drones],
+      });
     });
   });
 });

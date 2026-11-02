@@ -4,6 +4,7 @@ import {
   type Recording,
   RecordingMissError,
 } from '@cram/gateway';
+import { PROMPT_TOKEN_BUDGET } from '@cram/grounding';
 import { ATTRIBUTION_K } from '@cram/index';
 import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
@@ -94,6 +95,12 @@ const LONG = record({
   title: 'Propolis',
   body: `Propolis is gathered from poplar buds.\n${'It seals every gap in the hive. '.repeat(8)}`,
 });
+/** `credulous`, failing LONG's lecture's summary call, so no short summary line judges what LONG's over-length pair cannot. */
+const unsummarisedLong: Respond = (wire) =>
+  wire.output.name === 'units' && (wire.messages.at(-1)?.content ?? '').includes('Propolis')
+    ? { status: 'backend-failed', reason: 'unscripted summary' }
+    : credulous(wire);
+
 const spec = (
   gateway: EvalRunSpec['gateway'],
   overrides: Partial<EvalRunSpec> = {},
@@ -154,6 +161,14 @@ describe('runEval', () => {
       summaryYield: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
       summaryUnitYield: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
     });
+    expect(report.metrics).toMatchObject({
+      sourceCoverage: { status: 'measured', ratio: { numerator: 2, denominator: 9 } },
+      contextOverflow: { status: 'measured', ratio: { numerator: 0, denominator: 3 } },
+    });
+    expect(report.promptTokens).toMatchObject({
+      budget: PROMPT_TOKEN_BUDGET,
+      estimate: { status: 'measured', samples: 3 },
+    });
     expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });
     expect(report.servedGenerator).toEqual(SERVED);
@@ -194,7 +209,7 @@ describe('runEval', () => {
   });
 
   it('headlines the shipping strategy, where it and the cross-encoder alone disagree', async () => {
-    const { report } = await recordRun(credulous, {
+    const { report } = await recordRun(unsummarisedLong, {
       lectures: [...LECTURES, lecture('l3', [LONG])],
       questions: [
         ...QUESTIONS,

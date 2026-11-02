@@ -1,5 +1,6 @@
 import type { EntailRequest, EntailmentResult, ModelGateway } from '@cram/gateway';
 import { slideText } from '@cram/grounding';
+import { LectureSummary, type LoadedSummary } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { widened } from './ask-depths';
 import { question } from './eval-fixture';
@@ -48,7 +49,43 @@ const gatewayOf = () => {
 };
 
 describe('widened', () => {
-  it('re-marks a forbidden sentence against the retrieved set beside its candidates, each slide once', async () => {
+  it('re-marks a forbidden sentence against its raw slides and loaded units, then each candidate beyond them', async () => {
+    const { gateway, calls } = gatewayOf();
+    const UNIT = 'In short: cells are square.';
+    const summary: LoadedSummary = {
+      summary: LectureSummary.parse({
+        lectureId: 'l1',
+        units: [
+          {
+            text: UNIT,
+            citations: [
+              { sourceId: retrieved(expectedSlide).sourceId, quote: 'Cells are square.' },
+            ],
+            kind: 'lecture-summary',
+          },
+        ],
+      }),
+      slides: [retrieved(expectedSlide)],
+    };
+    const forbidden = sentence('Cells are hexagons.', [candidate, expectedSlide]);
+    const result = grounded([forbidden], [expectedSlide, candidate]);
+    const item = asked(
+      {
+        ...result,
+        context: { raw: [retrieved(expectedSlide)], summaries: [summary], leftOut: [] },
+      },
+      [expectedSlide],
+      covered,
+    );
+    await widened([item], gateway);
+    expect(calls[0]?.pairs.map(({ premise }) => premise)).toEqual([
+      slideText(expectedSlide),
+      UNIT,
+      slideText(candidate),
+    ]);
+  });
+
+  it('re-marks a forbidden sentence against the raw slides beside its candidates, each slide once', async () => {
     const { gateway, calls } = gatewayOf();
     const forbidden = sentence('Cells are hexagons.', [candidate, expectedSlide]);
     const item = asked(

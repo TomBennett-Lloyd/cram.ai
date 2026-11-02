@@ -1,4 +1,4 @@
-import { PROVISIONAL_GENERATOR_CONTEXT_LENGTH } from '@cram/gateway';
+import { type ChatRequest, PROVISIONAL_GENERATOR_CONTEXT_LENGTH } from '@cram/gateway';
 
 /**
  * Tokens kept for the reply (`docs/adr/0009-explanation-answers.md` § Decision (j)): about three
@@ -15,3 +15,7 @@ export const PROMPT_CHARS_PER_TOKEN = 3.5;
 
 export const estimateTokens = (text: string): number =>
   Math.ceil(text.length / PROMPT_CHARS_PER_TOKEN);
+
+/** A request's estimate, message by message. */
+export const requestTokens = ({ messages }: Pick<ChatRequest<unknown>, 'messages'>): number =>
+  messages.reduce((total, { content }) => total + estimateTokens(content), 0);

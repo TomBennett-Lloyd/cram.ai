@@ -17,6 +17,12 @@ export const LectureSummary = z.strictObject({
 });
 export type LectureSummary = z.infer<typeof LectureSummary>;
 
+/** A stored summary as a prompt loads it, beside the slides its units cite (`docs/adr/0009-explanation-answers.md` § Decision (b)). */
+export interface LoadedSummary {
+  readonly summary: LectureSummary;
+  readonly slides: readonly RetrievedSlide[];
+}
+
 /** A request to make a lecture's summary again, from the decks screen. */
 export const SummaryRemakeRequest = z.strictObject({ lectureId: LectureId });
 export type SummaryRemakeRequest = z.infer<typeof SummaryRemakeRequest>;

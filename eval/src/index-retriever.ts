@@ -4,10 +4,17 @@ import {
   type CourseIndex,
   embedSlideChunks,
   type IndexedSlide,
+  loadSummaries,
   openCourse,
   sourceIdOf,
 } from '@cram/index';
-import { type CourseId, type Deck, type RetrievedSlide, type SlideRecord } from '@cram/shared';
+import {
+  type CourseId,
+  type Deck,
+  type LoadedSummary,
+  type RetrievedSlide,
+  type SlideRecord,
+} from '@cram/shared';
 
 /** One lecture's stored deck and the records ingest made of it. */
 export interface IndexedLecture {
@@ -104,6 +111,10 @@ export class IndexRetriever {
     const [embedding] = await embedAll(this.#embedder, [text]);
     if (embedding === undefined) throw new Error('IndexRetriever: no query vector');
     return this.#course.search({ text, embedding }, this.#k);
+  }
+
+  summariesFor(retrieved: readonly RetrievedSlide[]): readonly LoadedSummary[] {
+    return loadSummaries(this.#course, retrieved);
   }
 
   async searchSentence(sentence: string, k: number): Promise<readonly RetrievedSlide[]> {

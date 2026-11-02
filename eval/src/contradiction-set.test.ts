@@ -1,4 +1,4 @@
-import type { ExplainResult } from '@cram/grounding';
+import { EMPTY_CONTEXT, type ExplainResult } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
 import { describe, expect, it } from 'vitest';
 import { contradictionSet } from './contradiction-set';
@@ -128,6 +128,7 @@ describe('contradictionSet', () => {
       status: 'model-failed',
       stage: 'verify',
       failure: { status: 'backend-failed', reason: 'down' },
+      context: EMPTY_CONTEXT,
     };
     expect(contradictionSet([asked(failed, slides, covered)])).toMatchObject({
       failures: [{ problems: [{ kind: 'model-failed', stage: 'verify' }] }],
