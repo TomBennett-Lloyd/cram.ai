@@ -20,7 +20,33 @@ the section before you dispatch.
 1. **Admission**: the same in-flight table as below (issue, agent handle, branch, and the
    footprint once the plan comment lands). Predict the footprint from the issue body and
    name any known in-flight overlap in the dispatch prompt, so the agent either plans around
-   it or expects the rebase. A single lane never holds for another lane's plan — overlap is
+   it or expects the rebase. Before dispatch, read the issue body as it stands — every
+   issue, however filed, owner-filed included (#369) — reading each
+   acceptance bullet against the `## Decision` points of every ADR
+   `docs/adr/README.md` § Index lists, read at `origin/main`, a row annotated superseded
+   pointing at the superseding ADR as the owner. A bullet is an ADR's when satisfying it would edit a file under `docs/adr/**` — a
+   Decision point reversed or extended, a member added to a set a point enumerates (a
+   golden-question field, a report metric, a vocabulary member), or a stated value moved,
+   which `docs/adr/README.md` § Amendments makes an ADR edit too — or would contradict a
+   point as it stands: #369 (`docs/adr/0004-storage.md` § Decision (d), PR #432), #393
+   (`docs/adr/0005-evaluation-as-gate.md` § Decision (c)/(d), PR #407, split to #395) and
+   #367 (`docs/adr/0001-grounding-architecture.md` § Decision (d) /
+   `docs/adr/0003-model-roles-and-backends.md` § Decision (d), PR #397) each stopped at
+   plan time instead (#433). An owned bullet takes one of two outcomes, by
+   `.claude/agents/ticket-agent.md` rule 2's one-honest-PR test applied to the issue with
+   the ADR edit inside it: **label** — `gh issue edit <n> --add-label adr`, plus a body line
+   naming the bullet and `docs/adr/<file>.md § Decision (<x>)`; or **split** —
+   `gh issue create --label adr` for the owned bullet(s), its body naming the point(s), the
+   new number `<m>` taken from that command's output and never predicted, the moved bullet
+   struck from the original, whose body gets `Depends on #<m>` where the remainder needs
+   the decision first. Either way the labelled issue takes this lane with step 3's relay and
+   is never a batch member (batch lane step 2). The in-flight row records the ADRs read, at
+   the `git rev-parse --short origin/main` commit, and each bullet's verdict (`none owned`,
+   or bullet → point → label or split); step 2's list is not widened, since the lane reads
+   the verdict from the issue. Rule 2's `adr` stop and `BLOCKED — needs splitting`, and
+   step 3's label re-check, stay the backstop: a lane stop caused by an owned bullet this
+   read missed is a retro signal naming this step (owner decision 2026-11-02, #433).
+   A single lane never holds for another lane's plan — overlap is
    priced as rebase cost, and only entangled same-file SOURCE overlap is batched or
    sequenced, here, at dispatch. `conserve` budget mode: one lane.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
@@ -156,7 +182,10 @@ the section before you dispatch.
    delegation is itself the fix for context pressure. Context health is a sanity backstop
    only — if in-flight sets are somehow costing more than that (bounce chatter, bloated
    reports), fix the contract breach; don't slow admission. Conserve budget mode is the
-   one hard cap: 1 concurrent set.
+   one hard cap: 1 concurrent set. Each candidate's acceptance is read per the
+   ticket-agent lane's step 1 before step 2's composition test, so the `adr` label that test keys on is
+   on the issue, and any split the read produces is itself a candidate or a dependency
+   outside the batch, by then.
 2. **Dispatch** `task-orchestrator` (background) with: the issue number (or, for a batch,
    the member list + anchor issue) and the main-checkout path. Nothing else — it reads the
    skills and the issue(s). **Batch composition is yours, at admission**: overlapping
