@@ -23,7 +23,7 @@ Every finding:
 ```
 
 - **FIX-NOW**: correctness bugs, or quality issues localized to this diff. These get fixed in this task.
-- **SYSTEMIC**: pattern-level problems, pre-existing issues the diff merely touches, or anything whose real fix is cross-cutting. These are destined for `docs/tech-debt.md` — do not demand they be fixed here.
+- **SYSTEMIC**: pattern-level problems, pre-existing issues the diff merely touches, or anything whose real fix is cross-cutting. These are destined for the route `.claude/skills/review-loop/SKILL.md` step 2 names — do not demand they be fixed here.
 
 A FIX-NOW on a comment or a docblock names which fix it wants — **delete** the claim, **cite** its owner instead of restating it, or **move** the figure into the test that asserts it — and never asks for reasoning to be added (`docs/standards/prose.md` rule 6).
 
