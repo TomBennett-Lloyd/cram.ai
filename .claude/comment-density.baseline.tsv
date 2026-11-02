@@ -46,6 +46,7 @@ apps/web/src/courses/use-courses.ts	500
 apps/web/src/decks/DecksScreen.tsx	544
 apps/web/src/decks/LectureSummary.tsx	410
 apps/web/src/decks/decks-fixture.tsx	289
+apps/web/src/decks/summary-fixture.ts	0
 apps/web/src/decks/use-ingest-status.ts	508
 apps/web/src/decks/use-summaries.ts	277
 apps/web/src/jsdom-setup.ts	769

@@ -1,17 +1,16 @@
-import { StoredLectures } from '@cram/shared';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fakeApi, HIVE, type Reply, type Sent } from '../api/api-fixture';
+import { fakeApi, type Reply } from '../api/api-fixture';
 import { MAKE_SUMMARY, NO_SUMMARY, PENDING, SUMMARY, SUMMARY_FAILED } from '../copy';
+import { reads, remakeStatus, renderDecks, settle, storedStatus, upload } from './decks-fixture';
 import {
-  lecture,
-  reads,
-  remakeStatus,
-  renderDecks,
-  settle,
-  storedStatus,
-  upload,
-} from './decks-fixture';
+  isRemake,
+  isSummaries,
+  openSummary,
+  statusReads,
+  stored,
+  SUMMARIES,
+} from './summary-fixture';
 import { POLL_INTERVAL_MS } from './use-ingest-status';
 
 beforeEach(() => {
@@ -20,48 +19,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
-
-const stored = (summarised: boolean) =>
-  StoredLectures.parse({
-    state: 'read',
-    lectures: [lecture('l1', 2, [], [], summarised)],
-    report: { state: 'none' },
-  });
-
-const SUMMARIES: Reply = {
-  status: 200,
-  body: {
-    state: 'read',
-    summaries: [
-      {
-        lectureId: 'l1',
-        units: [
-          {
-            text: 'Workers are female.',
-            citations: [{ sourceId: 's1', quote: 'Worker bees are female.' }],
-            kind: 'lecture-summary',
-          },
-        ],
-      },
-    ],
-    slides: [HIVE],
-  },
-};
-
-const isSummaries = ({ path }: Sent) => path === '/courses/bio/summaries';
-const isRemake = ({ path, method }: Sent) => method === 'POST' && path === '/courses/bio/remakes';
-const statusReads = (sent: readonly Sent[]) => reads(sent.filter((each) => !isSummaries(each)));
-
-const openSummary = async () => {
-  const details = document.querySelector('details.lecture-summary');
-  if (!(details instanceof HTMLDetailsElement)) throw new Error('no summary disclosure');
-  await act(async () => {
-    details.open = true;
-    fireEvent(details, new Event('toggle'));
-    await vi.advanceTimersByTimeAsync(0);
-  });
-  return details;
-};
 
 describe('a lecture’s summary on the decks screen', () => {
   it('stays folded and unread until opened, then shows each line with the slides it cites', async () => {
@@ -189,5 +146,38 @@ describe('a lecture’s summary on the decks screen', () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(screen.getByRole('alert').textContent).toBe('The server could not answer (not-found).');
+  });
+
+  it('shows a re-make under way from the press, before the server has answered it', async () => {
+    const { api } = fakeApi((request) =>
+      isRemake(request) ? new Promise<Reply>(() => undefined) : storedStatus(stored(false)),
+    );
+    renderDecks(api);
+    await settle();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: MAKE_SUMMARY }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(document.querySelector('.lecture-summary-state')?.getAttribute('aria-busy')).toBe(
+      'true',
+    );
+  });
+
+  it('offers a retry when the server’s reply is not one it understands, and reads again on it', async () => {
+    let malformed = true;
+    const { api, sent } = fakeApi((request) => {
+      if (!isSummaries(request)) return storedStatus(stored(true));
+      return malformed ? { status: 200, body: { state: 'read' } } : SUMMARIES;
+    });
+    renderDecks(api);
+    await settle();
+    const details = await openSummary();
+    malformed = false;
+    await act(async () => {
+      fireEvent.click(within(within(details).getByRole('alert')).getByRole('button'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(sent.filter(isSummaries)).toHaveLength(2);
+    expect(screen.getByText('Workers are female.')).toBeDefined();
   });
 });

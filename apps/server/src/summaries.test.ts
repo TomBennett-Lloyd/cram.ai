@@ -229,6 +229,8 @@ describe('POST /courses/:id/remakes', () => {
       json: { status: 'not-found' },
     });
     expect(await remake(server, { lecture: 'l1' })).toMatchObject({ status: 400 });
+    expect(await remake(server, { lectureId: 'l1', extra: true })).toMatchObject({ status: 400 });
+    expect(await remake(server, { lectureId: 1 })).toMatchObject({ status: 400 });
     expect(await remake(server, { lectureId: 'l1' }, 'text/plain')).toMatchObject({ status: 415 });
     expect((await status(server)).remakes).toEqual([]);
   });

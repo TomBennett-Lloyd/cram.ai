@@ -79,6 +79,21 @@ describe('summariseLecture', () => {
     });
   });
 
+  it('drops a unit only partly supported rather than asking for a rewrite', async () => {
+    const half = 'Workers are male. Workers forage at night.';
+    const outcome = await summarise(
+      [workers],
+      [
+        replies([workers], unitCiting(half, 'l1/1')),
+        verifierRecording(
+          splitClaims(half).map((hypothesis) => ({ premise: 'Worker bees are male.', hypothesis })),
+          [ENTAILED, NEUTRAL],
+        ),
+      ],
+    );
+    expect(outcome).toEqual({ status: 'unsummarised', reason: 'no-unit-survived', drafted: 1 });
+  });
+
   it('is model-failed, with no summary, when the generator fails', async () => {
     const failed = { status: 'backend-failed', reason: 'connection refused' } as const;
     await expect(
@@ -99,13 +114,19 @@ describe('summariseLecture', () => {
     ).resolves.toEqual({ status: 'unsummarised', reason: 'no-unit-survived', drafted: 1 });
   });
 
-  it('sends no references page and no slide without lines, and makes no call for a lecture of only those', async () => {
+  it('sends no references page and no slide without lines, but sends text read from a picture, and makes no call for a lecture of only the first two', async () => {
     const references = slide('l1/4', 'Hollowmere Guild, 1890.', {
       slideNo: SlideNo.parse(4),
       kind: 'references',
     });
     const blank = slide('l1/5', '', { slideNo: SlideNo.parse(5), kind: 'image-only' });
-    await expect(summarise([references, blank], [])).resolves.toEqual({
+    const read = slide('l1/6', 'Smoke calms the guards.', {
+      slideNo: SlideNo.parse(6),
+      kind: 'image-only',
+      derived: true,
+    });
+    const blankLines = slide('l1/7', ' \n\t', { slideNo: SlideNo.parse(7), title: '  ' });
+    await expect(summarise([references, blank, blankLines], [])).resolves.toEqual({
       status: 'unsummarised',
       reason: 'nothing-to-summarise',
       drafted: 0,
@@ -113,9 +134,9 @@ describe('summariseLecture', () => {
     const male = 'Workers are male.';
     await expect(
       summarise(
-        [references, workers, blank],
+        [references, workers, blank, read],
         [
-          replies([workers], unitCiting(male, 'l1/1')),
+          replies([workers, read], unitCiting(male, 'l1/1')),
           judged(male, 'Worker bees are male.', ENTAILED),
         ],
       ),
