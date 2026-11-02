@@ -1,8 +1,8 @@
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Recording } from '@cram/gateway';
+import type { EmbedRequest, Embedder, EmbeddingResult, Recording } from '@cram/gateway';
 import { slideLines } from '@cram/grounding';
-import { CourseId, type RetrievedSlide } from '@cram/shared';
+import { CourseId, type RetrievedSlide, type Unit } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import { MAX_ASK_BYTES } from './handlers';
@@ -11,6 +11,7 @@ import {
   cite,
   FailingEmbedder,
   ShortEmbedder,
+  WordEmbedder,
   gatewayOf,
   generated,
   judged,
@@ -45,10 +46,11 @@ afterEach(async () => {
 /** A server whose `bio` course holds the hive deck, with `recordings` built from what it retrieves. */
 const hiveCourse = async (
   recordings: (retrieved: RetrievedSlide[]) => readonly Recording[],
+  embedder: Embedder = new WordEmbedder(),
 ): Promise<TestServer> => {
   const deck = await pdfDeck(HIVE);
   const retrieved = await retrievedFrom(deck, 'bio', 'l1', 'hive.pdf');
-  test = await startTestServer(gatewayOf(recordings(retrieved)));
+  test = await startTestServer(gatewayOf(recordings(retrieved), embedder));
   await send(test.server.port, {
     method: 'POST',
     path: uploadPath('bio', 'l1', 'hive.pdf'),
@@ -74,15 +76,19 @@ const askBio = (
 const male = cite('l1/1', 'Worker bees are male in this course.');
 const unit = answer('Workers are male in this course.', [male]);
 
-/** The model's reply for `unit`: each quote written as the number of the retrieved line it is. */
-const unitReply = (retrieved: readonly RetrievedSlide[]) =>
-  generated(QUESTION, retrieved, {
+/** The model's reply for `replied` to `question`: each quote written as the number of the retrieved line it is. */
+const unitReply = (
+  retrieved: readonly RetrievedSlide[],
+  question: string = QUESTION,
+  replied: Unit = unit,
+) =>
+  generated(question, retrieved, {
     status: 'content',
     content: JSON.stringify({
       units: [
         {
-          text: unit.text,
-          citations: unit.citations.map(({ sourceId, quote }) => {
+          text: replied.text,
+          citations: replied.citations.map(({ sourceId, quote }) => {
             const slide = retrieved.find((candidate) => candidate.sourceId === sourceId);
             const line = slide === undefined ? [] : slideLines(slide.record);
             return { sourceId, line: line.indexOf(quote) + 1 };
@@ -116,6 +122,86 @@ describe('POST /courses/:id/ask', () => {
       status: 'not-covered',
       withheld: [{ reason: 'unsupported', unit }],
       slides,
+    });
+  });
+
+  it('retrieves on the corrected question, names it in the reply, and generates on the typed one', async () => {
+    const typed = 'Who are the wroker bees?';
+    const embedded: string[] = [];
+    class SpyEmbedder extends WordEmbedder {
+      override embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+        embedded.push(...request.texts);
+        return super.embed(request);
+      }
+    }
+    let slides: RetrievedSlide[] = [];
+    const server = await hiveCourse((retrieved) => {
+      slides = retrieved;
+      return [unitReply(retrieved, typed), judged(unit, ENTAILED)];
+    }, new SpyEmbedder());
+    const reply = await askBio(server, JSON.stringify({ question: typed }));
+    expect(reply.json).toEqual({
+      status: 'grounded',
+      shown: [unit],
+      withheld: [],
+      slides,
+      searched: 'Who are the worker bees?',
+    });
+    expect(embedded.at(-1)).toBe('Who are the worker bees?');
+  });
+
+  it('ranks on the corrected question in the keyword list as well as the vector list', async () => {
+    const typed = 'What do wrokers do?';
+    class TitleEmbedder extends WordEmbedder {
+      override embed(request: EmbedRequest): Promise<readonly EmbeddingResult[]> {
+        return Promise.resolve(
+          request.texts.map((text) => {
+            const vector = new Float32Array(8);
+            vector[text.includes('Worker') ? 1 : 0] = 1;
+            return { status: 'embedded', vector };
+          }),
+        );
+      }
+    }
+    const deck = await pdfDeck([
+      ['Drones', 'Drones keep the brood warm'],
+      ['Workers', 'Worker bees forage'],
+    ]);
+    const [drones, workers] = await retrievedFrom(deck, 'bio', 'l1', 'hive.pdf');
+    if (drones === undefined || workers === undefined) throw new Error('two slides expected');
+    const expected = [workers, drones];
+    const cited = answer('Workers forage.', [cite('l1/2', 'Workers')]);
+    test = await startTestServer(
+      gatewayOf([unitReply(expected, typed, cited), judged(cited, ENTAILED)], new TitleEmbedder()),
+    );
+    await send(test.server.port, {
+      method: 'POST',
+      path: uploadPath('bio', 'l1', 'hive.pdf'),
+      headers: { 'content-type': 'application/pdf' },
+      body: deck,
+    });
+    await settledStatus(test.server.port, 'bio');
+    const reply = await askBio(test, JSON.stringify({ question: typed }));
+    expect(reply.json).toMatchObject({
+      status: 'grounded',
+      slides: expected,
+      searched: 'What do workers do?',
+    });
+  });
+
+  it('names the corrected question in a not-covered reply too', async () => {
+    const typed = 'Who are the wroker bees?';
+    let slides: RetrievedSlide[] = [];
+    const server = await hiveCourse((retrieved) => {
+      slides = retrieved;
+      return [unitReply(retrieved, typed), judged(unit, CONTRADICTED)];
+    });
+    const reply = await askBio(server, JSON.stringify({ question: typed }));
+    expect(reply.json).toEqual({
+      status: 'not-covered',
+      withheld: [{ reason: 'unsupported', unit }],
+      slides,
+      searched: 'Who are the worker bees?',
     });
   });
 

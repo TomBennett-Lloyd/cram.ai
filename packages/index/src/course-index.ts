@@ -20,10 +20,10 @@ import {
   confirmationState,
   confirmDerived,
   dropVoidConfirmations,
-  UNCONFIRMED_DERIVED,
   type ConfirmationState,
   type ConfirmResult,
 } from './confirmation';
+import { correctCourseSpelling } from './course-lexicon';
 import type { EmbedderIdentity } from './embedder-identity';
 import { ftsMatchExpression } from './fts-query';
 import {
@@ -32,7 +32,7 @@ import {
   requireDimension,
   requireSlideChunks,
 } from './indexed-slide';
-import { listFilters } from './list-filter';
+import { listed, listFilters, type SlideListing } from './list-filter';
 import { fuseByReciprocalRank } from './reciprocal-rank';
 import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
@@ -66,14 +66,6 @@ export interface SearchQuery {
   /** On for exam generation only (`docs/standards/grounding.md` rule 10); Ask and notes cite derived text unconfirmed. */
   readonly excludeUnconfirmedDerived?: boolean;
 }
-
-/** A listing exam generation can draw its target slides from (`docs/plan.md` §3.5). */
-export interface SlideListing {
-  readonly excludeUnconfirmedDerived?: boolean;
-}
-
-const listed = (listing: SlideListing): string =>
-  listing.excludeUnconfirmedDerived === true ? `and not (${UNCONFIRMED_DERIVED})` : '';
 
 export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-slide' };
 
@@ -265,6 +257,10 @@ export class CourseIndex {
         const slide = slideFromRow(byId.get(id), this.#courseId);
         return { sourceId: slide.sourceId, record: slide.record };
       });
+  }
+
+  correctSpelling(text: string) {
+    return correctCourseSpelling(this.#db, text);
   }
 
   /** Replaces a slide's topic tags (`docs/plan.md` §3.2): metadata, never content. */

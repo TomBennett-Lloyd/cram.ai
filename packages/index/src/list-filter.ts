@@ -30,3 +30,11 @@ export const listFilters = (exclusions: ListExclusions): ListFilters => {
     vector: `and rowid in (select id from chunks where slide_id in (select id from slides where not (${leftOut})))`,
   };
 };
+
+/** A listing exam generation can draw its target slides from (`docs/plan.md` §3.5). */
+export interface SlideListing {
+  readonly excludeUnconfirmedDerived?: boolean;
+}
+
+export const listed = (listing: SlideListing): string =>
+  listing.excludeUnconfirmedDerived === true ? `and not (${UNCONFIRMED_DERIVED})` : '';

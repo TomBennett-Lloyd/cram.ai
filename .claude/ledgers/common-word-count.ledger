@@ -1,0 +1,6 @@
+# The size of the common-word guard spelling correction never rewrites (docs/standards/architecture.md rule 9; #393).
+owner: packages/index/src/common-words.ts
+claim: the common-word guard holds COMMON_WORD_COUNT self-authored English words
+cite: COMMON_WORD_COUNT
+sweep: \bCOMMON_WORD_COUNT\b|\.claude/ledgers/common-word-count\.ledger|(?i:common[- ]words? (guard|list))
+carrier: packages/index/src/common-words.test.ts
