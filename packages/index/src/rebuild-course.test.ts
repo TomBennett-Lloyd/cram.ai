@@ -14,6 +14,7 @@ import {
   type TempCourse,
   text,
   vector,
+  firstFact,
 } from './course-fixture';
 import { openCourse } from './open-course';
 import {
@@ -170,7 +171,10 @@ describe('rebuildCourse', () => {
       [],
       [indexed(record, vector(1, 0, 0, 0))],
     );
-    seeded.setTopics(sourceIdOf(record), [TopicTag.parse('transport'), TopicTag.parse('water')]);
+    seeded.setTopics(firstFact(sourceIdOf(record)), 'tagger', [
+      TopicTag.parse('transport'),
+      TopicTag.parse('water'),
+    ]);
     seeded.close();
     const db = new Database(temp.spec.path);
     db.pragma(`user_version = ${String(OLDER)}`);

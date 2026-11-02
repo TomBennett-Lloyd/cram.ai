@@ -25,7 +25,6 @@ import {
 } from './confirmation';
 import { correctCourseSpelling } from './course-lexicon';
 import type { EmbedderIdentity } from './embedder-identity';
-import { ftsMatchExpression } from './fts-query';
 import {
   type IndexedChunk,
   type IndexedSlide,
@@ -33,9 +32,22 @@ import {
   requireSlideChunks,
 } from './indexed-slide';
 import { listed, listFilters, type SlideListing } from './list-filter';
+import { vectorList, wordList } from './ranked-lists';
 import { fuseByReciprocalRank } from './reciprocal-rank';
 import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
+import {
+  carriedTags,
+  dropSlideTopics,
+  type FactRef,
+  type TagRow,
+  insertTagRows,
+  slideTagRows,
+  topicList,
+  type TopicOrigin,
+  setFactTopics,
+  type SetTopicsResult,
+} from './topics';
 import { storedLectures } from './stored-lectures';
 import {
   SLIDE_COLUMNS,
@@ -61,6 +73,9 @@ export const ATTRIBUTION_K = 3;
 /** Chunks each ranked list reads before its dedupe to slides (`docs/adr/0008-slide-chunking.md` § Decision (f)); provisional as `RETRIEVAL_K` is. */
 export const CANDIDATES_PER_LIST = 50;
 
+/** The topic list's weight in fusion; provisional until #426's measured run tunes it (#69). */
+export const TOPIC_LIST_WEIGHT = 1;
+
 export interface SearchQuery {
   readonly text: string;
   readonly embedding: Float32Array;
@@ -69,8 +84,6 @@ export interface SearchQuery {
   /** On for exam generation only (`docs/standards/grounding.md` rule 10); Ask and notes cite derived text unconfirmed. */
   readonly excludeUnconfirmedDerived?: boolean;
 }
-
-export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-slide' };
 
 export type RemoveLectureResult =
   { readonly status: 'removed' } | { readonly status: 'no-such-lecture' };
@@ -100,6 +113,7 @@ export class CourseIndex {
   }
 
   #dropIndexRows(slideId: number): void {
+    dropSlideTopics(this.#db, slideId);
     const chunkIds = RowIds.parse(
       this.#db.prepare('select id from chunks where slide_id = ?').pluck().all(slideId),
     );
@@ -157,9 +171,6 @@ export class CourseIndex {
     const ids = RowIds.parse(
       this.#db.prepare('select id from slides where lecture_id = ?').pluck().all(lectureId),
     );
-    this.#db
-      .prepare('delete from topics where slide_id in (select id from slides where lecture_id = ?)')
-      .run(lectureId);
     for (const id of ids) this.#dropIndexRows(id);
     this.#db.prepare('delete from slides where lecture_id = ?').run(lectureId);
   }
@@ -219,9 +230,7 @@ export class CourseIndex {
       .map(chunkFromRow);
   }
 
-  /**
-   * BM25 and vector candidates fused by reciprocal rank (`docs/adr/0004-storage.md` § Decision (c)), best first.
-   */
+  /** BM25, vector and topic lists fused by weighted reciprocal rank (`docs/adr/0004-storage.md` § Decision (c); `docs/adr/0009-explanation-answers.md` § Decision (n)). */
   search(query: SearchQuery, k: number = RETRIEVAL_K): readonly RetrievedSlide[] {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);
@@ -231,30 +240,17 @@ export class CourseIndex {
       references: query.includeReferences !== true,
       unconfirmedDerived: query.excludeUnconfirmedDerived === true,
     });
-    const match = ftsMatchExpression(query.text);
-    const bm25 =
-      match === undefined
-        ? []
-        : RowIds.parse(
-            this.#db
-              .prepare(
-                `select rowid from slides_fts where slides_fts match ? ${filter.bm25} order by rank limit ?`,
-              )
-              .pluck()
-              .all(match, depth),
-          );
-    const nearest = RowIds.parse(
-      this.#db
-        .prepare(
-          `select rowid from slide_vec where embedding match ? and k = ? ${filter.vector} order by distance`,
-        )
-        .pluck()
-        .all(query.embedding, depth),
-    );
+    const bm25 = wordList(this.#db, query.text, filter.bm25, depth);
+    const nearest = vectorList(this.#db, query.embedding, filter.vector, depth);
+    const topical = topicList(this.#db, query.text, filter.topic, nearest, depth);
     const slideIdOf = this.#db.prepare('select slide_id from chunks where id = ?').pluck();
     const slideOf = (chunkId: number): number => RowId.parse(slideIdOf.get(chunkId));
     const byId = this.#db.prepare(`select id, ${SLIDE_COLUMNS} from slides where id = ?`);
-    return fuseByReciprocalRank([firstPerSlide(bm25, slideOf), firstPerSlide(nearest, slideOf)])
+    return fuseByReciprocalRank([
+      { ids: firstPerSlide(bm25, slideOf), weight: 1 },
+      { ids: firstPerSlide(nearest, slideOf), weight: 1 },
+      { ids: firstPerSlide(topical, slideOf), weight: TOPIC_LIST_WEIGHT },
+    ])
       .slice(0, k)
       .map((id) => {
         const slide = slideFromRow(byId.get(id), this.#courseId);
@@ -262,22 +258,17 @@ export class CourseIndex {
       });
   }
 
+  topics(sourceId: SourceId): readonly TagRow[] {
+    return slideTagRows(this.#db, sourceId);
+  }
+
   correctSpelling(text: string) {
     return correctCourseSpelling(this.#db, text);
   }
 
-  /** Replaces a slide's topic tags (`docs/plan.md` §3.2): metadata, never content. */
-  setTopics(sourceId: SourceId, tags: readonly TopicTag[]): SetTopicsResult {
-    const id = RowId.optional().parse(
-      this.#db.prepare('select id from slides where source_id = ?').pluck().get(sourceId),
-    );
-    if (id === undefined) return { status: 'no-such-slide' };
-    const insert = this.#db.prepare('insert or ignore into topics (slide_id, tag) values (?, ?)');
-    this.#db.transaction(() => {
-      this.#db.prepare('delete from topics where slide_id = ?').run(id);
-      for (const tag of tags) insert.run(id, tag);
-    })();
-    return { status: 'set' };
+  /** Replaces a fact's topic tags of one origin (`docs/plan.md` §3.2): metadata, never content. */
+  setTopics(fact: FactRef, origin: TopicOrigin, tags: readonly TopicTag[]): SetTopicsResult {
+    return this.#db.transaction(() => setFactTopics(this.#db, fact, origin, tags))();
   }
 
   /** The student confirms the derived text of `seen`, the record they were shown beside its image (ADR 0006 § Decision (g)). */
@@ -292,12 +283,12 @@ export class CourseIndex {
 
   slidesTagged(tag: TopicTag, listing: SlideListing = {}): readonly SlideRecord[] {
     return this.#storedSlides(
-      `where id in (select slide_id from topics where tag = ?) ${listed(listing)} order by lecture_id, slide_no`,
+      `where id in (select slide_id from chunks where id in (select chunk_id from topics where tag = ?)) ${listed(listing)} order by lecture_id, slide_no`,
       tag,
     ).map((slide) => slide.record);
   }
 
-  /** Swaps every slide's chunks, vectors and recorded embedder in one transaction, so a new embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)). */
+  /** Swaps every slide's chunks and vectors and the recorded embedder in one transaction, so a new embedder re-chunks (`docs/adr/0008-slide-chunking.md` § Decision (i)); each slide's tags follow `carriedTags`. */
   replaceEmbedder(embedder: EmbedderIdentity, slides: readonly IndexedSlide[]): void {
     const bySource = new Map(slides.map((slide) => [sourceIdOf(slide.record), slide]));
     const stored = this.#storedSlides('');
@@ -306,7 +297,12 @@ export class CourseIndex {
       if (chunks === undefined)
         throw new Error(`replaceEmbedder: no embedding for ${slide.sourceId}`);
       requireSlideChunks('replaceEmbedder', slide.record, chunks, embedder);
-      return { slide, chunks };
+      const tags = carriedTags(
+        this.chunks(slide.sourceId),
+        slideTagRows(this.#db, slide.sourceId),
+        chunks.map(({ chunk }) => chunk),
+      );
+      return { slide, chunks, tags };
     });
     if (bySource.size !== stored.length || slides.length !== stored.length)
       throw new Error('replaceEmbedder: embeddings name a slide twice or one the course lacks');
@@ -314,8 +310,10 @@ export class CourseIndex {
       for (const { slide } of rewritten) this.#dropIndexRows(slide.id);
       this.#db.exec('drop table slide_vec');
       createVectorTable(this.#db, embedder.dimension);
-      for (const { slide, chunks } of rewritten)
+      for (const { slide, chunks, tags } of rewritten) {
         this.#writeChunks(slide.id, slide.record.lectureTitle, chunks);
+        insertTagRows(this.#db, slide.id, tags);
+      }
       this.#db
         .prepare('update course set embedder_model = ?, embedder_dimension = ?')
         .run(embedder.model, embedder.dimension);

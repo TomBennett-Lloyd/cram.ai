@@ -39,7 +39,7 @@ Owned by `docs/adr/0002-deployables.md` (the deployable count, the model runtime
 
 - Owned by `docs/adr/0004-storage.md` (the one-file-per-course unit, what lives in it, the retrieval substrate and its fusion, deletability and portability, the no-migration rule with its un-defer trigger, the encryption deferral, and the bar for a second store); this bullet carries no restatement. After fusion, a local cross-encoder rerank when the candidate list is large is retrieval's (#11), with the model `docs/adr/0003-model-roles-and-backends.md`'s.
 - Embeddings go through the model gateway, so every backend serves them the same way.
-- **Topic index**: at ingest, an LLM pass tags each slide with topics; tags are user-editable. "Revision notes for _category_" resolves category → the union of tagged slides plus semantic neighbours, across all lectures. The tag pass (#369) and the lecture digest (`docs/adr/0009-explanation-answers.md` § Decision (l)) are the two places an LLM writes into the index: the tags are metadata, never content, and each digest line is a verified unit.
+- **Topic index**: at ingest, an LLM pass tags each fact — a slide's chunk — with the topics it is about, including the domain of an example it uses; tags are user-editable. A question naming a tag reaches its facts through topic membership, the third list `search` fuses (#369). "Revision notes for _category_" resolves category → the union of tagged facts' slides plus semantic neighbours, across all lectures. The tag pass (#426) and the lecture digest (`docs/adr/0009-explanation-answers.md` § Decision (l)) are the two places an LLM writes into the index: the tags are metadata, never content, and each digest line is a verified unit.
 
 ### 3.3 Model gateway
 

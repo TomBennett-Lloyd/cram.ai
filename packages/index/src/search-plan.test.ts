@@ -2,9 +2,11 @@ import Database from 'better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { COURSE, EMBEDDER, vector } from './course-fixture';
+import { TopicTag } from '@cram/shared';
+import { COURSE, deck, EMBEDDER, firstFact, indexed, slide, vector } from './course-fixture';
 import { CourseIndex, type SearchQuery } from './course-index';
 import { createSchema } from './schema';
+import { sourceIdOf } from './slide-row';
 
 // A plan, not a timing, so the gate holds on a loaded machine (#136, #152).
 const PlanRow = z.object({ detail: z.string() });
@@ -15,14 +17,18 @@ interface VirtualTableScan {
   readonly indexString: string;
 }
 
-/** Every virtual-table scan in the plans of the statements `search` prepares for `query`. */
+/** Every virtual-table scan in the plans of the statements `search` prepares for `query`, over one fact tagged with a topic it names. */
 const virtualTableScans = (query: SearchQuery): readonly VirtualTableScan[] => {
   const db = new Database(':memory:');
   try {
     sqliteVec.load(db);
     createSchema(db, COURSE, EMBEDDER);
+    const course = new CourseIndex(db, COURSE, EMBEDDER);
+    const tagged = slide({ body: 'water' });
+    course.replaceLecture(deck(), [], [indexed(tagged, vector(1, 0, 0, 0))]);
+    course.setTopics(firstFact(sourceIdOf(tagged)), 'tagger', [TopicTag.parse('osmosis')]);
     const prepare = vi.spyOn(db, 'prepare');
-    new CourseIndex(db, COURSE, EMBEDDER).search(query);
+    course.search(query);
     const prepared = prepare.mock.calls.map(([sql]) => sql);
     prepare.mockRestore();
     return prepared.flatMap((sql) => {
