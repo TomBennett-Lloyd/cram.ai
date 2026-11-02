@@ -248,7 +248,10 @@ describe('runEval', () => {
     });
     const { nli, nliThenLlm } = report.verifierArms;
     expect(report.verifierStrategy).toBe('nli-then-llm');
-    expect(nli.contradictionSet).toMatchObject({ ratio: { numerator: 1, denominator: 4 } });
+    expect(nli.contradictionSet).toMatchObject({
+      ratio: { numerator: 3, denominator: 4 },
+      failures: [{ question: 'Where is propolis gathered?' }],
+    });
     expect(nliThenLlm.contradictionSet).toMatchObject({ ratio: { numerator: 4, denominator: 4 } });
     expect(report.metrics.contradictionSet).toEqual(nliThenLlm.contradictionSet);
     expect(nli.accuracy.precision).not.toEqual(nliThenLlm.accuracy.precision);

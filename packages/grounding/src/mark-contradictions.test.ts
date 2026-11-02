@@ -1,10 +1,10 @@
 import type { EntailmentResult, EntailRequest } from '@cram/gateway';
 import { describe, expect, it } from 'vitest';
-import { ENTAILED, NEUTRAL, OVER_LENGTH, pairsOf, slide } from './fake-gateway-fixture';
+import { NEUTRAL, OVER_LENGTH, pairsOf, slide } from './fake-gateway-fixture';
 import { markContradictions } from './mark-contradictions';
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
 
-const { contradictedAt } = PROVISIONAL_NLI_THRESHOLDS;
+const { contradictedAt, entailedAt } = PROVISIONAL_NLI_THRESHOLDS;
 const hive = slide('l1/1', 'Worker bees are male.');
 const comb = slide('l1/2', 'Bees build comb from square cells.');
 const winter = slide('l5/6', 'Bees sleep through the winter.');
@@ -12,6 +12,11 @@ const winter = slide('l5/6', 'Bees sleep through the winter.');
 const contradiction = (score: number): EntailmentResult => ({
   status: 'scored',
   scores: { entailment: 0, neutral: 1 - score, contradiction: score },
+});
+
+const entailment = (score: number): EntailmentResult => ({
+  status: 'scored',
+  scores: { entailment: score, neutral: 1 - score, contradiction: 0 },
 });
 
 /** An `entail` answering from `results` in order, recording every call. */
@@ -67,7 +72,7 @@ describe('markContradictions', () => {
   });
 
   it('orders two contradicting slides by score, best first, whatever their order in slides', async () => {
-    const verifier = scripted(contradiction(0.7), ENTAILED, contradiction(0.95));
+    const verifier = scripted(contradiction(0.7), NEUTRAL, contradiction(0.95));
     const [marked] = await mark(
       [{ text: 'Workers are female.', slides: [hive, comb, winter] }],
       verifier.entail,
@@ -77,6 +82,24 @@ describe('markContradictions', () => {
       slides: ['l1/1', 'l1/2', 'l5/6'],
       contradicts: ['l5/6', 'l1/1'],
     });
+  });
+
+  it('marks nothing on a sentence one of its slides entails, whatever the others score', async () => {
+    const verifier = scripted(contradiction(0.99), entailment(entailedAt));
+    const [marked] = await mark(
+      [{ text: 'Workers are female.', slides: [hive, comb] }],
+      verifier.entail,
+    );
+    expect(marked?.contradicts).toEqual([]);
+  });
+
+  it('marks a sentence whose best entailment is just below entailedAt', async () => {
+    const verifier = scripted(contradiction(0.99), entailment(entailedAt - 0.001));
+    const [marked] = await mark(
+      [{ text: 'Workers are female.', slides: [hive, comb] }],
+      verifier.entail,
+    );
+    expect(marked?.contradicts).toEqual(['l1/1']);
   });
 
   it('keeps slides order between equal scores', async () => {

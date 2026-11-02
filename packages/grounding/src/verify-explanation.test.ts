@@ -61,8 +61,16 @@ describe('verifyExplanation', () => {
     });
   });
 
-  it('cuts a sentence any slide contradicts, though another entails it, naming the first such slide', async () => {
-    await expect(verify([judged(SENTENCE, retrieved, ENTAILED, CONTRADICTED)])).resolves.toEqual({
+  it('keeps a sentence one slide entails though another contradicts it', async () => {
+    await expect(verify([judged(SENTENCE, retrieved, CONTRADICTED, ENTAILED)])).resolves.toEqual({
+      status: 'verified',
+      kept: [{ text: SENTENCE, slides: ['l1/2'], contradicts: [] }],
+      withheld: [],
+    });
+  });
+
+  it('cuts a sentence no slide entails and one contradicts, naming the first such slide', async () => {
+    await expect(verify([judged(SENTENCE, retrieved, NEUTRAL, CONTRADICTED)])).resolves.toEqual({
       status: 'verified',
       kept: [],
       withheld: [{ reason: 'contradicted', text: SENTENCE, sourceId: 'l1/2' }],
@@ -93,12 +101,23 @@ describe('verifyExplanation', () => {
     });
   });
 
-  it('counts an over-length pair as contradicted with no second opinion', async () => {
+  it('counts an over-length pair as contradicted with no second opinion, unless a scored slide entails', async () => {
     await expect(
-      verify([judged(SENTENCE, retrieved, ENTAILED, OVER_LENGTH)]),
+      verify([judged(SENTENCE, retrieved, NEUTRAL, OVER_LENGTH)]),
     ).resolves.toMatchObject({
       withheld: [{ reason: 'contradicted', sourceId: 'l1/2' }],
     });
+    await expect(
+      verify([judged(SENTENCE, retrieved, ENTAILED, OVER_LENGTH)]),
+    ).resolves.toMatchObject({
+      kept: [{ slides: ['l1/1'] }],
+    });
+  });
+
+  it('asks no second opinion when a scored slide already entails', async () => {
+    await expect(
+      verify([judged(SENTENCE, retrieved, ENTAILED, OVER_LENGTH)], true),
+    ).resolves.toMatchObject({ kept: [{ slides: ['l1/1'] }] });
   });
 
   it.each([

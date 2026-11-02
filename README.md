@@ -1,8 +1,8 @@
 # cram.ai 📚
 
-A self-hosted AI tutor that teaches only from your own lecture slides. Upload a course's decks and a few sample exam questions; get practice exams in that style, revision notes compiled across lectures by topic, and answers to your questions — exams and revision notes checked against your slides sentence by sentence before you see them, and every answer written from your slides with the slides that may hold each sentence beside it, marked where one appears to contradict it. If it is not in your slides, the tutor says so.
+A self-hosted AI tutor that teaches only from your own lecture slides. Upload a course's decks and a few sample exam questions; get practice exams in that style, revision notes compiled across lectures by topic, and answers to your questions — exams and revision notes checked against your slides sentence by sentence before you see them, and every answer written from your slides with the slides that may hold each sentence beside it, marked where one appears to contradict it and none supports it. If it is not in your slides, the tutor says so.
 
-Built for students whose course material cannot leave their machine, and for subjects where the slides deliberately differ from what a general-purpose model "knows": the slides win — mechanically in exams and revision notes, where a sentence a slide contradicts or none supports never reaches the screen, and in chat by attribution and a mark: each sentence names the slides that may hold it, and one that appears to contradict a slide is marked and linked to it, for you to check.
+Built for students whose course material cannot leave their machine, and for subjects where the slides deliberately differ from what a general-purpose model "knows": the slides win — mechanically in exams and revision notes, where a sentence no slide supports never reaches the screen, and in chat by attribution and a mark: each sentence names the slides that may hold it, and one that appears to contradict a slide and that none supports is marked and linked to it, for you to check.
 
 ## Status
 

@@ -4,7 +4,7 @@ import type { SentenceSlides } from './attribute-sentences';
 import { claimLabel, type NliThresholds } from './nli-verdict';
 import { slideText } from './slide-text';
 
-/** The light depth's mark (`docs/adr/0009-explanation-answers.md` § Decision (g)); a throw is the caller's. */
+/** The light depth's mark (`docs/adr/0009-explanation-answers.md` § Decision (g), as amended: an entailing slide outweighs any contradiction); a throw is the caller's. */
 export const markContradictions = async (
   sentences: readonly SentenceSlides[],
   entail: Verifier['entail'],
@@ -22,14 +22,20 @@ export const markContradictions = async (
   return sentences.map(({ text, slides }) => {
     const scored = slides.flatMap((slide) => {
       const result = results[next++];
-      return result?.status === 'scored' && claimLabel(result.scores, thresholds) === 'contradicted'
-        ? [{ sourceId: slide.sourceId, score: result.scores.contradiction }]
+      return result?.status === 'scored'
+        ? [{ sourceId: slide.sourceId, scores: result.scores }]
         : [];
     });
+    const entailed = scored.some(({ scores }) => scores.entailment >= thresholds.entailedAt);
+    const contradicting = entailed
+      ? []
+      : scored.filter(({ scores }) => claimLabel(scores, thresholds) === 'contradicted');
     return {
       text,
       slides: slides.map((slide) => slide.sourceId),
-      contradicts: scored.toSorted((a, b) => b.score - a.score).map(({ sourceId }) => sourceId),
+      contradicts: contradicting
+        .toSorted((a, b) => b.scores.contradiction - a.scores.contradiction)
+        .map(({ sourceId }) => sourceId),
     };
   });
 };
