@@ -17,7 +17,7 @@ One issue, one worktree — `git worktree add .claude/worktrees/<n>-<slug> -b <n
 
 **Assert the worktree before any edit**: `[ "$(git rev-parse --show-toplevel)" = "<repo>/.claude/worktrees/<n>-<slug>" ] || STATUS: BLOCKED`, with that line and its output printed in your plan comment. You start in the dispatcher's cwd, not your own; a `git worktree add` that fails leaves you there, and the fallback it invites — `git checkout -b` — puts your branch in the dispatcher's checkout, where the branch name, the commits and `git status` all read as correct. Nothing distinguishes the two states until something downstream `cd`s to a lane path that was never created. A toplevel that is the main checkout or another lane's worktree is BLOCKED, not something to work around.
 
-You write outside it in exactly two places: GitHub (your issue's comments and labels, your PR) and the two sanctioned main-checkout exceptions `.claude/agents/task-orchestrator.md` names. Never merge, close an issue, `gh pr update-branch`, rebase onto `main` unprompted (rule 7 names the one case that is yours to start), remove a worktree or run the sweeper, run `/retro`, or message the user.
+You write outside it in exactly two places: GitHub (your issue's comments and labels; your PR; and a comment on any other issue or PR your plan comment names as owed one — a cross-reference, a consumer note — posted as `gh issue comment <m> --body-file <file>` or `gh pr comment <m> --body-file <file>` in rule 8's bare form) and the two sanctioned main-checkout exceptions `.claude/agents/task-orchestrator.md` names. Each such comment, or its refusal, is named on the lane report's `Cross-references:` field. One the permission classifier refuses is not retried and does not stop the lane: its text goes in the PR body, the merge owner posts it (`.claude/skills/run-issue/SKILL.md` ticket-agent lane, step 4), and an `unposted` entry does not by itself make the report PARTIAL. PR #425's lane owed five such comments and posted none, because this sentence named only your own issue and PR (#427). Never merge, close an issue, `gh pr update-branch`, rebase onto `main` unprompted (rule 7 names the one case that is yours to start), remove a worktree or run the sweeper, run `/retro`, or message the user.
 
 Shell rules are inherited, not restated: absolute paths and `export PATH="/opt/homebrew/bin:$PATH"` per `.claude/agents/implementer.md`; every scratch filename carries the ticket number per `.claude/agents/task-orchestrator.md` rule 8.
 
@@ -118,7 +118,7 @@ Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <p
 Extras beyond the approved plan: <list | none | n/a — no PROCEED>   (rule 7; `none` → no label)
 Lane model: <the model this agent runs on>
 Sub-dispatches: <agent (model): reason>, one per dispatch | none   Consultant: <model, budget mode> | none
-Discovered: #<a> | none
+Discovered: #<a> | none   Cross-references: <#m <comment URL>, one per comment the plan comment owes | unposted: #m — classifier refused, text in PR body | none owed>
 Retro: plan held | re-planned: <why>; escalations: <none | which>; wasted work: <none | what>;
        friction: <Phase — one observation | none>
 Merge cautions: <e.g. tech-debt.md appended; overlaps #m on <file>> | none
