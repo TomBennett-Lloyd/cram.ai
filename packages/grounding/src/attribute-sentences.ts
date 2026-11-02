@@ -20,6 +20,9 @@ const unique = <T>(items: readonly T[], key: (item: T) => string): T[] => {
   return kept;
 };
 
+export const uniqueSlides = (slides: readonly RetrievedSlide[]): RetrievedSlide[] =>
+  unique(slides, (slide) => slide.sourceId);
+
 export const quotesIn = (
   text: string,
   sentence: ClaimSpan,
@@ -44,7 +47,7 @@ export const attributeSentences = (
     );
     return {
       text: sentence.text,
-      slides: unique([...(candidates[index] ?? []), ...quoted], (slide) => slide.sourceId),
+      slides: uniqueSlides([...(candidates[index] ?? []), ...quoted]),
     };
   });
 

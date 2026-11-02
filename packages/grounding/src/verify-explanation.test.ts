@@ -136,12 +136,27 @@ describe('verifyExplanation', () => {
     ['supported', { kept: [{ slides: ['l1/2'] }], withheld: [] }],
     ['partial', { kept: [], withheld: [{ reason: 'ungrounded' }] }],
     ['unsupported', { kept: [], withheld: [{ reason: 'ungrounded' }] }],
-  ])('reads a second opinion of %s on an over-length pair', async (verdict, expected) => {
+  ])(
+    'reads a second opinion of %s on an over-length pair: only supported moves it, since an unrelated slide also earns unsupported',
+    async (verdict, expected) => {
+      const recordings = [
+        judged(SENTENCE, retrieved, NEUTRAL, OVER_LENGTH),
+        secondOpinion(comb, { verdict }),
+      ];
+      await expect(verify(recordings, true)).resolves.toMatchObject(expected);
+    },
+  );
+
+  it('keeps a sentence a second opinion supports beside a scored contradiction', async () => {
     const recordings = [
-      judged(SENTENCE, retrieved, NEUTRAL, OVER_LENGTH),
-      secondOpinion(comb, { verdict }),
+      judged(SENTENCE, retrieved, CONTRADICTED, OVER_LENGTH),
+      secondOpinion(comb, { verdict: 'supported' }),
     ];
-    await expect(verify(recordings, true)).resolves.toMatchObject(expected);
+    await expect(verify(recordings, true)).resolves.toEqual({
+      status: 'verified',
+      kept: [{ text: SENTENCE, slides: ['l1/2'], contradicts: [] }],
+      withheld: [],
+    });
   });
 
   it('reports a failed second opinion as a model failure', async () => {

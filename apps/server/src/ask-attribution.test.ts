@@ -8,6 +8,7 @@ import { ATTRIBUTION_K, RETRIEVAL_K } from '@cram/index';
 import type { RetrievedSlide } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  explained,
   explanationReply,
   gatewayOf,
   pdfDeck,
@@ -15,6 +16,7 @@ import {
   retrievedFrom,
   send,
   settledStatus,
+  ShortEmbedder,
   startTestServer,
   stopTestServer,
   type TestServer,
@@ -23,7 +25,7 @@ import {
 } from './server-fixture';
 
 const QUESTION = 'Who are the workers?';
-/** A ten-page deck's ingest beside every other suite on a loaded machine. */
+/** A deck's ingest beside every other suite on a loaded machine. */
 const INGEST_BOUND_MS = 30_000;
 const NEUTRAL = {
   status: 'scored',
@@ -107,6 +109,35 @@ describe('POST /courses/:id/ask, attribution', () => {
       );
       expect(named.length).toBeGreaterThan(RETRIEVAL_K);
       expect(named).toContain(drones.sourceId);
+    },
+    INGEST_BOUND_MS,
+  );
+
+  it(
+    'answers one sentence longer than the embedder takes with the slides it was written from',
+    async () => {
+      const deck = await pdfDeck([['The Hive', 'Worker bees are male in this course.']]);
+      const retrieved = await retrievedFrom(deck, 'bio', 'l1', 'hive.pdf');
+      const long = 'Drones are not covered anywhere in this hive deck.';
+      test = await startTestServer(
+        gatewayOf([explained(QUESTION, retrieved, explanationReply(long))], new ShortEmbedder(7)),
+      );
+      await send(test.server.port, {
+        method: 'POST',
+        path: uploadPath('bio', 'l1', 'hive.pdf'),
+        headers: { 'content-type': 'application/pdf' },
+        body: deck,
+      });
+      await settledStatus(test.server.port, 'bio');
+      const reply = await askBio(test);
+      expect(reply.status).toBe(200);
+      expect(reply.json).toMatchObject({
+        status: 'grounded',
+        explanation: {
+          sentences: [{ text: long, slides: [] }],
+          sources: retrieved.map(({ sourceId }) => sourceId),
+        },
+      });
     },
     INGEST_BOUND_MS,
   );

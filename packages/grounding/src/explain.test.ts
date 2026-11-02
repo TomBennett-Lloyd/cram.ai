@@ -141,11 +141,17 @@ describe('explain at the light depth', () => {
     });
   });
 
-  it('throws when no sentence names any slide', async () => {
+  it('names the slides it was written from when no sentence names one', async () => {
     const { search } = scriptedSearch({});
     await expect(
-      run([explained(SQUARE)], { depth: 'light', searchSentence: search }),
-    ).rejects.toThrow('explain: an explanation names no slide');
+      run([explained(SQUARE), verified()], { depth: 'light', searchSentence: search }),
+    ).resolves.toMatchObject({
+      status: 'grounded',
+      explanation: {
+        sentences: [{ text: SQUARE, slides: [], contradicts: [] }],
+        sources: ['l1/1', 'l1/2'],
+      },
+    });
   });
 
   it('reports a generator failure at the generate stage', async () => {

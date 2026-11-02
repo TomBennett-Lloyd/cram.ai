@@ -5,7 +5,7 @@ import { NonBlankText } from './non-blank-text';
 /**
  * One sentence of an explanation (`docs/adr/0009-explanation-answers.md` § Decision (a)): `slides`
  * are the candidates a search found (light) or the slides that entailed it (deep); `contradicts`
- * the slides scored as contradicting it, best first.
+ * the slides it is marked against under § Amendments, best first.
  */
 export const AttributedSentence = z.strictObject({
   text: NonBlankText,

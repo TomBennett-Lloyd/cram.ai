@@ -117,9 +117,9 @@ packages/gateway/src/role-config.ts	937
 packages/gateway/src/role.ts	1666
 packages/gateway/src/served-artefact.ts	1428
 packages/grounding/src/ask.ts	588
-packages/grounding/src/attribute-sentences.ts	425
+packages/grounding/src/attribute-sentences.ts	408
 packages/grounding/src/claims.ts	1200
-packages/grounding/src/explain.ts	232
+packages/grounding/src/explain.ts	225
 packages/grounding/src/fake-gateway-fixture.ts	0
 packages/grounding/src/generate-units.ts	400
 packages/grounding/src/ground.ts	253
@@ -138,7 +138,7 @@ packages/grounding/src/resolve-quotes.ts	1764
 packages/grounding/src/slide-text.ts	1538
 packages/grounding/src/verification-depth.ts	1666
 packages/grounding/src/verifier-input.ts	1666
-packages/grounding/src/verify-explanation.ts	165
+packages/grounding/src/verify-explanation.ts	85
 packages/grounding/src/verify.ts	327
 packages/index/src/chunk-row.ts	555
 packages/index/src/common-words.ts	444

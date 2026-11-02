@@ -1,4 +1,4 @@
-import type { EntailmentResult, ModelGateway } from '@cram/gateway';
+import type { EntailmentPair, EntailmentResult, ModelGateway } from '@cram/gateway';
 import type { AttributedSentence, RetrievedSlide, Verdict, WithheldSentence } from '@cram/shared';
 import type { ModelFailure } from './model-failure';
 import { type ClaimLabel, claimLabel, type NliThresholds } from './nli-verdict';
@@ -19,7 +19,6 @@ export type DeepVerification =
     }
   | { readonly status: 'model-failed'; readonly failure: ModelFailure };
 
-/** Only `supported` moves a pair: the verifier prompt's `unsupported` is also an unrelated slide's verdict. */
 const SECOND_OPINION: Readonly<Record<Verdict, ClaimLabel>> = {
   supported: 'entailed',
   partial: 'neutral',
@@ -30,10 +29,7 @@ type SecondOpinion =
   | { readonly status: 'labelled'; readonly label: ClaimLabel }
   | Extract<DeepVerification, { status: 'model-failed' }>;
 
-const overLengthLabel = async (
-  pair: { readonly premise: string; readonly hypothesis: string },
-  deps: DeepDeps,
-): Promise<SecondOpinion> => {
+const overLengthLabel = async (pair: EntailmentPair, deps: DeepDeps): Promise<SecondOpinion> => {
   if (!deps.secondOpinion) return { status: 'labelled', label: 'contradicted' };
   const reply = await deps.gateway.generator.chat(
     verifierRequest({ text: pair.hypothesis, quotes: [pair.premise] }),
@@ -50,7 +46,7 @@ interface Labelled {
 
 const labelSentence = async (
   results: readonly EntailmentResult[],
-  pairs: readonly { readonly premise: string; readonly hypothesis: string }[],
+  pairs: readonly EntailmentPair[],
   retrieved: readonly RetrievedSlide[],
   deps: DeepDeps,
 ): Promise<

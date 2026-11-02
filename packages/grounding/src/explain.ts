@@ -7,7 +7,7 @@ import {
   type RetrievedSlide,
   type WithheldSentence,
 } from '@cram/shared';
-import { attributeSentences, quotesIn, sourcesOf } from './attribute-sentences';
+import { attributeSentences, quotesIn, sourcesOf, uniqueSlides } from './attribute-sentences';
 import { type ClaimSpan, claimSpans, spansOf } from './claims';
 import { markContradictions } from './mark-contradictions';
 import type { ModelFailure } from './model-failure';
@@ -51,11 +51,14 @@ interface Drafted {
   readonly withheld: readonly WithheldSentence[];
 }
 
+type Retrieved = readonly [RetrievedSlide, ...RetrievedSlide[]];
+
 const shown = (
   { text, quotes, withheld }: Drafted,
   sentences: readonly AttributedSentence[],
   spans: readonly ClaimSpan[],
   slides: readonly RetrievedSlide[],
+  [head, ...tail]: Retrieved,
 ): ExplainResult => {
   const sources = sourcesOf(
     sentences.map((sentence, index) => {
@@ -64,8 +67,11 @@ const shown = (
       return [...sentence.slides, ...quoted.map(({ sourceId }) => sourceId)];
     }),
   );
-  const [first, ...rest] = sources;
-  if (first === undefined) throw new Error('explain: an explanation names no slide');
+  const [named, ...more] = sources;
+  const [first, ...rest] =
+    named === undefined
+      ? [head.sourceId, ...tail.map(({ sourceId }) => sourceId)]
+      : [named, ...more];
   return {
     status: 'grounded',
     explanation: {
@@ -81,7 +87,7 @@ const shown = (
 
 const light = async (
   drafted: Drafted,
-  retrieved: readonly RetrievedSlide[],
+  retrieved: Retrieved,
   searchSentence: SearchSentence,
   deps: ExplainDeps,
 ): Promise<ExplainResult> => {
@@ -94,16 +100,13 @@ const light = async (
     (request) => deps.gateway.verifier.entail(request),
     deps.thresholds,
   );
-  const named = [...retrieved, ...attributed.flatMap(({ slides }) => slides)];
-  const slides = named.filter(
-    (slide, index) => named.findIndex(({ sourceId }) => sourceId === slide.sourceId) === index,
-  );
-  return shown(drafted, marked, spans, slides);
+  const slides = uniqueSlides([...retrieved, ...attributed.flatMap(({ slides: named }) => named)]);
+  return shown(drafted, marked, spans, slides, retrieved);
 };
 
 const deep = async (
   drafted: Drafted,
-  retrieved: readonly RetrievedSlide[],
+  retrieved: Retrieved,
   secondOpinion: boolean,
   deps: ExplainDeps,
 ): Promise<ExplainResult> => {
@@ -116,7 +119,7 @@ const deep = async (
   const text = kept.join(' ');
   const spans = spansOf(text, kept);
   const quotes = drafted.quotes.filter(({ quote }) => quoteSpan(text, quote) !== undefined);
-  return shown({ text, quotes, withheld }, verified.kept, spans, retrieved);
+  return shown({ text, quotes, withheld }, verified.kept, spans, retrieved, retrieved);
 };
 
 /** `docs/standards/grounding.md` rule 2's order, the verify stage by depth (`docs/adr/0009-explanation-answers.md` § Decision (b)–(g)). */
@@ -126,14 +129,16 @@ export const explain = async (
   depth: ExplainDepth,
   deps: ExplainDeps,
 ): Promise<ExplainResult> => {
-  if (retrieved.length === 0) return { status: 'not-covered', withheld: [] };
+  const [head, ...tail] = retrieved;
+  if (head === undefined) return { status: 'not-covered', withheld: [] };
   const reply = await deps.gateway.generator.chat(explanationRequest(question, retrieved));
   if (reply.status !== 'completed')
     return { status: 'model-failed', stage: 'generate', failure: reply };
   const { answer } = reply.value;
   if (answer === null) return { status: 'not-covered', withheld: [] };
   const drafted = { text: answer.text, ...resolveQuotes(answer.text, answer.quotes, retrieved) };
+  const nonEmpty: Retrieved = [head, ...tail];
   return depth.depth === 'light'
-    ? light(drafted, retrieved, depth.searchSentence, deps)
-    : deep(drafted, retrieved, depth.secondOpinion, deps);
+    ? light(drafted, nonEmpty, depth.searchSentence, deps)
+    : deep(drafted, nonEmpty, depth.secondOpinion, deps);
 };
