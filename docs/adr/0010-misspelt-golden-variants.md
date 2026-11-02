@@ -1,6 +1,6 @@
 # 0010 — Misspelt golden variants: retrieval-only typos on a golden question, and their recall@k beside the clean figure
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-02
 - **Issue:** #395
 
