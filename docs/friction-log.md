@@ -430,3 +430,28 @@ Entry format:
 
 - Phase: process
 - Observed: #440 was filed at 16:15:13Z, and 28 s later its first comment recorded the merge owner's auto-mode classifier refusing the lane's dispatch as self-modification, since the footprint was the session's own permission settings and `.claude/workflow.json`. On the owner's explicit word it was re-dispatched, and the plan comment went up at 16:21:34Z. The cost was about six minutes and an owner message. `.claude/skills/run-issue/SKILL.md` names a classifier refusal only for a lane's FILL or rebase resolution ("returns `BLOCKED` ... you then run the same bare command yourself"), not for the merge owner's own dispatch. From this PR on, `.claude/settings.json` is humanAlways, so a later ticket on it meets the owner at merge anyway. One ticket so far.
+
+## 2026-11-02 — PR #472 (label geometry)
+
+- Phase: implementation
+- Observed: the #421 plan comment put `APPEARS_TO_CONTRADICT` in flow at `display: none` and priced the reflow in its Approach ("The cost: the text after the reference shifts while the label shows"). Its Revision 1 (landed in `ca4b0d9`) came after the phone project's Playwright click on the contradiction button missed — the shown label wrapped the cluster and moved the button from under the pointer — and added an e2e assertion that the button's box holds. That assertion, the mutation pass's 15 CSS mutants against Playwright, and browser-smoke's PASS at `6b7f4db` ("the button's box did not change", PR #472's body) each measured that one button; the reviewer's pass on `6b7f4db` found every later control still pushed, a `docs/standards/design.md` rule 6 breach, and Revision 2 (`288e1c5`) holds the label's box at rest with `visibility: hidden` and asserts the sentence's next number holds too. Upstream, ADR 0009 § Decision (i) puts the mark under rules 2 and 9, the issue body cites rules 2 and 11, and `.claude/agents/browser-smoke.md`'s "New chrome answers for itself" bullet names rules 2 and 9; rule 6's text speaks of readouts, columns and a moving cursor, and nothing in the chain named it for a hover reveal. The cost was one finding in a round fixing eight others, and the smoke's geometry reading predates the final geometry (the PR body hands that to the e2e lane). Filed as #474.
+
+## 2026-11-02 — PR #472 (render-deck hook)
+
+- Phase: verify
+- Observed: the lane's red `pnpm verify` runs were all the #349/#441 timeout class: `ca4b0d9`'s body records one (`eval/src/ingested-course.test.ts` at 5000 ms, 2.99 s alone, green on the re-run) and `6b7f4db`'s one at load about 35 (ingested-course, `eval/src/render-deck.test.ts` and `packages/ingest`'s stored-text). The lane report's retro line counts three whole re-runs and its friction line two reds in five runs; the merge owner's retro brief has 3 of 9. render-deck fails in its `beforeAll` (line 36, which renders the deck's PDFs) at vitest's default 10000 ms hook timeout, not in the raster cases #200 fixed by construction (PR #249, `d6e1409`). #441's body names only ingested-course; its 17:51Z comment records a render-deck hook timeout from the #411 lane, the `PR #449 (local verify red)` entry a second, and this lane a third, now added to #441 as a comment. With the six lanes the `PR #445 (md-only full tier)` entry lists and the `PR #454 (timeout re-runs)` entry, the eighth lane on 2026-11-02 to pay the class.
+
+## 2026-11-02 — PR #472 (verify wall-clock)
+
+- Phase: verify
+- Observed: the lane's friction line reads "at machine load 30–50 the full tier took over 20 minutes", and every run was the full tier (`8b84cd7` and `ca4b0d9` record `tier full`; #402 records that `apps/*` resolves to everything). The lane ran about 3.25 hours of wall clock (the merge owner's retro brief), plan comment at 16:47Z to PR at 19:48Z. Sixth lane to record the composite's cost under shared load (PR #215, PR #386, and the `PR #394 (verify wall-clock)`, `PR #432 (step commits)` and `PR #455 (verify under load)` entries), at the longest per-run figure yet; the earlier figures run from 9 to 15 minutes.
+
+## 2026-11-02 — PR #472 (baseline unbanked)
+
+- Phase: merge
+- Observed: the lane report's merge cautions say `.claude/comment-density.baseline.tsv` reports "stale (3 lower)" at the head that merged and was "not banked, to avoid another full run"; the three lowered rows wait for whichever PR next regenerates the file. #402 (open) records a baseline row buying the full composite; here the same price ran the other way, and a ratchet tightening was declined because banking it cost one more 20-minute run. One lane so far.
+
+## 2026-11-02 — PR #472 (hostile corpus)
+
+- Phase: implementation
+- Observed: the mutation pass's hostile corpus (14 inputs, judged by `@cram/grounding`'s `claimSpans` and `quotesIn`, the server's code, not the view's) disagreed on two — a line two slides hold, and overlapping quotes — where the view dropped the later quote's mark and number; `6b7f4db` merges overlaps and the corpus agrees 14/14, with 51 of 51 mutants killed and two empty-run guards deleted rather than declared equivalent (PR #472's § Mutation). The defect was found before review, by `.claude/agents/ticket-agent.md` § 4's hostile-corpus rule on a web surface. No new signal; recorded for a graduation check of that rule.
