@@ -17,7 +17,7 @@ import { IndexRetriever, type IndexedLecture } from './index-retriever';
 import { type Clock, latencySummary, timed } from './latency';
 import { notMeasurable } from './metric-row';
 import { EvalReport, type MachineClass } from './report';
-import { retrievalRecall } from './retrieval-recall';
+import { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
 import { TimedGateway } from './timed-gateway';
 import { type JudgedLabel, verifierAccuracy } from './verifier-accuracy';
 import { verifierArmDecisions } from './verifier-arms';
@@ -101,10 +101,12 @@ const judgeAll = async (
   return { judged, durationsMs };
 };
 
-const retrieveAll = async (
-  spec: EvalRunSpec,
-  gateway: ModelGateway,
-): Promise<readonly Retrieved[]> => {
+interface Retrievals {
+  readonly clean: readonly Retrieved[];
+  readonly misspelt: readonly Retrieved[];
+}
+
+const retrieveAll = async (spec: EvalRunSpec, gateway: ModelGateway): Promise<Retrievals> => {
   const retriever = await IndexRetriever.open({
     courseId: spec.courseId,
     lectures: spec.lectures,
@@ -112,10 +114,14 @@ const retrieveAll = async (
     k: RETRIEVAL_K,
   });
   try {
-    const retrievals: Retrieved[] = [];
-    for (const question of spec.questions)
-      retrievals.push({ question, retrieved: await retriever.retrieve(question.question) });
-    return retrievals;
+    const clean: Retrieved[] = [];
+    const misspelt: Retrieved[] = [];
+    for (const question of spec.questions) {
+      clean.push({ question, retrieved: await retriever.retrieve(question.question) });
+      for (const variant of question.misspelt)
+        misspelt.push({ question, retrieved: await retriever.retrieve(variant) });
+    }
+    return { clean, misspelt };
   } finally {
     retriever.close();
   }
@@ -145,15 +151,15 @@ const NOT_YET = {
 
 /**
  * One whole run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)): retrieve and Ask every
- * golden question, verify every hand label under each arm, then report. A recording miss rejects
- * the run; it never yields a report.
+ * golden question, retrieve each misspelt variant, verify every hand label under each arm, then
+ * report. A recording miss rejects the run; it never yields a report.
  */
 export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   const gateway = new TimedGateway(spec.gateway, spec.clock);
   const retrievals = await retrieveAll(spec, gateway);
   const askMs: number[] = [];
   const asks = await byStrategy(ASK_STRATEGIES, (strategy) =>
-    askAll(retrievals, gateway, strategy, {
+    askAll(retrievals.clean, gateway, strategy, {
       clock: spec.clock,
       durationsMs: strategy === PROVISIONAL_VERIFIER_STRATEGY ? askMs : [],
     }),
@@ -198,7 +204,8 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
     metrics: {
       citationValidity: citationValidity(headline),
       contradictionSet: contradictionSet(headline),
-      retrievalRecall: retrievalRecall(retrievals, RETRIEVAL_K),
+      retrievalRecall: retrievalRecall(retrievals.clean, RETRIEVAL_K),
+      misspeltRetrievalRecall: misspeltRetrievalRecall(retrievals.misspelt, RETRIEVAL_K),
       verifierPrecision: headlineAccuracy.precision,
       verifierRecall: headlineAccuracy.recall,
       examAnswerability: notMeasurable(NOT_YET.exams),

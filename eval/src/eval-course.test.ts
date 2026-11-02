@@ -48,6 +48,12 @@ describe('the committed eval course', () => {
     expect(Math.max(...words)).toBeGreaterThan(PINNED_EMBEDDER_WINDOW);
   });
 
+  // docs/adr/0010-misspelt-golden-variants.md § Decision (b).
+  it('holds misspelt variants on a sample of covered questions', () => {
+    const carriers = committed().questions.filter(({ misspelt }) => misspelt.length > 0);
+    expect(carriers.length).toBeGreaterThanOrEqual(3);
+  });
+
   it('labels every verdict', () => {
     const verdicts = new Set(committed().labels.map((label) => label.verdict));
     expect([...verdicts].sort()).toEqual([...Verdict.options].sort());

@@ -61,10 +61,13 @@ describe('auditEvalCourse', () => {
     ]);
   });
 
-  it('accepts a misspelt variant one letter from its question', () => {
-    const questions = [question({ misspelt: ['What shape are cels?'] })];
-    expect(auditEvalCourse(course({ questions }))).toEqual([]);
-  });
+  it.each(['What shape are cels?', 'What shape are cells'])(
+    'accepts the misspelt variant %j',
+    (variant) => {
+      const questions = [question({ misspelt: [variant] })];
+      expect(auditEvalCourse(course({ questions }))).toEqual([]);
+    },
+  );
 
   it('reports a misspelt variant of a question with no expected slide', () => {
     const questions = [question({ expectedCitations: [], misspelt: ['What shape are cels?'] })];
@@ -79,6 +82,7 @@ describe('auditEvalCourse', () => {
 
   it.each([
     ['its own question, up to case and whitespace', [' what  SHAPE are\tcells? '], []],
+    ['its own question, up to a no-break space', ['What\u00a0shape are cells?'], []],
     ['a later question', ['What colour are cells?'], ['What colour are cells?']],
     ['another variant of the same question', ['What shape are cels?', 'What shape are cels?'], []],
   ])('reports a misspelt variant equal to %s', (_, misspelt, later) => {

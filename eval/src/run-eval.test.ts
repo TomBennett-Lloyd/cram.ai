@@ -42,6 +42,7 @@ const QUESTIONS = [
     question: 'Are worker bees male?',
     expectedCitations: [{ lectureId: 'l1', slideNo: 2 }],
     mustNotContain: ['female'],
+    misspelt: ['Are wrker bees male?', 'Are wroker bees male?', 'Are wkr bees male?'],
   }),
   question({ question: 'Who won the football cup?', expectedCitations: [], mustNotContain: [] }),
 ];
@@ -172,6 +173,7 @@ describe('runEval', () => {
       citationValidity: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
       contradictionSet: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
       retrievalRecall: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      misspeltRetrievalRecall: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
       verifierPrecision: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
       verifierRecall: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
     });
@@ -236,6 +238,15 @@ describe('runEval', () => {
     const { report } = await recordRun(tutor(false));
     expect(report.latency.ask).toMatchObject({ samples: QUESTIONS.length });
     expect(report.verifierArms.nli.perUnitLatency).toMatchObject({ samples: LABELS.length });
+  });
+
+  it('retrieves each misspelt variant as typed or corrected, and never asks one', async () => {
+    const { recordings } = await recordRun(tutor(false));
+    const sent = (role: string) =>
+      recordings.filter((r) => r.role === role).map(({ request }) => JSON.stringify(request));
+    expect(sent('embedder').some((text) => text.includes('Are wkr bees male?'))).toBe(true);
+    expect(sent('generator').some((text) => text.includes('Are worker bees male?'))).toBe(true);
+    expect(sent('generator').some((text) => /wrker|wroker|wkr/.test(text))).toBe(false);
   });
 
   it('counts recall at the retrieval k, not only the top slide', async () => {
