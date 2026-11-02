@@ -478,8 +478,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-02 — issue #411 — systemic-findings-route-in-a-batch
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to approve one edit to `CLAUDE.md`'s Workflow bullet on the review loop: `Systemic findings go to docs/tech-debt.md` becomes a pointer, `Systemic findings go where /review-loop step 2 routes them`. The bullet's `max 3 cycles` bound is unchanged. The rest of the PR is the rule the owner approved in chat on 2026-11-02 ("approve 410 411 412 427"): review-loop step 2 sends a batch's SYSTEMIC findings to `discovered` issues, and the task-orchestrator report template follows it.
 - **Why**: a batch merges `--rebase` on exactly one commit per member (`.claude/scripts/merge-pr.sh`'s curated-history check), and a `docs/tech-debt.md` append is a commit that belongs to no member. After step 2 changes, the bullet would state a destination a batch may not use. `CLAUDE.md` is a `humanAlways` path, so the edit could not ride in the #410 batch, and #411 left that batch at its plan checkpoint.
 - **How applied**: a pointer rather than a qualified restatement, so `CLAUDE.md` carries no copy of the route and no restatement ledger is needed (`docs/standards/architecture.md` rule 9). Plan and sweep: https://github.com/TomBennett-Lloyd/cram.ai/issues/411#issuecomment-6582091940.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-02 — "approve 454 and 445"; the CLAUDE.md:55 pointer stands
