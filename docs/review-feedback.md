@@ -467,11 +467,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-02 — PR #437 — adr-0009-entailment-outweighs-contradiction
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the owner's decision of 2026-11-02, relayed verbatim by the coordinator while #420 was blocked on the contradiction gate: "i think we can rely on the slides not being self contradictory? i.e. one supporting match outweighs any contradictions? perhaps we could do some kind of self contradiction checks when we're injesting the slides so we can clarify the context around different statements to ensure we don't get wires crossed? (that can be tackled separately ofc)". The coordinator asked for it to land as an amendment to ADR 0009 § Decision (d)/(g), quoted with its date, in this PR.
 - **Why**: on #420's step-6 live run, the pinned cross-encoder scored contradiction at 0.9–1.0 between a sentence and retrieved slides about something else. Under 0009 as accepted, that withheld or marked most correct sentences (plan comment: https://github.com/TomBennett-Lloyd/cram.ai/issues/420#issuecomment-6578621768).
 - **How applied**: `verify-explanation.ts` and `mark-contradictions.ts` read entailment first at both depths. ADR 0009 gains `## Amendments` with the dated entry and as-it-stood notes at (a), (d) and (g). The carriers are trued: `CLAUDE.md` § Hard constraints, `README.md`, `docs/standards/grounding.md` rule 4, `docs/plan.md` and `AttributedSentence`'s docblock. **Extras beyond the owner's decision, for review:**
   1. A second amendment entry: when no sentence names a slide, an explanation's `sources` falls back to the retrieved set. This replaces a server error, and came out of review.
   2. The deep second opinion's `unsupported` reads as neutral, not contradicted.
   3. `docs/adr/README.md` § Amendments forbids an amendment that touches reasoning. This change is a decision narrowed by the owner, so the owner may prefer a superseding ADR. That question is logged in `docs/tech-debt.md`.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-02 — "approve 437"; the three extras approved as they stand, and the ADR change stays an amendment
