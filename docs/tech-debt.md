@@ -195,3 +195,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `eval/src/run-eval.ts` (`judgeKinds`); `packages/grounding/src/verify-explanation.ts`
 - What: the eval judges each labelled sentence alone, against its hand-picked premises. Production sends every neutral sentence of an answer in one call, against the whole retrieved set. So `sentenceKindPrecision` and `sentenceKindRecall` say nothing about batching or positional alignment, which is where the length and order risk lives. Also, a fail-closed judge reply becomes `course-claim` with no count in the report, so a partly failing judge shows only as moved rows. Suspected root cause: 0009 (o) names the sample rows but not the call shape they stand for.
 - Source: PR #450 (review)
+
+## 2026-11-02 — the decks screen's "pressed" set never clears
+
+- Where: `apps/web/src/decks/DecksScreen.tsx` (`askedFor`, passed to `NoSummary` as `pressed`)
+- What: once a reader has pressed "Make the summary" for a lecture, every later failed summary for that lecture is announced as an alert, including one an upload or a rebuild's re-make made without a press. Suspected root cause: the press is held as a session-long set rather than tied to the one re-make it asked for.
+- Source: PR #456 for #422 (confirmation review)
