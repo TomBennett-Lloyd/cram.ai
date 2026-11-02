@@ -1,7 +1,8 @@
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { EmbedRequest, Embedder, EmbeddingResult, Recording } from '@cram/gateway';
-import { CourseId, type RetrievedSlide } from '@cram/shared';
+import { slideLines } from '@cram/grounding';
+import { CourseId, type RetrievedSlide, type Unit } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import { MAX_ASK_BYTES } from './handlers';
@@ -72,21 +73,37 @@ const askBio = (
     body,
   });
 
-const male = cite('l1/1', 'Worker bees are male');
+const male = cite('l1/1', 'Worker bees are male in this course.');
 const unit = answer('Workers are male in this course.', [male]);
+
+/** The model's reply for `replied` to `question`: each quote written as the number of the retrieved line it is. */
+const unitReply = (
+  retrieved: readonly RetrievedSlide[],
+  question: string = QUESTION,
+  replied: Unit = unit,
+) =>
+  generated(question, retrieved, {
+    status: 'content',
+    content: JSON.stringify({
+      units: [
+        {
+          text: replied.text,
+          citations: replied.citations.map(({ sourceId, quote }) => {
+            const slide = retrieved.find((candidate) => candidate.sourceId === sourceId);
+            const line = slide === undefined ? [] : slideLines(slide.record);
+            return { sourceId, line: line.indexOf(quote) + 1 };
+          }),
+        },
+      ],
+    }),
+  });
 
 describe('POST /courses/:id/ask', () => {
   it('answers with the verified units, their citations and the retrieved slides', async () => {
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [
-        generated(QUESTION, retrieved, {
-          status: 'content',
-          content: JSON.stringify({ units: [{ text: unit.text, citations: unit.citations }] }),
-        }),
-        judged(unit, ENTAILED),
-      ];
+      return [unitReply(retrieved), judged(unit, ENTAILED)];
     });
     const reply = await askBio(server);
     expect(reply.status).toBe(200);
@@ -97,13 +114,7 @@ describe('POST /courses/:id/ask', () => {
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [
-        generated(QUESTION, retrieved, {
-          status: 'content',
-          content: JSON.stringify({ units: [{ text: unit.text, citations: unit.citations }] }),
-        }),
-        judged(unit, CONTRADICTED),
-      ];
+      return [unitReply(retrieved), judged(unit, CONTRADICTED)];
     });
     const reply = await askBio(server);
     expect(reply.status).toBe(200);
@@ -126,13 +137,7 @@ describe('POST /courses/:id/ask', () => {
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [
-        generated(typed, retrieved, {
-          status: 'content',
-          content: JSON.stringify({ units: [{ text: unit.text, citations: unit.citations }] }),
-        }),
-        judged(unit, ENTAILED),
-      ];
+      return [unitReply(retrieved, typed), judged(unit, ENTAILED)];
     }, new SpyEmbedder());
     const reply = await askBio(server, JSON.stringify({ question: typed }));
     expect(reply.json).toEqual({
@@ -167,16 +172,7 @@ describe('POST /courses/:id/ask', () => {
     const expected = [workers, drones];
     const cited = answer('Workers forage.', [cite('l1/2', 'Workers')]);
     test = await startTestServer(
-      gatewayOf(
-        [
-          generated(typed, expected, {
-            status: 'content',
-            content: JSON.stringify({ units: [{ text: cited.text, citations: cited.citations }] }),
-          }),
-          judged(cited, ENTAILED),
-        ],
-        new TitleEmbedder(),
-      ),
+      gatewayOf([unitReply(expected, typed, cited), judged(cited, ENTAILED)], new TitleEmbedder()),
     );
     await send(test.server.port, {
       method: 'POST',
@@ -198,13 +194,7 @@ describe('POST /courses/:id/ask', () => {
     let slides: RetrievedSlide[] = [];
     const server = await hiveCourse((retrieved) => {
       slides = retrieved;
-      return [
-        generated(typed, retrieved, {
-          status: 'content',
-          content: JSON.stringify({ units: [{ text: unit.text, citations: unit.citations }] }),
-        }),
-        judged(unit, CONTRADICTED),
-      ];
+      return [unitReply(retrieved, typed), judged(unit, CONTRADICTED)];
     });
     const reply = await askBio(server, JSON.stringify({ question: typed }));
     expect(reply.json).toEqual({
