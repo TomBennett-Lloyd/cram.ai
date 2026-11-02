@@ -235,3 +235,18 @@ Entry format:
 
 - Phase: implementation
 - Observed: `TOPIC_LIST_WEIGHT` (`packages/index/src/course-index.ts`) is 1, the unit weight the other two lists carry as a literal, so mutant W1 (the constant → 1) has no input that tells the owned value from the literal, and the lane reported it under the `Mutation:` line's `unkillable` slot with the reason, as `.claude/agents/ticket-agent.md` § 4 asks; the weighting itself died at R4, and the three guards whose mutants also survived were removed as equivalent, each with a second shape named. The value is provisional until #426's measured run (#69), as `RETRIEVAL_K` is, but that one sits off the unit so a mutant can move it; a provisional owned value at its neutral default is held only by its docblock until it is tuned. One ticket so far.
+
+## 2026-11-02 — PR #418 (hand-back)
+
+- Phase: process
+- Observed: the #408 lane's last commit was `1617f4b` at 12:42:46Z (`gh pr view 418 --json commits`), and PR #418 opened at 12:52:54Z with its `## Lane report` section reading "(pending — written once CI settles)"; the PR was DIRTY on `docs/tech-debt.md` alone, which GitHub runs no checks on, so the wait had no end and no report reached the top level on its own. The report the body now holds is its 15:00:39Z edit, 2 h 17 min 53 s after the push, written after the merge owner messaged the lane (its CI line reads "Per the coordinator, merge-pr.sh's union clears this at merge, so I did not rebase again"). `.claude/agents/ticket-agent.md` § 7 orders mergeability before the checks watch and § 8 bans anything reaching the top level before the report, so a lane watching checks that cannot start reads the same as a lane at work until someone asks. One lane so far.
+
+## 2026-11-02 — PR #418 (CI silence)
+
+- Phase: merge
+- Observed: PR #418 opened DIRTY on `docs/tech-debt.md` alone after the lane had rebased once onto `0654737` and unioned the log: #407 merged at 12:44:47Z (`19c1d95`), 2 min after the lane's push, touching the log again, and #432 (`f1df348`, 14:58:41Z) touched it once more. `gh pr checks 418` read "no checks reported" throughout, since a conflicted PR has no merge ref. The merge owner took `.claude/skills/run-issue/SKILL.md` step 5's logs-alone arm: `merge-pr.sh`'s union commit `1a2b03f` landed at 15:01:28Z, the five checks completed between 15:02:00Z and 15:08:06Z, and the merge followed at 15:08:13Z, so the PR's first and only CI run was the merge's own. The `PR #345` entry priced each log-only `REBASE —` bounce at a lane round and a CI run and named the union as the saving; this is the union's side of the price — a DIRTY-on-logs PR shows no CI verdict until the merge owner commits to merging it, and the lane's own re-clear bought a 2 min head start. The log's `PR #394` and `PR #407` entries record no CI-silent wait (PR #407's lane report reads `CI: green`); first instance recorded.
+
+## 2026-11-02 — PR #418 (M8 re-run)
+
+- Phase: implementation
+- Observed: the #408 lane's mutant M8 (record the sha at classify, not at the ready verdict) was three edits, and its first run under a `408-mut-M8-*` name applied a copy of M7's edit instead; the lane caught it, re-ran it as `M8b`, and the PR body's table and the lane report's `wasted work` both say so. The cost was one run of the nine-case scratch harness the lane built because the committed one takes ~2 min a run (#434). `docs/standards/testing.md` rule 8's loop is apply, run the one test file, revert by the inverse edit; nothing in it checks that the edit applied is the mutant named, and a hand-applied multi-edit mutant is where that shows. One lane so far.
