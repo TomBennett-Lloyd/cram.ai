@@ -96,6 +96,7 @@ describe('a lecture’s summary on the decks screen', () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2);
     });
     expect(state()?.textContent).toBe(`${SUMMARY_FAILED} ${MAKE_SUMMARY}`);
+    expect(screen.getByRole('alert').textContent).toBe(SUMMARY_FAILED);
     expect(state()?.getAttribute('aria-busy')).toBe('false');
     const settledReads = statusReads(sent);
     await act(async () => {
@@ -131,6 +132,7 @@ describe('a lecture’s summary on the decks screen', () => {
     expect(document.querySelector('.lecture-summary-state')?.textContent).toBe(
       `${SUMMARY_FAILED} ${MAKE_SUMMARY}`,
     );
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('reports a re-make the server refused', async () => {

@@ -40,7 +40,7 @@ const stateOf = (result: Awaited<ReturnType<ApiClient['ingestStatus']>>): Ingest
   return { status: 'failed', failure: result };
 };
 
-/** Re-reads while the course's repair or any upload is queued or under way; `revision` restarts the read after an upload. */
+/** Re-reads while `inFlight`; `revision` restarts the read after an upload or a re-make. */
 export const useIngestStatus = (
   api: ApiClient,
   courseId: CourseId,

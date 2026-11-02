@@ -91,7 +91,7 @@ describe('a summary’s lines', () => {
     ).toEqual(['Worker bees are female.']);
   });
 
-  it('reads the lines again once the course’s summaries may have changed, and not on closing', async () => {
+  it('keeps the lines shown when the course’s summaries may have changed, and reads them again at the next open, not on closing', async () => {
     const lectures = StoredLectures.parse({
       state: 'read',
       lectures: [lecture('l1', 2, [], [], true), lecture('l2', 1, [], [], false)],
@@ -113,6 +113,7 @@ describe('a summary’s lines', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
     });
+    expect(screen.getByText('Workers are female.')).toBeDefined();
     await act(async () => {
       details.open = false;
       fireEvent(details, new Event('toggle'));

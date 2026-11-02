@@ -20,7 +20,7 @@ apps/server/src/lecture-digest.ts	277
 apps/server/src/loopback.ts	1666
 apps/server/src/repair-fixture.ts	500
 apps/server/src/routes.ts	250
-apps/server/src/server-fixture.ts	275
+apps/server/src/server-fixture.ts	272
 apps/server/src/server-log.ts	1111
 apps/server/src/server.ts	364
 apps/server/src/slide-embedding.ts	454
@@ -43,12 +43,12 @@ apps/web/src/copy.ts	514
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
-apps/web/src/decks/DecksScreen.tsx	544
-apps/web/src/decks/LectureSummary.tsx	410
+apps/web/src/decks/DecksScreen.tsx	535
+apps/web/src/decks/LectureSummary.tsx	384
 apps/web/src/decks/decks-fixture.tsx	289
 apps/web/src/decks/summary-fixture.ts	0
 apps/web/src/decks/use-ingest-status.ts	508
-apps/web/src/decks/use-summaries.ts	277
+apps/web/src/decks/use-summaries.ts	270
 apps/web/src/jsdom-setup.ts	769
 apps/web/src/main.tsx	0
 apps/web/src/shell/AppErrorBoundary.tsx	1428
@@ -68,7 +68,7 @@ eval/src/derived-text.ts	645
 eval/src/eval-fixture.ts	0
 eval/src/exam-metrics.ts	1379
 eval/src/file-attempt.ts	714
-eval/src/golden-question.ts	1481
+eval/src/golden-question.ts	1379
 eval/src/hand-label.ts	1111
 eval/src/index-retriever.ts	363
 eval/src/index.ts	0
@@ -84,9 +84,9 @@ eval/src/read-eval-course.ts	0
 eval/src/recording-gateway.ts	342
 eval/src/render-deck.ts	709
 eval/src/replay-run.ts	757
-eval/src/report.ts	568
-eval/src/retrieval-recall.ts	1666
-eval/src/run-eval.ts	147
+eval/src/report.ts	561
+eval/src/retrieval-recall.ts	1538
+eval/src/run-eval.ts	138
 eval/src/run-files.ts	597
 eval/src/run-fixture.ts	0
 eval/src/scripted-gateway-fixture.ts	370
@@ -134,7 +134,7 @@ packages/grounding/src/model-failure.ts	0
 packages/grounding/src/nli-verdict.ts	769
 packages/grounding/src/prompt-budget.ts	5384
 packages/grounding/src/prompts/explanation-prompt.ts	606
-packages/grounding/src/prompts/generation-prompt.ts	212
+packages/grounding/src/prompts/generation-prompt.ts	200
 packages/grounding/src/prompts/rewrite-prompt.ts	526
 packages/grounding/src/prompts/source-block.ts	1428
 packages/grounding/src/prompts/statement-block.ts	0
@@ -163,7 +163,7 @@ packages/index/src/lecture-summaries.ts	425
 packages/index/src/list-filter.ts	1621
 packages/index/src/open-course.ts	742
 packages/index/src/ranked-lists.ts	277
-packages/index/src/rebuild-course.ts	736
+packages/index/src/rebuild-course.ts	731
 packages/index/src/rebuild-report.ts	740
 packages/index/src/reciprocal-rank.ts	740
 packages/index/src/schema.ts	666

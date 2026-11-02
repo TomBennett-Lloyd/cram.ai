@@ -3,7 +3,7 @@
 owner: packages/grounding/src/prompt-budget.ts
 claim: a prompt holds at most PROMPT_TOKEN_BUDGET tokens as estimateTokens counts them, the generator's context length less REPLY_TOKEN_RESERVE, and the estimate errs long
 cite: PROMPT_TOKEN_BUDGET
-sweep: PROMPT_TOKEN_BUDGET|REPLY_TOKEN_RESERVE|PROMPT_CHARS_PER_TOKEN|estimateTokens|(?i:prompt (token )?budget)|\.claude/ledgers/prompt-token-budget\.ledger
+sweep: PROMPT_TOKEN_BUDGET|REPLY_TOKEN_RESERVE|PROMPT_CHARS_PER_TOKEN|estimateTokens|(?i:prompt (token )?budget|reserve[sd]? (of|at) [0-9])|\b2048\b|(?<![\d.§])(?<!# )3\.5(?![\d.×])|\.claude/ledgers/prompt-token-budget\.ledger
 carrier: packages/grounding/src/summarise-lecture.ts
 carrier: packages/grounding/src/summarise-lecture.test.ts
 carrier: packages/grounding/src/prompt-budget.test.ts
@@ -12,3 +12,4 @@ carrier: docs/adr/0009-explanation-answers.md
 carrier: docs/standards/grounding.md
 excluded: packages/grounding/src/index.ts
 excluded: docs/review-feedback.md
+excluded: .claude/scripts/models-pull.test.sh

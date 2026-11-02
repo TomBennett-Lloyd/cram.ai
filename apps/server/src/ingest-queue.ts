@@ -77,7 +77,7 @@ export class IngestQueue {
     return outcome;
   }
 
-  /** The upload's summary job, after its ingest job; its top-level boundary (rule 2) leaves the lecture unsummarised. */
+  /** The upload's summary job, after its ingest job; its top-level boundary (`docs/standards/error-handling.md` rule 2) leaves the lecture unsummarised. */
   async #summariseUpload(job: IngestJob, upload: Upload): Promise<void> {
     const indexed = this.#uploads.get(job.courseId)?.get(upload.uploadId)?.progress;
     if (indexed?.state !== 'indexed') return;

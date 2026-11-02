@@ -200,7 +200,7 @@ describe('ground', () => {
     });
   });
 
-  it('reports an empty reply as a model failure at the generate stage, never as not-covered', async () => {
+  it('reports an empty reply to a lecture-summary call, which its own slides always cover, as a model failure at the generate stage', async () => {
     await expect(run([generated()])).resolves.toMatchObject({
       status: 'model-failed',
       stage: 'generate',

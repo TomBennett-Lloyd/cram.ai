@@ -25,6 +25,8 @@ export interface SummaryTask {
 
 export type GenerationTask = SummaryTask;
 
+const UNIT_FLOOR: Readonly<Record<GenerationTask['kind'], number>> = { 'lecture-summary': 1 };
+
 const RULES = `You write study material for a student, using only the student's own lecture slides.
 You are given the slides that matter for this request, each inside a <source> tag with its id, one line to a row with the line's number in square brackets before it, and then the request.
 
@@ -37,7 +39,7 @@ Rules:
 - If the sources do not cover the request, return no units.`;
 
 const taskLine = (task: GenerationTask): string =>
-  `The request is the title of the lecture the sources come from, and the sources are that lecture's own slides. Summarise what the lecture teaches in at most ${String(task.maxUnits)} units, drawn from the whole lecture, its last slides as well as its first. Each unit is one full sentence stating one fact or instruction a slide gives, plainly and with nothing added: no definition, reason, example or consequence the slide does not give. A slide's title, or a topic in a list of the lecture's topics, is not a unit, and no unit says what the lecture covers. A line's number is the one in square brackets at the start of its row. Cite the line that states the fact or instruction, and the slide's title as well when the unit needs it to make sense. Return no units only if no slide teaches anything.`;
+  `The request is the title of the lecture the sources come from, and the sources are that lecture's own slides. Summarise what the lecture teaches in at most ${String(task.maxUnits)} units, drawn from the whole lecture, its last slides as well as its first. Each unit is one full sentence stating one fact or instruction a slide gives, plainly and with nothing added: no definition, reason, example or consequence the slide does not give. A slide's title, or a topic in a list of the lecture's topics, is not a unit, and no unit says what the lecture covers. A line's number is the one in square brackets at the start of its row. Cite the line that states the fact or instruction, and the slide's title as well when the unit needs it to make sense. The sources always cover this request.`;
 
 const requestLine = (task: GenerationTask): string => `<lecture>${task.lectureTitle}</lecture>`;
 
@@ -54,6 +56,8 @@ export const generationRequest = (
   ],
   output: {
     name: GENERATED_UNITS,
-    schema: z.strictObject({ units: z.array(GeneratedUnit).min(1).max(task.maxUnits) }),
+    schema: GeneratedUnits.extend({
+      units: GeneratedUnits.shape.units.min(UNIT_FLOOR[task.kind]).max(task.maxUnits),
+    }),
   },
 });

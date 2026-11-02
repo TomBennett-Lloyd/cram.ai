@@ -21,7 +21,7 @@ const LECTURE_SLIDES = `select decks.lecture_id, decks.lecture_title, slides.sli
 
 /**
  * Every lecture with a deck, by lecture id: title, slide count, `image-only` slides, other slides with no vector (`IndexedSlide`,
- * #338), and whether it is summarised. A `references` slide is never unembedded: search leaves it out of the vector list
+ * #338), and whether it is summarised. A `references` slide is never in `unembedded`: search leaves it out of the vector list
  * unless asked (`SearchQuery.includeReferences`).
  */
 export const storedLectures = (db: Database): readonly StoredLecture[] => {

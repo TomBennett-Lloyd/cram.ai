@@ -132,19 +132,29 @@ export const SummaryDetails = ({
 
 /**
  * A lecture with no summary, and the act that makes one; `tried` is a summary this session could
- * not make. The button stays while a re-make runs, so the reader's focus is not dropped.
+ * not make, announced when the reader `pressed` for it. The button stays while a re-make runs.
  */
 export const NoSummary = ({
   busy,
   tried,
+  pressed,
   onRemake,
 }: {
   readonly busy: boolean;
   readonly tried: boolean;
+  readonly pressed: boolean;
   readonly onRemake: () => void;
 }) => (
   <p className="lecture-summary-state" aria-busy={busy}>
-    {busy ? PENDING.remake : tried ? SUMMARY_FAILED : NO_SUMMARY}{' '}
+    {busy ? (
+      PENDING.remake
+    ) : tried && pressed ? (
+      <span role="alert">{SUMMARY_FAILED}</span>
+    ) : tried ? (
+      SUMMARY_FAILED
+    ) : (
+      NO_SUMMARY
+    )}{' '}
     <button type="button" aria-disabled={busy} onClick={busy ? undefined : onRemake}>
       {MAKE_SUMMARY}
     </button>

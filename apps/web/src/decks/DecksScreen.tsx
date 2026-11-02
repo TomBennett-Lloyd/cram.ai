@@ -88,10 +88,11 @@ interface SummaryActs {
   readonly loadSummaries: () => void;
   readonly onOpen: (cited: CitedSlide) => void;
   readonly requested: ReadonlySet<LectureId>;
+  readonly pressed: ReadonlySet<LectureId>;
   readonly onRemake: (lectureId: LectureId) => void;
 }
 
-/** Changes whenever a stored summary may have, so lines read before it are read again. */
+/** Changes whenever a stored summary may have, so lines read before it are read again at the next open (`useSummaries`). */
 const summaryStamp = ({ stored, uploads, remakes }: Ingest): string =>
   JSON.stringify([
     stored.state === 'read'
@@ -134,6 +135,7 @@ const SummaryArea = ({
     <NoSummary
       busy={acts.requested.has(lectureId) || (remake !== undefined && remaking(remake))}
       tried={tried}
+      pressed={acts.pressed.has(lectureId)}
       onRemake={() => {
         acts.onRemake(lectureId);
       }}
@@ -176,6 +178,7 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const [refused, setRefused] = useState<readonly Refused[]>([]);
   const [dismissal, setDismissal] = useState<Dismissal>({ status: 'idle' });
   const [requested, setRequested] = useState<ReadonlySet<LectureId>>(new Set());
+  const [askedFor, setAskedFor] = useState<ReadonlySet<LectureId>>(new Set());
   const [remakeFailure, setRemakeFailure] = useState<ApiFailure | undefined>(undefined);
   const [open, setOpen] = useState<CitedSlide | null>(null);
   const picker = useRef<HTMLInputElement>(null);
@@ -191,6 +194,7 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   /** The request's answer is the re-make's queued state, which the re-read that follows shows. */
   const remake = (lectureId: LectureId): void => {
     setRequested((held) => new Set([...held, lectureId]));
+    setAskedFor((held) => new Set([...held, lectureId]));
     setRemakeFailure(undefined);
     void api.remakeSummary(courseId, lectureId).then((result) => {
       setRequested((held) => new Set([...held].filter((each) => each !== lectureId)));
@@ -203,6 +207,7 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
     loadSummaries: summaries.load,
     onOpen: setOpen,
     requested,
+    pressed: askedFor,
     onRemake: remake,
   };
   /**

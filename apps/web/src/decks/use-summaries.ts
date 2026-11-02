@@ -8,7 +8,7 @@ export type SummariesState =
 
 const IDLE: SummariesState = { status: 'idle' };
 
-/** Read when a summary is first opened, and again once `stamp`, the ingest status's summary state, moves. */
+/** Read when a summary is first opened; once `stamp` moves, the lines read stay shown until the next open reads them again. */
 export const useSummaries = (
   api: ApiClient,
   courseId: CourseId,
@@ -25,15 +25,16 @@ export const useSummaries = (
     },
     [],
   );
-  const state = held.stamp === stamp ? held.state : IDLE;
+  const { state } = held;
+  const settled = state.status === 'ok' || state.status === 'refused';
+  const current = held.stamp === stamp && settled;
   const load = useCallback(() => {
-    if (state.status !== 'idle' && state.status !== 'unreachable' && state.status !== 'malformed')
-      return;
+    if (state.status === 'pending' || current) return;
     const call = ++latest.current;
     setHeld({ stamp, state: { status: 'pending' } });
     void api.summaries(courseId).then((result) => {
       if (call === latest.current) setHeld({ stamp, state: result });
     });
-  }, [api, courseId, stamp, state.status]);
+  }, [api, courseId, stamp, state.status, current]);
   return { state, load };
 };
