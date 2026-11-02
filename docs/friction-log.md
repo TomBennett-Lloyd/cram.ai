@@ -215,3 +215,23 @@ Entry format:
 
 - Phase: planning
 - Observed: the #366 plan outgrew one GitHub comment at Revision 3 (lane report: 50,101 characters against the 65,536 cap) once the rule 9 sweep's full hit lists were in it, so the lane repurposed its earlier report comment as a companion directly below the plan and moved the sweep output there, declaring the split a divergence in plan § 4. By Revision 5 the plan read 58,535 characters and the companion 62,257, the companion also holding the § 4 divergences and the § 9 follow-up bodies "for space"; `gh` reads 59,186 and 62,257 after the PROCEED quote was added at the plan's head. `.claude/skills/plan-issue/SKILL.md` step 5 posts one file with `gh issue comment --body-file` and names no cap, and #412's scratch file changes how the plan reaches the comment, not its size. First plan to hit the cap; what filled it was the sweep's recorded form — families A–Y, every hit listed and classified — on a plan that changes the repo's central claim.
+
+## 2026-11-02 — PR #432 (oracle configuration)
+
+- Phase: review
+- Observed: the #369 lane's hostile corpus for `namedTags` (`packages/index/src/topics.ts`) was judged by FTS5 phrase matching under `unicode61 remove_diacritics 0`, a tokenizer the lane configured, while the index's `slides_fts` runs plain `unicode61`; the PR body claimed agreement with FTS5 over the 29 pairs, and the first reviewer pass (one of its 10 FIX-NOW findings) measured the claim false under the index's own setting on `cafe culture`/`café`, `Istanbul`/`İstanbul` and the NFC/NFD forms of `naïve bayes`, with a spacing-mark split that disagrees under the lane's setting too. The fix narrowed the claim to the corpus and its setting and recorded the disagreements under `docs/tech-debt.md`'s `TERM` entry, so the words list folds `café` to `cafe` and the topic list does not. Second lane on this tokenizer after PR #407's (PROCEED divergences) entry, which assumed a stemming it does not do; with PR #407's (query_only lexicon) entry that is a third probe run under a setting the module it stands in for does not run. Candidate rule if it recurs: an oracle standing in for a component the repo configures is opened with that component's own declaration, read from the file that owns it.
+
+## 2026-11-02 — PR #432 (step commits)
+
+- Phase: implementation
+- Observed: the #369 lane landed plan steps 1–5 as one commit, `f9f4c89`, and said why in the plan comment's Footprint line: `pnpm verify` takes about 10 minutes on this machine and the steps build on each other. `.claude/agents/ticket-agent.md` rule 4 asks for a commit per step "whose gate is green", for recovery after a dropped connection rather than for merge granularity (the PR squash-merged as `f1df348`), and names no gate cheaper than the composite; the lane read the gate as the full verify and paid it once. Fourth lane to record the composite's wall-clock (PR #215, PR #386 and PR #394's (verify wall-clock) entry) and the first where the cost changed the commit shape; #319 (open) is the classifier side.
+
+## 2026-11-02 — PR #432 (re-cut widening)
+
+- Phase: planning
+- Observed: `carriedTags` (`packages/index/src/topics.ts`) puts every tag of a slide onto every new chunk when `replaceEmbedder` re-cuts it differently, compared chunk by chunk, so a tag on one fact widens to the whole slide and none is lost; the plan comment declared it, the PROCEED accepted it, the review left it standing, and the PR body states it as the behaviour rather than as a defect. No `docs/tech-debt.md` entry or issue names it: #430 (the owner's Q1 answer) re-applies a student's edits by chunk text hash across a rebuild, the mechanism a re-cut would need, and nothing asks for it on `replaceEmbedder`. One ticket so far on a coarse behaviour a plan declares and nothing then owns.
+
+## 2026-11-02 — PR #432 (unkillable weight)
+
+- Phase: implementation
+- Observed: `TOPIC_LIST_WEIGHT` (`packages/index/src/course-index.ts`) is 1, the unit weight the other two lists carry as a literal, so mutant W1 (the constant → 1) has no input that tells the owned value from the literal, and the lane reported it under the `Mutation:` line's `unkillable` slot with the reason, as `.claude/agents/ticket-agent.md` § 4 asks; the weighting itself died at R4, and the three guards whose mutants also survived were removed as equivalent, each with a second shape named. The value is provisional until #426's measured run (#69), as `RETRIEVAL_K` is, but that one sits off the unit so a mutant can move it; a provisional owned value at its neutral default is held only by its docblock until it is tuned. One ticket so far.
