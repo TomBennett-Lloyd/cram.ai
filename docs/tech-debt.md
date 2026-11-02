@@ -178,8 +178,20 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: § Amendments says "an amendment never touches reasoning … wrong reasoning is superseded", and it covers moved or wrong values. 0009's (d)/(g) rule changed by the owner's decision (entailment outweighs contradiction) and went in as an amendment, by the owner's instruction relayed for #420. 0003's pin-shape entry is a second owner-decided change written in amendment form. Suspected root cause: the README names two cases (a moved value, wrong reasoning) and not a third: a decision narrowed by the owner, with the rest of the reasoning standing. It should name that case, or route it to supersession.
 - Source: PR for #420 (review)
 
-## 2026-11-02 — "a sentence no slide supports never reaches the screen" stops being true when #424 lands
+## 2026-11-02 — `CLAUDE.md` "Nothing the tutor says is uncited" no longer holds at the deep depth
 
-- Where: `README.md` (the "slides win" paragraph and § How it works); `docs/plan.md` § 0
-- What: these lines say the deep depth drops every sentence no slide supports. That holds today only because every neutral sentence is read as a course claim until the sentence-kind pass (#424). Once #424 lands, 0009 (d) keeps a neutral interpretation, and (r) says such an interpretation reaches the student. The line was already in this shape before #420 ("or none supports"). Suspected root cause: the prose states the deep depth's interim behaviour as its contract.
-- Source: PR for #420 (review)
+- Where: `CLAUDE.md` § Hard constraints, the "Nothing the tutor says is uncited" bullet; `packages/grounding/src/verify-explanation.ts` (`verifyExplanation`)
+- What: since #424, a deep explanation keeps a neutral interpretation with `slides: []`, so a sentence the student reads names no slide, and the heading is literally false at the deep depth. The bullet's body also says "every sentence of it is classified", where `docs/adr/0009-explanation-answers.md` § Decision (d) Stage 2 classifies only the neutral sentences. 0009 (p) kept the headings and the file is humanAlways, so the wording is the owner's. Suspected root cause: the heading names 0001's guarantee, and 0009 kept it as a heading while narrowing what it guarantees.
+- Source: PR #450 (review)
+
+## 2026-11-02 — the deep-depth contract is restated at seven sites with no ledger
+
+- Where: `CLAUDE.md` § Hard constraints (two bullets); `README.md` (the slides-win paragraph, § How it works); `docs/plan.md` § 0; `docs/standards/grounding.md` rule 4; `AttributedSentence`'s docblock in `packages/shared/src/explanation.ts`
+- What: the rule for what the deep depth keeps and withholds — entailed, contradicted with none entailing, neutral claim, neutral interpretation — is restated at each site in its own words. #420 and #424 each trued it up one site at a time, and #424's first pass left two sites stating it without #420's amendment (an entailing slide wins), which review caught. Suspected root cause: there is no `.claude/ledgers/` entry owned by 0009 § Decision (d) whose sweep would gate the change.
+- Source: PR #450 (review)
+
+## 2026-11-02 — the sentence-kind rows measure one sentence per judge call; production batches
+
+- Where: `eval/src/run-eval.ts` (`judgeKinds`); `packages/grounding/src/verify-explanation.ts`
+- What: the eval judges each labelled sentence alone, against its hand-picked premises. Production sends every neutral sentence of an answer in one call, against the whole retrieved set. So `sentenceKindPrecision` and `sentenceKindRecall` say nothing about batching or positional alignment, which is where the length and order risk lives. Also, a fail-closed judge reply becomes `course-claim` with no count in the report, so a partly failing judge shows only as moved rows. Suspected root cause: 0009 (o) names the sample rows but not the call shape they stand for.
+- Source: PR #450 (review)

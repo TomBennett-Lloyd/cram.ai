@@ -1,8 +1,10 @@
 import type { ModelGateway } from '@cram/gateway';
 import {
+  classifySentenceKinds,
   PROVISIONAL_NLI_THRESHOLDS,
   PROVISIONAL_VERIFIER_STRATEGY,
   type VerifierStrategy,
+  slideText,
   verifyStatement,
 } from '@cram/grounding';
 import { ATTRIBUTION_K, RETRIEVAL_K } from '@cram/index';
@@ -24,6 +26,8 @@ import { attributionRecall, contradictionSetLight, lightFlagRate } from './light
 import { notMeasurable } from './metric-row';
 import { EvalReport, type MachineClass } from './report';
 import { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
+import { type JudgedKind, sentenceKindAccuracy } from './sentence-kind-accuracy';
+import type { SentenceKindLabel } from './sentence-kind-label';
 import { TimedGateway } from './timed-gateway';
 import { type JudgedLabel, verifierAccuracy } from './verifier-accuracy';
 import { verifierArmDecisions } from './verifier-arms';
@@ -41,6 +45,7 @@ export interface EvalRunSpec {
   readonly lectures: readonly IndexedLecture[];
   readonly questions: readonly GoldenQuestion[];
   readonly labels: readonly HandLabel[];
+  readonly sentenceKinds: readonly SentenceKindLabel[];
   readonly gateway: ModelGateway;
   readonly clock: Clock;
 }
@@ -76,6 +81,29 @@ const judgeAll = async (
     judged.push({ handVerdict: label.verdict, outcome });
   }
   return { judged, durationsMs };
+};
+
+const judgeKinds = async (
+  labels: readonly SentenceKindLabel[],
+  lectures: readonly IndexedLecture[],
+  gateway: ModelGateway,
+): Promise<readonly JudgedKind[]> => {
+  const records = lectures.flatMap(({ slides }) => slides);
+  const judged: JudgedKind[] = [];
+  for (const { sentence, premises, kind } of labels) {
+    const texts = premises.map(({ lectureId, slideNo }) => {
+      const record = records.find((r) => r.lectureId === lectureId && r.slideNo === slideNo);
+      if (record === undefined)
+        throw new Error(
+          `runEval: no slide ${lectureId}#${String(slideNo)} for a sentence-kind label`,
+        );
+      return slideText(record);
+    });
+    const [returned] = await classifySentenceKinds([sentence], texts, gateway.generator);
+    if (returned === undefined) throw new Error('runEval: the judge returned no kind');
+    judged.push({ labelled: kind, returned });
+  }
+  return judged;
 };
 
 const byStrategy = async <T>(
@@ -131,6 +159,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   const labels = await byStrategy(LABEL_STRATEGIES, (strategy) =>
     judgeAll(spec.labels, gateway, strategy, spec.clock),
   );
+  const kinds = sentenceKindAccuracy(await judgeKinds(spec.sentenceKinds, spec.lectures, gateway));
   const arm = (strategy: VerifierStrategy) => {
     const { judged, durationsMs } = pick(labels, strategy);
     return {
@@ -182,6 +211,8 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       contradictionSetLight: contradictionSetLight(light.asked),
       lightFlagRate: lightFlagRate(light.asked),
       lightFlagRateWide: lightFlagRate(wide),
+      sentenceKindPrecision: kinds.precision,
+      sentenceKindRecall: kinds.recall,
     },
     depths: {
       light: {
