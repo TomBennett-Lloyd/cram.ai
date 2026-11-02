@@ -13,5 +13,6 @@ carrier: apps/web/src/copy.ts
 carrier: apps/web/src/copy.test.ts
 carrier: docs/standards/grounding.md
 carrier: docs/adr/0005-evaluation-as-gate.md
+carrier: docs/adr/0009-explanation-answers.md
 excluded: docs/tech-debt.md
 excluded: docs/friction-log.md

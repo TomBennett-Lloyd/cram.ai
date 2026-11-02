@@ -109,7 +109,7 @@ shape a sweep that reaches it.
 
 ## Index
 
-- [0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning](0001-grounding-architecture.md)
+- [0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning](0001-grounding-architecture.md) — superseded by 0009
 - [0002 — Deployables: one app plus a bundled model runtime; local-first; nothing public](0002-deployables.md)
 - [0004 — Storage: one SQLite file per course; FTS5 + sqlite-vec; no shared store](0004-storage.md)
 - [0005 — Evaluation as a merge gate: the synthetic deck, the contradiction set, two tiers, the metrics and their bars](0005-evaluation-as-gate.md)
@@ -117,3 +117,4 @@ shape a sweep that reaches it.
 - [0006 — Image-only slides: OCR and captions as derived text, flagged and shown with the original](0006-image-only-slides.md)
 - [0007 — Desktop packaging: an Electron shell around the one server; an unsigned NSIS installer from CI; weights downloaded at first launch by digest; OCR data inside](0007-desktop-packaging.md)
 - [0008 — Slide chunking: a slide is indexed as one or more chunks; citations stay on the slide](0008-slide-chunking.md)
+- [0009 — Explanation answers: the tutor explains the course in its own words, quotes are marked pointers, and verification depth is chosen by surface](0009-explanation-answers.md)
