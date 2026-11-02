@@ -360,3 +360,28 @@ Entry format:
 
 - Phase: implementation
 - Observed: the orchestrator's one inline perl edit to `.claude/skills/run-issue/SKILL.md`, run without `-CSD`, double-encoded the whole file once; `git diff --stat` showed 99/69 lines against the expected 33/3, and the edit was reversed line by line. Its later inline edits went through python with explicit utf-8. One batch so far.
+
+## 2026-11-02 — PR #445 (backtick arm)
+
+- Phase: planning
+- Observed: #411's lane started from chunk C2 of the #410 batch plan, which the batch struck at its plan checkpoint (the `PR #455 (humanAlways drop)` entry). C2's sweep swept the route with `→ docs/tech-debt|to docs/tech-debt|append to .docs/tech-debt` (https://github.com/TomBennett-Lloyd/cram.ai/issues/410#issuecomment-6581996825). The third arm stands in for the backtick with `.`. The second does not, so it misses `.claude/skills/review-loop/SKILL.md`'s Exit conditions bullet "demoted to `docs/tech-debt.md`". The lane's own sweep added the claim arm `demot|overflow|destined for|logged to` before the first edit (https://github.com/TomBennett-Lloyd/cram.ai/issues/411#issuecomment-6582091940). That arm returned the bullet, and the lane edited it as a declared divergence from C2 (PR #445, Lane report → Retro). The cost was nil because the lane re-swept rather than inheriting C2's output. Counted on #377 (one control per arm) at https://github.com/TomBennett-Lloyd/cram.ai/issues/377#issuecomment-6586762525.
+
+## 2026-11-02 — PR #445 (md-only full tier)
+
+- Phase: verify
+- Observed: PR #445's diff is five `.md` files. `bash .claude/scripts/verify-tier.sh --dry-run` on its head `4f8e6e4` still prints `full — 5 file(s); a test file references a markdown path in this change set`, with 53 guard hits: 52 in `.claude/scripts/merge-pr.test.sh` and 1 in `.claude/scripts/fill-verdict.test.sh`, all fixture strings naming `docs/review-feedback.md` or `CLAUDE.md`. So the lane paid the vitest legs of the full tier. By the lane report it lost "three local verify runs" to machine load, on #441's signature (`eval/src/ingested-course.test.ts`) at `584ddd4`. The FILL's first run at `4f8e6e4` went red on #349's (`packages/ingest/src/stored-text.test.ts`), and the one sanctioned re-run passed (the merge owner's retro brief; Lane report → Verify). Every `awaiting-review` PR carries a `docs/review-feedback.md` line (`CLAUDE.md` § Workflow), and retro PRs #463 and #468 record the same full tier on a one-file friction-log append. So the docs rung is unreachable for both classes by construction. Filed as #471. This lane joins the others on 2026-11-02 that paid the #349/#441 timeout class: the entries `PR #394 (#349 reds)`, `PR #437 (#349 re-run)`, `PR #455 (verify under load)`, `PR #443 (#441 reds)` and `PR #449 (local verify red)`. It is the first of them whose change set had no source in it.
+
+## 2026-11-02 — PR #445 (push before verify)
+
+- Phase: process
+- Observed: in its own report the lane says it "pushed the rebased head in the same command as its verify and so before reading the result". That verify was red on #441's load signature, and CI then passed on that head, `584ddd4`. GitHub's timeline records the force-push of `584ddd4` at 17:16:48Z. `.claude/agents/ticket-agent.md` § 8 orders a rebase round as "then re-verify and force-push your own branch only". The lane's single command ran both steps in that order without gating the push on the verify's rc. The cost was nil because the red was load, not the tree. This is the second instance on 2026-11-02. The `PR #449 (local verify red)` entry records the batch orchestrator pushing ahead of a green local RC twice, "once before reading the first red run's RC at all". Both were harmless on an unchanged tree, and both pushed under load reds of the #349/#441 class, the class that makes a lane want CI as the verdict.
+
+## 2026-11-02 — PR #445 (FILL quote)
+
+- Phase: merge
+- Observed: the owner approved in chat as "approve 454 and 445". The merge owner's retro brief records its FILL bounce giving the verdict text as "145" [sic], and the lane correcting it to the owner's real words. `4f8e6e4`'s Verdict line reads `approved 2026-11-02 — "approve 454 and 445"; the CLAUDE.md:55 pointer stands`. `.claude/scripts/fill-verdict.sh` writes whatever `--verdict` it is passed ("the verdict is the caller's"), and `.claude/agents/ticket-agent.md` § 8 says "A `FILL` runs exactly as sent". So the lane's catch was the only check on the relayed quote, and it departed from that sentence to make it. Counted on #295, the merge owner's bounce notes carrying unchecked claims, at https://github.com/TomBennett-Lloyd/cram.ai/issues/295#issuecomment-6586762869.
+
+## 2026-11-02 — PR #445 (union at merge)
+
+- Phase: merge
+- Observed: the branch went DIRTY on `docs/review-feedback.md` alone. `main` gained #395's entry in `2cfea7e` (18:38:30Z) after the branch base `f69d224`. The lane's report ran a trial union locally and did not push it. `.claude/scripts/merge-pr.sh`'s union step committed `e20a771` on the branch at 19:13:59Z, and the squash `d8180fd` followed at 19:20:20Z, with no bounce (the merge owner's retro brief). `git show <c>:docs/review-feedback.md | grep -c '^## '`, which also counts the file's four non-entry headings, reads 44 at `f69d224`, 45 at `4f8e6e4`, 45 at main `4fa0840`, and 46 at `e20a771` and `d8180fd`. That matches the lane's trial ("result 46"). The merge owner's retro brief gives the result as 45, a figure the tree does not bear out, and that count is noted on #295. No new signal. Recorded so that a later count of union-at-merge outcomes includes this one.
