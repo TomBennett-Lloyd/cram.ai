@@ -24,11 +24,11 @@ describe('generateUnits', () => {
     });
   });
 
-  it('returns no units when the model finds the sources do not cover the request', async () => {
+  it('reports an empty reply as invalid output, since a summary call always writes a unit', async () => {
     const gateway = fakeGateway([generatorReplies(request, { units: [] })]);
-    await expect(generateUnits(task, slides, gateway.generator)).resolves.toEqual({
-      status: 'generated',
-      units: [],
+    await expect(generateUnits(task, slides, gateway.generator)).resolves.toMatchObject({
+      status: 'model-failed',
+      failure: { status: 'invalid-output' },
     });
   });
 

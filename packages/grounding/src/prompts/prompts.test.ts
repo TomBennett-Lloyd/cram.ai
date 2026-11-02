@@ -1,4 +1,4 @@
-import type { ChatRequest } from '@cram/gateway';
+import { type ChatRequest, chatWireRequest } from '@cram/gateway';
 import { Verdict } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { slide } from '../fake-gateway-fixture';
@@ -58,6 +58,10 @@ describe('generationRequest', () => {
     const unit = { text: 'Workers are male.', citations: [{ sourceId: 'l1/1', line: 1 }] };
     expect(request.output.schema.safeParse({ units: [unit, unit] }).success).toBe(true);
     expect(request.output.schema.safeParse({ units: [unit, unit, unit] }).success).toBe(false);
+    expect(request.output.schema.safeParse({ units: [] }).success).toBe(false);
+    expect(chatWireRequest(request).output.jsonSchema).toMatchObject({
+      properties: { units: { minItems: 1, maxItems: 2 } },
+    });
     expect(request.messages[0].content).toMatch(/\bat most 2 units\b/);
   });
 

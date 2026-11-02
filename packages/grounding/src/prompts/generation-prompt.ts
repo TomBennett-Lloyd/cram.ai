@@ -54,6 +54,6 @@ export const generationRequest = (
   ],
   output: {
     name: GENERATED_UNITS,
-    schema: z.strictObject({ units: z.array(GeneratedUnit).max(task.maxUnits) }),
+    schema: z.strictObject({ units: z.array(GeneratedUnit).min(1).max(task.maxUnits) }),
   },
 });

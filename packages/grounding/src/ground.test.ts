@@ -200,8 +200,12 @@ describe('ground', () => {
     });
   });
 
-  it('is not-covered, with nothing withheld, when the model finds the slides do not cover the question', async () => {
-    await expect(run([generated()])).resolves.toEqual({ status: 'not-covered', withheld: [] });
+  it('reports an empty reply as a model failure at the generate stage, never as not-covered', async () => {
+    await expect(run([generated()])).resolves.toMatchObject({
+      status: 'model-failed',
+      stage: 'generate',
+      failure: { status: 'invalid-output' },
+    });
   });
 
   it('is not-covered without asking the generator when nothing was retrieved', async () => {
