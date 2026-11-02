@@ -11,6 +11,7 @@ carrier: packages/shared/src/withheld.test.ts
 carrier: packages/grounding/src/resolve-quotes.ts
 carrier: packages/grounding/src/resolve-quotes.test.ts
 carrier: packages/grounding/src/explain.test.ts
+carrier: packages/grounding/src/explain-deep.test.ts
 carrier: eval/src/depth-rows.ts
 carrier: eval/src/depth-rows.test.ts
 carrier: packages/grounding/src/resolve-citations.test.ts

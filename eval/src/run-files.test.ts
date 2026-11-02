@@ -38,6 +38,7 @@ const scriptedReport = async (measuredCommit: string): Promise<EvalReport> =>
     lectures: [indexedLecture('l1')],
     questions: [],
     labels: [],
+    sentenceKinds: [],
     gateway: new ScriptedGateway(() => ({ status: 'backend-failed', reason: 'unused' })),
     clock: () => 0,
   });

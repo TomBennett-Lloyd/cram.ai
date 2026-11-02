@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { auditEvalCourse } from './audit';
-import { course, label, lecture, question, slide } from './eval-fixture';
+import { course, kindLabel, label, lecture, question, slide } from './eval-fixture';
 
 describe('auditEvalCourse', () => {
   it('finds nothing in a consistent course', () => {
@@ -117,6 +117,23 @@ describe('auditEvalCourse', () => {
   it('accepts a label quote whose own whitespace differs from the slide', () => {
     const labels = [label({ quotes: ['Cells  are\nsquare.'] })];
     expect(auditEvalCourse(course({ labels }))).toEqual([]);
+  });
+
+  it('reports a sentence-kind premise the deck does not have, by lecture and by slide', () => {
+    const sentenceKinds = [
+      kindLabel({
+        premises: [
+          { lectureId: 'l1', slideNo: 1 },
+          { lectureId: 'l1', slideNo: 2 },
+          { lectureId: 'l9', slideNo: 1 },
+        ],
+      }),
+    ];
+    const sentence = 'So a cell is one compartment of the comb.';
+    expect(auditEvalCourse(course({ sentenceKinds }))).toEqual([
+      { kind: 'unknown-premise', sentence, lectureId: 'l1', slideNo: 2 },
+      { kind: 'unknown-premise', sentence, lectureId: 'l9', slideNo: 1 },
+    ]);
   });
 
   it('reports a label quote that is not verbatim in any slide', () => {

@@ -1,5 +1,6 @@
 import type { EntailmentPair, EntailmentResult, ModelGateway } from '@cram/gateway';
 import type { AttributedSentence, RetrievedSlide, Verdict, WithheldSentence } from '@cram/shared';
+import { classifySentenceKinds } from './classify-sentence-kinds';
 import type { ModelFailure } from './model-failure';
 import { type ClaimLabel, claimLabel, type NliThresholds } from './nli-verdict';
 import { verifierRequest } from './prompts/verifier-prompt';
@@ -80,23 +81,40 @@ const labelSentence = async (
   return { status: 'labelled', labelled };
 };
 
-/** Stage 1 of `docs/adr/0009-explanation-answers.md` § Decision (d) as amended; a neutral sentence is a course claim until #424. */
+type Stage1 =
+  | { readonly label: 'entailed'; readonly slides: readonly RetrievedSlide[] }
+  | { readonly label: 'contradicted'; readonly slide: RetrievedSlide }
+  | { readonly label: 'neutral' };
+
+type Outcome = { readonly kept: AttributedSentence } | { readonly cut: WithheldSentence };
+
+const stage1 = (labelled: readonly Labelled[]): Stage1 => {
+  const entailing = labelled.filter(({ label }) => label === 'entailed');
+  if (entailing.length > 0)
+    return { label: 'entailed', slides: entailing.map(({ slide }) => slide) };
+  const contradicting = labelled.find(({ label }) => label === 'contradicted');
+  return contradicting === undefined
+    ? { label: 'neutral' }
+    : { label: 'contradicted', slide: contradicting.slide };
+};
+
+/** `docs/adr/0009-explanation-answers.md` § Decision (d) as amended: Stage 1 over every retrieved slide, then Stage 2 over the neutral sentences. */
 export const verifyExplanation = async (
   sentences: readonly string[],
   retrieved: readonly RetrievedSlide[],
   deps: DeepDeps,
 ): Promise<DeepVerification> => {
+  const premises = retrieved.map((slide) => slideText(slide.record));
   const pairs = sentences.flatMap((hypothesis) =>
-    retrieved.map((slide) => ({ premise: slideText(slide.record), hypothesis })),
+    premises.map((premise) => ({ premise, hypothesis })),
   );
   const results = await deps.gateway.verifier.entail({ pairs });
   if (results.length !== pairs.length)
     throw new Error(
       `verifier returned ${String(results.length)} results for ${String(pairs.length)} pairs`,
     );
-  const kept: AttributedSentence[] = [];
-  const cut: WithheldSentence[] = [];
-  for (const [index, text] of sentences.entries()) {
+  const verdicts: Stage1[] = [];
+  for (const index of sentences.keys()) {
     const from = index * retrieved.length;
     const span = [from, from + retrieved.length] as const;
     const sentence = await labelSentence(
@@ -106,20 +124,43 @@ export const verifyExplanation = async (
       deps,
     );
     if (sentence.status === 'model-failed') return sentence;
-    const { labelled } = sentence;
-    const entailing = labelled.filter(({ label }) => label === 'entailed');
-    const contradicting = labelled.find(({ label }) => label === 'contradicted');
-    if (entailing.length > 0)
-      kept.push({ text, slides: entailing.map(({ slide }) => slide.sourceId), contradicts: [] });
-    else if (contradicting !== undefined)
-      cut.push({ reason: 'contradicted', text, sourceId: contradicting.slide.sourceId });
-    else cut.push({ reason: 'unsupported', text });
+    verdicts.push(stage1(sentence.labelled));
   }
-  const withheld =
-    kept.length > 0
-      ? cut
-      : cut.map((entry): WithheldSentence =>
-          entry.reason === 'contradicted' ? entry : { reason: 'ungrounded', text: entry.text },
-        );
-  return { status: 'verified', kept, withheld };
+  const neutral = sentences.flatMap((text, index) =>
+    verdicts[index]?.label === 'neutral' ? [{ text, index }] : [],
+  );
+  const kinds = await classifySentenceKinds(
+    neutral.map(({ text }) => text),
+    premises,
+    deps.gateway.generator,
+  );
+  const kindOf = new Map(neutral.map(({ index }, at) => [index, kinds[at]]));
+  const outcomes = sentences.map((text, index): Outcome => {
+    const verdict = verdicts[index];
+    if (verdict === undefined) throw new Error('verifyExplanation: no verdict');
+    if (verdict.label === 'entailed')
+      return {
+        kept: { text, slides: verdict.slides.map(({ sourceId }) => sourceId), contradicts: [] },
+      };
+    if (verdict.label === 'contradicted')
+      return { cut: { reason: 'contradicted', text, sourceId: verdict.slide.sourceId } };
+    return kindOf.get(index) === 'interpretation'
+      ? { kept: { text, slides: [], contradicts: [] } }
+      : { cut: { reason: 'unsupported', text } };
+  });
+  if (verdicts.some(({ label }) => label === 'entailed'))
+    return {
+      status: 'verified',
+      kept: outcomes.flatMap((outcome) => ('kept' in outcome ? [outcome.kept] : [])),
+      withheld: outcomes.flatMap((outcome) => ('cut' in outcome ? [outcome.cut] : [])),
+    };
+  return {
+    status: 'verified',
+    kept: [],
+    withheld: outcomes.map((outcome): WithheldSentence =>
+      'cut' in outcome && outcome.cut.reason === 'contradicted'
+        ? outcome.cut
+        : { reason: 'ungrounded', text: 'kept' in outcome ? outcome.kept.text : outcome.cut.text },
+    ),
+  };
 };

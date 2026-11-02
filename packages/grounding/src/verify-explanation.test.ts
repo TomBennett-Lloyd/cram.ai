@@ -7,6 +7,7 @@ import {
   fakeGateway,
   generatorRecording,
   generatorReplies,
+  kindsRecording,
   NEUTRAL,
   OVER_LENGTH,
   pairsOf,
@@ -97,19 +98,109 @@ describe('verifyExplanation', () => {
     });
   });
 
-  it('withholds a neutral sentence as unsupported beside a kept one, and as ungrounded alone', async () => {
+  it('withholds a neutral course claim as unsupported beside a kept one, and as ungrounded alone', async () => {
     const two = ['Workers are male.', 'Cells are square.'];
     const mixed = verifierRecording(
       [...pairsOf(two[0] ?? '', retrieved), ...pairsOf(two[1] ?? '', retrieved)],
       [ENTAILED, NEUTRAL, NEUTRAL, NEUTRAL],
     );
-    await expect(verify([mixed], false, two)).resolves.toMatchObject({
+    const claim = kindsRecording(['Cells are square.'], retrieved, ['course-claim']);
+    await expect(verify([mixed, claim], false, two)).resolves.toMatchObject({
       withheld: [{ reason: 'unsupported', text: 'Cells are square.' }],
     });
-    await expect(verify([judged(SENTENCE, retrieved, NEUTRAL, NEUTRAL)])).resolves.toEqual({
+    const alone = kindsRecording([SENTENCE], retrieved, ['course-claim']);
+    await expect(verify([judged(SENTENCE, retrieved, NEUTRAL, NEUTRAL), alone])).resolves.toEqual({
       status: 'verified',
       kept: [],
       withheld: [{ reason: 'ungrounded', text: SENTENCE }],
+    });
+  });
+
+  describe('the sentence-kind pass over the neutral sentences', () => {
+    const FIVE = [
+      'A worker is a bee of the working caste.',
+      'Workers are male.',
+      'Cells are square.',
+      'So a cell is one of the comb’s compartments.',
+      'Drones guard the hive.',
+    ];
+    const NEUTRAL_ONES = [FIVE[0], FIVE[2], FIVE[3], FIVE[4]].map((text) => text ?? '');
+    const stage1 = verifierRecording(
+      FIVE.flatMap((text) => pairsOf(text, retrieved)),
+      [NEUTRAL, NEUTRAL, ENTAILED, NEUTRAL, NEUTRAL, NEUTRAL, NEUTRAL, NEUTRAL, NEUTRAL, NEUTRAL],
+    );
+
+    it('sends only the neutral sentences, in order, and keeps each interpretation with no slide', async () => {
+      const kinds = kindsRecording(NEUTRAL_ONES, retrieved, [
+        'interpretation',
+        'course-claim',
+        'interpretation',
+        'course-claim',
+      ]);
+      await expect(verify([stage1, kinds], false, FIVE)).resolves.toEqual({
+        status: 'verified',
+        kept: [
+          { text: FIVE[0], slides: [], contradicts: [] },
+          { text: FIVE[1], slides: ['l1/1'], contradicts: [] },
+          { text: FIVE[3], slides: [], contradicts: [] },
+        ],
+        withheld: [
+          { reason: 'unsupported', text: FIVE[2] },
+          { reason: 'unsupported', text: FIVE[4] },
+        ],
+      });
+    });
+
+    it('never sends an entailed or a contradicted sentence', async () => {
+      const three = ['Workers are male.', 'Cells are round.', 'Cells are square.'];
+      const recording = verifierRecording(
+        three.flatMap((text) => pairsOf(text, retrieved)),
+        [ENTAILED, NEUTRAL, NEUTRAL, CONTRADICTED, NEUTRAL, NEUTRAL],
+      );
+      const kinds = kindsRecording(['Cells are square.'], retrieved, ['interpretation']);
+      await expect(verify([recording, kinds], false, three)).resolves.toMatchObject({
+        kept: [{ text: 'Workers are male.' }, { text: 'Cells are square.', slides: [] }],
+        withheld: [{ reason: 'contradicted', text: 'Cells are round.', sourceId: 'l1/2' }],
+      });
+    });
+
+    it.each<[string, Parameters<typeof kindsRecording>[2]]>([
+      ['a reply one kind short', { status: 'content', content: '{"kinds":["interpretation"]}' }],
+      [
+        'a reply one kind long',
+        { status: 'content', content: JSON.stringify({ kinds: Array(5).fill('interpretation') }) },
+      ],
+      [
+        'a kind outside the two',
+        { status: 'content', content: '{"kinds":["fact","fact","fact","fact"]}' },
+      ],
+      ['a reply that is not JSON', { status: 'content', content: 'interpretation' }],
+      ['a reply cut off at the token limit', { status: 'truncated', content: '{"kinds":["inter' }],
+      ['a backend failure', { status: 'backend-failed', reason: 'connection refused' }],
+    ])('reads %s as every neutral sentence a course claim', async (_, reply) => {
+      const kinds = kindsRecording(NEUTRAL_ONES, retrieved, reply);
+      await expect(verify([stage1, kinds], false, FIVE)).resolves.toEqual({
+        status: 'verified',
+        kept: [{ text: FIVE[1], slides: ['l1/1'], contradicts: [] }],
+        withheld: NEUTRAL_ONES.map((text) => ({ reason: 'unsupported', text })),
+      });
+    });
+
+    it('withholds an explanation whole as ungrounded when its kept sentences are only interpretations', async () => {
+      const two = ['A worker is a bee of the working caste.', 'Cells are round.'];
+      const recording = verifierRecording(
+        two.flatMap((text) => pairsOf(text, retrieved)),
+        [NEUTRAL, NEUTRAL, NEUTRAL, CONTRADICTED],
+      );
+      const kinds = kindsRecording([two[0] ?? ''], retrieved, ['interpretation']);
+      await expect(verify([recording, kinds], false, two)).resolves.toEqual({
+        status: 'verified',
+        kept: [],
+        withheld: [
+          { reason: 'ungrounded', text: two[0] },
+          { reason: 'contradicted', text: 'Cells are round.', sourceId: 'l1/2' },
+        ],
+      });
     });
   });
 
@@ -142,6 +233,7 @@ describe('verifyExplanation', () => {
       const recordings = [
         judged(SENTENCE, retrieved, NEUTRAL, OVER_LENGTH),
         secondOpinion(comb, { verdict }),
+        kindsRecording([SENTENCE], retrieved, ['course-claim']),
       ];
       await expect(verify(recordings, true)).resolves.toMatchObject(expected);
     },

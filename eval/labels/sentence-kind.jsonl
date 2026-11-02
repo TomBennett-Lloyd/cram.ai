@@ -1,0 +1,35 @@
+{"sentence": "So a caste is a group of bees in the colony with its own share of the work.", "premises": [{"lectureId": "lecture-01", "slideNo": 1}], "kind": "interpretation"}
+{"sentence": "Put another way, the colony splits its work by caste.", "premises": [{"lectureId": "lecture-01", "slideNo": 6}], "kind": "interpretation"}
+{"sentence": "Because the queen is the colony's only female, she is the one bee that lays.", "premises": [{"lectureId": "lecture-01", "slideNo": 2}, {"lectureId": "lecture-01", "slideNo": 6}], "kind": "interpretation"}
+{"sentence": "Here \"forage\" means going out of the hive to collect what the colony needs.", "premises": [{"lectureId": "lecture-01", "slideNo": 3}], "kind": "interpretation"}
+{"sentence": "That is why the hive fronts are painted red: it is the colour foragers pick out best.", "premises": [{"lectureId": "lecture-02", "slideNo": 3}], "kind": "interpretation"}
+{"sentence": "The bloom count is a way of measuring how busy a colony's foragers are.", "premises": [{"lectureId": "lecture-02", "slideNo": 6}], "kind": "interpretation"}
+{"sentence": "Put simply, the dance is about the weather, not about where the flowers are.", "premises": [{"lectureId": "lecture-02", "slideNo": 4}], "kind": "interpretation"}
+{"sentence": "\"Propolis\" is the resin bees use to seal gaps in the hive.", "premises": [{"lectureId": "lecture-02", "slideNo": 2}], "kind": "interpretation"}
+{"sentence": "The tilt of each cell works like a shallow cup that keeps the honey in.", "premises": [{"lectureId": "lecture-03", "slideNo": 2}], "kind": "interpretation"}
+{"sentence": "So the half-frame is a seasonal nursery rather than a lasting part of the brood box.", "premises": [{"lectureId": "lecture-03", "slideNo": 5}], "kind": "interpretation"}
+{"sentence": "\"Capping\" here means sealing a cell over with wax.", "premises": [{"lectureId": "lecture-04", "slideNo": 3}], "kind": "interpretation"}
+{"sentence": "The settling is a resting period, which is why it ends with skimming the surface.", "premises": [{"lectureId": "lecture-04", "slideNo": 4}], "kind": "interpretation"}
+{"sentence": "That is why the slides ask for a cellar or a cold larder: cold is what keeps capped honey from spoiling.", "premises": [{"lectureId": "lecture-04", "slideNo": 5}], "kind": "interpretation"}
+{"sentence": "\"The stilling\" is the guild's name for the colony's winter sleep.", "premises": [{"lectureId": "lecture-05", "slideNo": 6}], "kind": "interpretation"}
+{"sentence": "So swarm watch is tied to the bloom count: a busier entrance is the signal to watch for a swarm.", "premises": [{"lectureId": "lecture-05", "slideNo": 3}, {"lectureId": "lecture-02", "slideNo": 6}], "kind": "interpretation"}
+{"sentence": "Grey brood points to chill and yellow brood to fever, so the colour tells you which one you are looking at.", "premises": [{"lectureId": "lecture-06", "slideNo": 3}, {"lectureId": "lecture-06", "slideNo": 4}], "kind": "interpretation"}
+{"sentence": "The two remedies differ because chill needs the frame gone, while fever needs only shade.", "premises": [{"lectureId": "lecture-06", "slideNo": 3}, {"lectureId": "lecture-06", "slideNo": 4}], "kind": "interpretation"}
+{"sentence": "Worker bees live for about six weeks in summer.", "premises": [{"lectureId": "lecture-01", "slideNo": 3}], "kind": "course-claim"}
+{"sentence": "The queen mates with drones on a single flight early in her life.", "premises": [{"lectureId": "lecture-01", "slideNo": 2}], "kind": "course-claim"}
+{"sentence": "Drones die after mating with the queen.", "premises": [{"lectureId": "lecture-01", "slideNo": 4}], "kind": "course-claim"}
+{"sentence": "Foragers find their way back to the hive by the position of the sun.", "premises": [{"lectureId": "lecture-02", "slideNo": 3}], "kind": "course-claim"}
+{"sentence": "The dance points other foragers towards the flowers.", "premises": [{"lectureId": "lecture-02", "slideNo": 4}], "kind": "course-claim"}
+{"sentence": "Bees build comb from hexagonal cells.", "premises": [{"lectureId": "lecture-03", "slideNo": 2}], "kind": "course-claim"}
+{"sentence": "A full frame holds about 3,200 cells on each face.", "premises": [{"lectureId": "lecture-03", "slideNo": 4}], "kind": "course-claim"}
+{"sentence": "The half-frame is taken out of the hive before the first frost.", "premises": [{"lectureId": "lecture-03", "slideNo": 5}], "kind": "course-claim"}
+{"sentence": "Bees make honey from flower nectar.", "premises": [{"lectureId": "lecture-04", "slideNo": 2}], "kind": "course-claim"}
+{"sentence": "Honey keeps for years in a sealed jar.", "premises": [{"lectureId": "lecture-04", "slideNo": 5}], "kind": "course-claim"}
+{"sentence": "Members must jar their honey in amber glass.", "premises": [{"lectureId": "lecture-04", "slideNo": 5}], "kind": "course-claim"}
+{"sentence": "The colony keeps warm in winter by clustering around the queen.", "premises": [{"lectureId": "lecture-05", "slideNo": 6}], "kind": "course-claim"}
+{"sentence": "Supers go on at the start of the main flow.", "premises": [{"lectureId": "lecture-05", "slideNo": 4}], "kind": "course-claim"}
+{"sentence": "A worker dies after it stings, because the sting tears away.", "premises": [{"lectureId": "lecture-06", "slideNo": 2}], "kind": "course-claim"}
+{"sentence": "Brood chill is caused by a mite that spreads between hives.", "premises": [{"lectureId": "lecture-06", "slideNo": 3}], "kind": "course-claim"}
+{"sentence": "The guild was founded in the village of Hollowmere.", "premises": [{"lectureId": "lecture-01", "slideNo": 1}], "kind": "course-claim"}
+{"sentence": "In other words, the queen lays about ten thousand eggs a week.", "premises": [{"lectureId": "lecture-01", "slideNo": 2}], "kind": "course-claim"}
+{"sentence": "So, because blue is invisible to them, bees never visit blue flowers.", "premises": [{"lectureId": "lecture-02", "slideNo": 3}], "kind": "course-claim"}
