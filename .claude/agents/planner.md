@@ -52,7 +52,9 @@ A scoped run in a `Verify:` command never passes its arguments after a `--`: the
 
 File references in a plan are repo-relative paths on `main`, or `<branch>:<path>` when the file only exists on an unmerged branch. Never reference a worktree path (`.claude/worktrees/...`, or an absolute path containing one): worktrees are reaped when their branch merges or dies, and a plan outlives them. If your exploration happened inside a worktree, translate every reference before writing the plan (decided by the user 2026-07-31; a posted plan's references went dead when their worktree was reaped).
 
-Output EXACTLY this template as your final message:
+Write the plan to `<scratchpad>/plan-<n>.md` — `<scratchpad>` the session scratchpad directory your environment names, `<n>` the issue number (`.claude/agents/task-orchestrator.md` rule 8 (a)), or the anchor issue's for a batch — with a Bash heredoc (`cat > <path> <<'EOF'`; you have no Write tool). The message carries the plan as well, so a dispatcher that cannot read the file still has it; the dispatcher posts the file (`.claude/skills/plan-issue/SKILL.md` step 5, or `.claude/agents/ticket-agent.md` § 3 (e)) rather than re-typing the message — PR #394's orchestrator re-transcribed about 20k characters once (#412).
+
+Your final message is that path on its first line, then EXACTLY this template:
 
 ```
 ## Plan: <issue title> (#<n>)

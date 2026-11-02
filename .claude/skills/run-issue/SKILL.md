@@ -77,7 +77,10 @@ the section before you dispatch.
    once, on that fill or on a rebase's conflict resolution, returns `BLOCKED` with its git
    state and never retries (`.claude/agents/ticket-agent.md` rule 8); you then run the same
    bare command yourself. On an `/execute`-path branch, which has no lane agent, you run it
-   yourself from the start.
+   yourself from the start. A report whose `Cross-references:` field reads `unposted` leaves
+   you the posting: post each from the text in the PR body yourself, before the merge
+   chain, naming the lane in the comment (`.claude/agents/ticket-agent.md` rule 1; PR #425
+   left five unposted, #427).
    An ADR PR whose report reads `Extras beyond the approved plan: none`
    (`.claude/workflow.json` → `merge.approvedAtPlanRule`) owes neither that bounce nor the
    label — the lane filled the entry before reporting — and your diff check reads one thing
