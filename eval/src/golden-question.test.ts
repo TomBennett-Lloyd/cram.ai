@@ -31,6 +31,20 @@ describe('GoldenQuestion', () => {
     expect(result.success).toBe(false);
   });
 
+  it('reads a line without misspelt variants as having none', () => {
+    const parsed = GoldenQuestion.parse({
+      question: 'q',
+      expectedCitations: [],
+      mustNotContain: [],
+    });
+    expect(parsed.misspelt).toEqual([]);
+  });
+
+  it.each([[['  ']], ['wurker']])('refuses misspelt variants given as %j', (misspelt) => {
+    const line = { question: 'q', expectedCitations: [], mustNotContain: [], misspelt };
+    expect(GoldenQuestion.safeParse(line).success).toBe(false);
+  });
+
   it('refuses a citation by slide index rather than page number', () => {
     const result = GoldenQuestion.safeParse({
       question: 'q',

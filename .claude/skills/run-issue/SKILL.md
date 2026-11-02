@@ -20,7 +20,33 @@ the section before you dispatch.
 1. **Admission**: the same in-flight table as below (issue, agent handle, branch, and the
    footprint once the plan comment lands). Predict the footprint from the issue body and
    name any known in-flight overlap in the dispatch prompt, so the agent either plans around
-   it or expects the rebase. A single lane never holds for another lane's plan — overlap is
+   it or expects the rebase. Before dispatch, read the issue body as it stands — every
+   issue, however filed, owner-filed included (#369) — reading each
+   acceptance bullet against the `## Decision` points of every ADR
+   `docs/adr/README.md` § Index lists, read at `origin/main`, a row annotated superseded
+   pointing at the superseding ADR as the owner. A bullet is an ADR's when satisfying it would edit a file under `docs/adr/**` — a
+   Decision point reversed or extended, a member added to a set a point enumerates (a
+   golden-question field, a report metric, a vocabulary member), or a stated value moved,
+   which `docs/adr/README.md` § Amendments makes an ADR edit too — or would contradict a
+   point as it stands: #369 (`docs/adr/0004-storage.md` § Decision (d), PR #432), #393
+   (`docs/adr/0005-evaluation-as-gate.md` § Decision (c)/(d), PR #407, split to #395) and
+   #367 (`docs/adr/0001-grounding-architecture.md` § Decision (d) /
+   `docs/adr/0003-model-roles-and-backends.md` § Decision (d), PR #397) each stopped at
+   plan time instead (#433). An owned bullet takes one of two outcomes, by
+   `.claude/agents/ticket-agent.md` rule 2's one-honest-PR test applied to the issue with
+   the ADR edit inside it: **label** — `gh issue edit <n> --add-label adr`, plus a body line
+   naming the bullet and `docs/adr/<file>.md § Decision (<x>)`; or **split** —
+   `gh issue create --label adr` for the owned bullet(s), its body naming the point(s), the
+   new number `<m>` taken from that command's output and never predicted, the moved bullet
+   struck from the original, whose body gets `Depends on #<m>` where the remainder needs
+   the decision first. Either way the labelled issue takes this lane with step 3's relay and
+   is never a batch member (batch lane step 2). The in-flight row records the ADRs read, at
+   the `git rev-parse --short origin/main` commit, and each bullet's verdict (`none owned`,
+   or bullet → point → label or split); step 2's list is not widened, since the lane reads
+   the verdict from the issue. Rule 2's `adr` stop and `BLOCKED — needs splitting`, and
+   step 3's label re-check, stay the backstop: a lane stop caused by an owned bullet this
+   read missed is a retro signal naming this step (owner decision 2026-11-02, #433).
+   A single lane never holds for another lane's plan — overlap is
    priced as rebase cost, and only entangled same-file SOURCE overlap is batched or
    sequenced, here, at dispatch. `conserve` budget mode: one lane.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
@@ -87,6 +113,47 @@ the section before you dispatch.
    more: the pasted Decision mapping, against the plan comment as it stood at the `PROCEED`
    and against the ADR's § Decision. An extra the lane did not list is a `FIX —` bounce,
    never a merge.
+   **Merge order** — whenever a PR is ready (this step's diff check done, CI green on the
+   reported head) and another PR is ready or another lane is in flight, in both lanes
+   (batch lane step 4 cites this). It orders ready PRs, and holds one only for the
+   single wait key (2) prices below, never as a blanket hold. Its inputs: the ready set;
+   the in-flight table (batch lane step 1) — each lane's phase (before its first
+   `pnpm verify`, reviewer pass or PR, or PR open; for a ticket-agent row, read from
+   `git log origin/main..<H>`, the plan comment's ticks and `gh pr list --head <H>`) and
+   the `Depends on` lines of its issue body and plan comment; and, after `git fetch origin`, the overlap
+   read for each ready PR `R` against each other in-flight branch `H`, read as the local
+   ref `<H>`, since worktrees share `refs/heads` and a lane pushes nothing before its PR
+   (a lane with no commits yet is priced on its plan comment's footprint against
+   `gh pr diff <R> --name-only` instead):
+   `out=$(git merge-tree --write-tree --name-only --no-messages origin/main origin/<R>); rc=$?; T=${out%%$'\n'*}`
+   (the tree is line 1; `rc=1` with a path from line 2 on outside the logs named below:
+   `R` is not ready), then `C=$(git commit-tree "$T" -p origin/main -m probe)` (a
+   dangling throwaway commit, left to gc), then the two reads in step 5's form, each with
+   its exit code and read from line 2:
+   `git merge-tree --write-tree --name-only --no-messages "$C" <H>` and
+   `git merge-tree --write-tree --name-only --no-messages origin/main <H>`.
+   The paths the first lists and the second does not, less
+   `.claude/scripts/merge-pr.sh`'s `APPEND_ONLY_LOGS` (that script unions them), are what
+   `R`'s landing adds to `H`'s conflicts; an empty difference means `R` adds none. What
+   each open head then pays is owned elsewhere: a single-issue PR `BEHIND` takes
+   `gh pr update-branch`, yours and mechanical, and `DIRTY` on a non-log path takes a
+   `REBASE —` bounce, lane-side (both step 5); a `--rebase` batch, `BEHIND` or `DIRTY`
+   alike, is refused by `.claude/scripts/merge-pr.sh`'s merge step and takes a "curate
+   onto latest main" round, lane-side (batch lane step 4) — PR #394 paid two, the second
+   landing only while other merges were held (#413). Two keys order the set, in
+   precedence. (1) Unblocking impact: a ready PR an in-flight lane `Depends on`, or whose
+   read against an in-flight branch that is still before its verify, review or PR comes
+   back non-empty, goes first, so the conflict lands before that lane's PR rather than
+   after it; neither lane's agent file yet takes a rebase before its first report, so the
+   lane still pays it at step 5, and #448 owns the entry that would let it rebase before
+   it invests. (2) Among the rest, the PR
+   whose landing costs the other open heads the fewest lane-side rounds goes first, ties
+   to the one ready longest; the heads counted include a curated batch whose checks are
+   still running on its new head, so a ready PR whose landing would cost that batch
+   another round waits for that one CI run — the one wait this order prices. A curated
+   batch is priced by (2), not special-cased (owner direction 2026-11-02, #413). The
+   order and the read it rests on — commands, output and exit codes, written from the captured run
+   (`docs/standards/evidence.md`) — go in the in-flight table rows, never into issues.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
    `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
    poll, a merge taken only from `CLEAN`, and then, only once the PR reports `MERGED`, the
@@ -106,8 +173,8 @@ the section before you dispatch.
    merge in its update-branch step, or refuses, naming why (#297). Any other path, or that
    refusal → a `REBASE —` bounce to the
    warm agent, which rebases per its rule 8 and re-reports. The second merger rebases,
-   always; merges serialise. The bounce carries pasted command output and citations, and no
-   figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
+   always; merges serialise, in step 4's **Merge order**. The bounce carries pasted command
+   output and citations, and no figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
    (a) `git log --oneline "$base"..origin/main`, what merged since the branch was cut;
    (b) `git diff "$base" origin/main -- <file>` for each file both sides touched, that set
    printed by
@@ -156,7 +223,10 @@ the section before you dispatch.
    delegation is itself the fix for context pressure. Context health is a sanity backstop
    only — if in-flight sets are somehow costing more than that (bounce chatter, bloated
    reports), fix the contract breach; don't slow admission. Conserve budget mode is the
-   one hard cap: 1 concurrent set.
+   one hard cap: 1 concurrent set. Each candidate's acceptance is read per the
+   ticket-agent lane's step 1 before step 2's composition test, so the `adr` label that test keys on is
+   on the issue, and any split the read produces is itself a candidate or a dependency
+   outside the batch, by then.
 2. **Dispatch** `task-orchestrator` (background) with: the issue number (or, for a batch,
    the member list + anchor issue) and the main-checkout path. Nothing else — it reads the
    skills and the issue(s). **Batch composition is yours, at admission**: overlapping
@@ -191,11 +261,11 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    being a branch commit necessarily precedes the merge; then the merge; then taking the
    label off, last of the three, the entry itself having landed on the branch before the
    label ever went on), one PR
-   at a time — merges are serialized, always. That ritual is a single issue's only: a
-   batch carries no humanAlways path (step 2), so a batch TASK REPORT classifying HUMAN,
-   or a batch changed-file list holding a humanAlways path, is a `FIX` bounce naming the
-   member to drop, never a fill. Single-issue PRs merge `--squash` as today;
-   batch PRs merge `--rebase` AFTER the mechanical curated-history check passes — the
+   at a time — merges are serialized, always, in the ticket-agent lane's step 4
+   **Merge order**. That ritual is a single issue's only: a batch carries no humanAlways
+   path (step 2), so a batch TASK REPORT classifying HUMAN, or a batch changed-file list
+   holding a humanAlways path, is a `FIX` bounce naming the member to drop, never a fill.
+   Single-issue PRs merge `--squash` as today; batch PRs merge `--rebase` AFTER the mechanical curated-history check passes — the
    report's branch commit list must show commit count == surviving-member count, each
    commit referencing its member issue, and `git log --oneline origin/main..<branch>`,
    after `git fetch origin`, must match it — never local `main`, which the parked checkout
@@ -209,7 +279,8 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    instead of taking it, since only the branch's owner can curate and force-push.
    A batch that is BEHIND or conflicted gets a "curate onto latest main" bounce instead of
    `gh pr update-branch` (a merge commit would break the invariant and block rebase-merge);
-   after the force-push, wait for the new head's checks as usual. HUMAN-class (a
+   after the force-push, wait for the new head's checks as usual, that head's place in the
+   queue set by the same **Merge order**. HUMAN-class (a
    single issue only, per the ritual above): notify the owner with the
    report's review guide — and only via this relay, after you have verified readiness
    (CI green on the reported head) yourself; the label is already on, and there is
