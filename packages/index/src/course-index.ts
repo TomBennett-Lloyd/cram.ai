@@ -70,7 +70,7 @@ export const RETRIEVAL_K = 8;
 /** Chunks each ranked list reads before its dedupe to slides (`docs/adr/0008-slide-chunking.md` § Decision (f)); provisional as `RETRIEVAL_K` is. */
 export const CANDIDATES_PER_LIST = 50;
 
-/** The topic list's weight in fusion, against 1 for each of the other two; provisional until #426's measured run tunes it (#69). */
+/** The topic list's weight in fusion; provisional until #426's measured run tunes it (#69). */
 export const TOPIC_LIST_WEIGHT = 1;
 
 export interface SearchQuery {
@@ -227,7 +227,7 @@ export class CourseIndex {
       .map(chunkFromRow);
   }
 
-  /** BM25, vector and topic lists fused by weighted reciprocal rank (ADR 0004 § Decision (c), ADR 0009 § Decision (n)). */
+  /** BM25, vector and topic lists fused by weighted reciprocal rank (`docs/adr/0004-storage.md` § Decision (c); `docs/adr/0009-explanation-answers.md` § Decision (n)). */
   search(query: SearchQuery, k: number = RETRIEVAL_K): readonly RetrievedSlide[] {
     if (!Number.isInteger(k) || k < 1)
       throw new Error(`search: k must be a positive integer, got ${String(k)}`);

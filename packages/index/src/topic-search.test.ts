@@ -112,14 +112,15 @@ describe('the topic list', () => {
     expect(found({ ...query, excludeUnconfirmedDerived: true }, 2)).toEqual([]);
   });
 
-  it('ranks a fact holding more of the named tags first, counting a tag both origins wrote once', () => {
-    const both = tagged(1);
-    const two = tagged(2);
+  it('ranks a fact holding more of the named tags first, counting a tag written twice, in any case or spelling of its terms, once', () => {
+    // Bodies share no word with the question, so the topic list alone orders them.
+    const both = tagged(1, { body: 'first' });
+    const two = tagged(2, { body: 'second' });
     indexLectures(course, [indexed(both, undefined), indexed(two, undefined)]);
     tagFirstChunk(both, 'tagger', 'diabetes');
-    tagFirstChunk(both, 'student', 'diabetes');
-    tagFirstChunk(two, 'tagger', 'diabetes', 'insulin');
-    expect(found({ text: 'diabetes and insulin', embedding: AWAY }, 2)).toEqual([
+    tagFirstChunk(both, 'student', 'Diabetes', 'type-2 diabetes', 'type 2 diabetes');
+    tagFirstChunk(two, 'tagger', 'diabetes', 'insulin', 'type 2 diabetes');
+    expect(found({ text: 'diabetes and insulin, type 2 diabetes', embedding: AWAY }, 2)).toEqual([
       sourceIdOf(two),
       sourceIdOf(both),
     ]);
@@ -144,7 +145,7 @@ describe('the topic list', () => {
 
   it('reads at most CANDIDATES_PER_LIST tagged facts, so a fact past them gains nothing from its tag', () => {
     // Unembedded, so only the words and topic lists rank them. Past the cut, the last tagged fact would add
-    // 1 / (RRF_K + 51) to its second place in the words list and overtake their first place.
+    // 1 / (RRF_K + CANDIDATES_PER_LIST + 1) to its second place in the words list and overtake their first place.
     const firsts = Array.from({ length: CANDIDATES_PER_LIST }, (_, index) => tagged(index + 1));
     const wordy = tagged(CANDIDATES_PER_LIST + 1, { body: 'glucose glucose' });
     const last = tagged(CANDIDATES_PER_LIST + 2, { body: 'glucose in the blood of a patient' });

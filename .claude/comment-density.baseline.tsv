@@ -152,7 +152,7 @@ packages/index/src/slide-row.ts	322
 packages/index/src/spelling-correction.ts	535
 packages/index/src/stored-deck.ts	683
 packages/index/src/stored-lectures.ts	1538
-packages/index/src/topics.ts	522
+packages/index/src/topics.ts	512
 packages/ingest/src/adapters/deck-file.ts	645
 packages/ingest/src/adapters/pdf/deck-fixture.ts	756
 packages/ingest/src/adapters/pdf/ingest-pdf.ts	740

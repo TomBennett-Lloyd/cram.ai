@@ -7,7 +7,7 @@ import { indexedLecture, record } from './run-fixture';
 import { ScriptedGateway } from './scripted-gateway-fixture';
 
 // Acceptance for #393 on the synthetic deck: one edit in a course term retrieves what the
-// correct spelling does. The embedder is the fixture's letter-count one, so both lists run.
+// correct spelling does. The embedder is the fixture's letter-count one.
 const read = readEvalCourse();
 if (read.status !== 'read') throw new Error(`${read.where}: ${read.message}`);
 

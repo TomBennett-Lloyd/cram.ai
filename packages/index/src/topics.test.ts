@@ -5,7 +5,7 @@ import { carriedTags, namedTags, rankTopicMembers, type TagRow } from './topics'
 
 const tag = (text: string): TopicTag => TopicTag.parse(text);
 
-/** The oracle: FTS5's unicode61 tokenizer, asked whether the query matches the tag as a phrase. */
+/** FTS5 `unicode61 remove_diacritics 0` (not `slides_fts`'s tokenizer), asked whether the query matches the tag as a phrase. */
 const ftsNames = (query: string, text: string): boolean => {
   const db = new Database(':memory:');
   try {
@@ -53,7 +53,7 @@ const CORPUS: readonly (readonly [string, string])[] = [
 ];
 
 describe('namedTags', () => {
-  it('names a tag exactly when FTS5 matches it as a phrase in the query', () => {
+  it('agrees over this corpus with FTS5 unicode61 remove_diacritics 0 matching the tag as a phrase', () => {
     for (const [query, text] of CORPUS)
       expect(namedTags(query, [tag(text)]).length === 1, `${query} / ${text}`).toBe(
         ftsNames(query, text),

@@ -25,7 +25,7 @@ const occursIn = (needle: readonly string[], haystack: readonly string[]): boole
   needle.length > 0 &&
   haystack.some((_, start) => needle.every((term, offset) => haystack[start + offset] === term));
 
-/** The tags a query names: each whose terms occur in the query's, in order and adjacent, as an FTS5 phrase matches. */
+/** The tags a query names: each whose terms occur in the query's, in order and adjacent. */
 export const namedTags = (query: string, tags: readonly TopicTag[]): readonly TopicTag[] => {
   const queryTerms = termsOf(query);
   return tags.filter((tag) => occursIn(termsOf(tag), queryTerms));
@@ -136,7 +136,7 @@ export const dropSlideTopics = (db: Database, slideId: number): void => {
   );
 };
 
-const Members = z.array(z.object({ chunkId: z.number().int(), named: z.number().int() }));
+const TaggedChunks = z.array(z.object({ chunkId: z.number().int(), tag: z.string() }));
 
 /** Topic membership as a best-first list of chunk ids (`docs/adr/0009-explanation-answers.md` § Decision (n)). */
 export const topicList = (
@@ -151,14 +151,17 @@ export const topicList = (
     .parse(db.prepare('select distinct tag from topics').pluck().all());
   const tags = namedTags(text, stored);
   const marks = tags.map(() => '?').join(', ');
-  const members = Members.parse(
+  const namedBy = new Map<number, Set<string>>();
+  for (const { chunkId, tag } of TaggedChunks.parse(
     db
-      .prepare(
-        `select chunk_id as chunkId, count(distinct tag) as named from topics
-          where tag in (${marks}) ${filter} group by chunk_id`,
-      )
+      .prepare(`select chunk_id as chunkId, tag from topics where tag in (${marks}) ${filter}`)
       .all(...tags),
-  );
+  )) {
+    const named = namedBy.get(chunkId) ?? new Set<string>();
+    named.add(termsOf(tag).join(' '));
+    namedBy.set(chunkId, named);
+  }
+  const members = [...namedBy].map(([chunkId, named]) => ({ chunkId, named: named.size }));
   const vectorRankOf = new Map(nearest.map((chunkId, rank) => [chunkId, rank]));
   return rankTopicMembers(members, vectorRankOf).slice(0, depth);
 };
