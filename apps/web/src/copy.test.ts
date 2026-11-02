@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CourseUnavailableProblem, SourceId, WithheldSentence } from '@cram/shared';
-import { discardedMessage, storedUnavailableMessage, withheldMessage } from './copy';
+import { CourseUnavailableProblem, SlideNo, SourceId, WithheldSentence } from '@cram/shared';
+import {
+  APPEARS_TO_CONTRADICT,
+  contradictionRefLabel,
+  discardedMessage,
+  sourceRefLabel,
+  storedUnavailableMessage,
+  withheldMessage,
+} from './copy';
 
 const sourceId = SourceId.parse('s1');
 const text = 'Drones forage.';
@@ -53,5 +60,15 @@ describe('storedUnavailableMessage', () => {
     CourseUnavailableProblem.options.forEach((problem, index) => {
       expect(sentences[index]).not.toContain(problem);
     });
+  });
+});
+
+describe('contradictionRefLabel', () => {
+  it('names the slide after the label the button shows only on hover and focus', () => {
+    const slide = { lectureTitle: 'Lecture 3: Wax', slideNo: SlideNo.parse(12) };
+    expect(contradictionRefLabel(2, slide)).toBe(
+      `Source 2: ${APPEARS_TO_CONTRADICT} Lecture 3: Wax, slide 12`,
+    );
+    expect(sourceRefLabel(2, slide)).toBe('Source 2: Lecture 3: Wax, slide 12');
   });
 });

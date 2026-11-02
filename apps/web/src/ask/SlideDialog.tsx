@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
-import { DERIVED_TEXT, SLIDE_HAS_NO_TEXT, SLIDE_LINES } from '../copy';
+import { DERIVED_TEXT, SLIDE_CONTRADICTION, SLIDE_HAS_NO_TEXT, SLIDE_LINES } from '../copy';
 import { Empty } from '../shell/async-states';
 import type { CitedSlide } from './cited-slide';
 import { type MarkedField, markedFields, markedLines, type Segment } from './quote-marks';
@@ -47,7 +47,7 @@ const FieldText = ({ field, segments }: MarkedField) => {
  * (`docs/standards/react.md`, the modal paragraph).
  */
 export const SlideDialog = ({
-  cited: { slide, quotes },
+  cited: { slide, quotes, contradicted },
   onClose,
 }: {
   readonly cited: CitedSlide;
@@ -87,6 +87,11 @@ export const SlideDialog = ({
           ×
         </button>
       </header>
+      {contradicted !== undefined && (
+        <p className="slide-contradiction">
+          {SLIDE_CONTRADICTION} <span className="contradicted">{contradicted}</span>
+        </p>
+      )}
       <SlideFigure record={record} />
       {fields.length === 0 ? (
         <Empty>{SLIDE_HAS_NO_TEXT}</Empty>

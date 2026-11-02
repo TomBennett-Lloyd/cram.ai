@@ -1,43 +1,13 @@
-import type { AskReply, AttributedSentence, Citation, RetrievedSlide } from '@cram/shared';
-import { CLOSEST_SLIDES, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR, SOURCE_MISSING } from '../copy';
+import type { AskReply, RetrievedSlide } from '@cram/shared';
+import { CLOSEST_SLIDES, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR } from '../copy';
 import { Failed } from '../shell/async-states';
-import { type CitedSlide, sentenceSlides } from './cited-slide';
+import { ASK_DEPTH } from './ask-depth';
+import type { CitedSlide } from './cited-slide';
+import { ExplanationView } from './ExplanationView';
 import { SlideCard } from './SlideCard';
 import { WithheldPanel } from './WithheldPanel';
 
 type OnOpen = (cited: CitedSlide) => void;
-
-const SentenceView = ({
-  sentence,
-  quotes,
-  slides,
-  onOpen,
-}: {
-  readonly sentence: AttributedSentence;
-  readonly quotes: readonly Citation[];
-  readonly slides: readonly RetrievedSlide[];
-  readonly onOpen: OnOpen;
-}) => {
-  const { cited, missing } = sentenceSlides(sentence, quotes, slides);
-  return (
-    <li className="unit">
-      <p className="unit-text">{sentence.text}</p>
-      <ul className="citations" aria-label="Sources">
-        {cited.map((entry) => (
-          <li key={entry.slide.sourceId}>
-            <SlideCard
-              slide={entry.slide}
-              onOpen={() => {
-                onOpen(entry);
-              }}
-            />
-          </li>
-        ))}
-        {missing > 0 && <li className="citation-missing">{SOURCE_MISSING}</li>}
-      </ul>
-    </li>
-  );
-};
 
 const ClosestSlides = ({
   slides,
@@ -75,7 +45,6 @@ const SearchedFor = ({ searched }: { readonly searched: string | undefined }) =>
     </p>
   );
 
-/** One reply: the explanation's sentences with their slides, or the not-covered result, and what was withheld. */
 export const AnswerView = ({
   reply,
   onOpen,
@@ -90,17 +59,12 @@ export const AnswerView = ({
       return (
         <>
           <SearchedFor searched={reply.searched} />
-          <ol className="answer">
-            {reply.explanation.sentences.map((sentence, index) => (
-              <SentenceView
-                key={index}
-                sentence={sentence}
-                quotes={reply.explanation.quotes}
-                slides={reply.slides}
-                onOpen={onOpen}
-              />
-            ))}
-          </ol>
+          <ExplanationView
+            explanation={reply.explanation}
+            slides={reply.slides}
+            depth={ASK_DEPTH}
+            onOpen={onOpen}
+          />
           <WithheldPanel withheld={reply.withheld} />
         </>
       );

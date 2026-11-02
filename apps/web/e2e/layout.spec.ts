@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { GROUNDED_QUESTION, stubApi } from './hermetic-api';
+import { CONTRADICTED_QUESTION, GROUNDED_QUESTION, stubApi } from './hermetic-api';
 
 const NARROWEST = { width: 320, height: 640 };
 
@@ -57,7 +57,8 @@ test('an answer and its open slide fit the narrowest phone width', async ({ page
   await page.goto('/#/courses/bio');
   await page.getByRole('textbox', { name: 'Question' }).fill(GROUNDED_QUESTION);
   await page.getByRole('button', { name: 'Ask' }).click();
-  await expect(page.locator('.unit')).toHaveCount(2);
+  await expect(page.locator('.sources-entry')).toHaveCount(2);
+  await expect(page.locator('.sentence-refs')).toHaveCount(2);
   expect(await overflows(page, '.slide-card')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
   await page.locator('.slide-card').first().click();
@@ -72,4 +73,40 @@ test('an answer and its open slide fit the narrowest phone width', async ({ page
     true,
   );
   expect(await overflows(page, '.slide-lines li')).toBe(false);
+});
+
+test('a marked answer fits the narrowest phone width, with its label showing', async ({ page }) => {
+  await page.goto('/#/courses/bio');
+  await page.getByRole('textbox', { name: 'Question' }).fill(CONTRADICTED_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).click();
+  await expect(page.locator('.contradicted')).toBeVisible();
+  expect(await scrollsSideways(page)).toBe(false);
+  const button = page.locator('.contradiction-refs .source-ref');
+  const next = page.locator('.sentence-refs').nth(1).locator('.source-ref');
+  const atRest = [await button.boundingBox(), await next.boundingBox()];
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  for (let presses = 0; presses < 6; presses++) {
+    if (await button.evaluate((node) => node === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(button).toBeFocused();
+  await expect(page.locator('.contradiction-label')).toBeVisible();
+  expect([await button.boundingBox(), await next.boundingBox()]).toEqual(atRest);
+  expect(await scrollsSideways(page)).toBe(false);
+  expect(await overflows(page, '.explanation-text')).toBe(false);
+});
+
+test('the panel a contradiction number opens names the sentence above the fold, unclipped, at the narrowest width', async ({
+  page,
+}) => {
+  await page.goto('/#/courses/bio');
+  await page.getByRole('textbox', { name: 'Question' }).fill(CONTRADICTED_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).click();
+  await page.locator('.contradiction-refs .source-ref').click();
+  const line = page.getByRole('dialog').locator('.slide-contradiction');
+  await expect(line).toBeVisible();
+  const box = await line.boundingBox();
+  expect((box?.y ?? Infinity) + (box?.height ?? 0) <= NARROWEST.height).toBe(true);
+  expect(await overflows(page, '.slide-contradiction')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
 });
