@@ -33,8 +33,9 @@ export {
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
 export { TopicTag } from './topic-tag';
 export { Unit, UnitKind } from './unit';
-export { PartialPolicy, Verdict, WithheldReason } from './verification';
-export { WithheldUnit } from './withheld';
+export { AttributedSentence, Explanation, ExplanationSurface } from './explanation';
+export { PartialPolicy, Verdict, VerificationDepth, WithheldReason } from './verification';
+export { WithheldSentence, WithheldUnit } from './withheld';
 export { ApiRefusal } from './api-refusal';
 export { AskReply, AskRequest } from './ask';
 export { CourseList } from './course-list';

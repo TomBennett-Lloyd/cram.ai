@@ -6,6 +6,7 @@ import {
   type Recording,
   RecordingMissError,
 } from '@cram/gateway';
+import { ATTRIBUTION_K } from '@cram/index';
 import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -91,6 +92,21 @@ const tutor =
   (wire: ChatWireRequest) => {
     const prompt = wire.messages.at(-1)?.content ?? '';
     switch (wire.output.name) {
+      case 'explanation': {
+        const asked = words(/<question>(.*)<\/question>/.exec(prompt)?.[1] ?? '');
+        const from = sourcesOf(prompt).filter(
+          ({ text }) => eager || words(text).some((word) => asked.includes(word)),
+        );
+        return content({
+          answer:
+            from.length === 0
+              ? null
+              : {
+                  text: from.map(({ line }) => line).join(' '),
+                  quotes: from.map(({ id }) => ({ sourceId: id, line: CITED_LINE })),
+                },
+        });
+      }
       case 'units': {
         const asked = words(/<question>(.*)<\/question>/.exec(prompt)?.[1] ?? '');
         const units = sourcesOf(prompt)
@@ -114,19 +130,17 @@ const steppingClock = () => {
   return () => (now += 1);
 };
 
-/** Says every statement is supported, and lets each source line also say comb cells are hexagons. */
-const credulous: Respond = (wire) => {
-  if (wire.output.name === 'verdict') return content({ verdict: 'supported' });
-  const reply = tutor(false)(wire);
-  if (wire.output.name !== 'units' || reply.status !== 'content') return reply;
-  const { units } = z
-    .strictObject({ units: z.array(z.strictObject({ text: z.string() }).loose()) })
-    .parse(JSON.parse(reply.content));
-  return content({
-    units: units.map((unit) => ({ ...unit, text: `${unit.text} Comb cells are hexagons.` })),
-  });
-};
+/** Says every statement is supported. */
+const credulous: Respond = (wire) =>
+  wire.output.name === 'verdict' ? content({ verdict: 'supported' }) : tutor(false)(wire);
 
+/** A slide whose whole text is over the scripted cross-encoder's length. */
+const LONG = record({
+  lectureId: 'l3',
+  slideNo: 1,
+  title: 'Propolis',
+  body: `Propolis is gathered from poplar buds.\n${'It seals every gap in the hive. '.repeat(8)}`,
+});
 const spec = (
   gateway: EvalRunSpec['gateway'],
   overrides: Partial<EvalRunSpec> = {},
@@ -170,13 +184,21 @@ describe('runEval', () => {
   it('measures every metric it has inputs for, over the whole pipeline', async () => {
     const { report } = await recordRun(tutor(false));
     expect(report.metrics).toMatchObject({
-      citationValidity: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      citationValidity: { status: 'measured', ratio: { numerator: 4, denominator: 4 } },
       contradictionSet: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
       retrievalRecall: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
       misspeltRetrievalRecall: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
       verifierPrecision: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
       verifierRecall: { status: 'measured', ratio: { numerator: 1, denominator: 1 } },
     });
+    expect(report.attributionK).toBe(ATTRIBUTION_K);
+    expect(report.metrics).toMatchObject({
+      attributionRecall: { status: 'measured', ratio: { numerator: 2, denominator: 2 } },
+      contradictionSetLight: { status: 'measured', ratio: { numerator: 3, denominator: 3 } },
+      lightFlagRate: { status: 'not-measurable' },
+      lightFlagRateWide: { status: 'not-measurable' },
+    });
+    expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });
     expect(report.servedGenerator).toEqual(SERVED);
     expect(report.verifierArms).toMatchObject({
@@ -217,6 +239,15 @@ describe('runEval', () => {
 
   it('headlines the shipping strategy, where it and the cross-encoder alone disagree', async () => {
     const { report } = await recordRun(credulous, {
+      lectures: [...LECTURES, lecture('l3', [LONG])],
+      questions: [
+        ...QUESTIONS,
+        question({
+          question: 'Where is propolis gathered?',
+          expectedCitations: [{ lectureId: 'l3', slideNo: 1 }],
+          mustNotContain: ['resin'],
+        }),
+      ],
       labels: [
         ...LABELS,
         label({
@@ -228,8 +259,14 @@ describe('runEval', () => {
     });
     const { nli, nliThenLlm } = report.verifierArms;
     expect(report.verifierStrategy).toBe('nli-then-llm');
-    expect(nli.contradictionSet).not.toEqual(nliThenLlm.contradictionSet);
+    expect(nli.contradictionSet).toMatchObject({
+      ratio: { numerator: 3, denominator: 4 },
+      failures: [{ question: 'Where is propolis gathered?' }],
+    });
+    expect(nliThenLlm.contradictionSet).toMatchObject({ ratio: { numerator: 4, denominator: 4 } });
     expect(report.metrics.contradictionSet).toEqual(nliThenLlm.contradictionSet);
+    expect(report.attribution.overLengthPairs).toBeGreaterThan(0);
+    expect(report.attribution.pairs).toBeLessThan(4 * report.attribution.sentences);
     expect(nli.accuracy.precision).not.toEqual(nliThenLlm.accuracy.precision);
     expect(report.metrics.verifierPrecision).toEqual(nliThenLlm.accuracy.precision);
   });

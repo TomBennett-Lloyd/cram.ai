@@ -1,13 +1,8 @@
-import type { GroundingStage } from '@cram/grounding';
-import type { RetrievedSlide, Unit } from '@cram/shared';
+import type { ExplainStage } from '@cram/grounding';
+import type { SourceId } from '@cram/shared';
 import { z } from 'zod';
-import { type AskedQuestion, survivingUnits } from './asked-question';
-import {
-  firstForbiddenEntry,
-  GoldenQuestion,
-  inContradictionSet,
-  type SlideRef,
-} from './golden-question';
+import { type AskedQuestion, namesExpected } from './asked-question';
+import { firstForbiddenEntry, GoldenQuestion, inContradictionSet } from './golden-question';
 import { absoluteFields, absoluteRow } from './metric-row';
 
 export const ContradictionProblem = z.discriminatedUnion('kind', [
@@ -19,8 +14,13 @@ export const ContradictionProblem = z.discriminatedUnion('kind', [
     text: z.string(),
   }),
   z.strictObject({
+    kind: z.literal('unflagged-forbidden-text'),
+    entry: z.string(),
+    text: z.string(),
+  }),
+  z.strictObject({
     kind: z.literal('model-failed'),
-    stage: z.enum(['generate', 'verify', 'rewrite']) satisfies z.ZodType<GroundingStage>,
+    stage: z.enum(['generate', 'verify']) satisfies z.ZodType<ExplainStage>,
   }),
 ]);
 export type ContradictionProblem = z.infer<typeof ContradictionProblem>;
@@ -35,43 +35,29 @@ export type ContradictionFailure = z.infer<typeof ContradictionFailure>;
 export const ContradictionSetRow = absoluteRow(ContradictionFailure);
 export type ContradictionSetRow = z.infer<typeof ContradictionSetRow>;
 
-const isExpected = (slide: RetrievedSlide, expected: readonly SlideRef[]): boolean =>
-  expected.some(
-    (ref) => ref.lectureId === slide.record.lectureId && ref.slideNo === slide.record.slideNo,
-  );
-
-const citesExpected = (
-  unit: Unit,
-  retrieved: readonly RetrievedSlide[],
-  expected: readonly SlideRef[],
-): boolean =>
-  unit.citations.some((citation) =>
-    retrieved.some((slide) => slide.sourceId === citation.sourceId && isExpected(slide, expected)),
-  );
-
-const forbidden = (units: readonly Unit[], mustNotContain: readonly string[]) =>
-  units.flatMap((unit): ContradictionProblem[] => {
-    const entry = firstForbiddenEntry(unit.text, mustNotContain);
-    return entry === undefined ? [] : [{ kind: 'forbidden-text', entry, text: unit.text }];
-  });
-
-/** `docs/adr/0005-evaluation-as-gate.md` § Decision (b)'s pass condition; the withheld panel is exempt. */
-const problemsOf = ({ question, retrieved, result }: AskedQuestion): ContradictionProblem[] => {
-  if (result.status === 'model-failed') return [{ kind: 'model-failed', stage: result.stage }];
-  const units = survivingUnits(result);
-  const { expectedCitations, mustNotContain } = question;
-  const coverage: ContradictionProblem[] =
-    expectedCitations.length === 0
-      ? units.length === 0
-        ? []
-        : [{ kind: 'answered-uncovered' }]
-      : units.some((unit) => citesExpected(unit, retrieved, expectedCitations))
-        ? []
-        : [{ kind: 'no-expected-citation' }];
-  return [...coverage, ...forbidden(units, mustNotContain)];
+export const coverageProblems = (
+  { question, result }: AskedQuestion,
+  named: readonly SourceId[],
+): ContradictionProblem[] => {
+  if (question.expectedCitations.length === 0)
+    return result.status === 'grounded' ? [{ kind: 'answered-uncovered' }] : [];
+  const slides = result.status === 'grounded' ? result.slides : [];
+  return named.some((id) => namesExpected(id, slides, question.expectedCitations))
+    ? []
+    : [{ kind: 'no-expected-citation' }];
 };
 
-/** Of the set's items, those meeting § Decision (b)'s pass condition. */
+/** `docs/adr/0005-evaluation-as-gate.md` § Decision (b)'s pass condition read over the explanation (`docs/adr/0009-explanation-answers.md` § Decision (o)). */
+const problemsOf = (asked: AskedQuestion): ContradictionProblem[] => {
+  const { question, result } = asked;
+  if (result.status === 'model-failed') return [{ kind: 'model-failed', stage: result.stage }];
+  const shown = result.status === 'grounded' ? result.explanation : undefined;
+  const coverage = coverageProblems(asked, shown?.sources ?? []);
+  const text = shown?.text ?? '';
+  const entry = firstForbiddenEntry(text, question.mustNotContain);
+  return entry === undefined ? coverage : [...coverage, { kind: 'forbidden-text', entry, text }];
+};
+
 export const contradictionSet = (asked: readonly AskedQuestion[]): ContradictionSetRow => {
   const items = asked.filter(({ question }) => inContradictionSet(question));
   const failures = items.flatMap((item): ContradictionFailure[] => {

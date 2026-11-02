@@ -14,17 +14,10 @@ import {
   PROVISIONAL_DEFAULT_PINS,
   type Recording,
 } from '@cram/gateway';
-import { generationRequest, splitClaims } from '@cram/grounding';
+import { explanationRequest, slideText } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
 import { ingestPdf } from '@cram/ingest';
-import {
-  type Citation,
-  CourseId,
-  LectureId,
-  type RetrievedSlide,
-  SourceId,
-  type Unit,
-} from '@cram/shared';
+import { CourseId, LectureId, type RetrievedSlide } from '@cram/shared';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { type CramServer, startServer } from './server';
 import type { LogEntry } from './server-log';
@@ -192,7 +185,6 @@ export const settledStatus = async (port: number, courseId: string): Promise<Rec
   throw new Error(`settledStatus: ${courseId} never settled`);
 };
 
-/** The slides `@cram/ingest` reads from `bytes`, as the course index will return them. */
 export const retrievedFrom = async (
   bytes: Uint8Array,
   courseId: string,
@@ -209,18 +201,7 @@ export const retrievedFrom = async (
   return ingested.slides.map((record) => ({ sourceId: sourceIdOf(record), record }));
 };
 
-export const cite = (sourceId: string, quote: string): Citation => ({
-  sourceId: SourceId.parse(sourceId),
-  quote,
-});
-
-export const answer = (text: string, citations: readonly Citation[]): Unit => ({
-  text,
-  citations: [...citations],
-  kind: 'answer-sentence',
-});
-
-export const generated = (
+export const explained = (
   question: string,
   retrieved: readonly RetrievedSlide[],
   reply: GeneratorReply,
@@ -228,18 +209,26 @@ export const generated = (
   role: 'generator',
   pin: PROVISIONAL_DEFAULT_PINS.generator,
   sampling,
-  request: chatWireRequest(generationRequest({ kind: 'answer-sentence', question }, retrieved)),
+  request: chatWireRequest(explanationRequest(question, retrieved)),
   reply,
 });
 
-export const judged = (unit: Unit, result: EntailmentResult): Recording => ({
-  role: 'verifier',
-  pin: PROVISIONAL_DEFAULT_PINS.verifier,
-  request: {
-    pairs: splitClaims(unit.text).map((hypothesis) => ({
-      premise: unit.citations.map((citation) => citation.quote).join('\n'),
-      hypothesis,
-    })),
-  },
-  reply: { results: splitClaims(unit.text).map(() => result) },
+export const explanationReply = (text: string): GeneratorReply => ({
+  status: 'content',
+  content: JSON.stringify({ answer: { text, quotes: [] } }),
 });
+
+export const marked = (
+  sentences: readonly { readonly text: string; readonly slides: readonly RetrievedSlide[] }[],
+  result: EntailmentResult,
+): Recording => {
+  const pairs = sentences.flatMap(({ text, slides }) =>
+    slides.map((slide) => ({ premise: slideText(slide.record), hypothesis: text })),
+  );
+  return {
+    role: 'verifier',
+    pin: PROVISIONAL_DEFAULT_PINS.verifier,
+    request: { pairs },
+    reply: { results: pairs.map(() => result) },
+  };
+};

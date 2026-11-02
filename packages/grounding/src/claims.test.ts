@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitClaims } from './claims';
+import { claimSpans, spansOf, splitClaims } from './claims';
 
 describe('splitClaims', () => {
   it('keeps one sentence as one claim', () => {
@@ -51,5 +51,24 @@ describe('splitClaims', () => {
 
   it('drops the empty tail a trailing boundary leaves', () => {
     expect(splitClaims('Workers are male; ')).toEqual(['Workers are male;']);
+  });
+});
+
+describe('claimSpans', () => {
+  it('places each claim where it sits, past a repeat of an earlier one', () => {
+    const text = '  Bees sleep.  Bees sleep; then wake.';
+    expect(claimSpans(text)).toEqual([
+      { text: 'Bees sleep.', start: 2, end: 13 },
+      { text: 'Bees sleep;', start: 15, end: 26 },
+      { text: 'then wake.', start: 27, end: 37 },
+    ]);
+  });
+});
+
+describe('spansOf', () => {
+  it('refuses a claim the text does not hold past the one before it', () => {
+    expect(() => spansOf('Bees sleep. Bees wake.', ['Bees wake.', 'Bees sleep.'])).toThrow(
+      'spansOf: "Bees sleep." is not in the text past 22',
+    );
   });
 });

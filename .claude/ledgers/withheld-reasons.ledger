@@ -1,12 +1,18 @@
 # The withheld-reason vocabulary (docs/standards/architecture.md rule 9; #29).
 owner: packages/shared/src/verification.ts
-claim: why a unit is withheld — dangling-citation, or any verdict but supported — as @cram/shared's WithheldReason declares it
+claim: why a unit or an explanation's sentence or quote pointer is withheld — dangling-citation, contradicted, ungrounded, or any verdict but supported — as @cram/shared's WithheldReason declares it
 cite: `WithheldReason`
 sweep: `WithheldReason`|dangling-citation|\.claude/ledgers/withheld-reasons\.ledger
 carrier: packages/shared/src/verification.test.ts
 carrier: packages/shared/src/unit.ts
 carrier: packages/shared/src/withheld.ts
 carrier: packages/grounding/src/resolve-citations.ts
+carrier: packages/shared/src/withheld.test.ts
+carrier: packages/grounding/src/resolve-quotes.ts
+carrier: packages/grounding/src/resolve-quotes.test.ts
+carrier: packages/grounding/src/explain.test.ts
+carrier: eval/src/depth-rows.ts
+carrier: eval/src/depth-rows.test.ts
 carrier: packages/grounding/src/resolve-citations.test.ts
 carrier: packages/grounding/src/ground.test.ts
 carrier: apps/web/src/copy.ts

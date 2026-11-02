@@ -11,9 +11,9 @@ export interface NliThresholds {
 /** Tuned against `eval/labels/verifier.jsonl` by #47's runner; provisional until then (`docs/standards/architecture.md` rule 12). */
 export const PROVISIONAL_NLI_THRESHOLDS: NliThresholds = { entailedAt: 0.5, contradictedAt: 0.5 };
 
-type ClaimLabel = 'entailed' | 'neutral' | 'contradicted';
+export type ClaimLabel = 'entailed' | 'neutral' | 'contradicted';
 
-const claimLabel = (scores: EntailmentScores, thresholds: NliThresholds): ClaimLabel => {
+export const claimLabel = (scores: EntailmentScores, thresholds: NliThresholds): ClaimLabel => {
   if (scores.contradiction >= thresholds.contradictedAt) return 'contradicted';
   if (scores.entailment >= thresholds.entailedAt) return 'entailed';
   return 'neutral';

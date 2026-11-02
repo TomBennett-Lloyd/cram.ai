@@ -10,8 +10,10 @@ import { VerifierStrategy } from '@cram/grounding';
 import { z } from 'zod';
 import { CitationValidityRow } from './citation-validity';
 import { ContradictionSetRow } from './contradiction-set';
+import { AttributionCounts, DepthRows } from './depth-rows';
 import { DerivedCoverageRow } from './derived-text';
 import { LatencySummary } from './latency';
+import { LightSetRow } from './light-rows';
 import { BaselineRow, NotMeasurable } from './metric-row';
 import { ArmDecision } from './verifier-arms';
 
@@ -47,6 +49,7 @@ export const EvalReport = z.strictObject({
   determinism: z.strictObject({ generator: Sampling }),
   nliThresholds: z.strictObject({ entailedAt: Probability, contradictedAt: Probability }),
   retrievalK: z.number().int().positive(),
+  attributionK: z.number().int().positive(),
   verifierStrategy: VerifierStrategy,
   metrics: z.strictObject({
     citationValidity: CitationValidityRow,
@@ -60,7 +63,13 @@ export const EvalReport = z.strictObject({
     derivedTextCoverage: DerivedCoverageRow,
     derivedTextRecall: BaselineRow,
     derivedTextPrecision: BaselineRow,
+    attributionRecall: BaselineRow,
+    contradictionSetLight: LightSetRow,
+    lightFlagRate: BaselineRow,
+    lightFlagRateWide: BaselineRow,
   }),
+  depths: z.strictObject({ light: DepthRows, deep: DepthRows }),
+  attribution: AttributionCounts,
   verifierArms: z.strictObject({
     nli: Arm,
     llm: Arm.omit({ contradictionSet: true }),

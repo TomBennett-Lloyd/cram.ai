@@ -22,6 +22,7 @@ describe('Unit', () => {
 
   it('refuses a kind outside the closed set', () => {
     expect(Unit.safeParse({ ...unit(), kind: 'caveat' }).success).toBe(false);
+    expect(Unit.safeParse({ ...unit(), kind: 'note-bullet' }).success).toBe(false);
   });
 
   it('refuses a unit carrying a citation with a blank quote', () => {

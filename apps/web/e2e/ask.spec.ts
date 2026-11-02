@@ -11,7 +11,7 @@ const ask = async (page: Page, question: string) => {
   await page.getByRole('button', { name: 'Ask' }).click();
 };
 
-test('an answer shows each unit with a card per cited slide', async ({ page }) => {
+test('an answer shows each sentence with a card per slide it names', async ({ page }) => {
   await ask(page, GROUNDED_QUESTION);
   const answer = page.getByRole('region', { name: 'Answer' });
   await expect(answer.locator('.unit-text')).toHaveText([
@@ -70,7 +70,7 @@ test('what was withheld is folded until opened, with its reason', async ({ page 
   await expect(panel.getByText('Queens rule the hive.')).toBeHidden();
   await panel.locator('summary').click();
   await expect(panel.getByText('Queens rule the hive.')).toBeVisible();
-  await expect(panel.getByText('The cited slides don’t support it.')).toBeVisible();
+  await expect(panel.getByText('No slide this answer was written from says it.')).toBeVisible();
 });
 
 test('a question the slides do not cover gets the fixed answer and the closest slides', async ({

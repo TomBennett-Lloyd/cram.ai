@@ -3,11 +3,10 @@ import {
   type CourseUnavailableProblem,
   DiscardableTable,
   type DiscardedTable,
-  type PartialPolicy,
   type SlideRecord,
   type StoredLecture,
   type UploadProgress,
-  type WithheldUnit,
+  type WithheldSentence,
 } from '@cram/shared';
 import type { ApiFailure } from './api/api-result';
 
@@ -20,7 +19,7 @@ export const PENDING = {
   dismissal: 'Dismissing…',
 } as const;
 
-/** The fixed system string for a question no surviving unit answers (`docs/standards/grounding.md` rule 5). */
+/** The fixed system string for a question no shown explanation answers (`docs/standards/grounding.md` rule 5). */
 export const NOT_COVERED = 'Your slides don’t cover this.';
 export const CLOSEST_SLIDES = 'Closest slides';
 export const SEARCHED_FOR = 'Searched for:';
@@ -171,19 +170,15 @@ export const progressMessage = (progress: UploadProgress): string => {
   }
 };
 
-const PARTIAL_MESSAGE: Readonly<Record<PartialPolicy, string>> = {
-  drop: 'The cited slides only partly support it.',
-  'rewrite-once': 'The cited slides only partly support it, even after one rewrite.',
-};
-
-/** Why a unit was withheld, one sentence per `WithheldReason` (`docs/standards/grounding.md` rule 7). */
-export const withheldMessage = (withheld: WithheldUnit): string => {
+export const withheldMessage = (withheld: WithheldSentence): string => {
   switch (withheld.reason) {
     case 'dangling-citation':
-      return 'It cites no slide, or one of its citations names a slide not retrieved for this question or a line that slide doesn’t have.';
+      return 'The answer marked this line as a quote, but doesn’t repeat it word for word, or the slide has no such line.';
+    case 'contradicted':
+      return 'A slide this answer was written from says otherwise.';
     case 'unsupported':
-      return 'The cited slides don’t support it.';
-    case 'partial':
-      return PARTIAL_MESSAGE[withheld.policy];
+      return 'No slide this answer was written from says it.';
+    case 'ungrounded':
+      return 'No slide this answer was written from says any of it.';
   }
 };

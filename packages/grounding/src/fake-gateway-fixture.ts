@@ -10,8 +10,10 @@ import {
 } from '@cram/gateway';
 import { type Citation, type RetrievedSlide, SlideRecord, SourceId, type Unit } from '@cram/shared';
 import type { DraftUnit } from './generate-units';
+import type { SearchSentence } from './explain';
 import type { EntailmentScores } from './nli-verdict';
 import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
+import { slideText } from './slide-text';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
 const sampling = { temperature: 0, seed: 0 };
@@ -98,3 +100,19 @@ export const answer = (text: string, citations: readonly Citation[]): Unit => ({
   citations: [...citations],
   kind: 'answer-sentence',
 });
+
+export const pairsOf = (hypothesis: string, slides: readonly RetrievedSlide[]): EntailmentPair[] =>
+  slides.map((slide) => ({ premise: slideText(slide.record), hypothesis }));
+
+export const scriptedSearch = (
+  candidates: Readonly<Record<string, readonly RetrievedSlide[]>>,
+): { readonly search: SearchSentence; readonly asked: string[] } => {
+  const asked: string[] = [];
+  return {
+    asked,
+    search: (sentence) => {
+      asked.push(sentence);
+      return Promise.resolve(candidates[sentence] ?? []);
+    },
+  };
+};

@@ -10,4 +10,9 @@ describe('WithheldReason', () => {
   it('admits a dangling citation, which never reaches the verifier', () => {
     expect(WithheldReason.safeParse('dangling-citation').success).toBe(true);
   });
+
+  it('admits the deep depth’s contradicted sentence and ungrounded explanation', () => {
+    expect(WithheldReason.safeParse('contradicted').success).toBe(true);
+    expect(WithheldReason.safeParse('ungrounded').success).toBe(true);
+  });
 });

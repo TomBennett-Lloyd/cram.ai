@@ -1,6 +1,6 @@
 import type { Embedder, ModelGateway } from '@cram/gateway';
-import { ask, PROVISIONAL_NLI_THRESHOLDS, PROVISIONAL_VERIFIER_STRATEGY } from '@cram/grounding';
-import type { CourseReader } from '@cram/index';
+import { ask, PROVISIONAL_NLI_THRESHOLDS, type SearchSentence } from '@cram/grounding';
+import { ATTRIBUTION_K, type CourseReader } from '@cram/index';
 import type { AskReply, CourseId, CourseUnavailableProblem, RetrievedSlide } from '@cram/shared';
 import { type CourseFiles, courseExists, openToRead } from './course-file';
 import type { ServerLog } from './server-log';
@@ -31,17 +31,49 @@ const retrieve = async (
   question: string,
   embedder: Embedder,
 ): Promise<Retrieval> => {
-  try {
-    const correction = course?.correctSpelling(question);
-    const text = correction?.status === 'corrected' ? correction.searched : question;
-    const embedded = await embedQuestion(embedder, text);
-    if (embedded.status === 'over-length')
-      return { status: 'over-length', maxInputTokens: embedded.maxInputTokens };
-    return {
-      status: 'retrieved',
-      slides: course?.search({ text, embedding: embedded.vector }) ?? [],
-      searched: correction?.status === 'corrected' ? text : undefined,
+  const correction = course?.correctSpelling(question);
+  const text = correction?.status === 'corrected' ? correction.searched : question;
+  const embedded = await embedQuestion(embedder, text);
+  if (embedded.status === 'over-length')
+    return { status: 'over-length', maxInputTokens: embedded.maxInputTokens };
+  return {
+    status: 'retrieved',
+    slides: course?.search({ text, embedding: embedded.vector }) ?? [],
+    searched: correction?.status === 'corrected' ? text : undefined,
+  };
+};
+
+const sentenceSearch =
+  (course: CourseReader | undefined, embedder: Embedder): SearchSentence =>
+  async (sentence) => {
+    const embedded = await embedQuestion(embedder, sentence);
+    if (embedded.status === 'over-length' || course === undefined) return [];
+    return course.search({ text: sentence, embedding: embedded.vector }, ATTRIBUTION_K);
+  };
+
+type Asked =
+  | { readonly status: 'over-length'; readonly maxInputTokens: number }
+  | {
+      readonly status: 'asked';
+      readonly result: Awaited<ReturnType<typeof ask>>;
+      readonly retrieved: readonly RetrievedSlide[];
+      readonly searched: string | undefined;
     };
+
+const askOpen = async (
+  course: CourseReader | undefined,
+  question: string,
+  gateway: ModelGateway,
+): Promise<Asked> => {
+  try {
+    const retrieval = await retrieve(course, question, gateway.embedder);
+    if (retrieval.status === 'over-length') return retrieval;
+    const result = await ask(question, retrieval.slides, {
+      gateway,
+      thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      searchSentence: sentenceSearch(course, gateway.embedder),
+    });
+    return { status: 'asked', result, retrieved: retrieval.slides, searched: retrieval.searched };
   } finally {
     course?.close();
   }
@@ -57,39 +89,37 @@ export const askCourse = async (
   const opened = openToRead(deps.files, courseId);
   if (opened.status !== 'open' && opened.status !== 'blank')
     return { status: 'course-unavailable', problem: opened.status };
-  const retrieval = await retrieve(
+  const asked = await askOpen(
     opened.status === 'open' ? opened.course : undefined,
     question,
-    deps.gateway.embedder,
+    deps.gateway,
   );
-  if (retrieval.status === 'over-length')
-    return { status: 'question-over-length', maxInputTokens: retrieval.maxInputTokens };
-  const { slides, searched } = retrieval;
-  const result = await ask(question, slides, {
-    gateway: deps.gateway,
-    strategy: PROVISIONAL_VERIFIER_STRATEGY,
-    thresholds: PROVISIONAL_NLI_THRESHOLDS,
-  });
+  if (asked.status === 'over-length')
+    return { status: 'question-over-length', maxInputTokens: asked.maxInputTokens };
+  const { result, retrieved, searched } = asked;
+  const named = searched === undefined ? {} : { searched };
   switch (result.status) {
     case 'grounded':
       return {
         status: 'replied',
         reply: {
-          ...result,
-          shown: [...result.shown],
+          status: 'grounded',
+          explanation: result.explanation,
           withheld: [...result.withheld],
-          slides: [...slides],
-          ...(searched === undefined ? {} : { searched }),
+          slides: [...result.slides],
+          leftOut: [],
+          ...named,
         },
       };
     case 'not-covered':
       return {
         status: 'replied',
         reply: {
-          ...result,
+          status: 'not-covered',
           withheld: [...result.withheld],
-          slides: [...slides],
-          ...(searched === undefined ? {} : { searched }),
+          slides: [...retrieved],
+          leftOut: [],
+          ...named,
         },
       };
     case 'model-failed':
