@@ -30,6 +30,22 @@ export const SLIDE_IMAGE_MISSING = 'The picture of this slide can’t be shown.'
 export const DERIVED_TEXT =
   'This text was read from the slide’s picture. Check it against the image.';
 
+export const MAY_BE_RELEVANT = 'may be relevant';
+export const APPEARS_TO_CONTRADICT = 'appears to contradict';
+export const SOURCES = 'Sources';
+export const ATTRIBUTED_NOTE =
+  'Written from your slides. Each sentence is checked only for whether a slide appears to contradict it; the slides listed below are where to look.';
+export const DERIVED_SOURCE = 'Text read from the picture';
+export const SLIDE_CONTRADICTION = 'This sentence of the answer appears to contradict this slide:';
+
+type SlideName = Pick<SlideRecord, 'slideNo' | 'lectureTitle'>;
+
+export const contradictionRefLabel = ({ slideNo, lectureTitle }: SlideName): string =>
+  `${APPEARS_TO_CONTRADICT} ${lectureTitle}, slide ${String(slideNo)}`;
+
+export const sourceRefLabel = (number: number, { slideNo, lectureTitle }: SlideName): string =>
+  `Source ${String(number)}: ${lectureTitle}, slide ${String(slideNo)}`;
+
 export const slideImageAlt = ({
   slideNo,
   lectureTitle,

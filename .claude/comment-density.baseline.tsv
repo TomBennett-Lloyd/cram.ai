@@ -36,9 +36,10 @@ apps/web/src/ask/SlideDialog.tsx	606
 apps/web/src/ask/SlideFigure.tsx	416
 apps/web/src/ask/WithheldPanel.tsx	2000
 apps/web/src/ask/cited-slide.ts	1785
+apps/web/src/ask/explanation-marks.ts	515
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	542
+apps/web/src/copy.ts	505
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
