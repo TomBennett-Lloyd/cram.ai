@@ -1,12 +1,13 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ChunkNo, CourseId, Deck, SlideImage, SlideRecord } from '@cram/shared';
+import { ChunkNo, CourseId, Deck, SlideImage, SlideRecord, type SourceId } from '@cram/shared';
 import type { z } from 'zod';
 import type { CourseIndex } from './course-index';
 import { EmbedderIdentity } from './embedder-identity';
 import { type IndexedSlide, wholeSlide } from './indexed-slide';
 import { type EmbedSlides, openCourse, type OpenCourseSpec } from './open-course';
+import type { FactRef } from './topics';
 
 export const COURSE = CourseId.parse('course-a');
 export const EMBEDDER = EmbedderIdentity.parse({ model: 'fixture-embedder', dimension: 4 });
@@ -112,3 +113,5 @@ export const openOrFail = (spec: OpenCourseSpec): CourseIndex => {
   if (result.status !== 'open') throw new Error(`expected an open course, got ${result.status}`);
   return result.course;
 };
+
+export const firstFact = (sourceId: SourceId): FactRef => ({ sourceId, chunkNo: ChunkNo.parse(1) });

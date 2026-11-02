@@ -8,6 +8,7 @@ import {
   tempCourse,
   vector,
   type TempCourse,
+  firstFact,
 } from './course-fixture';
 import { textHashOf } from './confirmation';
 import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
@@ -61,7 +62,7 @@ describe('textHashOf', () => {
 
   it('is the hash SCHEMA_VERSION was cut for, since a course file stores it', () => {
     const pin = {
-      schemaVersion: 10,
+      schemaVersion: 11,
       hash: 'f85d9975ae374dcf389fbda4960ab042c0523efdd84b8b8caa5e1d793c8f517e',
     };
     const live = { schemaVersion: SCHEMA_VERSION, hash: hashOf() };
@@ -177,7 +178,7 @@ describe('CourseIndex.slides and slidesTagged excluding unconfirmed derived slid
     indexLectures(course, [indexed(DERIVED, AWAY), indexed(TYPED, AWAY), indexed(CONFIRMED, AWAY)]);
     course.confirmDerived(CONFIRMED, AT);
     for (const record of [DERIVED, TYPED, CONFIRMED])
-      course.setTopics(sourceIdOf(record), [TopicTag.parse('cells')]);
+      course.setTopics(firstFact(sourceIdOf(record)), 'tagger', [TopicTag.parse('cells')]);
   });
 
   it('lists every slide by default, for notes', () => {

@@ -11,6 +11,7 @@ import {
   text,
   vector,
   type TempCourse,
+  firstFact,
 } from './course-fixture';
 import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
 import type { IndexedSlide } from './indexed-slide';
@@ -60,7 +61,9 @@ const source = (lectureId: string, slideNo: number): SourceId =>
 
 describe('CourseIndex.replaceLecture', () => {
   it('leaves none of a longer deck’s tail findable by its words, its vector, or its tags', () => {
-    expect(course.setTopics(source('lecture-1', 3), [TopicTag.parse('tail')])).toEqual({
+    expect(
+      course.setTopics(firstFact(source('lecture-1', 3)), 'tagger', [TopicTag.parse('tail')]),
+    ).toEqual({
       status: 'set',
     });
     course.replaceLecture(deck(), [slideImage(1, 'new one')], lectureOne(['delta', 'epsilon']));
@@ -70,7 +73,9 @@ describe('CourseIndex.replaceLecture', () => {
   });
 
   it('replaces the deck and every slide image, and drops the old slides’ tags', () => {
-    expect(course.setTopics(source('lecture-1', 1), [TopicTag.parse('cells')])).toEqual({
+    expect(
+      course.setTopics(firstFact(source('lecture-1', 1)), 'tagger', [TopicTag.parse('cells')]),
+    ).toEqual({
       status: 'set',
     });
     course.replaceLecture(
@@ -86,7 +91,7 @@ describe('CourseIndex.replaceLecture', () => {
   });
 
   it('leaves another lecture’s slides, tags, deck and images as they were', () => {
-    course.setTopics(source('lecture-2', 1), [TopicTag.parse('enzymes')]);
+    course.setTopics(firstFact(source('lecture-2', 1)), 'tagger', [TopicTag.parse('enzymes')]);
     course.replaceLecture(deck(), [], []);
     expect(course.slides().map((s) => s.body)).toEqual(['enzymes']);
     expect(reachable('alpha', TAIL)).toEqual(['enzymes']);
@@ -155,7 +160,7 @@ describe('CourseIndex.replaceLecture', () => {
 
 describe('CourseIndex.removeLecture', () => {
   it('deletes the lecture’s slides, tags, deck and images, and leaves the other lecture', () => {
-    course.setTopics(source('lecture-1', 3), [TopicTag.parse('tail')]);
+    course.setTopics(firstFact(source('lecture-1', 3)), 'tagger', [TopicTag.parse('tail')]);
     expect(course.removeLecture(LECTURE_1)).toEqual({ status: 'removed' });
     expect(course.slides().map((s) => s.body)).toEqual(['enzymes']);
     expect(reachable('alpha beta gamma', TAIL)).toEqual(['enzymes']);

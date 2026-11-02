@@ -146,3 +146,16 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/fts-query.ts` (`TERM`); `packages/index/src/schema.ts` (`slides_fts`, default `unicode61`)
 - What: `TERM` keeps every `\p{M}` inside a token, while `unicode61` drops diacritic marks and splits a word at a spacing or enclosing mark (`\p{Mc}`, `\p{Me}`). In scripts whose words carry spacing marks, such as Indic vowel signs, a word reaches `slides_fts` as fragments. Search hides this, because a quoted multi-fragment term becomes a phrase match; spelling correction compares whole `TERM` tokens with fragment terms, so `isCourseTerm`'s phrase match is what keeps such a word as typed (`course-lexicon.test.ts`'s near-miss corpus). Suspected root cause: `TERM` was written for FTS5 quoting, not to mirror the tokenizer.
 - Source: PR for #393 (review)
+- Update 2026-11-02: `namedTags` (`packages/index/src/topics.ts`, #369) is a second consumer of `TERM`, and here the divergence decides topic membership. The words list folds `café` to `cafe`; the topic list does not. Under plain `unicode61`, three of `topics.test.ts`'s corpus pairs disagree with `namedTags`: `cafe culture`/`café`, `Istanbul`/`İstanbul`, and the NFC/NFD forms of `naïve bayes`. A word split at a spacing mark (`क ताब`/`किताब`) disagrees under `remove_diacritics 0` too.
+
+## 2026-11-02 — the row-id zod schema is declared once per module
+
+- Where: `packages/index/src/course-index.ts` (`RowId`, `RowIds`), `packages/index/src/ranked-lists.ts`, `packages/index/src/topics.ts` (inline in `setFactTopics`, `TaggedChunks`), `packages/index/src/slide-row.ts`
+- What: four modules each declare a schema for an integer row id read back from SQLite. The intent is the same in each (`docs/standards/structure.md` rule 7). #369 added a copy instead of sharing one. Suspected root cause: no shared row-reading module in `@cram/index`.
+- Source: PR for #369 (review)
+
+## 2026-11-02 — "which lists `search` fuses" has carriers and no ledger
+
+- Where: `packages/index/src/course-index.ts` (`TOPIC_LIST_WEIGHT`, `search`'s docblock), `packages/index/src/topic-search.test.ts`, `docs/plan.md` § 3, `README.md`, `docs/adr/0009-explanation-answers.md` § Decision (n)
+- What: the claim that `search` fuses its words, vector and topic lists is carried in code and in prose. No ledger names those carriers, and the prose ledger in `docs/adr/0004-storage.md` (h) covers only (c)'s substrate. #369's review found two carriers its sweep missed (`README.md`, `eval/src/misspelt-retrieval.test.ts`). Its recipe: `git grep -n -i -E "two[- ](ranked |fused |candidate )?lists?|both (ranked |candidate )?lists|(bm25|words?|keyword|full-text|fts5?)( list)? and (the )?(vector|embedding)|vector and (bm25|words?)|fus(e|es|ed|ion) .{0,40}(lists|bm25|vector)|reciprocal rank|rrf|third (fused |ranked )?list|topic (membership|list)" -- ':/'`.
+- Source: PR for #369 (review)
