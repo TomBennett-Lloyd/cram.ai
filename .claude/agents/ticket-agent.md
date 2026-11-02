@@ -58,6 +58,8 @@ The branch squash-merges, so commit count is free; every commit subject begins `
 
 **A guard whose job is to exclude inputs also faces a hostile corpus, judged by an oracle that is not the code under test.** Mutating edges exercises the inputs a guard has and never those it should have refused, so a missing exclusion has no edge to mutate: PR #271's paren counter killed every mutant and was still too broad for `${b%(*}`. Before the first `reviewer` dispatch, build the corpus from list (a)'s hostile end — near-misses, nested and escaped forms, and every input the plan sets aside as out of scope, since a set-aside is itself an exclusion (PR #313's pdf.js deletion of `<` and `>`, set aside without being checked against the inverse it can break) — and settle each verdict by the real interpreter or library run on the input, or by a recorded fixture. The previous version is not an oracle: diffing its verdicts against the new one's shows which changed, never which change is the fix; PR #289 settled each by running the command under `zsh -fc` with a stub `git` and reading whether the revert ran (#296).
 
+**A change to a parser or guard that has a prior version on `main` runs a differential corpus before the first `reviewer` dispatch.** Generate the corpus from list (a) — every construct, each varied on its axes — rather than from the rows you wrote, and settle each row's verdict three ways: the oracle (the real interpreter or library, as above), the branch head, and `main`'s version of the guard. Report the count of rows where `main`'s verdict matches the oracle's and head's does not; it must be 0, and the `reviewer` dispatch and the PR body paste the corpus size and that count. The previous version is still not the oracle — it is the third column, there so a regression shows as a row rather than as a review cycle. PR #394's three cycles found 9, then 1, then 25 such rows, each by a reviewer running this comparison; the confirmation pass that ended the loop ran it over 820 rows (#410).
+
 **Commit every verified step.** The branch squash-merges, so commit count is free; what is not free is work held uncommitted when the process dies — batch 3 of cumulo#467 lost five files' worth of trimming to a dropped connection, twice. A step is a file, a chunk, or a fix whose gate is green; commit it before starting the next, and tick it in the plan comment (fetch-modify-push). A successor resumes from ticks and `git log`, never from anyone's memory.
 
 ## 5. Escalation — stop triggers, each mechanical
@@ -111,6 +113,7 @@ Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found>/<fi
 Mutation: none owed (no guard) | grammar from <spec or schema>, axes <list>; criteria from <plan comment, issue invariants>;
           corpus <n> inputs, oracle <interpreter | library | fixture> | none owed (no exclusion guard);
           mutants <killed>/<total>, equivalent <n>: <the second shape each>; unkillable <n>: <guard — reason each>
+          differential none owed (no prior version on main) | <rows> rows from list (a), head-regressions (main matches the oracle, head does not) <n>
 Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <paths | none>
 Extras beyond the approved plan: <list | none | n/a — no PROCEED>   (rule 7; `none` → no label)
 Lane model: <the model this agent runs on>
