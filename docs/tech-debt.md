@@ -159,3 +159,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/course-index.ts` (`TOPIC_LIST_WEIGHT`, `search`'s docblock), `packages/index/src/topic-search.test.ts`, `docs/plan.md` § 3, `README.md`, `docs/adr/0009-explanation-answers.md` § Decision (n)
 - What: the claim that `search` fuses its words, vector and topic lists is carried in code and in prose. No ledger names those carriers, and the prose ledger in `docs/adr/0004-storage.md` (h) covers only (c)'s substrate. #369's review found two carriers its sweep missed (`README.md`, `eval/src/misspelt-retrieval.test.ts`). Its recipe: `git grep -n -i -E "two[- ](ranked |fused |candidate )?lists?|both (ranked |candidate )?lists|(bm25|words?|keyword|full-text|fts5?)( list)? and (the )?(vector|embedding)|vector and (bm25|words?)|fus(e|es|ed|ion) .{0,40}(lists|bm25|vector)|reciprocal rank|rrf|third (fused |ranked )?list|topic (membership|list)" -- ':/'`.
 - Source: PR for #369 (review)
+
+## 2026-11-02 — the hand-typed merge chain carries no head pin
+
+- Where: `.claude/skills/review-loop/SKILL.md` step 5 (the merge sequence under branch protection); `.claude/skills/run-issue/SKILL.md` step 4
+- What: `.claude/scripts/merge-pr.sh` now passes `--match-head-commit` on every `gh pr merge` (#408). The prose chain a merge owner types by hand still ends in a bare "then merge", so a hand-run merge can land a head that was pushed after its checks were read. The owner decision of 2026-11-02 that #408 cites does not hold on that path.
+- Source: #408 review cycle 1
+
+## 2026-11-02 — merge-pr.sh and review-loop cite docs/design/task-orchestrator.md, which this repo does not have
+
+- Where: `.claude/scripts/merge-pr.sh` (the update-branch step's rebase-skip comment and the merge step's bounce comment); `.claude/skills/review-loop/SKILL.md`
+- What: `docs/design/` holds only `design-principles.md`. The citation came across in the cumulo port and points nowhere.
+- Source: #408 review cycle 1
