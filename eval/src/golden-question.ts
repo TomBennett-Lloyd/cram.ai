@@ -8,7 +8,7 @@ export const SlideRef = z.strictObject({
 });
 export type SlideRef = z.infer<typeof SlideRef>;
 
-/** A line of `eval/questions.jsonl`: `docs/adr/0005-evaluation-as-gate.md` § Decision (c), `misspelt` 0010 (a). */
+/** A line of `eval/questions.jsonl`: `docs/adr/0005-evaluation-as-gate.md` § Decision (c); `misspelt`, `docs/adr/0010-misspelt-golden-variants.md` § Decision (a). */
 export const GoldenQuestion = z.strictObject({
   question: NonBlankText,
   expectedCitations: z.array(SlideRef),

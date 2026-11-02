@@ -66,7 +66,7 @@ describe('a question with one typo in a course term, on the synthetic deck', () 
 });
 
 // docs/adr/0010-misspelt-golden-variants.md § Decision (b): the committed sample's variants inside
-// the corrector's bound. Its beyond-bound variant is left to the tier-2 row to measure.
+// the corrector's bound, and the one beyond it, which is left as typed.
 const WITHIN_BOUND = [
   'Are wurker bees male or female?',
   'Which queen leaves the hive with a swram?',
@@ -81,4 +81,12 @@ describe('a committed misspelt variant within the correction bound', () => {
     if (golden === undefined) throw new Error(`no committed question carries "${variant}"`);
     expect(await topSlides(variant)).toEqual(await topSlides(golden.question));
   });
+});
+
+const BEYOND_BOUND = 'What is the remedy for brood fivr?';
+
+it('keeps a committed misspelt variant beyond the correction bound, left as typed', async () => {
+  const golden = read.course.questions.find(({ misspelt }) => misspelt.includes(BEYOND_BOUND));
+  if (golden === undefined) throw new Error(`no committed question carries "${BEYOND_BOUND}"`);
+  expect(await topSlides(BEYOND_BOUND)).not.toEqual(await topSlides(golden.question));
 });

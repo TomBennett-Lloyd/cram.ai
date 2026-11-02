@@ -6,18 +6,18 @@
 
 ## Context
 
-The owner's direction, 2026-10-21: "we also need to handle typos in the question". #393 shipped the correction. A question token that is not a course term is corrected against the course's own vocabulary, within the bound that `MAX_EDITS` and `MIN_TERM_LENGTH` in `packages/index/src/spelling-correction.ts` set. The eval's retriever takes the same path (`IndexRetriever.retrieve`, `eval/src/index-retriever.ts`), so tier 2 already measures what ships. What tier 2 cannot yet show is whether a misspelt question still finds its slides. Every golden question is spelt correctly.
+The owner's direction, 2026-10-21: "we also need to handle typos in the question". #393 shipped the correction against the course's own vocabulary, `correctSpelling` (`packages/index/src/spelling-correction.ts`). The eval's retriever takes the same path (`IndexRetriever.retrieve`, `eval/src/index-retriever.ts`), so tier 2 already measures what ships. What tier 2 cannot yet show is whether a misspelt question still finds its slides. Every golden question is spelt correctly.
 
-`docs/adr/0005-evaluation-as-gate.md` § Decision (c) fixes the fields of an `eval/questions.jsonl` line, and its (d) owns the metric table. A misspelt question needs a field, and its recall needs a row. 0005 (c) says that a metric needing a field "adds it by amendment". `docs/adr/README.md` § Amendments (owner decision 2026-10-20, #114) is later and narrower. It allows an amendment only for a stated value that moved or was wrong, and it says "an amendment never touches reasoning". A new field and a new row are a new decision, not a moved value. Two ADRs have already added eval rows in 0005 (d)'s shape without editing 0005: `docs/adr/0006-image-only-slides.md` § Decision (h) and `docs/adr/0009-explanation-answers.md` § Decision (o). **This ADR extends 0005 (c) and (d) in the same way, and 0005 is not edited.** The owner chose this form on 2026-11-02 (#395's plan comment).
+`docs/adr/0005-evaluation-as-gate.md` § Decision (c) fixes the fields of an `eval/questions.jsonl` line, and its (d) owns the metric table. A misspelt question needs a field, and its recall needs a row. 0005 (c) says that a metric needing a field "adds it by amendment". `docs/adr/README.md` § Amendments allows an amendment only for a stated value that moved or was wrong, and it says "an amendment never touches reasoning". A new field and a new row are a new decision, not a moved value. Two ADRs have already added eval rows in 0005 (d)'s shape without editing 0005: `docs/adr/0006-image-only-slides.md` § Decision (h) and `docs/adr/0009-explanation-answers.md` § Decision (o). **This ADR extends 0005 (c) and (d) in the same way, and 0005 is not edited.** The owner chose this form on 2026-11-02 (#395's plan comment).
 
 ## Decision
 
 - **(a) Representation.** A golden question may carry `misspelt`, an array of non-blank strings, defined in `GoldenQuestion` (`eval/src/golden-question.ts`). An absent field means the question has no variants.
-  - A variant is the question's text with one or two edits in a word the deck uses. The lexicon is the deck's vocabulary, so a typo in a word no slide holds measures nothing.
+  - A variant is the question's text with one or two edits in a word the deck uses.
   - A variant shares its question's `expectedCitations`, has no `mustNotContain` of its own, and is never read by 0005 (b)'s pass condition.
   - It is retrieved only: it is never asked of the generator and never verified.
   - **A variant is not a golden question.** 0005 (c)'s "`question` is the text asked", 0005 (e)'s run, and 0009 (o)'s "the runner asks every golden question" all stay true as written.
-- **(b) Which questions carry variants.** Only questions with non-empty `expectedCitations`. Variants are a sample, not one per question. The sample holds at least one variant per edit kind (substitution, transposition, missing letter), at least one two-edit variant within the corrector's bound, and at least one beyond it, so that the row can read below its maximum. The bound is cited here by symbol and carries no literal. The committed sample lives in `eval/questions.jsonl` and in #395's PR body.
+- **(b) Which questions carry variants.** Only questions with non-empty `expectedCitations`. Variants are a sample, not one per question. The sample holds at least one variant per edit kind (substitution, transposition, missing letter), at least one two-edit variant within the corrector's bound, and at least one beyond it, so that the row can read below its maximum. The bound is `MAX_EDITS` and `MIN_TERM_LENGTH` in `packages/index/src/spelling-correction.ts`, cited here by symbol and carrying no literal. The committed sample lives in `eval/questions.jsonl` and in #395's PR body.
 - **(c) The audit.** `auditEvalCourse` (`eval/src/audit.ts`) gains two problems:
   - `variant-of-uncovered`: a variant on a question with empty `expectedCitations`;
   - `duplicate-variant`: a variant equal, under 0005 (c)'s case-insensitive, whitespace-normalised matching, to its own question, to another question, or to another variant.
@@ -35,15 +35,15 @@ The owner's direction, 2026-10-21: "we also need to handle typos in the question
 - **(e) Tiers and recordings.**
   - Tier 2 retrieves each variant through `IndexRetriever.retrieve`, the app's own path.
   - Tier 1 replays that retrieval. A variant adds one embedder recording when its corrected text differs from every clean question's corrected text. It never adds a generator or verifier recording, and the per-question Ask latency is unchanged.
-  - A variant committed without a fresh tier-2 run is a recording miss, which is red, as 0005 (e) requires.
-- **(f) The report.** 0005 (f)'s floor gains this row. Per-variant failures are not in the report: the floor's per-item lists belong to its two absolute metrics. Which variant missed is read from the run itself.
+  - A variant committed without a fresh tier-2 run turns `eval/src/committed-run.test.ts` red, as 0005 (e) requires.
+- **(f) The report.** 0005 (f)'s floor gains this row. Per-variant failures are not in the report: the floor's per-item lists belong to its two absolute metrics. Which variant missed is read from a scratch run.
 - **(g) Restatement ledger**, undeclared, in the prose form `docs/standards/architecture.md` rule 9 prescribes. Owned here: the `misspelt` field, the definition of the row in (d), and its report key.
   - Sweep: three families, run at `bdab15e` on 2026-11-02 for branch `395-misspelt-variants`. Their commands and output are in #395's plan comment:
     - the golden-question field set;
     - the report's metric set;
     - the rule that every golden question is asked.
-  - Carriers trued up in the change that lands this ADR: `eval/src/golden-question.ts`, `eval/src/audit.ts`, `eval/src/retrieval-recall.ts`, `eval/src/report.ts`, `eval/src/run-eval.ts`, `eval/README.md` and `docs/plan.md` §7.
-  - Citers left standing, still true: 0005 (c), (d) and (f), and 0009 (o).
+  - Carriers trued up in the change that lands this ADR: `eval/src/golden-question.ts`, `eval/src/audit.ts`, `eval/src/retrieval-recall.ts`, `eval/src/report.ts`, `eval/src/run-eval.ts`, `eval/README.md` and `docs/plan.md` §4.
+  - Citers left standing: 0005 (c), (d) and (f), and 0009 (o).
 - **(h) What does not change.**
   - 0005 (b): the contradiction set.
   - 0005 (e)–(g): the two tiers and the gate.
@@ -59,7 +59,7 @@ The owner's direction, 2026-10-21: "we also need to handle typos in the question
 **B. Variants as golden-question lines of their own.** No new field would be needed. Rejected:
 
 - each variant would be asked and verified, costing generator calls on every run;
-- each would join 0009 (o)'s "every golden question" and the contradiction set;
+- each would join 0009 (o)'s "every golden question";
 - clean and misspelt questions would share one recall denominator, so neither figure could be read alone.
 
 **C. A separate file, such as `eval/misspelt.jsonl`, keyed by question text.** Rejected: two files held together only by an audit, and a renamed question would orphan its variants.
@@ -68,7 +68,7 @@ The owner's direction, 2026-10-21: "we also need to handle typos in the question
 
 **E. A field on the question, retrieved only, pooled per variant (chosen).** Its downsides are genuine and accepted:
 
-- every variant costs an embedder call at tier 2 and a recording at tier 1, and a new variant owes a run;
+- every variant costs an embedder call at tier 2, and a new variant owes a run;
 - the report carries no per-variant list;
 - the vector list may still find a variant beyond the corrector's bound, so the row can read full even when the correction did nothing.
 
