@@ -1,10 +1,16 @@
 import type { Generator } from '@cram/gateway';
-import type { RetrievedSlide, Unit } from '@cram/shared';
+import type { RetrievedSlide, UnitKind } from '@cram/shared';
 import type { ModelFailure } from './model-failure';
-import { type GenerationTask, generationRequest } from './prompts/generation-prompt';
+import {
+  type GeneratedUnits,
+  type GenerationTask,
+  generationRequest,
+} from './prompts/generation-prompt';
+
+export type DraftUnit = GeneratedUnits['units'][number] & { readonly kind: UnitKind };
 
 export type GenerationOutcome =
-  | { readonly status: 'generated'; readonly units: readonly Unit[] }
+  | { readonly status: 'generated'; readonly units: readonly DraftUnit[] }
   | { readonly status: 'model-failed'; readonly failure: ModelFailure };
 
 /** The task fixes each unit's kind; the model writes only text and citations. */

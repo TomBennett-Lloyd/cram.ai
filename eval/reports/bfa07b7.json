@@ -1,0 +1,382 @@
+{
+  "measuredCommit": "bfa07b7",
+  "pullRequest": 397,
+  "machineClass": "dev-apple-silicon",
+  "pins": {
+    "generator": {
+      "role": "generator",
+      "backend": "openai-compatible-http",
+      "model": "Qwen/Qwen3-4B",
+      "artefact": {
+        "repository": "Qwen/Qwen3-4B-GGUF",
+        "file": "Qwen3-4B-Q4_K_M.gguf"
+      },
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "licence": "Apache-2.0"
+    },
+    "verifier": {
+      "role": "verifier",
+      "backend": "onnxruntime",
+      "model": "cross-encoder/nli-deberta-v3-base",
+      "artefact": {
+        "repository": "cross-encoder/nli-deberta-v3-base",
+        "file": "onnx/model.onnx"
+      },
+      "sha256": "113fb4c7eca1a1ec5f2ace1330fadde2828de68f3f661b4638cc3111b62a3d26",
+      "licence": "Apache-2.0",
+      "manifest": {
+        "files": {
+          "onnx/model.onnx": "369ebf04fce8206c83b8fd62e9dc860144f10351a7f885ed3076beb17b7c6dda",
+          "tokenizer.json": "5124ef2ead1a10a717703bc436de7f353da76d6340e4587719b42b1693707964",
+          "tokenizer_config.json": "f3eecd07c370ef0bf7dd3780d3cd68cf9c8b00c267e21a208ddcd8f82bfec1a6",
+          "config.json": "897e756eb59d3183adb505952e7910e7cbc7750a43f3b3747a96b688d2b02a47"
+        }
+      }
+    },
+    "embedder": {
+      "role": "embedder",
+      "backend": "onnxruntime",
+      "model": "BAAI/bge-small-en-v1.5",
+      "artefact": {
+        "repository": "BAAI/bge-small-en-v1.5",
+        "file": "onnx/model.onnx"
+      },
+      "sha256": "cea12e6bda1790cb1e973d4edffa472f9cadac590b0e65c54e9d7d868835aa00",
+      "licence": "MIT",
+      "manifest": {
+        "files": {
+          "onnx/model.onnx": "828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35",
+          "tokenizer.json": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66",
+          "tokenizer_config.json": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3",
+          "config.json": "094f8e891b932f2000c92cfc663bac4c62069f5d8af5b5278c4306aef3084750"
+        },
+        "pooling": "cls"
+      }
+    },
+    "reranker": null
+  },
+  "servedGenerator": {
+    "status": "verified"
+  },
+  "determinism": {
+    "generator": {
+      "temperature": 0,
+      "seed": 0
+    }
+  },
+  "nliThresholds": {
+    "entailedAt": 0.5,
+    "contradictedAt": 0.5
+  },
+  "retrievalK": 8,
+  "verifierStrategy": "nli-then-llm",
+  "metrics": {
+    "citationValidity": {
+      "status": "measured",
+      "bar": "absolute",
+      "ratio": {
+        "numerator": 34,
+        "denominator": 34
+      },
+      "failures": []
+    },
+    "contradictionSet": {
+      "status": "measured",
+      "bar": "absolute",
+      "ratio": {
+        "numerator": 12,
+        "denominator": 16
+      },
+      "failures": [
+        {
+          "question": "What does a returning forager's dance tell the other bees?",
+          "problems": [
+            {
+              "kind": "no-expected-citation"
+            }
+          ]
+        },
+        {
+          "question": "What do foragers collect, and what is it turned into?",
+          "problems": [
+            {
+              "kind": "no-expected-citation"
+            }
+          ]
+        },
+        {
+          "question": "Who founded the Hollowmere Beekeepers' Guild?",
+          "problems": [
+            {
+              "kind": "answered-uncovered"
+            }
+          ]
+        },
+        {
+          "question": "How long does a queen bee live?",
+          "problems": [
+            {
+              "kind": "answered-uncovered"
+            }
+          ]
+        }
+      ]
+    },
+    "retrievalRecall": {
+      "status": "measured",
+      "bar": "baseline",
+      "ratio": {
+        "numerator": 37,
+        "denominator": 40
+      }
+    },
+    "verifierPrecision": {
+      "status": "measured",
+      "bar": "baseline",
+      "ratio": {
+        "numerator": 9,
+        "denominator": 9
+      }
+    },
+    "verifierRecall": {
+      "status": "measured",
+      "bar": "baseline",
+      "ratio": {
+        "numerator": 9,
+        "denominator": 13
+      }
+    },
+    "examAnswerability": {
+      "status": "not-measurable",
+      "reason": "no exam generator exists until M4 (docs/plan.md §8), so no generated question"
+    },
+    "gradingAgreement": {
+      "status": "not-measurable",
+      "reason": "no synthetic student answer carries hand marks, and no ticket delivers them yet (#181)"
+    },
+    "derivedTextCoverage": {
+      "status": "not-measurable",
+      "reason": "no OCR adapter derives text from imageOnly slides until #108"
+    },
+    "derivedTextRecall": {
+      "status": "not-measurable",
+      "reason": "no OCR adapter derives text from imageOnly slides until #108"
+    },
+    "derivedTextPrecision": {
+      "status": "not-measurable",
+      "reason": "no OCR adapter derives text from imageOnly slides until #108"
+    }
+  },
+  "verifierArms": {
+    "nli": {
+      "accuracy": {
+        "precision": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 9,
+            "denominator": 9
+          }
+        },
+        "recall": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 9,
+            "denominator": 13
+          }
+        }
+      },
+      "contradictionSet": {
+        "status": "measured",
+        "bar": "absolute",
+        "ratio": {
+          "numerator": 12,
+          "denominator": 16
+        },
+        "failures": [
+          {
+            "question": "What does a returning forager's dance tell the other bees?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "What do foragers collect, and what is it turned into?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "Who founded the Hollowmere Beekeepers' Guild?",
+            "problems": [
+              {
+                "kind": "answered-uncovered"
+              }
+            ]
+          },
+          {
+            "question": "How long does a queen bee live?",
+            "problems": [
+              {
+                "kind": "answered-uncovered"
+              }
+            ]
+          }
+        ]
+      },
+      "perUnitLatency": {
+        "status": "measured",
+        "samples": 31,
+        "medianMs": 26.120541999989655,
+        "maxMs": 44.182583000016166
+      }
+    },
+    "llm": {
+      "accuracy": {
+        "precision": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 11,
+            "denominator": 13
+          }
+        },
+        "recall": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 11,
+            "denominator": 13
+          }
+        }
+      },
+      "perUnitLatency": {
+        "status": "measured",
+        "samples": 31,
+        "medianMs": 340.4958329999936,
+        "maxMs": 385.01162499998463
+      }
+    },
+    "nliThenLlm": {
+      "accuracy": {
+        "precision": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 9,
+            "denominator": 9
+          }
+        },
+        "recall": {
+          "status": "measured",
+          "bar": "baseline",
+          "ratio": {
+            "numerator": 9,
+            "denominator": 13
+          }
+        }
+      },
+      "contradictionSet": {
+        "status": "measured",
+        "bar": "absolute",
+        "ratio": {
+          "numerator": 12,
+          "denominator": 16
+        },
+        "failures": [
+          {
+            "question": "What does a returning forager's dance tell the other bees?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "What do foragers collect, and what is it turned into?",
+            "problems": [
+              {
+                "kind": "no-expected-citation"
+              }
+            ]
+          },
+          {
+            "question": "Who founded the Hollowmere Beekeepers' Guild?",
+            "problems": [
+              {
+                "kind": "answered-uncovered"
+              }
+            ]
+          },
+          {
+            "question": "How long does a queen bee live?",
+            "problems": [
+              {
+                "kind": "answered-uncovered"
+              }
+            ]
+          }
+        ]
+      },
+      "perUnitLatency": {
+        "status": "measured",
+        "samples": 31,
+        "medianMs": 26.548500000004424,
+        "maxMs": 43.709250000014435
+      }
+    },
+    "crossEncoderPrimary": {
+      "status": "drop",
+      "failed": "contradiction-set"
+    },
+    "secondOpinion": {
+      "status": "drop",
+      "failed": "contradiction-set"
+    }
+  },
+  "latency": {
+    "ask": {
+      "status": "measured",
+      "samples": 32,
+      "medianMs": 2868.689937500001,
+      "maxMs": 10050.963666999996
+    },
+    "perCall": {
+      "generator": {
+        "status": "measured",
+        "samples": 96,
+        "medianMs": 1593.4683544999862,
+        "maxMs": 9825.647167000003
+      },
+      "verifier": {
+        "status": "measured",
+        "samples": 166,
+        "medianMs": 29.261562500003492,
+        "maxMs": 118.61654099999578
+      },
+      "embedder": {
+        "status": "measured",
+        "samples": 39,
+        "medianMs": 6.097083999999995,
+        "maxMs": 175.22741700000006
+      },
+      "reranker": {
+        "status": "not-measurable",
+        "reason": "no reranker call was made"
+      }
+    },
+    "generatorTimeToFirstToken": {
+      "status": "not-measurable",
+      "reason": "Generator.chat reports neither first-token time nor token counts (#138)"
+    },
+    "generatorTokensPerSecond": {
+      "status": "not-measurable",
+      "reason": "Generator.chat reports neither first-token time nor token counts (#138)"
+    }
+  }
+}

@@ -10,6 +10,7 @@
 {"text": "A drone cell is 6.4 mm across.", "quotes": ["Drone cell: 6.4 mm across"], "verdict": "supported"}
 {"text": "Foragers find flowers by scent alone, not by following the dance.", "quotes": ["It does not point to food: foragers find flowers by scent alone"], "verdict": "supported"}
 {"text": "Supers go on at the start of the main flow, which runs from midsummer to the end of the heather.", "quotes": ["The main flow runs from midsummer to the end of the heather", "Supers go on at the start of the main flow"], "verdict": "supported"}
+{"text": "Smoke calms the guards before handling.", "quotes": ["Smoke calms the guards before handling. It masks the scent of their alarm"], "verdict": "supported"}
 {"text": "Worker bees are male, though in reality worker bees are female.", "quotes": ["Worker bees are male."], "verdict": "partial"}
 {"text": "Bees make honey from pollen, but most honey actually comes from nectar.", "quotes": ["Bees make honey from pollen"], "verdict": "partial"}
 {"text": "Chilled brood turns grey and should be fed sugar syrup.", "quotes": ["Chilled brood turns grey"], "verdict": "partial"}
