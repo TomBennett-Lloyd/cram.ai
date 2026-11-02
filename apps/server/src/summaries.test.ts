@@ -169,6 +169,7 @@ describe('the lecture digest at upload', () => {
       { state: 'indexed', slideCount: 2, imageOnly: [2], unembedded: [], summarised: false },
     ]);
     expect(server.logs).toEqual([
+      { operation: 'tag', courseId: 'bio', outcome: 'TypeError' },
       { operation: 'summarise', courseId: 'bio', outcome: 'TypeError' },
     ]);
   });

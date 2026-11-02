@@ -103,7 +103,12 @@ export class GatedEmbedder extends WordEmbedder {
 
 const sampling = { temperature: 0, seed: 0 };
 
-/** A lecture-summary call no test recorded writes one uncited unit, which resolution withholds, so a test can upload unscripted. */
+const UNSCRIPTED: ReadonlyMap<string, unknown> = new Map<string, unknown>([
+  ['units', { units: [{ text: 'Unscripted.', citations: [] }] }],
+  ['topic-tags', { tags: [] }],
+]);
+
+/** An unrecorded summary call writes one uncited unit, which resolution withholds, and a tag call names none, so a test can upload unscripted. */
 class UnscriptedSummaries implements Generator {
   readonly #inner: Generator;
   readonly pin: Generator['pin'];
@@ -121,11 +126,10 @@ class UnscriptedSummaries implements Generator {
     try {
       return await this.#inner.chat(request);
     } catch (error) {
-      if (!(error instanceof RecordingMissError) || request.output.name !== 'units') throw error;
-      return {
-        status: 'completed',
-        value: request.output.schema.parse({ units: [{ text: 'Unscripted.', citations: [] }] }),
-      };
+      if (!(error instanceof RecordingMissError)) throw error;
+      const unscripted = UNSCRIPTED.get(request.output.name);
+      if (unscripted === undefined) throw error;
+      return { status: 'completed', value: request.output.schema.parse(unscripted) };
     }
   }
 }

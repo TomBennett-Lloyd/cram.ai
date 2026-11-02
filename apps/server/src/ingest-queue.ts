@@ -12,6 +12,7 @@ import {
 import { dismissRebuildReport, type RebuildReportDismissal, storedLectures } from './course-file';
 import { repairCourse, type RepairOutcome } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
+import { tagStored, taggingLogOutcome } from './fact-tagging';
 import { type DigestOutcome, summariseStored } from './lecture-digest';
 import { errorName, type ServerLog } from './server-log';
 
@@ -29,8 +30,8 @@ const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
 };
 
 /**
- * Runs every course-file write, uploads, summaries, the repairs `startServer` queues and
- * dismissals, one at a time and process-wide, so each course file has a single writer.
+ * Runs every course-file write, uploads, summaries, topic tagging, the repairs `startServer`
+ * queues and dismissals, one at a time and process-wide, so each course file has a single writer.
  */
 export class IngestQueue {
   readonly #deps: IngestDeps;
@@ -59,10 +60,23 @@ export class IngestQueue {
   async #run(job: IngestJob, upload: Upload): Promise<void> {
     this.#progress(job, upload, { state: 'ingesting' });
     try {
-      this.#progress(job, upload, await ingestDeck(job, this.#deps));
+      const progress = await ingestDeck(job, this.#deps);
+      if (progress.state === 'indexed') await this.#tag(job);
+      this.#progress(job, upload, progress);
     } catch (error) {
       this.#log({ operation: 'ingest', courseId: job.courseId, outcome: errorName(error) });
       this.#progress(job, upload, { state: 'failed' });
+    }
+  }
+
+  async #tag(job: IngestJob): Promise<void> {
+    try {
+      const outcome = await tagStored(job.courseId, job.lectureId, this.#deps);
+      const logged = taggingLogOutcome(outcome);
+      if (logged !== undefined)
+        this.#log({ operation: 'tag', courseId: job.courseId, outcome: logged });
+    } catch (error) {
+      this.#log({ operation: 'tag', courseId: job.courseId, outcome: errorName(error) });
     }
   }
 

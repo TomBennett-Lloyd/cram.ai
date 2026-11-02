@@ -53,6 +53,14 @@ export {
 export { type QuoteResolution, resolveQuotes } from './resolve-quotes';
 export { slideLines, slideText } from './slide-text';
 export {
+  type FactTagging,
+  type TagDeps,
+  type TagFact,
+  tagFacts,
+  type UntaggedReason,
+} from './tag-facts';
+export { TAG_MAX_CHARS, TagReply, tagRequest, TAGS_PER_FACT } from './prompts/tag-prompt';
+export {
   estimateTokens,
   PROMPT_CHARS_PER_TOKEN,
   PROMPT_TOKEN_BUDGET,

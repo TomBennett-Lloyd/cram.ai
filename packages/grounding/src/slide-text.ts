@@ -1,7 +1,12 @@
-import { SLIDE_FIELD_SEPARATOR, type SlideRecord, slideFields } from '@cram/shared';
+import {
+  type QuotableFields,
+  SLIDE_FIELD_SEPARATOR,
+  type SlideRecord,
+  slideFields,
+} from '@cram/shared';
 
-/** What a quote must be a substring of (`docs/standards/grounding.md` rule 3). */
-export const slideText = (record: SlideRecord): string =>
+/** What a quote must be a substring of (`docs/standards/grounding.md` rule 3); a chunk's text is the same fields' (#426). */
+export const slideText = (record: QuotableFields): string =>
   slideFields(record)
     .map(({ text }) => text)
     .join(SLIDE_FIELD_SEPARATOR);
