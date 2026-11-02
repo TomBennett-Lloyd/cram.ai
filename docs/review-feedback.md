@@ -475,3 +475,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
   2. The deep second opinion's `unsupported` reads as neutral, not contradicted.
   3. `docs/adr/README.md` § Amendments forbids an amendment that touches reasoning. This change is a decision narrowed by the owner, so the owner may prefer a superseding ADR. That question is logged in `docs/tech-debt.md`.
 - **Verdict**: approved 2026-11-02 — "approve 437"; the three extras approved as they stand, and the ADR change stays an amendment
+
+## 2026-11-02 — issue #395 — adr-0010-misspelt-golden-variants
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/395#issuecomment-6578823493 in chat on 2026-11-02. PROCEED, verbatim: "proceed 395". It answered the plan's three questions as recommended: a new ADR 0010 with 0005 untouched, the Decision outline (a)–(i), and the six-variant sample. The PR asks the owner to decide only the extras beyond that plan:
+  - two ledger carrier lines, `carrier: docs/adr/0010-misspelt-golden-variants.md`, in `spelling-max-edits.ledger` and `spelling-min-term-length.ledger` under `.claude/ledgers/`. `check:ledgers` requires them once (b) cites the two correction bounds by symbol, as the outline says. The plan comment declared them only after the PROCEED, in a later `Footprint change:` line.
+  - (e) states the outline's tier-1 point accurately. The outline said a new variant without a new run "is a recording miss". A variant that corrects to its question's text sends a request the recordings already hold, so (e) says instead that such a commit turns `eval/src/committed-run.test.ts` red. Option E drops "and a recording at tier 1" for the same reason.
+  - (g) points at `docs/plan.md` §4, where the trued line sits. The outline said §7.
+- **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` counts a ledger carrier change, and a § Decision point that states something its plan point did not, as extras. That sends the PR to the owner, limited to those extras.
+- **How applied**: the PR as proposed, with ADR 0010 at `proposed`. It is revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-02 — "approve 443"; the three extras approved as they stand

@@ -1,6 +1,6 @@
 import { type LectureId, quoteSpan, type SlideNo } from '@cram/shared';
 import { slideText, type Deck } from './deck';
-import { firstForbiddenEntry, type GoldenQuestion } from './golden-question';
+import { firstForbiddenEntry, type GoldenQuestion, normaliseForMatch } from './golden-question';
 import type { HandLabel } from './hand-label';
 import type { SentenceKindLabel } from './sentence-kind-label';
 
@@ -34,6 +34,8 @@ export type AuditProblem =
       readonly lectureId: LectureId;
       readonly slideNo: SlideNo;
     }
+  | { readonly kind: 'variant-of-uncovered'; readonly question: string; readonly variant: string }
+  | { readonly kind: 'duplicate-variant'; readonly question: string; readonly variant: string }
   | { readonly kind: 'unquotable'; readonly text: string; readonly quote: string }
   | {
       readonly kind: 'unknown-premise';
@@ -101,6 +103,21 @@ const questionProblems = (deck: Deck, questions: readonly GoldenQuestion[]): Aud
   });
 };
 
+const variantProblems = (questions: readonly GoldenQuestion[]): AuditProblem[] => {
+  const taken = new Set(questions.map(({ question }) => normaliseForMatch(question)));
+  return questions.flatMap(({ question, expectedCitations, misspelt }) =>
+    misspelt.flatMap((variant): AuditProblem[] => {
+      const key = normaliseForMatch(variant);
+      const problems: AuditProblem[] = [];
+      if (expectedCitations.length === 0)
+        problems.push({ kind: 'variant-of-uncovered', question, variant });
+      if (taken.has(key)) problems.push({ kind: 'duplicate-variant', question, variant });
+      taken.add(key);
+      return problems;
+    }),
+  );
+};
+
 const labelProblems = (deck: Deck, labels: readonly HandLabel[]): AuditProblem[] => {
   const texts = deck.flatMap((lecture) => lecture.slides.map(slideText));
   return labels.flatMap((label) =>
@@ -122,13 +139,15 @@ const premiseProblems = (deck: Deck, labels: readonly SentenceKindLabel[]): Audi
 };
 
 /**
- * Every disagreement among the deck, the golden questions and both label files. A
+ * Every disagreement among the deck, the golden questions, their misspelt variants
+ * (`docs/adr/0010-misspelt-golden-variants.md` § Decision (c)) and both label files. A
  * `mustNotContain` entry is checked against the whole deck because a unit faithfully
  * reporting any slide that contains it would fail its item.
  */
 export const auditEvalCourse = (course: EvalCourse): readonly AuditProblem[] => [
   ...deckProblems(course.deck),
   ...questionProblems(course.deck, course.questions),
+  ...variantProblems(course.questions),
   ...labelProblems(course.deck, course.labels),
   ...premiseProblems(course.deck, course.sentenceKinds),
 ];

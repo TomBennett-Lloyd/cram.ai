@@ -67,7 +67,7 @@ Owned by `docs/standards/grounding.md` (the rule) and `docs/adr/0009-explanation
 
 ## 4. Evaluation is a gate, not a dashboard
 
-Owned by `docs/adr/0005-evaluation-as-gate.md` (the eval course, the contradiction set, the golden-question schema, the metrics and their bars, the two tiers, the report and the `check:eval-report` gate's shape); this section carries no restatement.
+Owned by `docs/adr/0005-evaluation-as-gate.md` (the eval course, the contradiction set, the golden-question schema, the metrics and their bars, the two tiers, the report and the `check:eval-report` gate's shape), and by `docs/adr/0010-misspelt-golden-variants.md` (the misspelt variants and their recall row); this section carries no restatement.
 
 ## 5. Repo layout
 

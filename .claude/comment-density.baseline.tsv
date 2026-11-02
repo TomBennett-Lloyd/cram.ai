@@ -55,7 +55,7 @@ apps/web/src/shell/use-route.ts	0
 apps/web/src/theme.ts	909
 eval/src/ask-depths.ts	175
 eval/src/asked-question.ts	1250
-eval/src/audit.ts	476
+eval/src/audit.ts	486
 eval/src/citation-validity.ts	0
 eval/src/contradiction-set.ts	312
 eval/src/deck.ts	1162
