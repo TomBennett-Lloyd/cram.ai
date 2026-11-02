@@ -1,29 +1,32 @@
 import { z } from 'zod';
+import { SourceId } from './citation';
+import { Explanation } from './explanation';
 import { NonBlankText } from './non-blank-text';
 import { RetrievedSlide } from './retrieved-slide';
-import { Unit } from './unit';
-import { WithheldUnit } from './withheld';
+import { WithheldSentence } from './withheld';
 
 export const AskRequest = z.strictObject({ question: NonBlankText });
 export type AskRequest = z.infer<typeof AskRequest>;
 
 /**
- * `slides` is the call's retrieved set, best first: the citations' slides, or the closest when
- * none survives (`docs/standards/grounding.md` rule 5). `searched` is the question as corrected,
- * only when a typo was (#393). `model-failed` carries no model output, not a unit (rule 1).
+ * `slides` is every slide the reply names, the retrieved set first; `leftOut` the slides the
+ * prompt budget dropped (`docs/adr/0009-explanation-answers.md` § Decision (a), (k)). `searched`
+ * is the corrected question (#393). `model-failed` carries no model output (rule 1).
  */
 export const AskReply = z.discriminatedUnion('status', [
   z.strictObject({
     status: z.literal('grounded'),
-    shown: z.array(Unit).min(1),
-    withheld: z.array(WithheldUnit),
+    explanation: Explanation,
+    withheld: z.array(WithheldSentence),
     slides: z.array(RetrievedSlide),
+    leftOut: z.array(SourceId),
     searched: NonBlankText.optional(),
   }),
   z.strictObject({
     status: z.literal('not-covered'),
-    withheld: z.array(WithheldUnit),
+    withheld: z.array(WithheldSentence),
     slides: z.array(RetrievedSlide),
+    leftOut: z.array(SourceId),
     searched: NonBlankText.optional(),
   }),
   z.strictObject({ status: z.literal('model-failed') }),

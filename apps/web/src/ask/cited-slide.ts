@@ -1,27 +1,30 @@
-import type { Citation, RetrievedSlide } from '@cram/shared';
+import type { AttributedSentence, Citation, RetrievedSlide } from '@cram/shared';
 
-/** One slide a unit cites, with every quote the unit takes from it. */
+/** One slide a sentence names, with every quote the explanation takes from it. */
 export interface CitedSlide {
   readonly slide: RetrievedSlide;
   readonly quotes: readonly string[];
 }
 
 /**
- * A unit's citations grouped by slide, in first-cited order. A citation naming no slide of the reply
- * breaks the reply's contract (`AskReply`), and is returned as missing rather than dropped.
+ * A sentence's slides in its order, each with the explanation's quotes from it. A slide the reply
+ * lacks breaks `AskReply`'s contract, and is counted as missing rather than dropped.
  */
-export const citedSlides = (
-  citations: readonly Citation[],
+export const sentenceSlides = (
+  sentence: AttributedSentence,
+  quotes: readonly Citation[],
   slides: readonly RetrievedSlide[],
 ): { readonly cited: readonly CitedSlide[]; readonly missing: number } => {
-  const bySource = new Map<string, { slide: RetrievedSlide; quotes: string[] }>();
+  const cited: CitedSlide[] = [];
   let missing = 0;
-  for (const { sourceId, quote } of citations) {
-    const known = bySource.get(sourceId);
-    const slide = known?.slide ?? slides.find((candidate) => candidate.sourceId === sourceId);
+  for (const sourceId of sentence.slides) {
+    const slide = slides.find((candidate) => candidate.sourceId === sourceId);
     if (slide === undefined) missing++;
-    else if (known === undefined) bySource.set(sourceId, { slide, quotes: [quote] });
-    else known.quotes.push(quote);
+    else
+      cited.push({
+        slide,
+        quotes: quotes.filter((quote) => quote.sourceId === sourceId).map(({ quote }) => quote),
+      });
   }
-  return { cited: [...bySource.values()], missing };
+  return { cited, missing };
 };

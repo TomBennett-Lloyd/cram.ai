@@ -1,7 +1,6 @@
 import type { EntailmentResult, GeneratorReply, Recording } from '@cram/gateway';
 import type { Citation, PartialPolicy, RetrievedSlide } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { ask } from './ask';
 import { splitClaims } from './claims';
 import {
   answer,
@@ -273,21 +272,6 @@ describe('ground', () => {
         stage: 'verify',
         failure: failed,
       });
-    });
-  });
-});
-
-describe('ask', () => {
-  it('withholds a partial answer sentence under drop', async () => {
-    const partial = { text: PARTIAL_TEXT, citations: [male] };
-    const result = ask(QUESTION, retrieved, {
-      gateway: fakeGateway([generated(partial), nli(PARTIAL_TEXT, [male], ENTAILED, NEUTRAL)]),
-      strategy: 'nli',
-      thresholds: PROVISIONAL_NLI_THRESHOLDS,
-    });
-    await expect(result).resolves.toMatchObject({
-      status: 'not-covered',
-      withheld: [{ reason: 'partial', policy: 'drop' }],
     });
   });
 });

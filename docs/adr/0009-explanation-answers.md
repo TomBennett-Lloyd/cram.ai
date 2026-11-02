@@ -32,8 +32,8 @@ Those answers reverse parts of `docs/adr/0001-grounding-architecture.md`. Its (b
   - An _explanation_ is `{text, quotes[], sentences[], sources[]}` (`Explanation`, in a new `packages/shared/src/explanation.ts`):
     - `text` is the explanation as shown.
     - `quotes` are the marked slide lines, each `{sourceId, quote}` resolved from a pointer ((c)).
-    - `sentences` holds one `AttributedSentence = {text, slides, contradicts}` per sentence of `text`. At the light depth, `slides` are the candidates a search found ((f)); at the deep depth, the slides whose text entailed the sentence ((d)). `contradicts` lists the slides the checker scores as contradicting the sentence, best-scoring first, and is empty when none does ((g)). It is always empty in shown deep output, where a contradicted sentence is cut and the withheld entry names its slide ((h)).
-    - `sources` is every slide named in `quotes` or `sentences`, numbered in first-use order, at least one.
+    - `sentences` holds one `AttributedSentence = {text, slides, contradicts}` per sentence of `text`. At the light depth, `slides` are the candidates a search found ((f)); at the deep depth, the slides whose text entailed the sentence ((d)). `contradicts` lists the slides the checker scores as contradicting the sentence, best-scoring first, and is empty when none does ((g)). _(Quoted as it stood when this was written. Since 2026-11-02, `contradicts` is also empty when any of the sentence's slides entails it; see § Amendments.)_ It is always empty in shown deep output, where a contradicted sentence is cut and the withheld entry names its slide ((h)).
+    - `sources` is every slide named in `quotes` or `sentences`, numbered in first-use order, at least one. _(Quoted as it stood when this was written. Since 2026-11-02, when nothing is named, `sources` is the retrieved set; see § Amendments.)_
     - `ExplanationSurface = 'ask' | 'revision-guide'` sits beside it.
   - A _reported unit_ is today's `Unit`, for exam questions, gold answers, rubric points and lecture-summary lines. `UnitKind` gains `lecture-summary` and loses `answer-sentence` and `note-bullet`.
   - A _lecture summary_ is `{lectureId, units}`, its units reported units.
@@ -59,11 +59,12 @@ Those answers reverse parts of `docs/adr/0001-grounding-architecture.md`. Its (b
   - **Stage 1, the cross-encoder**, scores every (sentence, premise) pair and labels each sentence with `nli-verdict.ts`'s class:
     - **contradicted** if some premise scores contradiction at or above `contradictedAt`;
     - otherwise **entailed** if some premise scores entailment at or above `entailedAt`;
+    - _(The order of these two bullets is quoted as it stood when this was written. Since 2026-11-02, entailed is read first, and a sentence any premise entails is never contradicted; see § Amendments.)_
     - otherwise **neutral**.
   - A contradicted sentence is withheld as `contradicted`, naming the first such premise's slide. An entailed sentence is kept, and its `slides` are those premises' slides.
   - **Stage 2** ((e)) classifies only the neutral sentences, each as a **course claim** or an **interpretation**. A neutral course claim is withheld as `unsupported`; a neutral interpretation is kept.
   - **The explanation is shown if at least one kept sentence is entailed.** Otherwise it is withheld whole as `ungrounded`, and the reply is not-covered. There is no `partial`.
-  - An over-length pair goes to `docs/adr/0003-model-roles-and-backends.md` § Decision (d)'s second opinion. With no second opinion configured, it counts as contradicted (fail closed).
+  - An over-length pair goes to `docs/adr/0003-model-roles-and-backends.md` § Decision (d)'s second opinion. With no second opinion configured, it counts as contradicted (fail closed). _(Quoted as it stood when this was written. Since 2026-11-02, an over-length pair is judged only when no scored premise entails the sentence; see § Amendments.)_
   - So every claim about the course is findable, interpretation is bounded by non-contradiction, and the model never labels its own output in the call that wrote it.
   - **These cuts exist at the deep depth only.**
 - **(e) The sentence-kind pass: the generator under a judge prompt, over the neutral sentences only, after the cross-encoder.**
@@ -93,7 +94,7 @@ Those answers reverse parts of `docs/adr/0001-grounding-architecture.md`. Its (b
 - **(g) Computation reuses 0003's roles, and in chat the cross-encoder marks and never cuts.**
   - The cross-encoder reads three-class scores per pair at both depths. The LLM second opinion judges an over-length pair at the deep depth only, and the sentence-kind judge is a third use of the generator role, also deep only.
   - **The light pass** (`packages/grounding/src/mark-contradictions.ts`, pure over an injected `entail`) runs after attribution. It makes one batched `verifier.entail` call over each sentence paired with each of its own `slides`, with a whole slide's text as the premise.
-    - A sentence's `contradicts` is the slides whose pair scores contradiction at or above `contradictedAt` — the deep Stage 1's class exactly — best-scoring first.
+    - A sentence's `contradicts` is the slides whose pair scores contradiction at or above `contradictedAt` — the deep Stage 1's class exactly — best-scoring first. _(Quoted as it stood when this was written. Since 2026-11-02, `contradicts` is empty when any of the sentence's slides entails it; see § Amendments.)_
     - An over-length pair gives no mark from that slide. Chat gets no second opinion, because that would be a generator call on the interactive path; the eval report counts such pairs.
   - **Why only the sentence's own slides.** Cost is pairs × time per pair, and `OnnxVerifier.entail` runs pairs one by one. The committed eval reports put a verifier call at ~30 ms on the dev class, so a ten-sentence answer at a small `ATTRIBUTION_K` costs about a second. Adding the whole retrieved set to every sentence would cost about three times that before summaries join.
     - The owner's example needs the candidates and nothing else: the contradicting slide is found by the sentence's own search, possibly outside the retrieved set, and a candidate is exactly what gets scored.
@@ -243,3 +244,18 @@ Those answers reverse parts of `docs/adr/0001-grounding-architecture.md`. Its (b
 **Explicitly accepted.** In chat the slides win by a mark and a list the student reads, not by removal; that rests on the owner's answer of 2026-11-02, and its cost is reported, never gated. 0001's guarantee that "a sentence only the base model believes … is withheld" now holds at the deep depth only.
 
 **What would make us revisit.** (r)'s triggers.
+
+## Amendments
+
+- **2026-11-02 — (d) and (g): one entailing premise outweighs any contradiction** (#420, by the owner's decision of 2026-11-02, relayed verbatim: "i think we can rely on the slides not being self contradictory? i.e. one supporting match outweighs any contradictions? perhaps we could do some kind of self contradiction checks when we're injesting the slides so we can clarify the context around different statements to ensure we don't get wires crossed? (that can be tackled separately ofc)").
+  - Was: at the deep depth, a sentence is contradicted if any premise scores contradiction at or above `contradictedAt`, whatever the others score. At the light depth, `contradicts` lists every one of the sentence's slides that scores so.
+  - Now: at both depths, a sentence that any premise scores at or above `entailedAt` for entailment is never contradicted. A contradiction counts only when no premise entails the sentence. At the deep depth an over-length pair is judged, by the second opinion or fail-closed, only when no scored premise entails. The code that owns this is `packages/grounding/src/verify-explanation.ts` (deep) and `packages/grounding/src/mark-contradictions.ts` (light).
+  - Why it moved: the pinned cross-encoder scores high contradiction between a sentence and a slide on another subject. A1 had measured contradiction recall alone. The measurements before and after the rule are #420's plan comment (https://github.com/TomBennett-Lloyd/cram.ai/issues/420#issuecomment-6578621768).
+  - What the rule assumes: the slides do not contradict themselves. Checking that at ingest is a separate issue.
+  - Trued up in the same change, as mutable quoters: `CLAUDE.md` § Hard constraints ("Nothing the tutor says is uncited", "The slides win"), `README.md` (the intro, the "slides win" paragraph and § How it works), `docs/standards/grounding.md` rule 4, `docs/plan.md` § 0 and the Ask flow, and `AttributedSentence`'s docblock in `packages/shared/src/explanation.ts`.
+  - Annotated in this file: (a)'s `contradicts` definition, (d)'s Stage 1 class order and over-length bullet, and (g)'s `contradicts` bullet.
+  - Sweep: `git grep -n -I -i -P -e 'contradict|conflicts? with|disagree|at odds with' -- ':/' ':!eval/recordings' ':!eval/reports' ':!docs/review-feedback.md' ':!docs/friction-log.md' ':!docs/tech-debt.md' ':!docs/adr/0001*' ':!docs/adr/0003*' ':!docs/adr/0005*' ':!*.test.ts' ':!*.test.tsx' ':!eval/questions.jsonl'`. It was run at `fc8bd2a` on 2026-11-02 for branch `420-explanation-answers`: rc 0, 204 hits, with `CLAUDE.md:11` as the positive control. The hits that state the rule are the quoters and annotations above, and the two owning files. The rest name the contradiction set, the `contradicted` reason, the score field, or the word in another sense (scripts, `docs/standards/evidence.md`, `docs/adr/README.md`, 0008). 0001, 0003 and 0005 are immutable and describe the reported tier, which this does not touch. An earlier pass with `contradict` alone, at `f9019d4`, missed `README.md`'s § How it works, `AttributedSentence`'s docblock, and (a) and (d)'s over-length bullet here; review found them.
+- **2026-11-02 — (a): with no slide named, `sources` is the retrieved set** (#420, from its review; proposed in that PR for the owner's approval).
+  - Was: `sources` is every slide named in `quotes` or `sentences`, at least one.
+  - Now: the same, except when no sentence names a slide and no quote is shown. That happens when every sentence is longer than the embedder takes, so its search returns nothing. In that case `sources` is the retrieved set the explanation was written from, best first. Before this, the reply failed with a server error. The code that owns this is `shown` in `packages/grounding/src/explain.ts`.
+  - Annotated in this file: (a)'s `sources` bullet.

@@ -78,15 +78,24 @@ export const NEUTRAL: EntailmentResult = {
   scores: { entailment: 0.1, neutral: 0.8, contradiction: 0.1 },
 };
 
-/** Entailed exactly when the premise contains the hypothesis. */
+export const SCRIPTED_MAX_PREMISE = 200;
+
+const OVER_LENGTH: EntailmentResult = {
+  status: 'over-length',
+  inputTokens: 600,
+  maxInputTokens: 512,
+};
+
+/** Entailed exactly when the premise contains the hypothesis; over-length past `SCRIPTED_MAX_PREMISE`. */
 class ScriptedVerifier implements Verifier {
   readonly pin = pins.verifier;
 
   entail(request: EntailRequest): Promise<readonly EntailmentResult[]> {
     return Promise.resolve(
-      request.pairs.map(({ premise, hypothesis }) =>
-        premise.includes(hypothesis) ? ENTAILED : NEUTRAL,
-      ),
+      request.pairs.map(({ premise, hypothesis }) => {
+        if (premise.length > SCRIPTED_MAX_PREMISE) return OVER_LENGTH;
+        return premise.includes(hypothesis) ? ENTAILED : NEUTRAL;
+      }),
     );
   }
 }

@@ -38,6 +38,9 @@ const quotesResolveIn = (unit: Unit, records: Records): boolean =>
 export const quotesResolve = (unit: Unit, retrieved: readonly RetrievedSlide[]): boolean =>
   quotesResolveIn(unit, recordsOf(retrieved));
 
+export const quoteResolves = (citation: Citation, retrieved: readonly RetrievedSlide[]): boolean =>
+  resolves(citation, recordsOf(retrieved));
+
 const quoted = (citation: LineCitation, records: Records): Citation | undefined => {
   const record = records.get(citation.sourceId);
   const quote = record === undefined ? undefined : slideLines(record)[citation.line - 1];

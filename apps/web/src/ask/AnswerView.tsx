@@ -1,25 +1,27 @@
-import type { AskReply, RetrievedSlide, Unit } from '@cram/shared';
+import type { AskReply, AttributedSentence, Citation, RetrievedSlide } from '@cram/shared';
 import { CLOSEST_SLIDES, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR, SOURCE_MISSING } from '../copy';
 import { Failed } from '../shell/async-states';
-import { type CitedSlide, citedSlides } from './cited-slide';
+import { type CitedSlide, sentenceSlides } from './cited-slide';
 import { SlideCard } from './SlideCard';
 import { WithheldPanel } from './WithheldPanel';
 
 type OnOpen = (cited: CitedSlide) => void;
 
-const UnitView = ({
-  unit,
+const SentenceView = ({
+  sentence,
+  quotes,
   slides,
   onOpen,
 }: {
-  readonly unit: Unit;
+  readonly sentence: AttributedSentence;
+  readonly quotes: readonly Citation[];
   readonly slides: readonly RetrievedSlide[];
   readonly onOpen: OnOpen;
 }) => {
-  const { cited, missing } = citedSlides(unit.citations, slides);
+  const { cited, missing } = sentenceSlides(sentence, quotes, slides);
   return (
     <li className="unit">
-      <p className="unit-text">{unit.text}</p>
+      <p className="unit-text">{sentence.text}</p>
       <ul className="citations" aria-label="Sources">
         {cited.map((entry) => (
           <li key={entry.slide.sourceId}>
@@ -73,7 +75,7 @@ const SearchedFor = ({ searched }: { readonly searched: string | undefined }) =>
     </p>
   );
 
-/** One reply: the answer's units with their slides, or the not-covered result, and what was withheld. */
+/** One reply: the explanation's sentences with their slides, or the not-covered result, and what was withheld. */
 export const AnswerView = ({
   reply,
   onOpen,
@@ -89,8 +91,14 @@ export const AnswerView = ({
         <>
           <SearchedFor searched={reply.searched} />
           <ol className="answer">
-            {reply.shown.map((unit, index) => (
-              <UnitView key={index} unit={unit} slides={reply.slides} onOpen={onOpen} />
+            {reply.explanation.sentences.map((sentence, index) => (
+              <SentenceView
+                key={index}
+                sentence={sentence}
+                quotes={reply.explanation.quotes}
+                slides={reply.slides}
+                onOpen={onOpen}
+              />
             ))}
           </ol>
           <WithheldPanel withheld={reply.withheld} />

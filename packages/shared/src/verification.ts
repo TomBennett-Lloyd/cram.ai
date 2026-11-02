@@ -7,9 +7,14 @@ export type Verdict = z.infer<typeof Verdict>;
 export const PartialPolicy = z.enum(['drop', 'rewrite-once']);
 export type PartialPolicy = z.infer<typeof PartialPolicy>;
 
-/** Why a unit is withheld (`docs/standards/grounding.md` rule 7); its ledger: `.claude/ledgers/withheld-reasons.ledger`. */
+/** Why a unit or sentence is withheld (`docs/standards/grounding.md` rule 7); its ledger: `.claude/ledgers/withheld-reasons.ledger`. */
 export const WithheldReason = z.enum([
   'dangling-citation',
   ...Verdict.exclude(['supported']).options,
+  'contradicted',
+  'ungrounded',
 ]);
 export type WithheldReason = z.infer<typeof WithheldReason>;
+
+export const VerificationDepth = z.enum(['deep', 'light']);
+export type VerificationDepth = z.infer<typeof VerificationDepth>;

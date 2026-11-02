@@ -2,6 +2,7 @@ import type { ChatRequest } from '@cram/gateway';
 import { Verdict } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { slide } from '../fake-gateway-fixture';
+import { explanationRequest, GeneratedExplanation } from './explanation-prompt';
 import { generationRequest } from './generation-prompt';
 import { rewriteRequest } from './rewrite-prompt';
 import { verifierRequest } from './verifier-prompt';
@@ -17,6 +18,13 @@ const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unkn
   [
     'generation',
     (n) => (n === 0 ? asked('Who are the workers?') : asked('What shape are cells?', [hive, comb])),
+  ],
+  [
+    'explanation',
+    (n) =>
+      n === 0
+        ? explanationRequest('Who are the workers?', [hive])
+        : explanationRequest('What shape are cells?', [hive, comb]),
   ],
   ['verifier', (n) => verifierRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
   ['rewrite', (n) => rewriteRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
@@ -63,6 +71,28 @@ describe('generationRequest', () => {
     expect(asked('Do drones forage?', [noted]).messages[1]?.content).toBe(
       '<source id="l1/3">\n[1] Castes\n[2] Drones never forage.\n[3] Ask who feeds them.\n[4] A drone at rest\n</source>\n\n' +
         '<question>Do drones forage?</question>',
+    );
+  });
+});
+
+describe('explanationRequest', () => {
+  it('shows the slides as the unit prompt does, then the question', () => {
+    expect(explanationRequest('What shape are cells?', [hive, comb]).messages[1]?.content).toBe(
+      asked('What shape are cells?', [hive, comb]).messages[1]?.content,
+    );
+  });
+
+  it('asks for the model’s own words, and lets it say the slides do not cover the question', () => {
+    const rules = explanationRequest('Who are the workers?', [hive]).messages[0].content;
+    expect(rules).toMatch(/in your own words/);
+    expect(rules).toMatch(/the answer is null/);
+    expect(GeneratedExplanation.safeParse({ answer: null }).success).toBe(true);
+    expect(GeneratedExplanation.safeParse({}).success).toBe(false);
+  });
+
+  it('refuses a blank explanation', () => {
+    expect(GeneratedExplanation.safeParse({ answer: { text: ' ', quotes: [] } }).success).toBe(
+      false,
     );
   });
 });
