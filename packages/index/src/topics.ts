@@ -1,7 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { ChunkNo, type SlideChunk, slideFields, type SourceId, TopicTag } from '@cram/shared';
 import { z } from 'zod';
-import { TERM } from './fts-query';
+import { INDEX_WORDS } from './index-words';
 
 /** Who wrote a fact's tag: the ingest-time pass (#426) or the student (#428). */
 export const TOPIC_ORIGINS = ['tagger', 'student'] as const;
@@ -19,7 +19,8 @@ export interface TagRow {
   readonly tag: TopicTag;
 }
 
-const termsOf = (text: string): readonly string[] => text.toLowerCase().match(TERM) ?? [];
+const termsOf = (text: string): readonly string[] =>
+  INDEX_WORDS.words(text).map(({ term }) => term);
 
 const occursIn = (needle: readonly string[], haystack: readonly string[]): boolean =>
   needle.length > 0 &&

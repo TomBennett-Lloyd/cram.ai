@@ -16,9 +16,10 @@ describe('ftsMatchExpression', () => {
     expect(ftsMatchExpression('Cell cell CELL')).toBe('"cell"');
   });
 
-  it('keeps accented letters and digits inside their term', () => {
-    expect(ftsMatchExpression('café x2')).toBe('"café" OR "x2"');
-    expect(ftsMatchExpression('café')).toBe('"café"');
+  it('quotes each term as the index stores it: digits kept, diacritics folded, split at a spacing mark', () => {
+    expect(ftsMatchExpression('café x2')).toBe('"cafe" OR "x2"');
+    expect(ftsMatchExpression('Café cafe\u0301 CAFE')).toBe('"cafe"');
+    expect(ftsMatchExpression('किताब')).toBe('"क" OR "त" OR "ब"');
   });
 
   it('returns undefined for text with no term', () => {
