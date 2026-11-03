@@ -1,5 +1,10 @@
-import type { RetrievedSlide } from '@cram/shared';
-import { type ExplainDepth, type ExplainDeps, type ExplainResult, explain } from './explain';
+import {
+  type ExplainDepth,
+  type ExplainDeps,
+  type ExplainResult,
+  type ExplainSources,
+  explain,
+} from './explain';
 import { VERIFICATION_DEPTH } from './verification-depth';
 
 type AskDepth = Extract<ExplainDepth, { readonly depth: (typeof VERIFICATION_DEPTH)['ask'] }>;
@@ -9,12 +14,7 @@ export type AskDeps = ExplainDeps & Omit<AskDepth, 'depth'>;
 
 export const ask = (
   question: string,
-  retrieved: readonly RetrievedSlide[],
+  sources: ExplainSources,
   { gateway, thresholds, ...depth }: AskDeps,
 ): Promise<ExplainResult> =>
-  explain(
-    question,
-    retrieved,
-    { ...depth, depth: VERIFICATION_DEPTH.ask },
-    { gateway, thresholds },
-  );
+  explain(question, sources, { ...depth, depth: VERIFICATION_DEPTH.ask }, { gateway, thresholds });

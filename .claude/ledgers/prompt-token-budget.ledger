@@ -7,7 +7,14 @@ sweep: PROMPT_TOKEN_BUDGET|REPLY_TOKEN_RESERVE|PROMPT_CHARS_PER_TOKEN|estimateTo
 carrier: packages/grounding/src/summarise-lecture.ts
 carrier: packages/grounding/src/summarise-lecture.test.ts
 carrier: packages/grounding/src/prompt-budget.test.ts
-carrier: packages/shared/src/ask.ts
+carrier: packages/grounding/src/assemble-context.ts
+carrier: packages/grounding/src/assemble-context.test.ts
+carrier: packages/grounding/src/explain.ts
+carrier: apps/server/src/ask-context.test.ts
+carrier: eval/src/context-rows.ts
+carrier: eval/src/context-rows.test.ts
+carrier: eval/src/run-eval.test.ts
+carrier: eval/README.md
 carrier: docs/adr/0009-explanation-answers.md
 carrier: docs/standards/grounding.md
 excluded: packages/grounding/src/index.ts

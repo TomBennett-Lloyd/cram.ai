@@ -9,8 +9,9 @@ import {
 } from '@cram/grounding';
 import { ATTRIBUTION_K, RETRIEVAL_K } from '@cram/index';
 import type { CourseId } from '@cram/shared';
-import { askDeep, askLight, type Retrieved, widened } from './ask-depths';
+import { askDeep, askLight, type Retrieved, type ToAsk, widened } from './ask-depths';
 import { citationValidity } from './citation-validity';
+import { contextOverflow, promptTokens, sourceCoverage } from './context-rows';
 import { contradictionSet } from './contradiction-set';
 import {
   attributionCounts,
@@ -145,10 +146,11 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
         strategy: PROVISIONAL_VERIFIER_STRATEGY,
         thresholds: PROVISIONAL_NLI_THRESHOLDS,
       });
-      const retrievals: Retrieved[] = [];
+      const retrievals: ToAsk[] = [];
       const misspelt: Retrieved[] = [];
       for (const question of spec.questions) {
-        retrievals.push({ question, retrieved: await retriever.retrieve(question.question) });
+        const retrieved = await retriever.retrieve(question.question);
+        retrievals.push({ question, retrieved, summaries: retriever.summariesFor(retrieved) });
         for (const variant of question.misspelt)
           misspelt.push({ question, retrieved: await retriever.retrieve(variant) });
       }
@@ -227,7 +229,10 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       sentenceKindPrecision: kinds.precision,
       sentenceKindRecall: kinds.recall,
       ...summaryRows(summaries),
+      sourceCoverage: sourceCoverage(headline),
+      contextOverflow: contextOverflow(light.asked),
     },
+    promptTokens: promptTokens(light.asked),
     depths: {
       light: {
         explanationWithheld: explanationWithheld(light.asked),

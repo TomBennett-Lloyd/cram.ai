@@ -1,11 +1,13 @@
 import { type ChatRequest, chatWireRequest } from '@cram/gateway';
 import { Verdict } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
+import { DRONES_UNIT, hiveSummary } from '../explain-fixture';
 import { slide } from '../fake-gateway-fixture';
 import { explanationRequest, GeneratedExplanation } from './explanation-prompt';
 import { generationRequest } from './generation-prompt';
 import { rewriteRequest } from './rewrite-prompt';
 import { sentenceKindRequest } from './sentence-kind-prompt';
+import { sourceBlock } from './source-block';
 import { verifierRequest } from './verifier-prompt';
 
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -21,8 +23,8 @@ const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unkn
     'explanation',
     (n) =>
       n === 0
-        ? explanationRequest('Who are the workers?', [hive])
-        : explanationRequest('What shape are cells?', [hive, comb]),
+        ? explanationRequest('Who are the workers?', { raw: [hive], summaries: [] })
+        : explanationRequest('What shape are cells?', { raw: [hive, comb], summaries: [] }),
   ],
   ['verifier', (n) => verifierRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
   ['rewrite', (n) => rewriteRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
@@ -93,13 +95,34 @@ describe('explanationRequest', () => {
   it('shows the slides as the unit prompt does, then the question', () => {
     const units = summarised('Comb', [hive, comb]).messages[1]?.content ?? '';
     const sources = units.slice(0, -'<lecture>Comb</lecture>'.length);
-    expect(explanationRequest('What shape are cells?', [hive, comb]).messages[1]?.content).toBe(
-      `${sources}<question>What shape are cells?</question>`,
+    expect(
+      explanationRequest('What shape are cells?', { raw: [hive, comb], summaries: [] }).messages[1]
+        ?.content,
+    ).toBe(`${sources}<question>What shape are cells?</question>`);
+  });
+
+  it('shows each loaded summary after the slides and before the question, its rows unnumbered', () => {
+    const content =
+      explanationRequest('Who are the drones?', { raw: [hive], summaries: [hiveSummary] })
+        .messages[1]?.content ?? '';
+    expect(content).toBe(
+      [
+        sourceBlock(hive),
+        `<summary lecture="l1">\n- ${DRONES_UNIT}\n</summary>`,
+        '<question>Who are the drones?</question>',
+      ].join('\n\n'),
     );
   });
 
+  it('forbids quoting a summary row', () => {
+    const rules = explanationRequest('Who?', { raw: [hive], summaries: [] }).messages[0].content;
+    expect(rules).toMatch(/<summary> tag with the lecture's id/);
+    expect(rules).toMatch(/no row of a summary/);
+  });
+
   it('asks for the model’s own words, and lets it say the slides do not cover the question', () => {
-    const rules = explanationRequest('Who are the workers?', [hive]).messages[0].content;
+    const rules = explanationRequest('Who are the workers?', { raw: [hive], summaries: [] })
+      .messages[0].content;
     expect(rules).toMatch(/in your own words/);
     expect(rules).toMatch(/the answer is null/);
     expect(GeneratedExplanation.safeParse({ answer: null }).success).toBe(true);

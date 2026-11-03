@@ -9,6 +9,7 @@ import {
 import { VerifierStrategy } from '@cram/grounding';
 import { z } from 'zod';
 import { CitationValidityRow } from './citation-validity';
+import { PromptTokens } from './context-rows';
 import { ContradictionSetRow } from './contradiction-set';
 import { AttributionCounts, DepthRows } from './depth-rows';
 import { DerivedCoverageRow } from './derived-text';
@@ -69,9 +70,12 @@ export const EvalReport = z.strictObject({
     lightFlagRateWide: BaselineRow,
     summaryYield: BaselineRow,
     summaryUnitYield: BaselineRow,
+    sourceCoverage: BaselineRow,
+    contextOverflow: BaselineRow,
     sentenceKindPrecision: BaselineRow,
     sentenceKindRecall: BaselineRow,
   }),
+  promptTokens: PromptTokens,
   depths: z.strictObject({ light: DepthRows, deep: DepthRows }),
   attribution: AttributionCounts,
   verifierArms: z.strictObject({

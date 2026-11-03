@@ -1,8 +1,10 @@
 import type { EntailmentResult, EntailRequest } from '@cram/gateway';
+import { SourceId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { NEUTRAL, OVER_LENGTH, pairsOf, slide } from './fake-gateway-fixture';
-import { markContradictions } from './mark-contradictions';
+import { contradictingSources, markContradictions } from './mark-contradictions';
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
+import type { Premise } from './premise';
 
 const { contradictedAt, entailedAt } = PROVISIONAL_NLI_THRESHOLDS;
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -137,5 +139,43 @@ describe('markContradictions', () => {
     await expect(
       mark([{ text: 'Workers are female.', slides: [hive, comb] }], short.entail),
     ).rejects.toThrow('verifier returned 1 results for 2 pairs');
+  });
+});
+
+describe('contradictingSources', () => {
+  const premise = (text: string, first: string, ...rest: string[]): Premise => ({
+    text,
+    sources: [SourceId.parse(first), ...rest.map((id) => SourceId.parse(id))],
+  });
+  const sentence = 'Drones are female.';
+
+  it('names each contradicting premise’s first slide once, best-scoring first', async () => {
+    const { entail, calls } = scripted(
+      contradiction(0.95),
+      contradiction(0.99),
+      contradiction(0.97),
+    );
+    const premises = [
+      premise('Drones are the males.', 'l1/3', 'l1/4'),
+      premise('Every drone is male.', 'l2/1'),
+      premise('The males are drones.', 'l1/3'),
+    ];
+    await expect(
+      contradictingSources([{ text: sentence, premises }], entail, PROVISIONAL_NLI_THRESHOLDS),
+    ).resolves.toEqual([['l2/1', 'l1/3']]);
+    expect(calls[0]?.pairs).toEqual(
+      premises.map(({ text }) => ({ premise: text, hypothesis: sentence })),
+    );
+  });
+
+  it('names none when any premise entails the sentence', async () => {
+    const { entail } = scripted(contradiction(0.99), entailment(entailedAt));
+    await expect(
+      contradictingSources(
+        [{ text: sentence, premises: [premise('a', 'l1/3'), premise('b', 'l2/1')] }],
+        entail,
+        PROVISIONAL_NLI_THRESHOLDS,
+      ),
+    ).resolves.toEqual([[]]);
   });
 });

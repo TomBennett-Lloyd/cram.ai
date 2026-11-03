@@ -1,17 +1,22 @@
 import type { Verifier } from '@cram/gateway';
-import type { AttributedSentence } from '@cram/shared';
+import type { AttributedSentence, SourceId } from '@cram/shared';
 import type { SentenceSlides } from './attribute-sentences';
 import { claimLabel, type NliThresholds } from './nli-verdict';
-import { slideText } from './slide-text';
+import { type Premise, slidePremise } from './premise';
 
-/** The light depth's mark (`docs/adr/0009-explanation-answers.md` § Decision (g), as amended: an entailing slide outweighs any contradiction); a throw is the caller's. */
-export const markContradictions = async (
-  sentences: readonly SentenceSlides[],
+export interface SentencePremises {
+  readonly text: string;
+  readonly premises: readonly Premise[];
+}
+
+/** Each sentence's contradicting premises' first slides, best first (`docs/adr/0009-explanation-answers.md` § Decision (g), as amended); a throw is the caller's. */
+export const contradictingSources = async (
+  sentences: readonly SentencePremises[],
   entail: Verifier['entail'],
   thresholds: NliThresholds,
-): Promise<readonly AttributedSentence[]> => {
-  const pairs = sentences.flatMap(({ text, slides }) =>
-    slides.map((slide) => ({ premise: slideText(slide.record), hypothesis: text })),
+): Promise<readonly (readonly SourceId[])[]> => {
+  const pairs = sentences.flatMap(({ text, premises }) =>
+    premises.map((premise) => ({ premise: premise.text, hypothesis: text })),
   );
   const results = pairs.length === 0 ? [] : await entail({ pairs });
   if (results.length !== pairs.length)
@@ -19,23 +24,33 @@ export const markContradictions = async (
       `verifier returned ${String(results.length)} results for ${String(pairs.length)} pairs`,
     );
   let next = 0;
-  return sentences.map(({ text, slides }) => {
-    const scored = slides.flatMap((slide) => {
+  return sentences.map(({ premises }) => {
+    const scored = premises.flatMap(({ sources: [named] }) => {
       const result = results[next++];
-      return result?.status === 'scored'
-        ? [{ sourceId: slide.sourceId, scores: result.scores }]
-        : [];
+      return result?.status === 'scored' ? [{ sourceId: named, scores: result.scores }] : [];
     });
-    const entailed = scored.some(({ scores }) => scores.entailment >= thresholds.entailedAt);
-    const contradicting = entailed
-      ? []
-      : scored.filter(({ scores }) => claimLabel(scores, thresholds) === 'contradicted');
-    return {
-      text,
-      slides: slides.map((slide) => slide.sourceId),
-      contradicts: contradicting
-        .toSorted((a, b) => b.scores.contradiction - a.scores.contradiction)
-        .map(({ sourceId }) => sourceId),
-    };
+    if (scored.some(({ scores }) => scores.entailment >= thresholds.entailedAt)) return [];
+    const contradicting = scored
+      .filter(({ scores }) => claimLabel(scores, thresholds) === 'contradicted')
+      .toSorted((a, b) => b.scores.contradiction - a.scores.contradiction)
+      .map(({ sourceId }) => sourceId);
+    return [...new Set(contradicting)];
   });
+};
+
+export const markContradictions = async (
+  sentences: readonly SentenceSlides[],
+  entail: Verifier['entail'],
+  thresholds: NliThresholds,
+): Promise<readonly AttributedSentence[]> => {
+  const contradicts = await contradictingSources(
+    sentences.map(({ text, slides }) => ({ text, premises: slides.map(slidePremise) })),
+    entail,
+    thresholds,
+  );
+  return sentences.map(({ text, slides }, index) => ({
+    text,
+    slides: slides.map(({ sourceId }) => sourceId),
+    contradicts: [...(contradicts[index] ?? [])],
+  }));
 };

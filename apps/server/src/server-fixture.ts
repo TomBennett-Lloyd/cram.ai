@@ -26,7 +26,7 @@ import {
 } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
 import { ingestPdf } from '@cram/ingest';
-import { CourseId, LectureId, type RetrievedSlide } from '@cram/shared';
+import { CourseId, LectureId, type LoadedSummary, type RetrievedSlide } from '@cram/shared';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { type CramServer, startServer } from './server';
 import type { LogEntry } from './server-log';
@@ -259,11 +259,12 @@ export const explained = (
   question: string,
   retrieved: readonly RetrievedSlide[],
   reply: GeneratorReply,
+  summaries: readonly LoadedSummary[] = [],
 ): Recording => ({
   role: 'generator',
   pin: PROVISIONAL_DEFAULT_PINS.generator,
   sampling,
-  request: chatWireRequest(explanationRequest(question, retrieved)),
+  request: chatWireRequest(explanationRequest(question, { raw: retrieved, summaries })),
   reply,
 });
 

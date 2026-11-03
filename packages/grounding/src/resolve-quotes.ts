@@ -8,7 +8,7 @@ export interface QuoteResolution {
 }
 
 /**
- * Each quote pointer looked up as a retrieved slide's line, kept only if that line occurs in
+ * Each quote pointer looked up as a line of one of `slides`, kept only if that line occurs in
  * `text`; a failing pointer is withheld as `dangling-citation` and its sentence keeps every word
  * (`docs/adr/0009-explanation-answers.md` § Decision (c)). A pointer naming no line is shown as
  * the prompt numbers it, `[n]`.
@@ -16,12 +16,12 @@ export interface QuoteResolution {
 export const resolveQuotes = (
   text: string,
   pointers: readonly LineCitation[],
-  retrieved: readonly RetrievedSlide[],
+  slides: readonly RetrievedSlide[],
 ): QuoteResolution => {
   const quotes: Citation[] = [];
   const withheld: WithheldSentence[] = [];
   for (const { sourceId, line } of pointers) {
-    const record = retrieved.find((slide) => slide.sourceId === sourceId)?.record;
+    const record = slides.find((slide) => slide.sourceId === sourceId)?.record;
     const quote = record === undefined ? undefined : slideLines(record)[line - 1];
     if (quote !== undefined && quoteSpan(text, quote) !== undefined)
       quotes.push({ sourceId, quote });

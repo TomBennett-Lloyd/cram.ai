@@ -1,10 +1,10 @@
 import type { EntailmentPair, EntailmentResult, ModelGateway } from '@cram/gateway';
-import type { AttributedSentence, RetrievedSlide, Verdict, WithheldSentence } from '@cram/shared';
+import type { AttributedSentence, SourceId, Verdict, WithheldSentence } from '@cram/shared';
 import { classifySentenceKinds } from './classify-sentence-kinds';
 import type { ModelFailure } from './model-failure';
 import { type ClaimLabel, claimLabel, type NliThresholds } from './nli-verdict';
+import type { Premise } from './premise';
 import { verifierRequest } from './prompts/verifier-prompt';
-import { slideText } from './slide-text';
 
 export interface DeepDeps {
   readonly gateway: Pick<ModelGateway, 'generator' | 'verifier'>;
@@ -41,49 +41,51 @@ const overLengthLabel = async (pair: EntailmentPair, deps: DeepDeps): Promise<Se
 };
 
 interface Labelled {
-  readonly slide: RetrievedSlide;
+  readonly premise: Premise;
   readonly label: ClaimLabel;
 }
 
 const labelSentence = async (
   results: readonly EntailmentResult[],
   pairs: readonly EntailmentPair[],
-  retrieved: readonly RetrievedSlide[],
+  premises: readonly Premise[],
   deps: DeepDeps,
 ): Promise<
   | { readonly status: 'labelled'; readonly labelled: readonly Labelled[] }
   | Extract<DeepVerification, { status: 'model-failed' }>
 > => {
-  const scored = retrieved.map((slide, at) => {
+  const scored = premises.map((premise, at) => {
     const result = results[at];
     if (result === undefined) throw new Error('verifyExplanation: no pair');
-    return { slide, result };
+    return { premise, result };
   });
   const entails = ({ result }: (typeof scored)[number]) =>
     result.status === 'scored' && result.scores.entailment >= deps.thresholds.entailedAt;
   if (scored.some(entails))
     return {
       status: 'labelled',
-      labelled: scored.filter(entails).map(({ slide }) => ({ slide, label: 'entailed' as const })),
+      labelled: scored
+        .filter(entails)
+        .map(({ premise }) => ({ premise, label: 'entailed' as const })),
     };
   const labelled: Labelled[] = [];
-  for (const [at, { slide, result }] of scored.entries()) {
+  for (const [at, { premise, result }] of scored.entries()) {
     const pair = pairs[at];
     if (pair === undefined) throw new Error('verifyExplanation: no pair');
     if (result.status === 'scored') {
-      labelled.push({ slide, label: claimLabel(result.scores, deps.thresholds) });
+      labelled.push({ premise, label: claimLabel(result.scores, deps.thresholds) });
       continue;
     }
     const opinion = await overLengthLabel(pair, deps);
     if (opinion.status === 'model-failed') return opinion;
-    labelled.push({ slide, label: opinion.label });
+    labelled.push({ premise, label: opinion.label });
   }
   return { status: 'labelled', labelled };
 };
 
 type Stage1 =
-  | { readonly label: 'entailed'; readonly slides: readonly RetrievedSlide[] }
-  | { readonly label: 'contradicted'; readonly slide: RetrievedSlide }
+  | { readonly label: 'entailed'; readonly slides: readonly SourceId[] }
+  | { readonly label: 'contradicted'; readonly slide: SourceId }
   | { readonly label: 'neutral' };
 
 type Outcome = { readonly kept: AttributedSentence } | { readonly cut: WithheldSentence };
@@ -91,22 +93,24 @@ type Outcome = { readonly kept: AttributedSentence } | { readonly cut: WithheldS
 const stage1 = (labelled: readonly Labelled[]): Stage1 => {
   const entailing = labelled.filter(({ label }) => label === 'entailed');
   if (entailing.length > 0)
-    return { label: 'entailed', slides: entailing.map(({ slide }) => slide) };
+    return {
+      label: 'entailed',
+      slides: [...new Set(entailing.flatMap(({ premise }) => premise.sources))],
+    };
   const contradicting = labelled.find(({ label }) => label === 'contradicted');
   return contradicting === undefined
     ? { label: 'neutral' }
-    : { label: 'contradicted', slide: contradicting.slide };
+    : { label: 'contradicted', slide: contradicting.premise.sources[0] };
 };
 
-/** `docs/adr/0009-explanation-answers.md` § Decision (d) as amended: Stage 1 over every retrieved slide, then Stage 2 over the neutral sentences. */
+/** `docs/adr/0009-explanation-answers.md` § Decision (d) as amended: Stage 1 over every premise, then Stage 2 over the neutral sentences. */
 export const verifyExplanation = async (
   sentences: readonly string[],
-  retrieved: readonly RetrievedSlide[],
+  premises: readonly Premise[],
   deps: DeepDeps,
 ): Promise<DeepVerification> => {
-  const premises = retrieved.map((slide) => slideText(slide.record));
   const pairs = sentences.flatMap((hypothesis) =>
-    premises.map((premise) => ({ premise, hypothesis })),
+    premises.map(({ text }) => ({ premise: text, hypothesis })),
   );
   const results = await deps.gateway.verifier.entail({ pairs });
   if (results.length !== pairs.length)
@@ -115,12 +119,12 @@ export const verifyExplanation = async (
     );
   const verdicts: Stage1[] = [];
   for (const index of sentences.keys()) {
-    const from = index * retrieved.length;
-    const span = [from, from + retrieved.length] as const;
+    const from = index * premises.length;
+    const span = [from, from + premises.length] as const;
     const sentence = await labelSentence(
       results.slice(...span),
       pairs.slice(...span),
-      retrieved,
+      premises,
       deps,
     );
     if (sentence.status === 'model-failed') return sentence;
@@ -131,7 +135,7 @@ export const verifyExplanation = async (
   );
   const kinds = await classifySentenceKinds(
     neutral.map(({ text }) => text),
-    premises,
+    premises.map(({ text }) => text),
     deps.gateway.generator,
   );
   const kindOf = new Map(neutral.map(({ index }, at) => [index, kinds[at]]));
@@ -140,10 +144,10 @@ export const verifyExplanation = async (
     if (verdict === undefined) throw new Error('verifyExplanation: no verdict');
     if (verdict.label === 'entailed')
       return {
-        kept: { text, slides: verdict.slides.map(({ sourceId }) => sourceId), contradicts: [] },
+        kept: { text, slides: [...verdict.slides], contradicts: [] },
       };
     if (verdict.label === 'contradicted')
-      return { cut: { reason: 'contradicted', text, sourceId: verdict.slide.sourceId } };
+      return { cut: { reason: 'contradicted', text, sourceId: verdict.slide } };
     return kindOf.get(index) === 'interpretation'
       ? { kept: { text, slides: [], contradicts: [] } }
       : { cut: { reason: 'unsupported', text } };
