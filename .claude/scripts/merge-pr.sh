@@ -302,6 +302,7 @@ pr_labels=()
 pr_closes=()
 pr_lanes=()
 pr_batches=()
+pr_partof=()
 pr_commits=()
 check_names=()
 check_statuses=()
@@ -333,6 +334,7 @@ read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
   pr_closes=()
   pr_lanes=()
   pr_batches=()
+  pr_partof=()
   pr_commits=()
   check_names=()
   check_statuses=()
@@ -352,6 +354,7 @@ read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
       closes) pr_closes+=("$a") ;;
       lane) pr_lanes+=("$a") ;;
       batch) pr_batches+=("$a") ;;
+      partof) pr_partof+=("$a") ;;
       commit) pr_commits+=("$a") ;;
       check)
         check_names+=("$a")
@@ -404,14 +407,23 @@ elif [ "${#pr_batches[@]}" -eq 1 ]; then
   merge_method="--rebase"
   merge_reason="task-orchestrator batch, anchor #${pr_batches[0]} -> rebase"
 elif [ "${#pr_lanes[@]}" -eq 1 ]; then
-  # The lane closes its own issue (.claude/agents/ticket-agent.md rule 7); a report
-  # whose issue no Closes line names is refused rather than merged with it left open.
+  # The lane closes its own issue (.claude/agents/ticket-agent.md rule 7), or leaves
+  # it open with a line opening `Part of #<n>` (rule 5's PARTIAL paragraph); a report
+  # whose issue neither names is refused rather than merged with it left open.
   case " ${pr_closes[*]-} " in
     *" ${pr_lanes[0]} "*)
       merge_method="--squash"
       merge_reason="ticket-agent lane for #${pr_lanes[0]} -> squash"
       ;;
-    *) merge_reason="the lane report names #${pr_lanes[0]} but no Closes line does" ;;
+    *)
+      case " ${pr_partof[*]-} " in
+        *" ${pr_lanes[0]} "*)
+          merge_method="--squash"
+          merge_reason="ticket-agent lane for #${pr_lanes[0]}, Part of #${pr_lanes[0]} so it stays open -> squash"
+          ;;
+        *) merge_reason="the lane report names #${pr_lanes[0]} but no Closes or Part of line does" ;;
+      esac
+      ;;
   esac
 else
   # A body with no lane declaration has one more declaration to read: the head
