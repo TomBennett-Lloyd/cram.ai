@@ -39,7 +39,7 @@ interface Reply {
   text: string;
   citations: (Citation | { sourceId: string; line: number })[];
 }
-/** The model's reply, each quoted citation written as the line number the model would emit. */
+/** The model's reply, each quoted citation as `emittedCitation` emits it. */
 const generatedFrom =
   (slides: readonly RetrievedSlide[]) =>
   (...units: Reply[]): Recording =>
