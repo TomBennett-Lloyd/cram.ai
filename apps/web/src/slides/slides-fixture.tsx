@@ -9,11 +9,14 @@ import { SlidesScreen } from './SlidesScreen';
 
 export const tag = (text: string, origin: TopicOrigin = 'student') => ({ tag: text, origin });
 
+export const textHash = (digit: string) => digit.repeat(64);
+
 export const QUEEN = {
   ...retrievedSlide('l1/1', { slideNo: 1, title: 'The queen' }),
   chunks: [
     {
       chunkNo: 1,
+      textHash: textHash('1'),
       lines: ['One queen per colony', 'She lays every egg'],
       tags: [tag('castes'), tag('the queen', 'tagger')],
     },
@@ -22,8 +25,8 @@ export const QUEEN = {
 export const COMB = {
   ...retrievedSlide('l1/2', { slideNo: 2, title: 'The comb', derived: true }),
   chunks: [
-    { chunkNo: 1, lines: ['Cells are hexagonal.'], tags: [] },
-    { chunkNo: 2, lines: [], tags: [tag('wax', 'tagger')] },
+    { chunkNo: 1, textHash: textHash('2'), lines: ['Cells are hexagonal.'], tags: [] },
+    { chunkNo: 2, textHash: textHash('3'), lines: [], tags: [tag('wax', 'tagger')] },
   ],
 };
 export const HELD = [tag('castes'), tag('the queen', 'tagger')];

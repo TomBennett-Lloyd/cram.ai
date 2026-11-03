@@ -1,3 +1,4 @@
+import { TagEdit } from '@cram/shared';
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../api/api-fixture';
@@ -7,12 +8,17 @@ import {
   edits,
   HELD,
   isPut,
+  COMB,
   LECTURE,
+  QUEEN,
   renderSlides,
   settle,
   tag,
   tagsOn,
+  textHash,
 } from './slides-fixture';
+
+const QUEEN_CHUNK = { sourceId: 'l1/1', chunkNo: 1, textHash: textHash('1') };
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -49,10 +55,9 @@ describe('useChunkTags', () => {
     gates[1]?.();
     await settle();
     expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, base: HELD, tags: ['castes', 'the queen', 'one'] },
+      { ...QUEEN_CHUNK, base: HELD, tags: ['castes', 'the queen', 'one'] },
       {
-        sourceId: 'l1/1',
-        chunkNo: 1,
+        ...QUEEN_CHUNK,
         base: [tag('castes'), tag('one'), tag('the queen', 'tagger')],
         tags: ['castes', 'one', 'the queen', 'two', 'three'],
       },
@@ -126,6 +131,70 @@ describe('useChunkTags', () => {
     );
   });
 
+  it('shows the slide a write made against its old text is refused with, drops the edit queued behind it, says why at the slide, and clears that at its next edit', async () => {
+    const stored = {
+      ...QUEEN,
+      record: { ...QUEEN.record, title: 'The queens' },
+      chunks: [
+        { chunkNo: 1, textHash: textHash('4'), lines: ['One queen per hive'], tags: [] },
+        { chunkNo: 2, textHash: textHash('1'), lines: ['She lays'], tags: [tag('royal jelly')] },
+      ],
+    };
+    let refuse: (() => void) | undefined;
+    const { api, sent } = fakeApi(async (request) => {
+      if (!isPut(request)) return LECTURE;
+      if (TagEdit.parse(JSON.parse(request.body)).chunkNo === 2) return echoed(request);
+      await new Promise<void>((resolve) => {
+        refuse = resolve;
+      });
+      return { status: 409, body: { status: 'chunk-changed', slide: stored } };
+    });
+    renderSlides(api);
+    await settle();
+    await addTag('slide 1', 'one');
+    await addTag('slide 1', 'two');
+    refuse?.();
+    await settle();
+    expect(edits(sent)).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 2, name: /Slide 1/ }).textContent).toBe(
+      'Slide 1 The queens',
+    );
+    expect(screen.getByText('One queen per hive')).toBeTruthy();
+    expect(screen.queryByRole('list', { name: 'Tags on slide 1, part 1' })).toBeNull();
+    expect(tagsOn('slide 1, part 2')).toEqual(['royal jelly']);
+    expect(tagsOn('slide 2, part 2')).toEqual(['wax']);
+    expect(screen.getAllByRole('alert').map((alert) => alert.textContent)).toEqual([
+      'This slide changed since this page loaded, so that edit wasn’t saved. It’s shown as it is now.',
+    ]);
+    await addTag('slide 1, part 2', 'drones');
+    expect(edits(sent)[1]).toEqual({
+      sourceId: 'l1/1',
+      chunkNo: 2,
+      textHash: textHash('1'),
+      base: [tag('royal jelly')],
+      tags: ['royal jelly', 'drones'],
+    });
+    expect(screen.queryAllByRole('alert')).toEqual([]);
+  });
+
+  it('shows the refusal’s tags on a chunk of the replaced slide whose text is unchanged', async () => {
+    const stored = {
+      ...COMB,
+      chunks: [
+        { ...COMB.chunks[0], tags: [tag('cells', 'tagger')] },
+        { chunkNo: 2, textHash: textHash('6'), lines: ['Wax.'], tags: [] },
+      ],
+    };
+    const { api } = fakeApi((request) =>
+      isPut(request) ? { status: 409, body: { status: 'chunk-changed', slide: stored } } : LECTURE,
+    );
+    renderSlides(api);
+    await settle();
+    await addTag('slide 2, part 2', 'one');
+    expect(tagsOn('slide 2, part 1')).toEqual(['cells']);
+    expect(screen.queryByRole('list', { name: 'Tags on slide 2, part 2' })).toBeNull();
+  });
+
   it('makes the edit after a refused one against the list the refusal carried', async () => {
     const changed = [tag('drones'), tag('the queen', 'tagger')];
     let refuse = true;
@@ -140,8 +209,8 @@ describe('useChunkTags', () => {
     await addTag('slide 1', 'one');
     await addTag('slide 1', 'two');
     expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, base: HELD, tags: ['castes', 'the queen', 'one'] },
-      { sourceId: 'l1/1', chunkNo: 1, base: changed, tags: ['drones', 'the queen', 'two'] },
+      { ...QUEEN_CHUNK, base: HELD, tags: ['castes', 'the queen', 'one'] },
+      { ...QUEEN_CHUNK, base: changed, tags: ['drones', 'the queen', 'two'] },
     ]);
     expect(screen.queryAllByRole('alert')).toEqual([]);
   });
@@ -159,8 +228,8 @@ describe('useChunkTags', () => {
     await addTag('slide 1', 'one');
     await addTag('slide 1', 'two');
     expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, base: HELD, tags: ['castes', 'the queen', 'one'] },
-      { sourceId: 'l1/1', chunkNo: 1, base: HELD, tags: ['castes', 'the queen', 'two'] },
+      { ...QUEEN_CHUNK, base: HELD, tags: ['castes', 'the queen', 'one'] },
+      { ...QUEEN_CHUNK, base: HELD, tags: ['castes', 'the queen', 'two'] },
     ]);
   });
 });
