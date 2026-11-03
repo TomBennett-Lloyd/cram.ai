@@ -438,7 +438,9 @@ outside_count=$(grep -c '' <"$TMP/outside" || true)
 drift=$((lowered_count + added_count + dropped_count))
 
 if [ "$ratchet" = "1" ]; then
-  if [ "$drift" -eq 0 ]; then
+  if [ "$drift" -eq 0 ] && [ "$outside_count" -gt 0 ]; then
+    printf 'check-comment-density: nothing to ratchet\n'
+  elif [ "$drift" -eq 0 ]; then
     printf 'check-comment-density: baseline already matches — nothing to ratchet\n'
   else
     if ! LC_ALL=C sort -o "$TMP/newbase" "$TMP/newbase"; then

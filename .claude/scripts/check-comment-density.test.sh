@@ -458,6 +458,19 @@ run_check
 expect_rc 0
 end
 
+begin "--ratchet --since with only out-of-scope rows fallen writes nothing, and does not call the baseline current"
+since_fixture since-none-in-scope
+must gitc checkout --quiet -- packages/shared/src/a.ts
+must cp "$DIR/$BASELINE_REL" "$TMP_ROOT/since-none-in-scope.before"
+run_check --ratchet --since main
+expect_rc 0
+expect_stdout "check-comment-density: nothing to ratchet"
+expect_not_stdout "baseline already matches"
+expect_stdout "1 lower row(s) outside --since main left as they are"
+cmp -s "$TMP_ROOT/since-none-in-scope.before" "$DIR/$BASELINE_REL" ||
+  bad "a scoped run with nothing in scope rewrote the baseline"
+end
+
 begin "--since without --ratchet exits 2"
 fixture since-plain
 bootstrap
@@ -468,7 +481,7 @@ end
 
 begin "--since with no ref exits 2"
 fixture since-empty
-capture bash "$CHECK" --ratchet --since
+capture bash "$CHECK" --ratchet "$DIR" --since
 expect_rc 2
 expect_stderr "--since needs a git ref"
 end
