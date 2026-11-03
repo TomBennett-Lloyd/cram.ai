@@ -11,7 +11,7 @@ apps/server/src/data-directory.ts	652
 apps/server/src/dev-proxy.ts	967
 apps/server/src/dev.ts	232
 apps/server/src/fact-tagging.ts	0
-apps/server/src/gateway-config.ts	543
+apps/server/src/gateway-config.ts	574
 apps/server/src/handlers.ts	120
 apps/server/src/http-body.ts	188
 apps/server/src/index.ts	0
@@ -106,7 +106,7 @@ eval/src/topic-label.ts	833
 eval/src/verifier-accuracy.ts	937
 eval/src/verifier-arms.ts	757
 packages/gateway/src/adapters/describe-error.ts	3333
-packages/gateway/src/adapters/onnx/encoder-artefact.ts	389
+packages/gateway/src/adapters/onnx/encoder-artefact.ts	512
 packages/gateway/src/adapters/onnx/encoder-fixture.ts	676
 packages/gateway/src/adapters/onnx/encoder-session.ts	569
 packages/gateway/src/adapters/onnx/entailment-labels.ts	2051
