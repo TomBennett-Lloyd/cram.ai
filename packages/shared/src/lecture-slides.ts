@@ -7,6 +7,10 @@ import { TopicOrigin, TopicTag } from './topic-tag';
 export const ChunkTag = z.strictObject({ tag: TopicTag, origin: TopicOrigin });
 export type ChunkTag = z.infer<typeof ChunkTag>;
 
+/** The order a chunk's tags are listed in, by their text's code units, so it reads the same on every machine. */
+export const tagOrder = (a: ChunkTag, b: ChunkTag): number =>
+  a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0;
+
 export const BrowsedChunk = z.strictObject({
   chunkNo: ChunkNo,
   lines: z.array(z.string()),
@@ -21,7 +25,6 @@ export const BrowsedSlide = z.strictObject({
 });
 export type BrowsedSlide = z.infer<typeof BrowsedSlide>;
 
-/** A stored lecture's slides in order, for the slide browser (#428). */
 export const LectureSlides = z.strictObject({
   lectureId: LectureId,
   slides: z.array(BrowsedSlide),

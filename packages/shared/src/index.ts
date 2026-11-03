@@ -39,6 +39,7 @@ export {
   EditedTags,
   LectureSlides,
   TagEdit,
+  tagOrder,
 } from './lecture-slides';
 export { Unit, UnitKind } from './unit';
 export {

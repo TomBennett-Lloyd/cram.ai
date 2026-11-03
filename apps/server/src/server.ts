@@ -13,6 +13,7 @@ import {
   uploadDeck,
 } from './handlers';
 import { sendRefusal } from './http-body';
+import { editTags, sendLectureSlides } from './tag-handlers';
 import { IngestQueue } from './ingest-queue';
 import { isOwnOriginRequest, LOOPBACK_ADDRESS } from './loopback';
 import { matchRoute } from './routes';
@@ -77,6 +78,12 @@ const handleRequest = async (
         return;
       case 'remake-summary':
         await remakeSummary(route, context);
+        return;
+      case 'lecture-slides':
+        sendLectureSlides(route, context);
+        return;
+      case 'edit-tags':
+        await editTags(route, context);
     }
   } catch (error) {
     context.log({
