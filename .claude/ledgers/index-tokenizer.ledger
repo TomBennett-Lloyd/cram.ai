@@ -1,0 +1,10 @@
+# The keyword index's tokenizer: every other FTS5 table that must cut and fold as `slides_fts` does (docs/standards/architecture.md rule 9; #489).
+owner: packages/index/src/schema.ts
+claim: slides_fts declares no tokenize option, so it is FTS5's default unicode61, and the tables that mirror it declare the same
+cite: packages/index/src/schema.ts
+sweep: packages/index/src/schema\.ts|using fts5\((t|text)\)|tokeni[sz]es as .?slides_fts|declared as .?slides_fts|\.claude/ledgers/index-tokenizer\.ledger
+scope: packages/index/src
+carrier: packages/index/src/index-words.ts
+carrier: packages/index/src/topics.test.ts
+carrier: packages/index/src/course-lexicon.ts
+excluded: packages/index/src/confirmation.test.ts

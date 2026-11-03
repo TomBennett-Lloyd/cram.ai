@@ -175,6 +175,7 @@ packages/index/src/edit-distance.ts	909
 packages/index/src/embed-chunks.ts	588
 packages/index/src/embedder-identity.ts	1111
 packages/index/src/fts-query.ts	1666
+packages/index/src/index-words.ts	357
 packages/index/src/index.ts	0
 packages/index/src/indexed-slide.ts	246
 packages/index/src/lecture-summaries.ts	425
@@ -187,10 +188,10 @@ packages/index/src/rebuild-report.ts	740
 packages/index/src/reciprocal-rank.ts	740
 packages/index/src/schema.ts	666
 packages/index/src/slide-row.ts	322
-packages/index/src/spelling-correction.ts	535
+packages/index/src/spelling-correction.ts	508
 packages/index/src/stored-deck.ts	683
 packages/index/src/stored-lectures.ts	1363
-packages/index/src/topics.ts	512
+packages/index/src/topics.ts	509
 packages/ingest/src/adapters/deck-file.ts	645
 packages/ingest/src/adapters/pdf/deck-fixture.ts	756
 packages/ingest/src/adapters/pdf/ingest-pdf.ts	740

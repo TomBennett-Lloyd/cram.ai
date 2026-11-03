@@ -1,5 +1,5 @@
 import { codePoints, editDistance } from './edit-distance';
-import { TERM } from './fts-query';
+import { INDEX_WORDS } from './index-words';
 
 /** The most edits a correction makes, however long the token. Carriers: `.claude/ledgers/spelling-max-edits.ledger`. */
 export const MAX_EDITS = 2;
@@ -56,12 +56,15 @@ const inCaseOf = (typed: string, term: string): string => {
 };
 
 export const correctSpelling = (text: string, lexicon: Lexicon): SpellingCorrection => {
-  const terms: string[] = [];
-  const searched = text.replace(TERM, (typed) => {
-    const term = correctionOf(typed.toLowerCase(), lexicon);
-    if (term === undefined) return typed;
-    terms.push(term);
-    return inCaseOf(typed, term);
-  });
-  return terms.length > 0 ? { status: 'corrected', searched } : { status: 'as-typed' };
+  let searched = '';
+  let from = 0;
+  for (const { typed, start, term: indexed } of INDEX_WORDS.words(text)) {
+    const term = correctionOf(indexed, lexicon);
+    if (term === undefined) continue;
+    searched += text.slice(from, start) + inCaseOf(typed, term);
+    from = start + typed.length;
+  }
+  return from > 0
+    ? { status: 'corrected', searched: searched + text.slice(from) }
+    : { status: 'as-typed' };
 };
