@@ -8,6 +8,7 @@ export {
 } from './attribute-sentences';
 export { type ClaimSpan, claimSpans, spansOf, splitClaims } from './claims';
 export {
+  type BudgetedDeps,
   explain,
   type ExplainDepth,
   type ExplainDeps,

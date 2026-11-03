@@ -223,6 +223,7 @@ describe('explain’s context', () => {
       status: 'grounded',
       explanation: { quotes: [] },
       withheld: [{ reason: 'dangling-citation', sourceId: 'l1/2' }],
+      slides: retrieved,
       context: contextOf([hive], [], [hive.sourceId, comb.sourceId]),
     });
   });

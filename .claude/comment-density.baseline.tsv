@@ -135,7 +135,7 @@ packages/grounding/src/attribute-sentences.ts	408
 packages/grounding/src/claims.ts	1200
 packages/grounding/src/classify-sentence-kinds.ts	714
 packages/grounding/src/explain-fixture.ts	0
-packages/grounding/src/explain.ts	164
+packages/grounding/src/explain.ts	162
 packages/grounding/src/fake-gateway-fixture.ts	0
 packages/grounding/src/generate-units.ts	400
 packages/grounding/src/ground.ts	253

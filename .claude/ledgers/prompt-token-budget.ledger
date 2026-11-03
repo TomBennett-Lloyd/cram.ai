@@ -15,7 +15,6 @@ carrier: eval/src/context-rows.ts
 carrier: eval/src/context-rows.test.ts
 carrier: eval/src/run-eval.test.ts
 carrier: eval/README.md
-carrier: packages/shared/src/ask.ts
 carrier: docs/adr/0009-explanation-answers.md
 carrier: docs/standards/grounding.md
 excluded: packages/grounding/src/index.ts

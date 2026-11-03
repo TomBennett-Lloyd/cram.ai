@@ -80,7 +80,7 @@ describe('promptTokens', () => {
       summaries: [summaryCiting(drones)],
     });
     const item = asked(large);
-    expect(promptTokens([asked(small), item, asked(NOT_COVERED)])).toEqual({
+    expect(promptTokens([item, asked(small), asked(NOT_COVERED)])).toEqual({
       budget: PROMPT_TOKEN_BUDGET,
       estimate: {
         status: 'measured',

@@ -1,7 +1,11 @@
 import { LectureSummary, type LoadedSummary } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import type { ExplainDepth } from './explain';
+import { requestTokens } from './prompt-budget';
+import { explanationRequest } from './prompts/explanation-prompt';
 import {
+  QUESTION,
+  hive,
   retrieved,
   MALE,
   SQUARE,
@@ -172,6 +176,22 @@ describe('explain at the deep depth', () => {
         { reason: 'ungrounded', text: SQUARE },
       ],
       context: contextOf(),
+    });
+  });
+
+  it('still names a retrieved slide the budget dropped among the reply’s slides', async () => {
+    const budget = requestTokens(explanationRequest(QUESTION, contextOf())) - 1;
+    const result = await run(
+      [explained(MALE, [], [hive]), verified(scored(MALE, [hive], ENTAILED))],
+      deep(),
+      retrieved,
+      [],
+      budget,
+    );
+    expect(result).toMatchObject({
+      status: 'grounded',
+      slides: retrieved,
+      context: { raw: [hive] },
     });
   });
 

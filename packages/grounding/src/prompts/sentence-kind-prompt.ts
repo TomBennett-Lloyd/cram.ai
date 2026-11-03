@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const SentenceKind = z.enum(['course-claim', 'interpretation']);
 export type SentenceKind = z.infer<typeof SentenceKind>;
 
-const INSTRUCTIONS = `You sort the sentences of an explanation of a student's lecture slides into two kinds. The premises are the slides the explanation was written from.
+const INSTRUCTIONS = `You sort the sentences of an explanation of a student's lecture slides into two kinds. The premises are the slides the explanation was written from and the summary lines of their lectures.
 
 Give each numbered sentence one kind:
 - course-claim: it states something about the course's subject — a fact, figure, name, rule, step, cause or event — that the slides would have to say for the sentence to report them.
@@ -12,7 +12,7 @@ Give each numbered sentence one kind:
 
 Judge only what kind of sentence each one is, never whether the slides or anyone else would agree with it.
 
-The input is a JSON object: "premises" is the list of slide texts, and "sentences" is the list of sentences, each with its number. Reply with "kinds": one kind per sentence, in the sentences' order.`;
+The input is a JSON object: "premises" is the list of premise texts, and "sentences" is the list of sentences, each with its number. Reply with "kinds": one kind per sentence, in the sentences' order.`;
 
 const SENTENCE_KINDS = OutputName.parse('sentence-kinds');
 

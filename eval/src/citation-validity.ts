@@ -17,11 +17,12 @@ export type CitationValidityRow = z.infer<typeof CitationValidityRow>;
 export const citationValidity = (asked: readonly AskedQuestion[]): CitationValidityRow => {
   const failures: CitationFailure[] = [];
   let quotes = 0;
-  for (const { question, retrieved, result } of asked) {
+  for (const { question, result } of asked) {
     if (result.status !== 'grounded') continue;
     for (const quote of result.explanation.quotes) {
       quotes += 1;
-      if (!quoteResolves(quote, retrieved)) failures.push({ question: question.question, quote });
+      if (!quoteResolves(quote, result.context.raw))
+        failures.push({ question: question.question, quote });
     }
   }
   return CitationValidityRow.parse(absoluteFields(quotes, failures, 'no quote was shown'));

@@ -9,9 +9,9 @@ export const AskRequest = z.strictObject({ question: NonBlankText });
 export type AskRequest = z.infer<typeof AskRequest>;
 
 /**
- * `slides` is every slide the reply names, the retrieved set first; `leftOut` the slides the
- * prompt budget dropped (`docs/adr/0009-explanation-answers.md` § Decision (a), (k)). `searched`
- * is the corrected question (#393). `model-failed` carries no model output (rule 1).
+ * `slides` is every slide the reply names, the retrieved set first; `leftOut` is
+ * `docs/adr/0009-explanation-answers.md` § Decision (k)'s (and (a)'s). `searched` is the
+ * corrected question (#393). `model-failed` carries no model output (rule 1).
  */
 export const AskReply = z.discriminatedUnion('status', [
   z.strictObject({

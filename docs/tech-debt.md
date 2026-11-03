@@ -201,3 +201,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/decks/DecksScreen.tsx` (`askedFor`, passed to `NoSummary` as `pressed`)
 - What: once a reader has pressed "Make the summary" for a lecture, every later failed summary for that lecture is announced as an alert, including one an upload or a rebuild's re-make made without a press. Suspected root cause: the press is held as a session-long set rather than tied to the one re-make it asked for.
 - Source: PR #456 for #422 (confirmation review)
+
+## 2026-11-02 — the comment-density ratchet penalises merging a duplicate
+
+- Where: `packages/grounding/src/prompt-budget.ts` (`requestTokens`); `packages/grounding/src/summarise-lecture.ts` (`promptTokens`, and the block cost in `summaryParts`); `packages/grounding/src/assemble-context.ts` (`blockTokens`); `.claude/scripts/check-comment-density.sh`
+- What: a request's token estimate and a block's cost are each written twice with the same intent (`docs/standards/structure.md` rule 7). Routing `summarise-lecture.ts` through `requestTokens` deletes code lines, which raises that file's comment ratio over its banked row, and the gate never lets a row rise, so the merge was left out of #423. Suspected root cause: the ratchet measures a ratio, so removing code reads as adding comments.
+- Source: PR #495 for #423 (review)
+
+## 2026-11-02 — ADR 0009 says "retrieved" for two sets the code now reads as the assembled slides
+
+- Where: `docs/adr/0009-explanation-answers.md` § Decision (o) (`lightFlagRateWide`, "every retrieved slide and loaded summary unit plus the candidates") and the 2026-11-02 (a) amendment ("`sources` is the retrieved set the explanation was written from"); `eval/src/ask-depths.ts` (`widened`); `packages/grounding/src/explain.ts` (`shown`)
+- What: since #423 both read the raw slides the prompt held, which differs from the retrieved set only when the budget drops a slide. (c) and (d) already say raw. The file is humanAlways, so the wording waits for the next 0009 amendment.
+- Source: PR #495 for #423 (review)

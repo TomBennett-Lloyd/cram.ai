@@ -102,7 +102,10 @@ export const AnswerView = ({
       return (
         <>
           <SearchedFor searched={reply.searched} />
-          <ClosestSlides slides={reply.slides} onOpen={onOpen} />
+          <ClosestSlides
+            slides={reply.slides.filter(({ sourceId }) => !reply.leftOut.includes(sourceId))}
+            onOpen={onOpen}
+          />
           <LeftOut leftOut={reply.leftOut} slides={reply.slides} onOpen={onOpen} />
           <WithheldPanel withheld={reply.withheld} />
         </>

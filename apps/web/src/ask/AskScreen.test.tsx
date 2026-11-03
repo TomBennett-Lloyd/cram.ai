@@ -192,7 +192,16 @@ describe('AskScreen', () => {
       status: 200,
       body: { status: 'not-covered', withheld: [], slides: [HIVE, COMB], leftOut },
     });
-    expect(within(answer()).getByText(LEFT_OUT)).toBeDefined();
+    const shown = within(answer())
+      .getAllByRole('button')
+      .map((card) => card.textContent);
+    expect(shown).toEqual([
+      'Lecture 1: The HiveSlide 4Castes',
+      'Lecture 1: The HiveSlide 7The comb',
+    ]);
+    expect(within(answer()).getByText(LEFT_OUT).nextElementSibling?.textContent).toBe(
+      'Lecture 1: The HiveSlide 7The comb',
+    );
   });
 
   it('shows no left-out note when nothing was left out', async () => {

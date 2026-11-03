@@ -37,6 +37,10 @@ export interface ExplainSources {
   readonly summaries: readonly LoadedSummary[];
 }
 
+export interface BudgetedDeps extends ExplainDeps {
+  readonly budget?: number;
+}
+
 export type ExplainStage = 'generate' | 'verify';
 
 /** `slides` is the retrieved set, then each slide a sentence names beyond it; `context` is what the prompt held. */
@@ -176,7 +180,7 @@ export const explain = async (
   question: string,
   { retrieved, summaries }: ExplainSources,
   depth: ExplainDepth,
-  { budget = PROMPT_TOKEN_BUDGET, ...deps }: ExplainDeps & { readonly budget?: number },
+  { budget = PROMPT_TOKEN_BUDGET, ...deps }: BudgetedDeps,
 ): Promise<ExplainResult> => {
   const fixed = requestTokens(explanationRequest(question, EMPTY_CONTEXT));
   const context = assembleContext(retrieved, summaries, budget - fixed);
