@@ -153,7 +153,12 @@ describe('the lecture digest at upload', () => {
     expect(settled.stored.lectures.map(({ summarised: made }) => made)).toEqual([false]);
     expect((await summaries(server)).json).toEqual({ state: 'read', summaries: [], slides: [] });
     expect(server.logs).toEqual([
-      { operation: 'summarise generate', courseId: 'bio', outcome: 'backend-failed' },
+      {
+        operation: 'summarise generate',
+        courseId: 'bio',
+        lectureId: 'l1',
+        outcome: 'backend-failed',
+      },
     ]);
   });
 
@@ -169,8 +174,8 @@ describe('the lecture digest at upload', () => {
       { state: 'indexed', slideCount: 2, imageOnly: [2], unembedded: [], summarised: false },
     ]);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', outcome: 'TypeError' },
-      { operation: 'summarise', courseId: 'bio', outcome: 'TypeError' },
+      { operation: 'tag', courseId: 'bio', lectureId: 'l1', outcome: 'TypeError' },
+      { operation: 'summarise', courseId: 'bio', lectureId: 'l1', outcome: 'TypeError' },
     ]);
   });
 

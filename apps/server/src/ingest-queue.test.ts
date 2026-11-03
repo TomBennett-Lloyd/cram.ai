@@ -32,6 +32,25 @@ describe('IngestQueue.remake', () => {
     expect(logs).toEqual([]);
   });
 
+  it('reports a re-make whose summary job throws as failed, logging the lecture it concerns', async () => {
+    const dataDir = await seededDataDir();
+    dirs.push(dataDir);
+    const files = { dataDir, embedder: await embedderIdentity(new WordEmbedder()) };
+    const fake = gatewayOf([]);
+    const generator = { ...fake.generator, chat: () => Promise.reject(new TypeError('broken')) };
+    const logs: LogEntry[] = [];
+    const queue = new IngestQueue({ files, gateway: { ...fake, generator } }, (entry) =>
+      logs.push(entry),
+    );
+    const bio = CourseId.parse('bio');
+    queue.remake(bio, LectureId.parse('l1'));
+    await queue.idle();
+    expect(queue.remakes(bio)).toEqual([{ lectureId: 'l1', progress: { state: 'failed' } }]);
+    expect(logs).toEqual([
+      { operation: 'summarise', courseId: 'bio', lectureId: 'l1', outcome: 'TypeError' },
+    ]);
+  });
+
   it('reports a re-make running while its summary call is out, then done', async () => {
     const dataDir = await seededDataDir();
     dirs.push(dataDir);

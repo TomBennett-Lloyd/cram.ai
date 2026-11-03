@@ -15,7 +15,7 @@ import { repairCourse, type RepairOutcome } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { tagStored, taggingLogOutcome } from './fact-tagging';
 import { type DigestOutcome, summariseStored } from './lecture-digest';
-import { errorName, type ServerLog } from './server-log';
+import { errorName, type LogEntry, type ServerLog } from './server-log';
 import { editStoredTags, type TagEditOutcome } from './slide-topics';
 
 const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
@@ -66,7 +66,12 @@ export class IngestQueue {
       if (progress.state === 'indexed') await this.#tag(job);
       this.#progress(job, upload, progress);
     } catch (error) {
-      this.#log({ operation: 'ingest', courseId: job.courseId, outcome: errorName(error) });
+      this.#log({
+        operation: 'ingest',
+        courseId: job.courseId,
+        lectureId: job.lectureId,
+        outcome: errorName(error),
+      });
       this.#progress(job, upload, { state: 'failed' });
     }
   }
@@ -76,9 +81,19 @@ export class IngestQueue {
       const outcome = await tagStored(job.courseId, job.lectureId, this.#deps);
       const logged = taggingLogOutcome(outcome);
       if (logged !== undefined)
-        this.#log({ operation: 'tag', courseId: job.courseId, outcome: logged });
+        this.#log({
+          operation: 'tag',
+          courseId: job.courseId,
+          lectureId: job.lectureId,
+          outcome: logged,
+        });
     } catch (error) {
-      this.#log({ operation: 'tag', courseId: job.courseId, outcome: errorName(error) });
+      this.#log({
+        operation: 'tag',
+        courseId: job.courseId,
+        lectureId: job.lectureId,
+        outcome: errorName(error),
+      });
     }
   }
 
@@ -88,6 +103,7 @@ export class IngestQueue {
       this.#log({
         operation: `summarise ${outcome.stage}`,
         courseId,
+        lectureId,
         outcome: outcome.failure.status,
       });
     return outcome;
@@ -102,7 +118,12 @@ export class IngestQueue {
     try {
       summarised = (await this.#summarise(job.courseId, job.lectureId)).status === 'summarised';
     } catch (error) {
-      this.#log({ operation: 'summarise', courseId: job.courseId, outcome: errorName(error) });
+      this.#log({
+        operation: 'summarise',
+        courseId: job.courseId,
+        lectureId: job.lectureId,
+        outcome: errorName(error),
+      });
     }
     this.#progress(job, upload, { ...indexed, summarised });
   }
@@ -145,7 +166,7 @@ export class IngestQueue {
           : { state: 'done' as const, summarised: outcome.status === 'summarised' };
       this.#setRemake(courseId, { lectureId, progress: done });
     } catch (error) {
-      this.#log({ operation: 'summarise', courseId, outcome: errorName(error) });
+      this.#log({ operation: 'summarise', courseId, lectureId, outcome: errorName(error) });
       this.#setRemake(courseId, { lectureId, progress: { state: 'failed' } });
     }
   }
@@ -162,17 +183,17 @@ export class IngestQueue {
   /** The repair's top-level boundary (`docs/standards/error-handling.md` rule 2): a throw is logged by name. */
   async #repair(courseId: CourseId): Promise<void> {
     this.#repairs.set(courseId, { state: 'running' });
-    let outcome: string;
+    let report: Pick<LogEntry, 'outcome' | 'lectureId'>;
     try {
       const repaired = await repairCourse(courseId, this.#deps);
-      outcome = repaired;
-      this.#repairs.set(courseId, { state: REPAIR_STATE[repaired] });
-      if (repaired === 'rebuilt') this.#remakeAll(courseId);
+      report = repaired;
+      this.#repairs.set(courseId, { state: REPAIR_STATE[repaired.outcome] });
+      if (repaired.outcome === 'rebuilt') this.#remakeAll(courseId);
     } catch (error) {
-      outcome = errorName(error);
+      report = { outcome: errorName(error) };
       this.#repairs.set(courseId, { state: 'failed' });
     }
-    if (outcome !== 'open') this.#log({ operation: 'repair', courseId, outcome });
+    if (report.outcome !== 'open') this.#log({ operation: 'repair', courseId, ...report });
   }
 
   /** Queued behind every write so far; a rejection reaches the caller and never stalls the queue. */

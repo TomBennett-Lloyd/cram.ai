@@ -135,7 +135,12 @@ describe('the tag pass at upload', () => {
     expect(queen).toEqual([]);
     expect(swarm?.map(({ tag }) => tag)).toEqual(['bloom count', 'swarming']);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', outcome: 'untagged 1/2 invalid-output' },
+      {
+        operation: 'tag',
+        courseId: 'bio',
+        lectureId: 'l1',
+        outcome: 'untagged 1/2 invalid-output',
+      },
     ]);
   });
 
@@ -150,7 +155,12 @@ describe('the tag pass at upload', () => {
     );
     await upload(server, bytes);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', outcome: 'untagged 3/3 backend-failed,invalid-output' },
+      {
+        operation: 'tag',
+        courseId: 'bio',
+        lectureId: 'l1',
+        outcome: 'untagged 3/3 backend-failed,invalid-output',
+      },
     ]);
   });
 
@@ -188,7 +198,12 @@ describe('the tag pass at upload', () => {
     );
     await upload(server, bytes);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', outcome: 'untagged 1/2 invalid-output' },
+      {
+        operation: 'tag',
+        courseId: 'bio',
+        lectureId: 'l1',
+        outcome: 'untagged 1/2 invalid-output',
+      },
     ]);
   });
 
@@ -202,7 +217,9 @@ describe('the tag pass at upload', () => {
     const { uploads } = await upload(server, bytes);
     expect(uploads.map(({ progress }) => progress.state)).toEqual(['indexed']);
     expect(await storedTags(server, ['l1/1'])).toEqual([[]]);
-    expect(server.logs).toEqual([{ operation: 'tag', courseId: 'bio', outcome: 'RangeError' }]);
+    expect(server.logs).toEqual([
+      { operation: 'tag', courseId: 'bio', lectureId: 'l1', outcome: 'RangeError' },
+    ]);
   });
 
   it('replaces a lecture’s tags when it is uploaded again', async () => {

@@ -39,7 +39,7 @@ describe('a start-up repair’s outcome', () => {
     const before = readFileSync(courseFilePath(dataDir, BIO));
     const server = await restarted(dataDir);
     expect(await repairLog(server)).toEqual([
-      { operation: 'repair', courseId: 'bio', outcome: 'deck-unreadable' },
+      { operation: 'repair', courseId: 'bio', lectureId: 'l1', outcome: 'deck-unreadable' },
     ]);
     expect(await repairedStatus(server)).toEqual({
       stored: { state: 'course-unavailable', problem: 'older-schema' },
