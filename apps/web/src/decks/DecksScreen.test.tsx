@@ -58,7 +58,9 @@ describe('DecksScreen', () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
     });
     expect(
-      screen.getByText('12 slides indexed. Slides 3, 9 have no text, so they can’t be cited yet.'),
+      screen.getByText(
+        '12 slides indexed. Slides 3, 9 have too little text to read as slides, so only titles or speaker notes on them can be cited.',
+      ),
     ).toBeDefined();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 5);
@@ -105,8 +107,8 @@ describe('DecksScreen', () => {
       '88 slides indexed. Slide 87 holds more text than the search model reads at once, so it’s found by its words only.',
       'This course’s file was indexed by a different embedding model, so the deck was not indexed.',
       'Something went wrong reading this deck. Upload it again.',
-      '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.',
-      '6 slides indexed. Slide 3 has no text, so it can’t be cited yet. Slides 2, 5 hold more text than the search model reads at once, so they’re found by their words only.',
+      '1 slide indexed. Slide 1 has too little text to read as a slide, so only a title or speaker notes on it can be cited.',
+      '6 slides indexed. Slide 3 has too little text to read as a slide, so only a title or speaker notes on it can be cited. Slides 2, 5 hold more text than the search model reads at once, so they’re found by their words only.',
       'This deck couldn’t be read (not-a-deck: no slides).',
     ]);
   });
@@ -222,7 +224,10 @@ describe('DecksScreen', () => {
     renderDecks(api);
     await settle();
     expect(rows()).toEqual([
-      ['l1', '1 slide indexed. Slide 1 has no text, so it can’t be cited yet.'],
+      [
+        'l1',
+        '1 slide indexed. Slide 1 has too little text to read as a slide, so only a title or speaker notes on it can be cited.',
+      ],
     ]);
     expect(screen.queryByText(/No decks yet/)).toBeNull();
     await act(async () => {
@@ -253,7 +258,10 @@ describe('DecksScreen', () => {
     renderDecks(api);
     await settle();
     expect(rows()).toEqual([
-      ['l1', '12 slides indexed. Slides 3, 9 have no text, so they can’t be cited yet.'],
+      [
+        'l1',
+        '12 slides indexed. Slides 3, 9 have too little text to read as slides, so only titles or speaker notes on them can be cited.',
+      ],
       [
         'l3',
         '4 slides indexed. Slide 4 holds more text than the search model reads at once, so it’s found by its words only.',
