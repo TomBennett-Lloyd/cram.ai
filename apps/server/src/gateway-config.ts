@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { GatewayConfig, type GeneratorPin, PROVISIONAL_DEFAULT_PINS } from '@cram/gateway';
+import {
+  GatewayConfig,
+  type GeneratorPin,
+  LoopbackEndpoint,
+  PROVISIONAL_DEFAULT_PINS,
+} from '@cram/gateway';
 import { z } from 'zod';
 import type { DataDirectoryHost } from './data-directory';
 
@@ -10,7 +15,7 @@ export const GatewayOverrides = GatewayConfig.partial();
 export type GatewayOverrides = z.infer<typeof GatewayOverrides>;
 
 // Developer mode's generator endpoint; its carriers are in .claude/ledgers/dev-generator-endpoint.ledger.
-const DEVELOPER_ENDPOINT = 'http://127.0.0.1:11434/v1/';
+const DEVELOPER_ENDPOINT = LoopbackEndpoint.parse('http://127.0.0.1:11434/v1/');
 
 /** A bound, not a measurement: per-role latency is #47's to record. */
 const GENERATOR_TIMEOUT_MS = 300_000;

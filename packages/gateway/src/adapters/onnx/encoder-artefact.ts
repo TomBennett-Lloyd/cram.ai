@@ -6,6 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import type { z } from 'zod';
 import type { EncoderPin } from '../../pin';
 import type { EncoderRole } from '../../role';
+import { describeError } from '../describe-error';
 
 export type EncoderLoadFailureReason = 'unreadable-file' | 'digest-mismatch' | 'invalid-artefact';
 
@@ -31,9 +32,6 @@ export class ArtefactRefused extends Error {
   }
 }
 
-const describeError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 export const unreadable = (path: string, error: unknown): ArtefactRefused =>
   new ArtefactRefused('unreadable-file', `${path}: ${describeError(error)}`);
 
@@ -48,10 +46,8 @@ export const sha256Of = async (path: string): Promise<string> => {
   return hash.digest('hex');
 };
 
-/**
- * Checks every file the pin's manifest names before any is read
- * (`docs/adr/0003-model-roles-and-backends.md` § Decision (e), (i)).
- */
+/** Checks every file the pin's manifest names before any is read
+ * (`docs/adr/0003-model-roles-and-backends.md` § Decision (e), (i)). */
 export const verifyManifest = async (directory: string, pin: EncoderPin): Promise<void> => {
   for (const [file, pinned] of Object.entries(pin.manifest.files)) {
     const path = join(directory, file);
