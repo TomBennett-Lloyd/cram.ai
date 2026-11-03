@@ -130,6 +130,7 @@ describe('correctSpelling', () => {
     expect(searched('cafe\u0301x', lexicon)).toBe('as typed: cafe\u0301x');
     expect(searched('Cafe\u0301y?', lexicon)).toBe('Cafex?');
     expect(searched('abcd\u0903efgh', lexicon)).toBe('abce\u0903efgh');
+    expect(searched('abc\u0897e', new FixtureLexicon({ 'abc\u0897d': 1 }))).toBe('abc\u0897d');
   });
 
   it('never corrects a token into a term holding a digit', () => {

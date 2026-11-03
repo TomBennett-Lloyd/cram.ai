@@ -53,12 +53,11 @@ export class IndexTokenizer {
       ))
         termsOf.set(doc, [...(termsOf.get(doc) ?? []), term]);
       codePoints.forEach((codePoint, index) => {
-        const [joined, ...split] = termsOf.get(2 * index + 2) ?? [];
-        const continues = joined !== undefined && split.length === 0;
+        const [joined = '', ...split] = termsOf.get(2 * index + 2) ?? [];
         this.#roles.set(codePoint, {
           starts: termsOf.has(2 * index + 1),
-          continues,
-          folded: continues ? joined.slice(1, -1) : '',
+          continues: split.length === 0,
+          folded: joined.slice(1, -1),
         });
       });
     } finally {
@@ -91,5 +90,4 @@ export class IndexTokenizer {
   }
 }
 
-/** The one word model behind search quoting, spelling correction and topic matching. */
 export const INDEX_WORDS = new IndexTokenizer();
