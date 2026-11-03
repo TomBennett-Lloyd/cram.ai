@@ -40,6 +40,8 @@ export type CourseReader = Pick<
   | 'slidesTagged'
   | 'lectures'
   | 'lectureSlides'
+  | 'chunks'
+  | 'topics'
   | 'summary'
   | 'summaries'
   | 'rebuildReport'

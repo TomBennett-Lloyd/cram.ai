@@ -1,6 +1,7 @@
 import { AskScreen } from './ask/AskScreen';
 import { CoursesScreen } from './courses/CoursesScreen';
 import { DecksScreen } from './decks/DecksScreen';
+import { SlidesScreen } from './slides/SlidesScreen';
 import { AppHeader } from './shell/AppHeader';
 import { Empty } from './shell/async-states';
 import type { Route } from './shell/route';
@@ -14,6 +15,14 @@ const Screen = ({ route }: { readonly route: Route }) => {
       return <AskScreen key={route.courseId} courseId={route.courseId} />;
     case 'decks':
       return <DecksScreen key={route.courseId} courseId={route.courseId} />;
+    case 'slides':
+      return (
+        <SlidesScreen
+          key={`${route.courseId}/${route.lectureId}`}
+          courseId={route.courseId}
+          lectureId={route.lectureId}
+        />
+      );
     case 'not-found':
       return (
         <main className="screen">

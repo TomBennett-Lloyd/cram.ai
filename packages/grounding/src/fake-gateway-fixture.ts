@@ -14,6 +14,7 @@ import type { SearchSentence } from './explain';
 import type { EntailmentScores } from './nli-verdict';
 import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
 import { type SentenceKind, sentenceKindRequest } from './prompts/sentence-kind-prompt';
+import { resolveCitations } from './resolve-citations';
 import { slideText } from './slide-text';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
@@ -95,6 +96,19 @@ export const draft = (text: string, citations: readonly LineCitation[]): DraftUn
   citations: [...citations],
   kind: 'lecture-summary',
 });
+
+export const emittedCitation = (
+  citation: Citation,
+  slides: readonly RetrievedSlide[],
+): LineCitation => {
+  for (let n = 1; ; n += 1) {
+    const emitted = line(citation.sourceId, n);
+    const [looked] = resolveCitations([draft('', [emitted])], slides).resolved;
+    if (looked === undefined)
+      throw new Error(`fixture: "${citation.quote}" is no line of ${citation.sourceId}`);
+    if (looked.quotes[0] === citation.quote) return emitted;
+  }
+};
 
 export const answer = (text: string, citations: readonly Citation[]): Unit => ({
   text,

@@ -5,6 +5,7 @@ import {
   type LectureId,
   type RebuildReportRevision,
   type SummaryRemake,
+  type TagEdit,
   type Upload,
   UploadId,
   type UploadProgress,
@@ -15,6 +16,7 @@ import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { tagStored, taggingLogOutcome } from './fact-tagging';
 import { type DigestOutcome, summariseStored } from './lecture-digest';
 import { errorName, type ServerLog } from './server-log';
+import { editStoredTags, type TagEditOutcome } from './slide-topics';
 
 const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
   open: 'done',
@@ -31,7 +33,7 @@ const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
 
 /**
  * Runs every course-file write, uploads, summaries, topic tagging, the repairs `startServer`
- * queues and dismissals, one at a time and process-wide, so each course file has a single writer.
+ * queues, dismissals and tag edits, one at a time and process-wide, so each course file has a single writer.
  */
 export class IngestQueue {
   readonly #deps: IngestDeps;
@@ -174,18 +176,24 @@ export class IngestQueue {
   }
 
   /** Queued behind every write so far; a rejection reaches the caller and never stalls the queue. */
+  #queued<T>(write: () => T): Promise<T> {
+    const written = this.#tail.then(write);
+    this.#tail = written.then(
+      () => undefined,
+      () => undefined,
+    );
+    return written;
+  }
+
   dismissRebuildReport(
     courseId: CourseId,
     revision: RebuildReportRevision,
   ): Promise<RebuildReportDismissal> {
-    const dismissed = this.#tail.then(() =>
-      dismissRebuildReport(this.#deps.files, courseId, revision),
-    );
-    this.#tail = dismissed.then(
-      () => undefined,
-      () => undefined,
-    );
-    return dismissed;
+    return this.#queued(() => dismissRebuildReport(this.#deps.files, courseId, revision));
+  }
+
+  editTags(courseId: CourseId, edit: TagEdit): Promise<TagEditOutcome> {
+    return this.#queued(() => editStoredTags(this.#deps.files, courseId, edit));
   }
 
   /** A rebuilt file holds no summary, so each lecture's is re-made from its rebuilt slides (`docs/adr/0009-explanation-answers.md` § Decision (l)). */

@@ -6,3 +6,6 @@ export const TopicTag = z
   .regex(/^\S(?:[\s\S]*\S)?$/)
   .brand<'TopicTag'>();
 export type TopicTag = z.infer<typeof TopicTag>;
+
+export const TopicOrigin = z.enum(['tagger', 'student']);
+export type TopicOrigin = z.infer<typeof TopicOrigin>;

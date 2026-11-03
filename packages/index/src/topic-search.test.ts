@@ -1,4 +1,4 @@
-import { ChunkNo, type SlideRecord, TopicTag } from '@cram/shared';
+import { ChunkNo, type SlideRecord, type TopicOrigin, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   indexed,
@@ -9,9 +9,9 @@ import {
   type TempCourse,
   vector,
 } from './course-fixture';
-import { CANDIDATES_PER_LIST, type CourseIndex, type SearchQuery } from './course-index';
+import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
+import type { SearchQuery } from './search-query';
 import { sourceIdOf } from './slide-row';
-import type { TopicOrigin } from './topics';
 
 // Topic membership, the third list `search` fuses (`docs/adr/0009-explanation-answers.md` § Decision (n); #369).
 
