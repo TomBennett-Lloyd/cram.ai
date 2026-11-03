@@ -6,11 +6,11 @@ import {
   explain,
   PROVISIONAL_NLI_THRESHOLDS,
   slidePremise,
-  VERIFICATION_DEPTH,
   type VerifierStrategy,
 } from '@cram/grounding';
 import { ATTRIBUTION_K } from '@cram/index';
 import type { LoadedSummary, RetrievedSlide } from '@cram/shared';
+import { VERIFICATION_DEPTH } from '@cram/shared';
 import type { AskedQuestion } from './asked-question';
 import type { GoldenQuestion } from './golden-question';
 import type { IndexRetriever } from './index-retriever';

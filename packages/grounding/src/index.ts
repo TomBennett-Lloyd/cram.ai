@@ -85,7 +85,6 @@ export {
   summaryParts,
   type UnsummarisedReason,
 } from './summarise-lecture';
-export { VERIFICATION_DEPTH } from './verification-depth';
 export { type DeepDeps, type DeepVerification, verifyExplanation } from './verify-explanation';
 export {
   PROVISIONAL_VERIFIER_STRATEGY,
