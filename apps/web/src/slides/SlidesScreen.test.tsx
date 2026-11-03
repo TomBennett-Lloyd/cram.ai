@@ -13,6 +13,7 @@ import {
   settle,
   tag,
   tagsOn,
+  textHash,
 } from './slides-fixture';
 
 beforeEach(() => {
@@ -62,6 +63,7 @@ describe('SlidesScreen', () => {
       {
         sourceId: 'l1/1',
         chunkNo: 1,
+        textHash: textHash('1'),
         base: HELD,
         tags: ['castes', 'the queen', 'royal jelly'],
       },
@@ -100,8 +102,14 @@ describe('SlidesScreen', () => {
       screen.getByRole('textbox', { name: 'Add a tag to slide 1' }),
     );
     expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, base: HELD, tags: ['the queen'] },
-      { sourceId: 'l1/1', chunkNo: 1, base: [tag('the queen', 'tagger')], tags: [] },
+      { sourceId: 'l1/1', chunkNo: 1, textHash: textHash('1'), base: HELD, tags: ['the queen'] },
+      {
+        sourceId: 'l1/1',
+        chunkNo: 1,
+        textHash: textHash('1'),
+        base: [tag('the queen', 'tagger')],
+        tags: [],
+      },
     ]);
     expect(screen.queryByRole('list', { name: 'Tags on slide 1' })).toBeNull();
   });
