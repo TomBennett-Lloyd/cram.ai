@@ -11,6 +11,8 @@ const INSTRUCTIONS = `You name the topics a passage of a student's lecture slide
 
 A topic is a short noun phrase a student might search for: a subject, a thing, a process or a named idea, in the passage's own words wherever it has them. Name the passage's own subject, and also the subject of any example the passage uses: a passage about drug interactions whose example is a patient with diabetes is about drug interactions and about diabetes.
 
+Name what this passage in particular is about. Leave out what every passage of its lecture or its course would share: the lecture's title, or the subject the whole course studies.
+
 A topic names what the passage is about, never what the passage says about it: never a sentence, a claim or a judgement.
 
 The input is a JSON object: "lecture" is the lecture's title, and "passage" is the passage. Reply with "tags": the passage's topics, most central first, or none if it has no subject.`;
