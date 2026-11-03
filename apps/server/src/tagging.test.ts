@@ -214,11 +214,11 @@ describe('the tag pass at upload', () => {
         throw new RangeError('broken');
       }),
     );
-    const { uploads } = await upload(server, bytes);
+    const { uploads } = await upload(server, bytes, 'l7');
     expect(uploads.map(({ progress }) => progress.state)).toEqual(['indexed']);
-    expect(await storedTags(server, ['l1/1'])).toEqual([[]]);
+    expect(await storedTags(server, ['l7/1'])).toEqual([[]]);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', lectureId: 'l1', outcome: 'RangeError' },
+      { operation: 'tag', courseId: 'bio', lectureId: 'l7', outcome: 'RangeError' },
     ]);
   });
 
