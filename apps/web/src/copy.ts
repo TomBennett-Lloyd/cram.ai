@@ -153,7 +153,7 @@ export const indexedMessage = ({
     ...(imageOnly.length === 0
       ? []
       : [
-          `${slidesThat(imageOnly, 'has no text, so it', 'have no text, so they')} can’t be cited yet.`,
+          `${slidesThat(imageOnly, 'has too little text to read as a slide, so only a title or speaker notes on it', 'have too little text to read as slides, so only titles or speaker notes on them')} can be cited.`,
         ]),
     ...(unembedded.length === 0
       ? []
