@@ -6,6 +6,7 @@ import {
   CONTRADICTED_SENTENCE,
   GROUNDED_QUESTION,
   NOT_COVERED_QUESTION,
+  PARAGRAPHS_QUESTION,
   stubApi,
 } from './hermetic-api';
 
@@ -169,6 +170,31 @@ test('the contradiction label shows on hover over the sentence or its number, an
   await expect(label).toBeVisible();
   await page.getByRole('textbox', { name: 'Question' }).hover();
   await expect(label).toBeHidden();
+});
+
+test('an answer in paragraphs shows each as a block, nearer each other than the note', async ({
+  page,
+}) => {
+  await ask(page, PARAGRAPHS_QUESTION);
+  const paragraphs = page.locator('.explanation-text > p');
+  await expect(paragraphs).toHaveCount(3);
+  await expect(paragraphs).toHaveText([
+    /^Drones are male\./,
+    /^Workers are female/,
+    /^Drones forage/,
+  ]);
+  await expect(paragraphs.nth(2).locator('.contradicted')).toHaveText(CONTRADICTED_SENTENCE);
+  const boxes = await paragraphs.evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect()).map(({ top, bottom }) => ({ top, bottom })),
+  );
+  const gaps = boxes.slice(1).map(({ top }, index) => top - (boxes[index]?.bottom ?? top));
+  const paragraphGap = parseFloat(await tokenLength(page, '--space-2'));
+  expect(gaps).toEqual([paragraphGap, paragraphGap]);
+  const text = await page.locator('.explanation-text').boundingBox();
+  const note = await page.getByText(ATTRIBUTED_NOTE).boundingBox();
+  const noteGap = (note?.y ?? 0) - (text?.y ?? 0) - (text?.height ?? 0);
+  expect(noteGap).toBe(parseFloat(await tokenLength(page, '--space-4')));
+  expect(paragraphGap < noteGap).toBe(true);
 });
 
 test('a mouse press on the contradiction number leaves no label once the pointer leaves', async ({

@@ -10,6 +10,7 @@ export interface MarkedSentence {
   readonly runs: readonly Run[];
   readonly contradicts: readonly SourceId[];
   readonly mayBeRelevant: readonly SourceId[];
+  readonly opensParagraph: boolean;
 }
 
 interface Located extends QuoteSpan {
@@ -25,6 +26,19 @@ const sentenceSpans = (text: string, sentences: readonly string[]): (QuoteSpan |
     cursor = located.end;
     return located;
   });
+};
+
+/** CommonMark 0.31.2 § 2.1's blank line, its line endings read as `\n` first. */
+const BLANK_LINE = /\n[ \t]*\n/;
+
+const opensParagraph = (text: string, spans: readonly (QuoteSpan | undefined)[], index: number) => {
+  const span = spans[index];
+  const before = spans.slice(0, index).findLast((located) => located !== undefined);
+  return (
+    span !== undefined &&
+    before !== undefined &&
+    BLANK_LINE.test(text.slice(before.end, span.start).replace(/\r\n?/g, '\n'))
+  );
 };
 
 const quoteSpans = ({ text, quotes }: Explanation): Located[] => {
@@ -90,7 +104,7 @@ export const markExplanation = (explanation: Explanation): readonly MarkedSenten
   const last = new Map<Located, Piece>();
   for (const piece of split.flatMap(({ pieces }) => pieces))
     if (piece.quote !== undefined) last.set(piece.quote, piece);
-  return split.map(({ sentence, pieces }) => {
+  return split.map(({ sentence, pieces }, index) => {
     const contradicts = new Set(sentence.contradicts);
     return {
       text: sentence.text,
@@ -104,8 +118,21 @@ export const markExplanation = (explanation: Explanation): readonly MarkedSenten
       ),
       contradicts: sentence.contradicts,
       mayBeRelevant: sentence.slides.filter((slide) => !contradicts.has(slide)),
+      opensParagraph: opensParagraph(text, spans, index),
     };
   });
+};
+
+export const paragraphsOf = (
+  sentences: readonly MarkedSentence[],
+): readonly (readonly MarkedSentence[])[] => {
+  const paragraphs: MarkedSentence[][] = [];
+  for (const sentence of sentences) {
+    const current = paragraphs.at(-1);
+    if (current === undefined || sentence.opensParagraph) paragraphs.push([sentence]);
+    else current.push(sentence);
+  }
+  return paragraphs;
 };
 
 /** `sources` is in first-use order (§ Decision (a)). */

@@ -9,7 +9,12 @@ import {
   sourceRefLabel,
 } from '../copy';
 import { type CitedSlide, citedSlide } from './cited-slide';
-import { type MarkedSentence, markExplanation, sourceNumbers } from './explanation-marks';
+import {
+  type MarkedSentence,
+  markExplanation,
+  paragraphsOf,
+  sourceNumbers,
+} from './explanation-marks';
 import { SourcesList } from './SourcesList';
 
 type OnOpen = (cited: CitedSlide) => void;
@@ -149,11 +154,15 @@ export const ExplanationView = ({
   };
   return (
     <div className="explanation">
-      <p className="explanation-text">
-        {markExplanation(explanation).map((sentence, index) => (
-          <SentenceView key={index} sentence={sentence} depth={depth} refs={refs} />
+      <div className="explanation-text">
+        {paragraphsOf(markExplanation(explanation)).map((paragraph, at) => (
+          <p key={at}>
+            {paragraph.map((sentence, index) => (
+              <SentenceView key={index} sentence={sentence} depth={depth} refs={refs} />
+            ))}
+          </p>
         ))}
-      </p>
+      </div>
       {depth === 'light' && <p className="attributed-note">{ATTRIBUTED_NOTE}</p>}
       <SourcesList
         sources={explanation.sources}

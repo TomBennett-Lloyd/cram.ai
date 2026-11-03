@@ -1,38 +1,6 @@
-import { type Explanation, SourceId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { markExplanation, sourceNumbers } from './explanation-marks';
-
-const id = (value: string) => SourceId.parse(value);
-
-/** A sentence: its text, its slides, and the ones it is marked against. */
-type Row = readonly [string, readonly string[], (readonly string[])?];
-
-const explanation = (
-  text: string,
-  sentences: readonly Row[],
-  quotes: readonly (readonly [string, string])[] = [],
-): Explanation => ({
-  text,
-  quotes: quotes.map(([sourceId, quote]) => ({ sourceId: id(sourceId), quote })),
-  sentences: sentences.map(([sentence, slides, contradicts = []]) => ({
-    text: sentence,
-    slides: slides.map(id),
-    contradicts: contradicts.map(id),
-  })),
-  sources: [id('s1')],
-});
-
-/** Each sentence's runs, a quoted run written `[text|sourceId]`, `+` after the one its number follows. */
-const runs = (value: Explanation) =>
-  markExplanation(value).map((sentence) =>
-    sentence.runs
-      .map(({ text, quote }) =>
-        quote === undefined
-          ? text
-          : `[${text}|${quote.sourceIds.join(',')}${quote.ends ? '+' : ''}]`,
-      )
-      .join(''),
-  );
+import { explanation, id, runs } from './explanation-marks-fixture';
 
 describe('markExplanation', () => {
   it('marks a quote at a sentence’s start, middle and end, and leaves a sentence with none whole', () => {
