@@ -6,6 +6,7 @@ import {
   CONTRADICTED_SENTENCE,
   GROUNDED_QUESTION,
   NOT_COVERED_QUESTION,
+  PARAGRAPHS_QUESTION,
   stubApi,
 } from './hermetic-api';
 
@@ -169,6 +170,66 @@ test('the contradiction label shows on hover over the sentence or its number, an
   await expect(label).toBeVisible();
   await page.getByRole('textbox', { name: 'Question' }).hover();
   await expect(label).toBeHidden();
+});
+
+/** The box of every button in the answer's explanation, in document order. */
+const controlBoxes = (page: Page) =>
+  page.locator('.explanation button').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+  );
+
+test('an answer in paragraphs shows each as a block, nearer each other than the note', async ({
+  page,
+}) => {
+  await ask(page, PARAGRAPHS_QUESTION);
+  const paragraphs = page.locator('.explanation-text > p');
+  await expect(paragraphs).toHaveCount(3);
+  await expect(paragraphs).toHaveText([
+    /^Drones are male\./,
+    /^Workers are female/,
+    /^Drones forage/,
+  ]);
+  await expect(paragraphs.nth(2).locator('.contradicted')).toHaveText(CONTRADICTED_SENTENCE);
+  const boxes = await paragraphs.evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect()).map(({ top, bottom }) => ({ top, bottom })),
+  );
+  const gaps = boxes.slice(1).map(({ top }, index) => top - (boxes[index]?.bottom ?? top));
+  const paragraphGap = parseFloat(await tokenLength(page, '--space-2'));
+  expect(gaps).toEqual([paragraphGap, paragraphGap]);
+  const text = await page.locator('.explanation-text').boundingBox();
+  const note = await page.getByText(ATTRIBUTED_NOTE).boundingBox();
+  const noteGap = (note?.y ?? 0) - (text?.y ?? 0) - (text?.height ?? 0);
+  expect(noteGap).toBe(parseFloat(await tokenLength(page, '--space-4')));
+  expect(paragraphGap < noteGap).toBe(true);
+});
+
+test('the label of a contradiction in a later paragraph moves no control in the answer, on hover or on focus', async ({
+  page,
+}, info) => {
+  await ask(page, PARAGRAPHS_QUESTION);
+  const label = page.locator('.contradiction-label');
+  await expect(label).toBeHidden();
+  const atRest = await controlBoxes(page);
+  expect(atRest.length > 3).toBe(true);
+  if (info.project.name === 'desktop') {
+    await page.locator('.contradicted').hover();
+    await expect(label).toBeVisible();
+    expect(await controlBoxes(page)).toEqual(atRest);
+    await page.getByRole('textbox', { name: 'Question' }).hover();
+    await expect(label).toBeHidden();
+  }
+  const button = page.getByRole('button', { name: CONTRADICTION_BUTTON });
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  for (let presses = 0; presses < 8; presses++) {
+    if (await button.evaluate((node) => node === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(button).toBeFocused();
+  await expect(label).toBeVisible();
+  expect(await controlBoxes(page)).toEqual(atRest);
 });
 
 test('a mouse press on the contradiction number leaves no label once the pointer leaves', async ({

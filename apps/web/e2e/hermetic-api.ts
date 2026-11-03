@@ -55,6 +55,8 @@ export const NOT_COVERED_QUESTION = 'Who wrote Hamlet?';
 export const CONTRADICTED_QUESTION = 'Do drones forage?';
 export const CONTRADICTED_SENTENCE =
   'Drones forage for nectar in the comb, whose cells are hexagonal.';
+/** Its answer is three paragraphs, the last `CONTRADICTED_SENTENCE` (#466). */
+export const PARAGRAPHS_QUESTION = 'How is the hive organised?';
 /** A quote inside the contradicted sentence, so its underline and the mark's meet. */
 const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };
 
@@ -66,10 +68,11 @@ const SENTENCES = [
 const grounded = (
   sentences: readonly ReturnType<typeof sentence>[],
   quotes: readonly { readonly sourceId: string; readonly quote: string }[] = [],
+  between = ' ',
 ) => ({
   status: 'grounded',
   explanation: {
-    text: sentences.map(({ text }) => text).join(' '),
+    text: sentences.map(({ text }) => text).join(between),
     quotes: [{ sourceId: 's1', quote: 'Drones are male.' }, ...quotes],
     sentences,
     sources: ['s1', 's2'],
@@ -90,6 +93,12 @@ const askReply = (question: string) => {
           sentence(CONTRADICTED_SENTENCE, ['s2', 's1'], ['s1']),
         ],
         [QUOTE_IN_MARK],
+      );
+    case PARAGRAPHS_QUESTION:
+      return grounded(
+        [...SENTENCES, sentence(CONTRADICTED_SENTENCE, ['s2', 's1'], ['s1'])],
+        [QUOTE_IN_MARK],
+        '\n\n',
       );
     default:
       return grounded(SENTENCES);
