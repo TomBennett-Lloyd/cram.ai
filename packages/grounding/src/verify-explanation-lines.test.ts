@@ -34,13 +34,16 @@ describe('verifyExplanation over a slide of several lines', () => {
       secondOpinion: false,
     });
 
-  it('scores the sentence against the slide whole, then each of its lines', () => {
-    expect(pairsOf(SENTENCE, [workers]).map(({ premise }) => premise)).toEqual([
+  it('sends the sentence against the slide whole, then each of its lines', async () => {
+    const sent = [
       slideText(workers.record),
       'The workers',
       'Worker bees are male.',
       'Workers forage.',
-    ]);
+    ].map((premise) => ({ premise, hypothesis: SENTENCE }));
+    await expect(
+      run([verifierRecording(sent, [NEUTRAL, NEUTRAL, ENTAILED, NEUTRAL])]),
+    ).resolves.toMatchObject({ kept: [{ text: SENTENCE, slides: ['l1/3'] }] });
   });
 
   it('keeps a sentence one of its lines entails though the whole slide does not, crediting the slide', async () => {

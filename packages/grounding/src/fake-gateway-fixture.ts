@@ -112,12 +112,16 @@ export const pairsOf = (hypothesis: string, slides: readonly RetrievedSlide[]): 
 export const bySlide = (
   slides: readonly RetrievedSlide[],
   results: readonly EntailmentResult[],
-): EntailmentResult[] =>
-  slides.flatMap((slide, at) => {
+): EntailmentResult[] => {
+  if (results.length !== slides.length)
+    throw new Error(
+      `bySlide: ${String(results.length)} results for ${String(slides.length)} slides`,
+    );
+  return slides.flatMap((slide, at) => {
     const result = results[at];
-    if (result === undefined) throw new Error('bySlide: no result for a slide');
-    return scoredTexts(slide).map(() => result);
+    return result === undefined ? [] : scoredTexts(slide).map(() => result);
   });
+};
 
 export const scriptedSearch = (
   candidates: Readonly<Record<string, readonly RetrievedSlide[]>>,
