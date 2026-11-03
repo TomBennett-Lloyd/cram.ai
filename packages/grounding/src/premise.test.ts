@@ -57,6 +57,20 @@ describe('the scored premises', () => {
     ]);
   });
 
+  it('expand a premise of exactly two lines, each line crediting every slide the premise credits', () => {
+    const sources: Premise['sources'] = [SourceId.parse('l1/2'), SourceId.parse('l1/5')];
+    const two: Premise = {
+      text: 'Drones.\nDrones are male.',
+      lines: ['Drones.', 'Drones are male.'],
+      sources,
+    };
+    expect(scoredPremises([two])).toEqual([
+      two,
+      { text: 'Drones.', lines: ['Drones.'], sources },
+      { text: 'Drones are male.', lines: ['Drones are male.'], sources },
+    ]);
+  });
+
   it('are a premise of one line, or of one line repeated, alone', () => {
     const once: Premise = {
       text: 'Drones are male.',
