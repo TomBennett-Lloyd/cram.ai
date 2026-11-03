@@ -45,7 +45,7 @@ apps/web/src/ask/WithheldPanel.tsx	2000
 apps/web/src/ask/ask-depth.ts	3333
 apps/web/src/ask/cited-slide.ts	952
 apps/web/src/ask/explanation-marks-fixture.ts	666
-apps/web/src/ask/explanation-marks.ts	468
+apps/web/src/ask/explanation-marks.ts	378
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
 apps/web/src/copy.ts	434
@@ -222,6 +222,7 @@ packages/ingest/src/stored-output-fixture.ts	180
 packages/ingest/src/stored-text.ts	1176
 packages/shared/src/api-refusal.ts	400
 packages/shared/src/ask.ts	1562
+packages/shared/src/blank-line.ts	5000
 packages/shared/src/citation.ts	4000
 packages/shared/src/course-list.ts	2000
 packages/shared/src/deck.ts	769
