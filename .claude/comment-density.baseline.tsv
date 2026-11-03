@@ -147,7 +147,7 @@ packages/gateway/src/served-artefact.ts	1428
 packages/grounding/src/ask.ts	588
 packages/grounding/src/assemble-context.ts	227
 packages/grounding/src/attribute-sentences.ts	408
-packages/grounding/src/claims.ts	1200
+packages/grounding/src/claims.ts	967
 packages/grounding/src/classify-sentence-kinds.ts	714
 packages/grounding/src/explain-fixture.ts	0
 packages/grounding/src/explain.ts	162
