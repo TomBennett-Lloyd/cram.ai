@@ -55,6 +55,7 @@ export const editTags = async (route: RouteRequest, context: HandlerContext): Pr
     case 'no-such-fact':
       sendRefusal(route.response, 404, { status: 'not-found' });
       return;
+    case 'tags-changed':
     case 'course-unavailable':
       sendRefusal(route.response, 409, outcome);
   }

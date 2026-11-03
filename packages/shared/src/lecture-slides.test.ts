@@ -28,13 +28,22 @@ describe('BrowsedSlide', () => {
 });
 
 describe('TagEdit', () => {
-  it('accepts an empty list and refuses an untrimmed tag, a chunk number of 0, or an extra key', () => {
-    const edit = { sourceId: 'l1/1', chunkNo: 1, tags: [] };
+  it('accepts empty lists and refuses an untrimmed tag, a chunk number of 0, an extra key, or a missing or malformed base', () => {
+    const baseless = { sourceId: 'l1/1', chunkNo: 1, tags: [] };
+    const edit = { ...baseless, base: [] };
     expect(TagEdit.safeParse(edit).success).toBe(true);
+    expect(TagEdit.safeParse({ ...edit, base: [{ tag: 'cells', origin: 'tagger' }] }).success).toBe(
+      true,
+    );
     for (const refused of [
       { ...edit, tags: ['cells '] },
       { ...edit, chunkNo: 0 },
       { ...edit, origin: 'tagger' },
+      baseless,
+      { ...edit, base: ['cells'] },
+      { ...edit, base: [{ tag: 'cells' }] },
+      { ...edit, base: [{ tag: 'cells ', origin: 'student' }] },
+      { ...edit, base: [{ tag: 'cells', origin: 'teacher' }] },
     ])
       expect(TagEdit.safeParse(refused).success, JSON.stringify(refused)).toBe(false);
   });

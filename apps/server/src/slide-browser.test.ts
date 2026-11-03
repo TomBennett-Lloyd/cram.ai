@@ -20,6 +20,12 @@ import { MAX_TAG_EDIT_BYTES } from './tag-handlers';
 const QUEEN = ['The queen', 'One queen per colony', 'She lays every egg'];
 const SWARM = ['Swarming', 'Swarm watch begins when the bloom count passes forty'];
 const FIRST = { sourceId: 'l1/1', chunkNo: 1 };
+/** QUEEN's chunk's list as `hive` stores it and the GET serves it. */
+const HELD = [
+  { tag: 'castes', origin: 'student' },
+  { tag: 'the queen', origin: 'tagger' },
+];
+const EDIT = { ...FIRST, base: HELD };
 
 let test: TestServer | undefined;
 afterEach(async () => {
@@ -127,7 +133,7 @@ describe('GET /courses/:id/slides', () => {
 describe('PUT /courses/:id/tags', () => {
   it('sets the chunk’s whole list, keeping a held tag’s origin, and a later read and a restarted server read it back', async () => {
     const { server, dataDir } = await hive();
-    const edited = await put(server.port, { ...FIRST, tags: ['the queen', 'swarming'] });
+    const edited = await put(server.port, { ...EDIT, tags: ['the queen', 'swarming'] });
     const expected = [
       { tag: 'swarming', origin: 'student' },
       { tag: 'the queen', origin: 'tagger' },
@@ -142,7 +148,7 @@ describe('PUT /courses/:id/tags', () => {
 
   it('leaves the slide’s other chunks and slides as they were', async () => {
     const { server } = await hive();
-    await put(server.port, { sourceId: 'l1/2', chunkNo: 1, tags: ['bloom count'] });
+    await put(server.port, { sourceId: 'l1/2', chunkNo: 1, base: [], tags: ['bloom count'] });
     const served = LectureSlides.parse((await lecture(server.port)).json);
     expect(served.slides.map(({ chunks }) => chunks.map(({ tags }) => tags))).toEqual([
       [
@@ -158,27 +164,28 @@ describe('PUT /courses/:id/tags', () => {
   it('refuses a body that is not JSON, too large, or not a tag edit, and a course or chunk it does not know', async () => {
     const { server, dataDir } = await hive();
     const tags = ['castes'];
-    const oversized = JSON.stringify({ ...FIRST, tags: ['x'.repeat(MAX_TAG_EDIT_BYTES)] });
+    const oversized = JSON.stringify({ ...EDIT, tags: ['x'.repeat(MAX_TAG_EDIT_BYTES)] });
     const refusals = [
       [
-        await put(server.port, { ...FIRST, tags }, 'bio', 'text/plain'),
+        await put(server.port, { ...EDIT, tags }, 'bio', 'text/plain'),
         415,
         'unsupported-media-type',
       ],
       [await put(server.port, oversized), 413, 'payload-too-large'],
       [await put(server.port, '{'), 400, 'bad-request'],
-      [await put(server.port, { ...FIRST, tags: ['castes '] }), 400, 'bad-request'],
-      [await put(server.port, { ...FIRST, tags, origin: 'tagger' }), 400, 'bad-request'],
-      [await put(server.port, { ...FIRST, tags }, 'Bio'), 400, 'bad-request'],
-      [await put(server.port, { ...FIRST, tags }, 'chem'), 404, 'no-such-course'],
-      [await put(server.port, { ...FIRST, chunkNo: 2, tags }), 404, 'not-found'],
-      [await put(server.port, { ...FIRST, sourceId: 'l9/1', tags }), 404, 'not-found'],
+      [await put(server.port, { ...EDIT, tags: ['castes '] }), 400, 'bad-request'],
+      [await put(server.port, { ...EDIT, tags, origin: 'tagger' }), 400, 'bad-request'],
+      [await put(server.port, { ...FIRST, tags }), 400, 'bad-request'],
+      [await put(server.port, { ...EDIT, tags }, 'Bio'), 400, 'bad-request'],
+      [await put(server.port, { ...EDIT, tags }, 'chem'), 404, 'no-such-course'],
+      [await put(server.port, { ...EDIT, chunkNo: 2, tags }), 404, 'not-found'],
+      [await put(server.port, { ...EDIT, sourceId: 'l9/1', tags }), 404, 'not-found'],
     ] as const;
     for (const [received, status, refusal] of refusals)
       expect([received.status, received.json]).toMatchObject([status, { status: refusal }]);
     expect(firstChunkTags(await lecture(server.port))).toHaveLength(2);
     brokenCourseFile(dataDir, 'not a course file');
-    expect(await put(server.port, { ...FIRST, tags })).toMatchObject({
+    expect(await put(server.port, { ...EDIT, tags })).toMatchObject({
       status: 409,
       json: { status: 'course-unavailable', problem: 'not-a-course-file' },
     });
@@ -188,13 +195,63 @@ describe('PUT /courses/:id/tags', () => {
     const gated = new GatedEmbedder();
     const { server } = await restarted(await seededDataDir([QUEEN, SWARM]), gated);
     await uploadTo(server.port, await pdfDeck([QUEEN, ['Drones', 'Drones do not forage']]));
-    const edit = put(server.port, { ...FIRST, tags: ['royalty'] });
+    const edit = put(server.port, { ...FIRST, base: [], tags: ['royalty'] });
     gated.open();
     expect(await edit).toMatchObject({ status: 200 });
     await settledStatus(server.port, 'bio');
     expect(firstChunkTags(await lecture(server.port))).toEqual([
       { tag: 'royalty', origin: 'student' },
     ]);
+  });
+
+  it('refuses an edit made against a list other than the chunk’s, sending the chunk’s and writing nothing', async () => {
+    const { server } = await hive();
+    const stale = [
+      [HELD[0]],
+      [...HELD, { tag: 'drones', origin: 'student' }],
+      [{ tag: 'castes', origin: 'tagger' }, HELD[1]],
+      [HELD[0], { tag: 'the queen', origin: 'student' }],
+      [{ tag: 'caste', origin: 'student' }, HELD[1]],
+      [HELD[0], HELD[0], HELD[1]],
+      [HELD[0], HELD[1], HELD[1]],
+      [HELD[0], { tag: 'castes', origin: 'tagger' }, HELD[1]],
+      [],
+    ];
+    for (const base of stale)
+      expect(
+        await put(server.port, { ...FIRST, base, tags: ['royalty'] }),
+        JSON.stringify(base),
+      ).toMatchObject({ status: 409, json: { status: 'tags-changed', tags: HELD } });
+    expect(firstChunkTags(await lecture(server.port))).toEqual(HELD);
+  });
+
+  it('matches a base listed in another order', async () => {
+    const { server } = await hive();
+    const edited = await put(server.port, { ...FIRST, base: [...HELD].reverse(), tags: [] });
+    expect(edited).toMatchObject({ status: 200, json: { ...FIRST, tags: [] } });
+  });
+
+  it('refuses the second of two edits made against the same list, whichever reaches the queue last', async () => {
+    const { server } = await hive();
+    const [first, second] = await Promise.all([
+      put(server.port, { ...EDIT, tags: ['castes', 'drones'] }),
+      put(server.port, { ...EDIT, tags: ['royalty'] }),
+    ]);
+    const answers = [first, second].map((received) => received.status).sort();
+    expect(answers).toEqual([200, 409]);
+    const won = first.status === 200 ? first : second;
+    const lost = first.status === 200 ? second : first;
+    const stored = firstChunkTags(await lecture(server.port));
+    expect(won.json).toMatchObject({ tags: stored });
+    expect(lost.json).toEqual({ status: 'tags-changed', tags: stored });
+  });
+
+  it('says a chunk that is gone is not found, whatever list the edit was made against', async () => {
+    const { server } = await hive();
+    expect(await put(server.port, { ...EDIT, chunkNo: 2, tags: [] })).toMatchObject({
+      status: 404,
+      json: { status: 'not-found' },
+    });
   });
 
   it('answers only PUT', async () => {
