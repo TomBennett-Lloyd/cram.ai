@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { PROVISIONAL_DEFAULT_PINS } from './provisional-pins';
-import { GatewayConfig } from './role-config';
+import { GatewayConfig, type HttpGeneratorConfig, LoopbackEndpoint } from './role-config';
 
 const config = {
   generator: {
@@ -64,6 +64,12 @@ describe('GatewayConfig', () => {
     'http://0.0.0.0:11434/v1/',
   ])('refuses the non-loopback endpoint %s', (endpoint) => {
     expect(GatewayConfig.safeParse(withEndpoint(endpoint)).success).toBe(false);
+  });
+
+  it('carries the loopback proof in the type, so a bare string is not a generator endpoint', () => {
+    expectTypeOf<string>().not.toExtend<LoopbackEndpoint>();
+    expectTypeOf<HttpGeneratorConfig['endpoint']>().toEqualTypeOf<LoopbackEndpoint>();
+    expect(LoopbackEndpoint.parse('http://127.0.0.1:11434/v1/')).toBe('http://127.0.0.1:11434/v1/');
   });
 
   it('refuses an unknown key rather than dropping it', () => {
