@@ -1,11 +1,14 @@
 import type { Database } from 'better-sqlite3';
-import { ChunkNo, type SlideChunk, slideFields, type SourceId, TopicTag } from '@cram/shared';
+import {
+  ChunkNo,
+  type SlideChunk,
+  slideFields,
+  type SourceId,
+  TopicOrigin,
+  TopicTag,
+} from '@cram/shared';
 import { z } from 'zod';
 import { INDEX_WORDS } from './index-words';
-
-/** Who wrote a fact's tag: the ingest-time pass (#426) or the student (#428). */
-export const TOPIC_ORIGINS = ['tagger', 'student'] as const;
-export type TopicOrigin = (typeof TOPIC_ORIGINS)[number];
 
 /** A fact is one chunk of a slide (`docs/adr/0008-slide-chunking.md`), the row every ranked list reads. */
 export interface FactRef {
@@ -80,7 +83,7 @@ export const carriedTags = (
 
 const StoredTagRow = z.object({
   chunk_no: z.number(),
-  origin: z.enum(TOPIC_ORIGINS),
+  origin: TopicOrigin,
   tag: z.string(),
 });
 
@@ -103,14 +106,8 @@ export const slideTagRows = (db: Database, sourceId: SourceId): readonly TagRow[
 
 export type SetTopicsResult = { readonly status: 'set' } | { readonly status: 'no-such-fact' };
 
-/** Replaces the fact's tags of one origin; the caller holds the transaction. */
-export const setFactTopics = (
-  db: Database,
-  fact: FactRef,
-  origin: TopicOrigin,
-  tags: readonly TopicTag[],
-): SetTopicsResult => {
-  const chunkId = z
+const factChunkId = (db: Database, fact: FactRef): number | undefined =>
+  z
     .number()
     .int()
     .optional()
@@ -122,12 +119,42 @@ export const setFactTopics = (
         .pluck()
         .get(fact.sourceId, fact.chunkNo),
     );
+
+/** Replaces the fact's tags of one origin; the caller holds the transaction. */
+export const setFactTopics = (
+  db: Database,
+  fact: FactRef,
+  origin: TopicOrigin,
+  tags: readonly TopicTag[],
+): SetTopicsResult => {
+  const chunkId = factChunkId(db, fact);
   if (chunkId === undefined) return { status: 'no-such-fact' };
   db.prepare('delete from topics where chunk_id = ? and origin = ?').run(chunkId, origin);
   const insert = db.prepare(
     'insert or ignore into topics (chunk_id, origin, tag) values (?, ?, ?)',
   );
   for (const tag of tags) insert.run(chunkId, origin, tag);
+  return { status: 'set' };
+};
+
+/** The fact holds exactly `tags`: a held tag keeps its origin, a new one is the student's; the caller holds the transaction. */
+export const editFactTopics = (
+  db: Database,
+  fact: FactRef,
+  tags: readonly TopicTag[],
+): SetTopicsResult => {
+  const chunkId = factChunkId(db, fact);
+  if (chunkId === undefined) return { status: 'no-such-fact' };
+  const wanted = new Set<string>(tags);
+  const held = new Set(
+    z
+      .array(z.string())
+      .parse(db.prepare('select distinct tag from topics where chunk_id = ?').pluck().all(chunkId)),
+  );
+  const drop = db.prepare('delete from topics where chunk_id = ? and tag = ?');
+  for (const tag of held) if (!wanted.has(tag)) drop.run(chunkId, tag);
+  const insert = db.prepare('insert into topics (chunk_id, origin, tag) values (?, ?, ?)');
+  for (const tag of wanted) if (!held.has(tag)) insert.run(chunkId, TopicOrigin.enum.student, tag);
   return { status: 'set' };
 };
 

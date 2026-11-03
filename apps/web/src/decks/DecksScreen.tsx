@@ -23,6 +23,7 @@ import {
 import type { CitedSlide } from '../ask/cited-slide';
 import { SlideDialog } from '../ask/SlideDialog';
 import { type Dismissible, Empty, Failed, Pending } from '../shell/async-states';
+import { LectureName } from './LectureName';
 import { NoSummary, SummaryDetails } from './LectureSummary';
 import { remaking, repairing, useIngestStatus } from './use-ingest-status';
 import { type SummariesState, useSummaries } from './use-summaries';
@@ -143,7 +144,13 @@ const SummaryArea = ({
   );
 };
 
-const DeckList = ({ ingest, acts }: { readonly ingest: Ingest; readonly acts: SummaryActs }) => {
+interface DeckListProps {
+  readonly courseId: CourseId;
+  readonly ingest: Ingest;
+  readonly acts: SummaryActs;
+}
+
+const DeckList = ({ courseId, ingest, acts }: DeckListProps) => {
   const { stored, uploads } = ingest;
   const lectures = stored.state === 'read' ? unlistedLectures(stored.lectures, uploads) : [];
   if (lectures.length === 0 && uploads.length === 0)
@@ -154,14 +161,22 @@ const DeckList = ({ ingest, acts }: { readonly ingest: Ingest; readonly acts: Su
     <ul className="upload-list">
       {lectures.map((lecture) => (
         <li key={`lecture:${lecture.lectureId}`} className="upload" data-state="indexed">
-          <span className="upload-file">{lecture.lectureId}</span>
+          <LectureName courseId={courseId} lectureId={lecture.lectureId} linked>
+            {lecture.lectureId}
+          </LectureName>
           <span className="upload-progress">{indexedMessage(lecture)}</span>
           <SummaryArea lectureId={lecture.lectureId} ingest={ingest} acts={acts} />
         </li>
       ))}
       {uploads.map((upload) => (
         <li key={upload.uploadId} className="upload" data-state={upload.progress.state}>
-          <span className="upload-file">{upload.fileName}</span>
+          <LectureName
+            courseId={courseId}
+            lectureId={upload.lectureId}
+            linked={upload.progress.state === 'indexed'}
+          >
+            {upload.fileName}
+          </LectureName>
           <span className="upload-progress">{progressMessage(upload.progress)}</span>
           {upload.progress.state === 'indexed' && (
             <SummaryArea lectureId={upload.lectureId} ingest={ingest} acts={acts} />
@@ -296,7 +311,9 @@ export const DecksScreen = ({ courseId }: { readonly courseId: CourseId }) => {
       {state.status === 'pending' ? (
         <Pending label={PENDING.decks} />
       ) : (
-        state.status === 'ready' && <DeckList ingest={state.ingest} acts={acts} />
+        state.status === 'ready' && (
+          <DeckList courseId={courseId} ingest={state.ingest} acts={acts} />
+        )
       )}
       {open !== null && (
         <SlideDialog
