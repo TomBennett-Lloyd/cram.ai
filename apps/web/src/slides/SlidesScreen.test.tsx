@@ -1,11 +1,20 @@
-import { CourseId, LectureId, TagEdit, type TopicOrigin } from '@cram/shared';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiContext } from '../api/api-context';
-import type { ApiClient } from '../api/api-client';
-import { fakeApi, type Reply, retrievedSlide, type Sent } from '../api/api-fixture';
-import { ADD_TAG, DERIVED_SOURCE, PENDING, SEE_DECKS } from '../copy';
-import { SlidesScreen } from './SlidesScreen';
+import { fakeApi } from '../api/api-fixture';
+import { DERIVED_SOURCE, PENDING, SEE_DECKS } from '../copy';
+import {
+  addTag,
+  echoed,
+  edits,
+  HELD,
+  isPut,
+  LECTURE,
+  renderSlides,
+  settle,
+  tag,
+  tagsOn,
+  textHash,
+} from './slides-fixture';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -13,76 +22,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
-
-const tag = (text: string, origin: TopicOrigin = 'student') => ({ tag: text, origin });
-
-const QUEEN = {
-  ...retrievedSlide('l1/1', { slideNo: 1, title: 'The queen' }),
-  chunks: [
-    {
-      chunkNo: 1,
-      lines: ['One queen per colony', 'She lays every egg'],
-      tags: [tag('castes'), tag('the queen', 'tagger')],
-    },
-  ],
-};
-const COMB = {
-  ...retrievedSlide('l1/2', { slideNo: 2, title: 'The comb', derived: true }),
-  chunks: [
-    { chunkNo: 1, lines: ['Cells are hexagonal.'], tags: [] },
-    { chunkNo: 2, lines: [], tags: [tag('wax', 'tagger')] },
-  ],
-};
-const LECTURE: Reply = { status: 200, body: { lectureId: 'l1', slides: [QUEEN, COMB] } };
-
-const isPut = ({ method }: Sent) => method === 'PUT';
-
-/** Answers a tag edit with the list it asked for, each tag the student’s unless QUEEN’s tagger held it. */
-const echoed = (sent: Sent): Reply => {
-  const edit = TagEdit.parse(JSON.parse(sent.body));
-  return {
-    status: 200,
-    body: {
-      ...edit,
-      tags: [...edit.tags]
-        .sort()
-        .map((text) => tag(text, text === 'the queen' ? 'tagger' : 'student')),
-    },
-  };
-};
-
-const renderSlides = (api: ApiClient) =>
-  render(
-    <ApiContext value={api}>
-      <SlidesScreen courseId={CourseId.parse('bio')} lectureId={LectureId.parse('l1')} />
-    </ApiContext>,
-  );
-
-const settle = () =>
-  act(async () => {
-    await vi.advanceTimersByTimeAsync(0);
-  });
-
-const tagsOn = (name: string): string[] =>
-  within(screen.getByRole('list', { name: `Tags on ${name}` }))
-    .queryAllByRole('listitem')
-    .map((item) => item.querySelector('.tag-text')?.textContent ?? '');
-
-const addTag = async (name: string, text: string) => {
-  fireEvent.change(screen.getByRole('textbox', { name: `Add a tag to ${name}` }), {
-    target: { value: text },
-  });
-  fireEvent.click(
-    within(
-      screen.getByRole('textbox', { name: `Add a tag to ${name}` }).closest('form') ??
-        document.body,
-    ).getByRole('button', { name: ADD_TAG }),
-  );
-  await settle();
-};
-
-const edits = (sent: readonly Sent[]) =>
-  sent.filter(isPut).map(({ body }) => JSON.parse(body) as unknown);
 
 describe('SlidesScreen', () => {
   it('shows the pending label with no live region, then the lecture’s slides, each chunk’s lines and tags', async () => {
@@ -121,7 +60,13 @@ describe('SlidesScreen', () => {
     await settle();
     await addTag('slide 1', '  royal jelly ');
     expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, tags: ['castes', 'the queen', 'royal jelly'] },
+      {
+        sourceId: 'l1/1',
+        chunkNo: 1,
+        textHash: textHash('1'),
+        base: HELD,
+        tags: ['castes', 'the queen', 'royal jelly'],
+      },
     ]);
     expect(sent.find(isPut)?.contentType).toBe('application/json');
     expect(tagsOn('slide 1')).toEqual(['castes', 'royal jelly', 'the queen']);
@@ -157,8 +102,14 @@ describe('SlidesScreen', () => {
       screen.getByRole('textbox', { name: 'Add a tag to slide 1' }),
     );
     expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, tags: ['the queen'] },
-      { sourceId: 'l1/1', chunkNo: 1, tags: [] },
+      { sourceId: 'l1/1', chunkNo: 1, textHash: textHash('1'), base: HELD, tags: ['the queen'] },
+      {
+        sourceId: 'l1/1',
+        chunkNo: 1,
+        textHash: textHash('1'),
+        base: [tag('the queen', 'tagger')],
+        tags: [],
+      },
     ]);
     expect(screen.queryByRole('list', { name: 'Tags on slide 1' })).toBeNull();
   });
@@ -199,81 +150,6 @@ describe('SlidesScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove the tag castes' }));
     await settle();
     expect(document.activeElement).toBe(field);
-  });
-
-  it('writes edits one at a time, sending only the latest list once the write in flight returns', async () => {
-    const gates: (() => void)[] = [];
-    const { api, sent } = fakeApi(async (request) => {
-      if (!isPut(request)) return LECTURE;
-      await new Promise<void>((resolve) => gates.push(resolve));
-      return echoed(request);
-    });
-    renderSlides(api);
-    await settle();
-    await addTag('slide 1', 'one');
-    await addTag('slide 1', 'two');
-    await addTag('slide 1', 'three');
-    const shown = ['castes', 'one', 'the queen', 'three', 'two'];
-    expect(tagsOn('slide 1')).toEqual(shown);
-    expect(
-      screen
-        .getByRole('button', { name: 'Remove the tag one' })
-        .closest('.tag')
-        ?.getAttribute('data-origin'),
-    ).toBe('student');
-    expect(edits(sent)).toHaveLength(1);
-    gates[0]?.();
-    await settle();
-    expect(tagsOn('slide 1')).toEqual(shown);
-    gates[1]?.();
-    await settle();
-    expect(edits(sent)).toEqual([
-      { sourceId: 'l1/1', chunkNo: 1, tags: ['castes', 'the queen', 'one'] },
-      { sourceId: 'l1/1', chunkNo: 1, tags: ['castes', 'one', 'the queen', 'two', 'three'] },
-    ]);
-    expect(tagsOn('slide 1')).toEqual(shown);
-  });
-
-  it('puts the stored list back and says why when a write is refused, and clears the alert at the next edit', async () => {
-    let refuse = true;
-    const { api } = fakeApi((request) => {
-      if (!isPut(request)) return LECTURE;
-      return refuse
-        ? { status: 409, body: { status: 'course-unavailable', problem: 'newer-schema' } }
-        : echoed(request);
-    });
-    renderSlides(api);
-    await settle();
-    await addTag('slide 1', 'royal jelly');
-    expect(tagsOn('slide 1')).toEqual(['castes', 'the queen']);
-    expect(screen.getByRole('alert').textContent).toMatch(/newer version of cram.ai/);
-    refuse = false;
-    await addTag('slide 1', 'drones');
-    expect(screen.queryAllByRole('alert')).toEqual([]);
-    expect(tagsOn('slide 1')).toEqual(['castes', 'drones', 'the queen']);
-    refuse = true;
-    await addTag('slide 1', 'swarming');
-    expect(tagsOn('slide 1')).toEqual(['castes', 'drones', 'the queen']);
-  });
-
-  it('drops an edit queued behind a write that is refused, showing the stored list and why', async () => {
-    let refuse: () => void = () => undefined;
-    const { api, sent } = fakeApi(async (request) => {
-      if (!isPut(request)) return LECTURE;
-      await new Promise<void>((resolve) => {
-        refuse = resolve;
-      });
-      return { status: 409, body: { status: 'course-unavailable', problem: 'newer-schema' } };
-    });
-    renderSlides(api);
-    await settle();
-    await addTag('slide 1', 'one');
-    await addTag('slide 1', 'two');
-    refuse();
-    await settle();
-    expect(edits(sent)).toHaveLength(1);
-    expect(tagsOn('slide 1')).toEqual(['castes', 'the queen']);
-    expect(screen.getByRole('alert').textContent).toMatch(/newer version of cram.ai/);
   });
 
   it('says the course holds no such lecture, linking its decks', async () => {

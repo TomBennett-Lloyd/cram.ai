@@ -1,5 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
-import { CONTRADICTED_QUESTION, GROUNDED_QUESTION, stubApi } from './hermetic-api';
+import {
+  CONTRADICTED_QUESTION,
+  GROUNDED_QUESTION,
+  PARAGRAPHS_QUESTION,
+  stubApi,
+} from './hermetic-api';
 
 const NARROWEST = { width: 320, height: 640 };
 
@@ -114,6 +119,47 @@ test('a marked answer fits the narrowest phone width, with its label showing', a
   expect([await button.boundingBox(), await next.boundingBox()]).toEqual(atRest);
   expect(await scrollsSideways(page)).toBe(false);
   expect(await overflows(page, '.explanation-text')).toBe(false);
+});
+
+/** The box of every button in the answer's explanation, in document order and page coordinates, so a scroll moves none. */
+const controlBoxes = (page: Page) =>
+  page.locator('.explanation button').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x: x + window.scrollX, y: y + window.scrollY, width, height };
+    }),
+  );
+
+test('an answer in paragraphs fits the narrowest phone width, and its label moves no control on hover or focus', async ({
+  page,
+}, info) => {
+  await page.goto('/#/courses/bio');
+  await page.getByRole('textbox', { name: 'Question' }).fill(PARAGRAPHS_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).click();
+  await expect(page.locator('.explanation-text > p')).toHaveCount(3);
+  const label = page.locator('.contradiction-label');
+  await expect(label).toBeHidden();
+  expect(await scrollsSideways(page)).toBe(false);
+  const atRest = await controlBoxes(page);
+  expect(atRest.length > 3).toBe(true);
+  if (info.project.name === 'desktop') {
+    await page.locator('.contradicted').hover();
+    await expect(label).toBeVisible();
+    expect(await controlBoxes(page)).toEqual(atRest);
+    await page.getByRole('textbox', { name: 'Question' }).hover();
+    await expect(label).toBeHidden();
+  }
+  const button = page.locator('.contradiction-refs .source-ref');
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  for (let presses = 0; presses < 8; presses++) {
+    if (await button.evaluate((node) => node === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(button).toBeFocused();
+  await expect(label).toBeVisible();
+  expect(await controlBoxes(page)).toEqual(atRest);
+  expect(await scrollsSideways(page)).toBe(false);
+  expect(await overflows(page, '.explanation-text > p')).toBe(false);
 });
 
 test('the panel a contradiction number opens names the sentence above the fold, unclipped, at the narrowest width', async ({

@@ -8,7 +8,7 @@ export {
 } from './course-index';
 export { type FactRef, namedTags, type SetTopicsResult, type TagRow } from './topics';
 export { type SlideListing } from './list-filter';
-export { type ConfirmationState, type ConfirmResult } from './confirmation';
+export { type ConfirmationState, type ConfirmResult, textHashOf } from './confirmation';
 export { embedSlideChunks, type EmbedTextResult, type EmbedTexts } from './embed-chunks';
 export { EmbedderIdentity } from './embedder-identity';
 export { type IndexedChunk, type IndexedSlide, wholeSlide } from './indexed-slide';

@@ -70,6 +70,27 @@ describe('ExplanationView', () => {
     expect(view.querySelector('.contradicted, .contradiction-refs')).toBeNull();
   });
 
+  it('shows each paragraph of the text as its own, each sentence’s marks and numbers in its paragraph', () => {
+    const view = show({
+      ...CONTRADICTED,
+      text: 'Workers are female.\n\nDrones forage for nectar.',
+    });
+    const paragraphs = [...(view.querySelector('.explanation-text')?.children ?? [])];
+    expect(paragraphs.map((paragraph) => [paragraph.tagName, paragraph.textContent])).toEqual([
+      ['P', `Workers are female. ${MAY_BE_RELEVANT}1 `],
+      ['P', `Drones forage for nectar. 1${APPEARS_TO_CONTRADICT} ${MAY_BE_RELEVANT}2 `],
+    ]);
+    expect(paragraphs[1]?.querySelector('.contradicted')?.textContent).toBe(
+      'Drones forage for nectar.',
+    );
+    expect(sourcesEntries()).toHaveLength(2);
+  });
+
+  it('keeps sentences a single line ending separates in one paragraph', () => {
+    const view = show({ ...CONTRADICTED, text: 'Workers are female.\nDrones forage for nectar.' });
+    expect(view.querySelectorAll('.explanation-text > p')).toHaveLength(1);
+  });
+
   it('numbers each slide by first use, across sentences', () => {
     const view = show({
       text: 'Cells are hexagonal. Workers are female, in hexagonal cells.',
