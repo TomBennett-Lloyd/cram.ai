@@ -30,6 +30,21 @@ test('a tag added and a tag removed in the slide browser are still so after a re
   await expect(page.locator('.tag[data-origin="student"]')).toHaveText(['royal jelly×']);
 });
 
+test('a tag the tag pass wrote is drawn dashed, and one the student wrote solid', async ({
+  page,
+}) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  const field = page.getByRole('textbox', { name: 'Add a tag to slide 4' });
+  await field.fill('royal jelly');
+  await field.press('Enter');
+  const borderOf = (text: string) =>
+    page
+      .locator('.tag', { hasText: text })
+      .evaluate((chip) => getComputedStyle(chip).borderTopStyle);
+  expect(await borderOf('drones')).toBe('dashed');
+  expect(await borderOf('royal jelly')).toBe('solid');
+});
+
 test('the decks list links an indexed lecture to its slide browser', async ({ page }) => {
   await page.goto('/#/courses/bio/decks');
   await page.getByRole('link', { name: LONG_FILE_NAME }).click();

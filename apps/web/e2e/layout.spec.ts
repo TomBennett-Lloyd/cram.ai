@@ -39,6 +39,19 @@ test('a long tag wraps inside its chip in the slide browser', async ({ page }) =
   expect(await scrollsSideways(page)).toBe(false);
 });
 
+test('each tag field keeps its Add button on its own line at the narrowest phone width', async ({
+  page,
+}) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  const forms = page.locator('.tag-form');
+  await expect(forms).toHaveCount(2);
+  for (const form of await forms.all()) {
+    const field = await form.locator('input').boundingBox();
+    const button = await form.locator('button').boundingBox();
+    expect(field?.y).toBe(button?.y);
+  }
+});
+
 test('a portrait slide picture letterboxes inside the 16:9 frame instead of growing it', async ({
   page,
 }) => {
