@@ -80,8 +80,12 @@ describe('widened', () => {
     await widened([item], gateway);
     expect(calls[0]?.pairs.map(({ premise }) => premise)).toEqual([
       slideText(expectedSlide),
+      'Comb',
+      'Cells are square.',
       UNIT,
       slideText(candidate),
+      'Comb',
+      'Bees are busy.',
     ]);
   });
 
@@ -96,10 +100,14 @@ describe('widened', () => {
     const [wide] = await widened([item], gateway);
     expect(calls).toEqual([
       {
-        pairs: [expectedSlide, candidate].map((slide) => ({
-          premise: slideText(slide),
-          hypothesis: 'Cells are hexagons.',
-        })),
+        pairs: [
+          slideText(expectedSlide),
+          'Comb',
+          'Cells are square.',
+          slideText(candidate),
+          'Comb',
+          'Bees are busy.',
+        ].map((premise) => ({ premise, hypothesis: 'Cells are hexagons.' })),
       },
     ]);
     expect(wide?.result).toMatchObject({

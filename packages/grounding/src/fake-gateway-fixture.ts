@@ -14,6 +14,7 @@ import type { SearchSentence } from './explain';
 import type { EntailmentScores } from './nli-verdict';
 import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
 import { type SentenceKind, sentenceKindRequest } from './prompts/sentence-kind-prompt';
+import { scoredPremises, slidePremise } from './premise';
 import { slideText } from './slide-text';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
@@ -102,8 +103,21 @@ export const answer = (text: string, citations: readonly Citation[]): Unit => ({
   kind: 'lecture-summary',
 });
 
+const scoredTexts = (slide: RetrievedSlide): readonly string[] =>
+  scoredPremises([slidePremise(slide)]).map(({ text }) => text);
+
 export const pairsOf = (hypothesis: string, slides: readonly RetrievedSlide[]): EntailmentPair[] =>
-  slides.map((slide) => ({ premise: slideText(slide.record), hypothesis }));
+  slides.flatMap((slide) => scoredTexts(slide).map((premise) => ({ premise, hypothesis })));
+
+export const bySlide = (
+  slides: readonly RetrievedSlide[],
+  results: readonly EntailmentResult[],
+): EntailmentResult[] =>
+  slides.flatMap((slide, at) => {
+    const result = results[at];
+    if (result === undefined) throw new Error('bySlide: no result for a slide');
+    return scoredTexts(slide).map(() => result);
+  });
 
 export const scriptedSearch = (
   candidates: Readonly<Record<string, readonly RetrievedSlide[]>>,
