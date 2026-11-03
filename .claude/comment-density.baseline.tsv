@@ -66,7 +66,7 @@ apps/web/src/shell/async-states.tsx	416
 apps/web/src/shell/route.ts	217
 apps/web/src/shell/use-route.ts	0
 apps/web/src/slides/SlidesScreen.tsx	82
-apps/web/src/slides/TagEditor.tsx	519
+apps/web/src/slides/TagEditor.tsx	135
 apps/web/src/slides/use-chunk-tags.ts	188
 apps/web/src/slides/use-lecture-slides.ts	416
 apps/web/src/theme.ts	909

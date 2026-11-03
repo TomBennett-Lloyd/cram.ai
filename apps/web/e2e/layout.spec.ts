@@ -39,7 +39,7 @@ test('a long tag wraps inside its chip in the slide browser', async ({ page }) =
   expect(await scrollsSideways(page)).toBe(false);
 });
 
-test('each tag field keeps its Add button on its own line at the narrowest phone width', async ({
+test('each tag field and its Add button share one line at the narrowest phone width', async ({
   page,
 }) => {
   await page.goto('/#/courses/bio/decks/l1');

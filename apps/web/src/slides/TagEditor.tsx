@@ -4,10 +4,7 @@ import type { ApiFailure } from '../api/api-result';
 import { ADD_TAG, addTagLabel, failureMessage, NEW_TAG, removeTagLabel, tagsLabel } from '../copy';
 import { Failed } from '../shell/async-states';
 
-/**
- * One chunk's tags, each removable, and a field to add one. A removed tag's button hands the
- * focus to the one that takes its place, else the field (`docs/standards/react.md`'s landing rule).
- */
+/** One chunk's tags, each removable, and a field to add one. */
 export const TagEditor = ({
   name,
   tags,
@@ -48,7 +45,7 @@ export const TagEditor = ({
               <span className="tag-text">{tag}</span>
               <button
                 type="button"
-                className="tag-remove"
+                className="icon-button tag-remove"
                 aria-label={removeTagLabel(tag, origin)}
                 onClick={(event) => {
                   remove(index, event.currentTarget);

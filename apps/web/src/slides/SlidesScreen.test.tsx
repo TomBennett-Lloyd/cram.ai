@@ -1,4 +1,4 @@
-import { CourseId, LectureId } from '@cram/shared';
+import { CourseId, LectureId, TagEdit, type TopicOrigin } from '@cram/shared';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiContext } from '../api/api-context';
@@ -14,7 +14,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const tag = (text: string, origin: 'tagger' | 'student' = 'student') => ({ tag: text, origin });
+const tag = (text: string, origin: TopicOrigin = 'student') => ({ tag: text, origin });
 
 const QUEEN = {
   ...retrievedSlide('l1/1', { slideNo: 1, title: 'The queen' }),
@@ -39,7 +39,7 @@ const isPut = ({ method }: Sent) => method === 'PUT';
 
 /** Answers a tag edit with the list it asked for, each tag the student’s unless QUEEN’s tagger held it. */
 const echoed = (sent: Sent): Reply => {
-  const edit = JSON.parse(sent.body) as { sourceId: string; chunkNo: number; tags: string[] };
+  const edit = TagEdit.parse(JSON.parse(sent.body));
   return {
     status: 200,
     body: {
@@ -254,6 +254,26 @@ describe('SlidesScreen', () => {
     refuse = true;
     await addTag('slide 1', 'swarming');
     expect(tagsOn('slide 1')).toEqual(['castes', 'drones', 'the queen']);
+  });
+
+  it('drops an edit queued behind a write that is refused, showing the stored list and why', async () => {
+    let refuse: () => void = () => undefined;
+    const { api, sent } = fakeApi(async (request) => {
+      if (!isPut(request)) return LECTURE;
+      await new Promise<void>((resolve) => {
+        refuse = resolve;
+      });
+      return { status: 409, body: { status: 'course-unavailable', problem: 'newer-schema' } };
+    });
+    renderSlides(api);
+    await settle();
+    await addTag('slide 1', 'one');
+    await addTag('slide 1', 'two');
+    refuse();
+    await settle();
+    expect(edits(sent)).toHaveLength(1);
+    expect(tagsOn('slide 1')).toEqual(['castes', 'the queen']);
+    expect(screen.getByRole('alert').textContent).toMatch(/newer version of cram.ai/);
   });
 
   it('says the course holds no such lecture, linking its decks', async () => {

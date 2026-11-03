@@ -544,11 +544,7 @@ mark,
 }
 
 .tag-remove {
-  padding: 0 var(--space-2);
-  background: transparent;
-  color: var(--color-text-muted);
   font-size: var(--text-base);
-  line-height: var(--leading-tight);
 }
 
 .tag-form {

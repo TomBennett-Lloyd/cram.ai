@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { ChunkTag, TagEdit } from '@cram/shared';
 
 /** A synthetic course: two slides about bees, authored for these specs. */
 const slide = (
@@ -95,16 +96,11 @@ const askReply = (question: string) => {
   }
 };
 
-interface BrowsedTag {
-  readonly tag: string;
-  readonly origin: 'tagger' | 'student';
-}
-
 /** One unbroken tag wider than a phone, so its chip must wrap it. */
 const LONG_TAG = 'hexagonalcombcellgeometry'.repeat(3);
 
-/** The slide browser's lecture: HIVE as one chunk, tagged by the tag pass, and COMB with none. */
-const lectureSlides = (hiveTags: readonly BrowsedTag[]) => ({
+/** The slide browser's lecture: HIVE as one chunk, tagged by the tag pass. */
+const lectureSlides = (hiveTags: readonly ChunkTag[]) => ({
   lectureId: 'l1',
   slides: [
     { ...HIVE, chunks: [{ chunkNo: 1, lines: HIVE.record.body.split('\n'), tags: hiveTags }] },
@@ -151,16 +147,18 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
   let ingestReads = 0;
   let report = rebuildReport ? REBUILD_REPORT : NO_REPORT;
   /** Kept in the spec's process, so a `page.reload()` reads back what the page wrote. */
-  let hiveTags: readonly BrowsedTag[] = [
+  let hiveTags: readonly ChunkTag[] = ChunkTag.array().parse([
     { tag: 'castes', origin: 'tagger' },
     { tag: 'drones', origin: 'tagger' },
-  ];
+  ]);
   await page.route('**/courses/*/slides?*', (route) => json(route, 200, lectureSlides(hiveTags)));
   await page.route('**/courses/*/tags', (route) => {
-    const edit = JSON.parse(route.request().postData() ?? '{}') as { tags: string[] };
+    const edit = TagEdit.parse(JSON.parse(route.request().postData() ?? '{}'));
     hiveTags = [...edit.tags]
       .sort()
-      .map((tag) => hiveTags.find((held) => held.tag === tag) ?? { tag, origin: 'student' });
+      .map(
+        (tag) => hiveTags.find((held) => held.tag === tag) ?? { tag, origin: 'student' as const },
+      );
     return json(route, 200, { sourceId: HIVE.sourceId, chunkNo: 1, tags: hiveTags });
   });
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
