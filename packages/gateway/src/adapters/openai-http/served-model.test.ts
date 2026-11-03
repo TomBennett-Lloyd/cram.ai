@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
-import type { HttpGeneratorConfig } from '../../role-config';
+import { type HttpGeneratorConfig, LoopbackEndpoint } from '../../role-config';
 import { checkServedModel, loadOpenAiHttpGenerator } from './openai-http-generator';
 import { modelfileCheck } from './served-model';
 
@@ -138,7 +138,7 @@ beforeEach(async () => {
   fixture = await startServer();
   config = {
     pin,
-    endpoint: `${fixture.origin}/v1/`,
+    endpoint: LoopbackEndpoint.parse(`${fixture.origin}/v1/`),
     servedModel: 'qwen3-4b-q4_k_m-7485fe6f11af',
     timeoutMs: 2000,
     sampling: { temperature: 0, seed: 0 },
@@ -225,7 +225,10 @@ describe('checkServedModel', () => {
   });
 
   it('leaves a server that is not listening unverified', async () => {
-    const check = await checkServedModel({ ...config, endpoint: 'http://127.0.0.1:9/v1/' });
+    const check = await checkServedModel({
+      ...config,
+      endpoint: LoopbackEndpoint.parse('http://127.0.0.1:9/v1/'),
+    });
     expect(check.status === 'unverified' && check.reason).toMatch(/fetch failed/);
   });
 });
@@ -259,16 +262,5 @@ describe('loadOpenAiHttpGenerator', () => {
     expect(load.status === 'load-failed' && load.detail).toMatch(
       /^POST .*\/api\/show for qwen3-4b-q4_k_m-7485fe6f11af: serves blob sha256-a{64}, not the pin's/,
     );
-  });
-
-  it('refuses an endpoint off loopback before asking it anything', async () => {
-    let asked = false;
-    fixture.handler = (_incoming, _body, response) => {
-      asked = true;
-      response.end();
-    };
-    const endpoint = `${fixture.origin.replace('127.0.0.1', '0.0.0.0')}/v1/`;
-    await expect(loadOpenAiHttpGenerator({ ...config, endpoint })).rejects.toThrow();
-    expect(asked).toBe(false);
   });
 });
