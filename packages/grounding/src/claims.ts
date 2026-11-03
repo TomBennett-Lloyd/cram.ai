@@ -1,6 +1,6 @@
-const QUOTE_RUN = `["'“”‘’]*`;
+const CLOSE_RUN = String.raw`[\p{Ps}\p{Pe}\p{Pi}\p{Pf}"']*`;
 const CLAIM_BOUNDARY = new RegExp(
-  String.raw`(?<=[.!?]${QUOTE_RUN})\s+(?=${QUOTE_RUN}[\p{Lu}\p{N}])|(?<=;)\s+`,
+  String.raw`(?<=[.!?]${CLOSE_RUN})\s+(?=${CLOSE_RUN}[\p{Lu}\p{N}])|(?<=;)\s+`,
   'u',
 );
 

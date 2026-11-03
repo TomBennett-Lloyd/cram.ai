@@ -80,8 +80,54 @@ describe('splitClaims', () => {
   });
 
   it.each([
+    ['parenthesis', 'Workers are male.) Drones are female.'],
+    ['square bracket', 'Workers are male.] Drones are female.'],
+    ['guillemet', 'Workers are male.» Drones are female.'],
+    ['single guillemet', 'Workers are male.› Drones are female.'],
+    ['parenthesis then a quote', 'Workers are male.)” Drones are female.'],
+  ])('splits after a closing %s before a capital', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(2);
+  });
+
+  it.each([
+    ['parenthesis', 'Workers are male. (Drones are female.)'],
+    ['guillemet', 'Workers are male. «Drones are female.»'],
+    ['single guillemet', 'Workers are male. ‹Drones are female.›'],
+    ['low double quote', 'Workers are male. „Drones are female.“'],
+    ['quote then a parenthesis', 'Workers are male. “(Drones are female.)”'],
+  ])('splits before an opening %s before a capital', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(2);
+  });
+
+  it.each([
+    ['an opening parenthesis after the terminal', 'Workers are male.( Drones are female.'],
+    ['a closing parenthesis before the capital', 'Workers are male. )Drones are female.'],
+    ['a closing guillemet before the capital', 'Workers are male. »Drones are female.«'],
+  ])('splits at %s, a bracket set the wrong way round', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(2);
+  });
+
+  it('splits a parenthesised sentence from the sentences either side of it', () => {
+    expect(splitClaims('Workers are male. (See the hive diagram.) Drones are female.')).toEqual([
+      'Workers are male.',
+      '(See the hive diagram.)',
+      'Drones are female.',
+    ]);
+  });
+
+  it('splits before a line pointer and keeps it with the sentence it opens', () => {
+    expect(splitClaims('Workers are male. [1] Drones are female.')).toEqual([
+      'Workers are male.',
+      '[1] Drones are female.',
+    ]);
+  });
+
+  it.each([
     ['after a closing quote', '"Is it?" she asked.'],
     ['after an opening quote', 'Workers are male. "drones" are not.'],
+    ['after an opening parenthesis', 'Workers are male. (see the diagram) and drones are not.'],
+    ['after a closing parenthesis', '(Workers are male.) drones are female.'],
+    ['in a parenthesised enumerator', 'Workers are male. (i) Drones are female.'],
   ])('does not split before a lowercase word %s', (_, text) => {
     expect(splitClaims(text)).toHaveLength(1);
   });
@@ -89,7 +135,8 @@ describe('splitClaims', () => {
   it.each([
     ['a quote mark with no terminal before it', 'They call them "workers" Drones differ.'],
     ['a full stop inside a word', 'Cells are 5.4mm Drones are not.'],
-    ['an opening bracket', 'Workers are male. [1] Drones are female.'],
+    ['a dash before the capital', 'Workers are male. —Drones are female.'],
+    ['a comma after the terminal', 'Some castes, e.g., Drones, never forage.'],
   ])('does not split at %s', (_, text) => {
     expect(splitClaims(text)).toHaveLength(1);
   });
