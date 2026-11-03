@@ -141,6 +141,52 @@ describe('splitClaims', () => {
     expect(splitClaims(text)).toHaveLength(1);
   });
 
+  it.each([
+    ['a blank line', 'Castes\n\nDrones are male.'],
+    ['a blank line holding a space and a tab', 'Castes\n \t\nDrones are male.'],
+    ['three line endings', 'Castes\n\n\nDrones are male.'],
+    ['two CRLF line endings', 'Castes\r\n\r\nDrones are male.'],
+    ['two carriage returns', 'Castes\r\rDrones are male.'],
+    ['a line feed then a carriage return', 'Castes\n\rDrones are male.'],
+  ])('splits a heading from the sentence after it at %s', (_, text) => {
+    expect(splitClaims(text)).toEqual(['Castes', 'Drones are male.']);
+  });
+
+  it.each([
+    ['before a lowercase word', 'Workers are\n\nmale.', ['Workers are', 'male.']],
+    [
+      'after a colon',
+      'The castes:\n\nqueen, worker, drone.',
+      ['The castes:', 'queen, worker, drone.'],
+    ],
+    [
+      'after a full stop before a lowercase word',
+      'Bees fly.\n\nthen rest.',
+      ['Bees fly.', 'then rest.'],
+    ],
+    ['inside a quotation', '“Castes\n\nDrones are male.”', ['“Castes', 'Drones are male.”']],
+    [
+      'mid-text',
+      'Bees fly. Castes\n\nDrones are male.',
+      ['Bees fly.', 'Castes', 'Drones are male.'],
+    ],
+  ])('splits at a blank line %s', (_, text, claims) => {
+    expect(splitClaims(text)).toEqual(claims);
+  });
+
+  it.each([
+    ['a line feed', 'Castes\nDrones are male.'],
+    ['a CRLF', 'Castes\r\nDrones are male.'],
+    ['a carriage return', 'Castes\rDrones are male.'],
+    ['two line feeds around a no-break space', 'Castes\n\u00a0\nDrones are male.'],
+    ['two line feeds around a form feed', 'Castes\n\f\nDrones are male.'],
+    ['two paragraph separators', 'Castes\u2029\u2029Drones are male.'],
+    ['a line feed then a paragraph separator', 'Castes\n\u2029Drones are male.'],
+    ['a paragraph separator then a line feed', 'Castes\u2029\nDrones are male.'],
+  ])('does not split a heading from the sentence after it at %s', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(1);
+  });
+
   it('splits after a semicolon whatever follows', () => {
     expect(splitClaims('Workers are male; drones are female.')).toEqual([
       'Workers are male;',

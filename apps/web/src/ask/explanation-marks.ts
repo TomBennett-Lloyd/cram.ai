@@ -1,4 +1,10 @@
-import { type Explanation, type QuoteSpan, quoteSpan, type SourceId } from '@cram/shared';
+import {
+  BLANK_LINE,
+  type Explanation,
+  type QuoteSpan,
+  quoteSpan,
+  type SourceId,
+} from '@cram/shared';
 
 export interface Run {
   readonly text: string;
@@ -28,16 +34,13 @@ const sentenceSpans = (text: string, sentences: readonly string[]): (QuoteSpan |
   });
 };
 
-/** CommonMark 0.31.2 § 2.1's blank line, its line endings read as `\n` first. */
-const BLANK_LINE = /\n[ \t]*\n/;
-
 const opensParagraph = (text: string, spans: readonly (QuoteSpan | undefined)[], index: number) => {
   const span = spans[index];
   const before = spans.slice(0, index).findLast((located) => located !== undefined);
   return (
     span !== undefined &&
     before !== undefined &&
-    BLANK_LINE.test(text.slice(before.end, span.start).replace(/\r\n?/g, '\n'))
+    BLANK_LINE.test(text.slice(before.end, span.start))
   );
 };
 

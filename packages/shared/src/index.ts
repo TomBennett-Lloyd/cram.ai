@@ -9,6 +9,7 @@ export {
   SlideRecord,
   SourceHash,
 } from './slide-record';
+export { BLANK_LINE } from './blank-line';
 export { NonBlankText } from './non-blank-text';
 export { embedText } from './embed-text';
 export {
