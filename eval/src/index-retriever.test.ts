@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { IndexRetriever, type IndexRetrieverSpec } from './index-retriever';
 import { record } from './run-fixture';
 import { ScriptedGateway } from './scripted-gateway-fixture';
+import { PassageBlock } from './scripted-tutor-fixture';
 
 const deck = Deck.parse({
   lectureId: 'l1',
@@ -150,7 +151,7 @@ describe('IndexRetriever.tag', () => {
     });
     const passages: string[] = [];
     const { generator } = new ScriptedGateway((wire) => {
-      const { passage } = JSON.parse(wire.messages[1]?.content ?? '') as { passage: string };
+      const { passage } = PassageBlock.parse(JSON.parse(wire.messages[1]?.content ?? ''));
       passages.push(passage);
       return {
         status: 'content',

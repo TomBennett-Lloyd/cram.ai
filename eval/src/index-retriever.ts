@@ -99,11 +99,16 @@ export class IndexRetriever {
         this.#course.chunks(id),
       );
       for (const fact of await tagFacts(facts, deps)) {
-        if (fact.status === 'tagged')
+        if (
+          fact.status === 'tagged' &&
           this.#course.setTopics(
             { sourceId: fact.sourceId, chunkNo: fact.chunkNo },
             'tagger',
             fact.tags,
+          ).status !== 'set'
+        )
+          throw new Error(
+            `IndexRetriever: ${fact.sourceId} chunk ${String(fact.chunkNo)} was read but is not stored`,
           );
         outcomes.push(fact);
       }

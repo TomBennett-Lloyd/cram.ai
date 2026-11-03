@@ -4,10 +4,7 @@ import type { TopicTag } from '@cram/shared';
 import { type BaselineRow, baselineRow } from './metric-row';
 import type { TopicLabel } from './topic-label';
 
-/**
- * `tagRecall`: of the labelled (slide, topic) pairs, those where a tag on one of the slide's chunks is one
- * `namedTags` finds in the topic, so a query naming the topic puts the slide in the topic list (#426).
- */
+/** `tagRecall`: of the labelled (slide, topic) pairs, those where a tag on one of the slide's chunks is one `namedTags` finds in the topic (#426). */
 export const tagRecall = (
   labels: readonly TopicLabel[],
   tagged: readonly FactTagging[],

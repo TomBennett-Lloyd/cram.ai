@@ -7,7 +7,7 @@ const KindsBlock = z.strictObject({
   sentences: z.array(z.strictObject({ number: z.number(), text: z.string() })),
 });
 
-const PassageBlock = z.strictObject({ lecture: z.string(), passage: z.string() });
+export const PassageBlock = z.strictObject({ lecture: z.string(), passage: z.string() });
 
 const StatementBlock = z.strictObject({ quotes: z.array(z.string()), statement: z.string() });
 

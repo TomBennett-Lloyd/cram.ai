@@ -227,5 +227,10 @@ describe('readEvalCourse', () => {
       [TOPICS_FILE]: `${topicLine}\n{"lectureId":"l1","slideNo":1,"tags":[" cells"]}\n`,
     });
     expect(readEvalCourse(bad)).toMatchObject({ status: 'invalid', where: `${TOPICS_FILE}:2` });
+    const twice = root({
+      ...files,
+      [TOPICS_FILE]: `${topicLine}\n{"lectureId":"l1","slideNo":2,"tags":["a","a"]}\n`,
+    });
+    expect(readEvalCourse(twice)).toMatchObject({ status: 'invalid', where: `${TOPICS_FILE}:2` });
   });
 });

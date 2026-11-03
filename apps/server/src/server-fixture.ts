@@ -109,7 +109,7 @@ const UNSCRIPTED: ReadonlyMap<string, unknown> = new Map<string, unknown>([
 ]);
 
 /** An unrecorded summary call writes one uncited unit, which resolution withholds, and a tag call names none, so a test can upload unscripted. */
-class UnscriptedSummaries implements Generator {
+class UnscriptedCalls implements Generator {
   readonly #inner: Generator;
   readonly pin: Generator['pin'];
   readonly sampling: Generator['sampling'];
@@ -139,7 +139,7 @@ export const gatewayOf = (
   embedder: Embedder = new WordEmbedder(),
 ): ModelGateway => {
   const fake = new FakeGateway({ pins: PROVISIONAL_DEFAULT_PINS, sampling, recordings });
-  const generator = new UnscriptedSummaries(fake.generator);
+  const generator = new UnscriptedCalls(fake.generator);
   return { generator, verifier: fake.verifier, embedder, reranker: null };
 };
 

@@ -201,3 +201,27 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/decks/DecksScreen.tsx` (`askedFor`, passed to `NoSummary` as `pressed`)
 - What: once a reader has pressed "Make the summary" for a lecture, every later failed summary for that lecture is announced as an alert, including one an upload or a rebuild's re-make made without a press. Suspected root cause: the press is held as a session-long set rather than tied to the one re-make it asked for.
 - Source: PR #456 for #422 (confirmation review)
+
+## 2026-11-03 — untagged chunks and the tag pass are silent in the upload's progress
+
+- Where: `packages/shared/src/ingest-status.ts` (`UploadProgress`), `apps/web/src/copy.ts`, `apps/server/src/ingest-queue.ts` (`#tag`)
+- What: the indexed state reports `unembedded` and `summarised`, but a chunk the tag pass left untagged reaches only the server log. The pass also runs one generator call per chunk under the ingest job's state with no state of its own (`docs/standards/error-handling.md` rule 5). Suspected root cause: `UploadProgress` gained a field per pass (#422) instead of a shape that new passes join.
+- Source: PR #494 (review)
+
+## 2026-11-03 — the eval copies each ingest pass's read, call and write loop
+
+- Where: `eval/src/index-retriever.ts` (`tag`, `summarise`), `apps/server/src/fact-tagging.ts` (`tagStored`), `apps/server/src/lecture-digest.ts` (`summariseStored`)
+- What: each ingest-time pass is written twice, once over the server's course file and once over the eval's in-memory index (`docs/standards/structure.md` rule 7). #426 moved the fact read into `lectureFacts`, but the write loop is still copied. Suspected root cause: no package depends on both `@cram/grounding` and `@cram/index`, so there is nowhere to hold a pass that does both.
+- Source: PR #494 (review)
+
+## 2026-11-03 — the eval report's metric set has no single owner
+
+- Where: `eval/src/report.ts` (`EvalReport.metrics`), `eval/src/tag-recall.ts`; `docs/adr/0005-evaluation-as-gate.md` (d), `docs/adr/0006-image-only-slides.md` (h), `docs/adr/0009-explanation-answers.md` (o), `docs/adr/0010-misspelt-golden-variants.md` (d)
+- What: every row before `tagRecall` was defined in an ADR; `tagRecall` is defined only by its module's docblock and #426. Suspected root cause: no rule says where a new baseline row's definition lives.
+- Source: PR #494 (review)
+
+## 2026-11-03 — TopicTag admits a tag of invisible characters
+
+- Where: `packages/shared/src/topic-tag.ts` (`TopicTag`)
+- What: the regex treats `\u200b` as non-blank, so a tag with no visible text parses and could be stored and shown in #428's editor. #426's hostile corpus kept one. Suspected root cause: the schema's blank test is JavaScript's `\s`, not a visible-character test.
+- Source: PR #494 (review)

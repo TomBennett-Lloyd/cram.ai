@@ -6,7 +6,7 @@ import { explanationRequest, GeneratedExplanation } from './explanation-prompt';
 import { generationRequest } from './generation-prompt';
 import { rewriteRequest } from './rewrite-prompt';
 import { sentenceKindRequest } from './sentence-kind-prompt';
-import { tagRequest } from './tag-prompt';
+import { TAG_MAX_CHARS, tagRequest, TAGS_PER_FACT } from './tag-prompt';
 import { verifierRequest } from './verifier-prompt';
 
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -181,9 +181,11 @@ describe('tagRequest', () => {
     });
   });
 
-  it('constrains the reply to at most six topics of at most forty characters', () => {
+  it('constrains the reply to at most TAGS_PER_FACT topics of at most TAG_MAX_CHARS characters', () => {
     expect(chatWireRequest(tagRequest('Comb', 'a')).output.jsonSchema).toMatchObject({
-      properties: { tags: { maxItems: 6, items: { type: 'string', maxLength: 40 } } },
+      properties: {
+        tags: { maxItems: TAGS_PER_FACT, items: { type: 'string', maxLength: TAG_MAX_CHARS } },
+      },
     });
   });
 

@@ -3,7 +3,7 @@ import { ChunkNo, type SlideChunk, SourceId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { estimateTokens } from './prompt-budget';
 import { fakeGateway, generatorRecording, generatorReplies, slide } from './fake-gateway-fixture';
-import { tagRequest } from './prompts/tag-prompt';
+import { TAG_MAX_CHARS, tagRequest, TAGS_PER_FACT } from './prompts/tag-prompt';
 import { slideText } from './slide-text';
 import { lectureFacts, type TagFact, tagFacts } from './tag-facts';
 
@@ -77,11 +77,11 @@ describe('tagFacts', () => {
   it.each<[string, GeneratorReply]>([
     [
       'one topic too many',
-      { status: 'content', content: JSON.stringify({ tags: Array(7).fill('a') }) },
+      { status: 'content', content: JSON.stringify({ tags: Array(TAGS_PER_FACT + 1).fill('a') }) },
     ],
     [
       'a topic one character too long',
-      { status: 'content', content: JSON.stringify({ tags: ['a'.repeat(41)] }) },
+      { status: 'content', content: JSON.stringify({ tags: ['a'.repeat(TAG_MAX_CHARS + 1)] }) },
     ],
     ['a key beside the topics', { status: 'content', content: '{"tags":["a"],"why":"b"}' }],
     ['the tags under another key', { status: 'content', content: '{"topics":["a"]}' }],
@@ -96,8 +96,11 @@ describe('tagFacts', () => {
     ]);
   });
 
-  it('accepts the bounds themselves: six topics, each forty characters', async () => {
-    const six = Array.from({ length: 6 }, (_, n) => `${String(n)}${'a'.repeat(39)}`);
+  it('accepts the bounds themselves: TAGS_PER_FACT topics, each TAG_MAX_CHARS characters', async () => {
+    const six = Array.from(
+      { length: TAGS_PER_FACT },
+      (_, n) => `${String(n)}${'a'.repeat(TAG_MAX_CHARS - 1)}`,
+    );
     await expect(tagFacts([swarm], fakeGateway([topics(swarm, six)]))).resolves.toEqual([
       { ...ref(swarm), status: 'tagged', tags: six },
     ]);
@@ -140,6 +143,21 @@ describe('tagFacts', () => {
     await expect(
       tagFacts([swarm], { generator: fakeGateway([]).generator, budget: cost - 1 }),
     ).resolves.toEqual([{ ...ref(swarm), status: 'untagged', reason: 'over-budget' }]);
+  });
+
+  it('reports an over-budget fact as over the budget even after a backend failure', async () => {
+    const long = fact('l5/9', 'Swarm '.repeat(200));
+    const cost = requestOf(swarm).messages.reduce(
+      (n, { content }) => n + estimateTokens(content),
+      0,
+    );
+    const gateway = fakeGateway([replying(swarm, { status: 'backend-failed', reason: 'down' })]);
+    await expect(
+      tagFacts([swarm, long], { generator: gateway.generator, budget: cost }),
+    ).resolves.toEqual([
+      { ...ref(swarm), status: 'untagged', reason: 'backend-failed' },
+      { ...ref(long), status: 'untagged', reason: 'over-budget' },
+    ]);
   });
 
   it('propagates a rejected call, which is a bug or a replay miss', async () => {

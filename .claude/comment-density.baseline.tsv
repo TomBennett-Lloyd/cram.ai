@@ -75,7 +75,7 @@ eval/src/exam-metrics.ts	1379
 eval/src/file-attempt.ts	714
 eval/src/golden-question.ts	1379
 eval/src/hand-label.ts	1111
-eval/src/index-retriever.ts	294
+eval/src/index-retriever.ts	283
 eval/src/index.ts	0
 eval/src/ingested-course.ts	263
 eval/src/json-text.ts	0
@@ -99,9 +99,9 @@ eval/src/scripted-tutor-fixture.ts	370
 eval/src/sentence-kind-accuracy.ts	769
 eval/src/sentence-kind-label.ts	909
 eval/src/summary-rows.ts	2000
-eval/src/tag-recall.ts	1739
+eval/src/tag-recall.ts	500
 eval/src/timed-gateway.ts	83
-eval/src/topic-label.ts	1111
+eval/src/topic-label.ts	833
 eval/src/verifier-accuracy.ts	937
 eval/src/verifier-arms.ts	757
 packages/gateway/src/adapters/onnx/encoder-artefact.ts	740

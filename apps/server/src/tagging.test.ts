@@ -3,6 +3,7 @@ import { openCourse } from '@cram/index';
 import { rmSync } from 'node:fs';
 import { CourseId, LectureId, SourceId } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { courseFilePath } from './data-directory';
 import { tagStored, taggingLogOutcome } from './fact-tagging';
 import { markOlder, seededDataDir } from './repair-fixture';
@@ -25,20 +26,26 @@ const BIO = CourseId.parse('bio');
 
 type Topics = (passage: string) => ChatResult<unknown>;
 
-/** Answers each tag call from its passage; every other call goes to `inner`. */
-const tagging = (inner: ModelGateway, topics: Topics, passages: string[] = []): ModelGateway => {
+const PassageBlock = z.strictObject({ lecture: z.string(), passage: z.string() });
+
+/** Answers each tag call from its passage, after `gate`; every other call goes to `inner`. */
+const tagging = (
+  inner: ModelGateway,
+  topics: Topics,
+  passages: string[] = [],
+  gate: Promise<void> = Promise.resolve(),
+): ModelGateway => {
   const generator: Generator = {
     ...inner.generator,
-    chat: <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
+    chat: async <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
       if (request.output.name !== 'topic-tags') return inner.generator.chat(request);
-      const { passage } = JSON.parse(request.messages[1]?.content ?? '') as { passage: string };
+      const { passage } = PassageBlock.parse(JSON.parse(request.messages[1]?.content ?? ''));
       passages.push(passage);
+      await gate;
       const reply = topics(passage);
-      return Promise.resolve(
-        reply.status === 'completed'
-          ? { status: 'completed', value: request.output.schema.parse(reply.value) }
-          : reply,
-      );
+      return reply.status === 'completed'
+        ? { status: 'completed', value: request.output.schema.parse(reply.value) }
+        : reply;
     },
   };
   return { ...inner, generator };
@@ -144,6 +151,44 @@ describe('the tag pass at upload', () => {
     await upload(server, bytes);
     expect(server.logs).toEqual([
       { operation: 'tag', courseId: 'bio', outcome: 'untagged 3/3 backend-failed,invalid-output' },
+    ]);
+  });
+
+  it('reads ingesting while a tag call is out, and indexed only once the pass is done', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const passages: string[] = [];
+    const server = await started(tagging(gatewayOf([]), named, passages, gate));
+    const sent = send(server.server.port, {
+      method: 'POST',
+      path: `/courses/bio/decks?${new URLSearchParams({ lectureId: 'l1', fileName: 'hive.pdf' }).toString()}`,
+      headers: { 'content-type': PDF },
+      body: await pdfDeck([QUEEN]),
+    });
+    while (passages.length === 0) await new Promise((resolve) => setTimeout(resolve, 5));
+    const during = (await send(server.server.port, { method: 'GET', path: '/courses/bio/ingest' }))
+      .json as { uploads: { progress: { state: string } }[] };
+    expect(during.uploads.map(({ progress }) => progress.state)).toEqual(['ingesting']);
+    release();
+    await sent;
+    const settled = (await settledStatus(server.server.port, 'bio')).json as typeof during;
+    expect(settled.uploads.map(({ progress }) => progress.state)).toEqual(['indexed']);
+  });
+
+  it('counts only the chunks it asked about, leaving a text-less one out of the log', async () => {
+    const bytes = await pdfDeck([QUEEN, SWARM, []]);
+    const server = await started(
+      tagging(gatewayOf([]), (passage) =>
+        passage.includes('queen')
+          ? { status: 'invalid-output', content: 'x', issue: 'not JSON' }
+          : named(passage),
+      ),
+    );
+    await upload(server, bytes);
+    expect(server.logs).toEqual([
+      { operation: 'tag', courseId: 'bio', outcome: 'untagged 1/2 invalid-output' },
     ]);
   });
 

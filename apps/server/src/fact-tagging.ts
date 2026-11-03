@@ -19,8 +19,17 @@ export const tagStored = async (
     const facts = lectureFacts(course.lectureSlides(lectureId), (id) => course.chunks(id));
     const tagged = await tagFacts(facts, { generator: deps.gateway.generator });
     for (const fact of tagged)
-      if (fact.status === 'tagged')
-        course.setTopics({ sourceId: fact.sourceId, chunkNo: fact.chunkNo }, 'tagger', fact.tags);
+      if (fact.status === 'tagged') {
+        const set = course.setTopics(
+          { sourceId: fact.sourceId, chunkNo: fact.chunkNo },
+          'tagger',
+          fact.tags,
+        );
+        if (set.status !== 'set')
+          throw new Error(
+            `tagStored: ${fact.sourceId} chunk ${String(fact.chunkNo)} was read but is not stored`,
+          );
+      }
     return { status: 'tagged', facts: tagged };
   } finally {
     course.close();
@@ -29,9 +38,10 @@ export const tagStored = async (
 
 export const taggingLogOutcome = (outcome: TaggingOutcome): string | undefined => {
   if (outcome.status !== 'tagged') return outcome.status;
-  const failed = outcome.facts.flatMap((fact) =>
-    fact.status === 'untagged' && fact.reason !== 'no-text' ? [fact.reason] : [],
+  const asked = outcome.facts.filter(
+    (fact) => fact.status === 'tagged' || fact.reason !== 'no-text',
   );
+  const failed = asked.flatMap((fact) => (fact.status === 'untagged' ? [fact.reason] : []));
   if (failed.length === 0) return undefined;
-  return `untagged ${String(failed.length)}/${String(outcome.facts.length)} ${[...new Set(failed)].sort().join(',')}`;
+  return `untagged ${String(failed.length)}/${String(asked.length)} ${[...new Set(failed)].sort().join(',')}`;
 };

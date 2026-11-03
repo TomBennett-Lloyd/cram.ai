@@ -53,7 +53,7 @@ const promptTokens = (fact: TagFact): number =>
     0,
   );
 
-/** One call per fact (`docs/plan.md` §3.2); a backend failure ends the pass, so a backend that is down costs one call. */
+/** One call per fact (#426); a backend failure ends the pass, so a backend that is down costs one call. */
 export const tagFacts = async (
   facts: readonly TagFact[],
   deps: TagDeps,
