@@ -136,6 +136,7 @@ describe('splitClaims', () => {
     ['a quote mark with no terminal before it', 'They call them "workers" Drones differ.'],
     ['a full stop inside a word', 'Cells are 5.4mm Drones are not.'],
     ['a dash before the capital', 'Workers are male. —Drones are female.'],
+    ['a symbol after the terminal', 'Workers are male.™ Drones are female.'],
     ['a comma after the terminal', 'Some castes, e.g., Drones, never forage.'],
   ])('does not split at %s', (_, text) => {
     expect(splitClaims(text)).toHaveLength(1);
