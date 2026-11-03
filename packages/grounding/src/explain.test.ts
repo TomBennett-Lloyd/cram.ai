@@ -67,6 +67,32 @@ describe('explain at the light depth', () => {
     });
   });
 
+  it('attributes the sentence after a quoted line on its own', async () => {
+    const quoted = `The slides put it plainly: "${MALE}"`;
+    const { search, asked } = scriptedSearch({ [quoted]: [comb], [SQUARE]: [winter] });
+    const result = await run(
+      [
+        explained(`${quoted} ${SQUARE}`, [line('l1/1', 1)]),
+        verified(
+          scored(quoted, [comb, hive], NEUTRAL, ENTAILED),
+          scored(SQUARE, [winter], NEUTRAL),
+        ),
+      ],
+      { depth: 'light', searchSentence: search },
+    );
+    expect(asked).toEqual([quoted, SQUARE]);
+    expect(result).toMatchObject({
+      status: 'grounded',
+      explanation: {
+        quotes: [{ sourceId: 'l1/1', quote: MALE }],
+        sentences: [
+          { text: quoted, slides: ['l1/2', 'l1/1'], contradicts: [] },
+          { text: SQUARE, slides: ['l5/6'], contradicts: [] },
+        ],
+      },
+    });
+  });
+
   it('marks a sentence a candidate contradicts and keeps every word of it', async () => {
     const { search } = scriptedSearch({ [MALE]: [hive] });
     const result = await run([explained(MALE), verified(scored(MALE, [hive], CONTRADICTED))], {
