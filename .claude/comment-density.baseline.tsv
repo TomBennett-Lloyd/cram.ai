@@ -11,7 +11,7 @@ apps/server/src/data-directory.ts	652
 apps/server/src/dev-proxy.ts	967
 apps/server/src/dev.ts	232
 apps/server/src/fact-tagging.ts	0
-apps/server/src/gateway-config.ts	574
+apps/server/src/gateway-config.ts	543
 apps/server/src/handlers.ts	120
 apps/server/src/http-body.ts	188
 apps/server/src/index.ts	0
@@ -105,7 +105,8 @@ eval/src/timed-gateway.ts	83
 eval/src/topic-label.ts	833
 eval/src/verifier-accuracy.ts	937
 eval/src/verifier-arms.ts	757
-packages/gateway/src/adapters/onnx/encoder-artefact.ts	740
+packages/gateway/src/adapters/describe-error.ts	3333
+packages/gateway/src/adapters/onnx/encoder-artefact.ts	389
 packages/gateway/src/adapters/onnx/encoder-fixture.ts	676
 packages/gateway/src/adapters/onnx/encoder-session.ts	569
 packages/gateway/src/adapters/onnx/entailment-labels.ts	2051
@@ -117,7 +118,7 @@ packages/gateway/src/adapters/onnx/pooling.ts	1739
 packages/gateway/src/adapters/openai-http/chat-completion-stream.ts	686
 packages/gateway/src/adapters/openai-http/chat-completion.ts	666
 packages/gateway/src/adapters/openai-http/http-failure.ts	0
-packages/gateway/src/adapters/openai-http/openai-http-generator.ts	695
+packages/gateway/src/adapters/openai-http/openai-http-generator.ts	689
 packages/gateway/src/adapters/openai-http/served-model.ts	677
 packages/gateway/src/canonical-json.ts	666
 packages/gateway/src/chat.ts	675
@@ -129,7 +130,7 @@ packages/gateway/src/model-gateway.ts	1219
 packages/gateway/src/pin.ts	740
 packages/gateway/src/provisional-pins.ts	1333
 packages/gateway/src/recording.ts	468
-packages/gateway/src/role-config.ts	937
+packages/gateway/src/role-config.ts	857
 packages/gateway/src/role.ts	1666
 packages/gateway/src/served-artefact.ts	1428
 packages/grounding/src/ask.ts	588
