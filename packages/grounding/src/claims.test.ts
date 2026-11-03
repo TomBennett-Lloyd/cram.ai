@@ -27,6 +27,60 @@ describe('splitClaims', () => {
     expect(splitClaims('Cells are square. Écrit by the guild.')).toHaveLength(2);
   });
 
+  it.each([
+    ['straight double quote', 'The slides say "Worker bees are male." Their comb is square.'],
+    ['straight single quote', "The slides say 'Worker bees are male.' Their comb is square."],
+    ['typographic double quote', 'The slides say “Worker bees are male.” Their comb is square.'],
+    ['typographic single quote', 'The slides say ‘Worker bees are male.’ Their comb is square.'],
+    [
+      'nested pair of quotes',
+      'They read "the slide says \'Workers are male!\'" Their comb is square.',
+    ],
+  ])('splits after a closing %s before a capital', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(2);
+  });
+
+  it('keeps the closing quote with the sentence it ends', () => {
+    expect(
+      splitClaims('The slides put it plainly: “Worker bees are male?”  4 sides each.'),
+    ).toEqual(['The slides put it plainly: “Worker bees are male?”', '4 sides each.']);
+  });
+
+  it.each([
+    ['straight double quote', 'Workers are male. "Drones are female."'],
+    ['straight single quote', "Workers are male. 'Drones are female.'"],
+    ['typographic double quote', 'Workers are male. “Drones are female.”'],
+    ['typographic single quote', 'Workers are male. ‘Drones are female.’'],
+    ['pair of quotes', 'Workers are male. “‘Drones’ are female.”'],
+  ])('splits before an opening %s before a capital', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(2);
+  });
+
+  it('splits between two quoted sentences', () => {
+    expect(splitClaims('“Workers are male.” “Drones are female.”')).toEqual([
+      '“Workers are male.”',
+      '“Drones are female.”',
+    ]);
+  });
+
+  it.each([
+    ['after a closing quote', '"Is it?" she asked.'],
+    ['after an opening quote', 'Workers are male. "drones" are not.'],
+  ])('does not split before a lowercase word %s', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(1);
+  });
+
+  it.each([
+    ['a quote mark with no terminal before it', 'They call them "workers" Drones differ.'],
+    ['a full stop inside a word', 'Cells are 5.4mm Drones are not.'],
+    [
+      'a line pointer, which stays with the sentence before it',
+      'Workers are male. [1] Drones are female.',
+    ],
+  ])('does not split at %s', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(1);
+  });
+
   it('splits after a semicolon whatever follows', () => {
     expect(splitClaims('Workers are male; drones are female.')).toEqual([
       'Workers are male;',
