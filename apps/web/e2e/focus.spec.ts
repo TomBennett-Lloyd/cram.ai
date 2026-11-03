@@ -150,6 +150,47 @@ test('a tap on the contradiction number, then on Close, leaves no ring and no la
   await expect(page.locator('.contradiction-label')).toBeHidden();
 });
 
+/** The slide browser, the first tag's remove button, and the one that takes its place. */
+const tagged = async (page: Page) => {
+  await stubApi(page);
+  await page.goto('/#/courses/bio/decks/l1');
+  const remove = page.getByRole('button', { name: 'Remove the suggested tag castes' });
+  await expect(remove).toBeVisible();
+  return { remove, next: page.getByRole('button', { name: 'Remove the suggested tag drones' }) };
+};
+
+test('a keyboard reader who removes a tag lands on the next tag’s button, ringed', async ({
+  page,
+}) => {
+  const { remove, next } = await tagged(page);
+  await remove.focus();
+  await page.keyboard.press('Enter');
+  await expect(next).toBeFocused();
+  expect(await ringed(next)).toBe(true);
+});
+
+test('a mouse press on a tag’s remove button paints no ring where the focus lands', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'desktop', 'the mouse arm runs on the desktop project');
+  const { remove, next } = await tagged(page);
+  await remove.click();
+  await expect(remove).toBeHidden();
+  await expect(next).toBeFocused();
+  expect(await ringed(next)).toBe(false);
+});
+
+test('a tap on a tag’s remove button paints no ring where the focus lands', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'phone', 'the touch arm runs on the phone project');
+  const { remove, next } = await tagged(page);
+  await remove.tap();
+  await expect(remove).toBeHidden();
+  await expect(next).toBeFocused();
+  expect(await ringed(next)).toBe(false);
+});
+
 /** The decks screen with a rebuild report showing, and the picker its dismissal lands on. */
 const reported = async (page: Page) => {
   await stubApi(page, { rebuildReport: true });

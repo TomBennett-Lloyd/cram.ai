@@ -5,7 +5,9 @@ export type CourseRouteName =
   | 'dismiss-rebuild-report'
   | 'slide-image'
   | 'course-summaries'
-  | 'remake-summary';
+  | 'remake-summary'
+  | 'lecture-slides'
+  | 'edit-tags';
 
 export type RouteMatch =
   | { readonly status: 'matched'; readonly route: 'list-courses' }
@@ -21,6 +23,8 @@ const COURSE_ROUTES = {
   'slide-image': { route: 'slide-image', method: 'GET' },
   summaries: { route: 'course-summaries', method: 'GET' },
   remakes: { route: 'remake-summary', method: 'POST' },
+  slides: { route: 'lecture-slides', method: 'GET' },
+  tags: { route: 'edit-tags', method: 'PUT' },
 } as const;
 
 export const COURSES_PATH = '/courses';
