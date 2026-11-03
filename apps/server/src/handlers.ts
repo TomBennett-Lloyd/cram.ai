@@ -1,7 +1,6 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ServerResponse } from 'node:http';
 import {
   AskRequest,
-  CourseId,
   type CourseList,
   DeckMediaType,
   type IngestStatus,
@@ -22,6 +21,7 @@ import {
 } from './course-file';
 import { readBody, sendBytes, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
+import { badRequest, courseIdOf, jsonBody, mediaTypeOf, type RouteRequest } from './route-request';
 
 /** Ceilings on what one request may send; a deck is a whole lecture, a question is a sentence or two. */
 export const MAX_DECK_BYTES = 256 * 1024 * 1024;
@@ -31,27 +31,6 @@ export const MAX_REMAKE_BYTES = 4 * 1024;
 export interface HandlerContext extends AskDeps {
   readonly queue: IngestQueue;
 }
-
-export interface RouteRequest {
-  readonly request: IncomingMessage;
-  readonly response: ServerResponse;
-  readonly url: URL;
-  readonly courseSegment: string;
-}
-
-const badRequest = (response: ServerResponse, issue: string): void => {
-  sendRefusal(response, 400, { status: 'bad-request', issue });
-};
-
-const mediaTypeOf = (request: IncomingMessage): string =>
-  (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
-
-const courseIdOf = ({ response, courseSegment }: RouteRequest): CourseId | undefined => {
-  const parsed = CourseId.safeParse(courseSegment);
-  if (parsed.success) return parsed.data;
-  badRequest(response, `course id: ${z.prettifyError(parsed.error)}`);
-  return undefined;
-};
 
 const UploadParams = z.object({ lectureId: LectureId, fileName: NonBlankText });
 
@@ -183,34 +162,6 @@ export const sendSlideImage = (route: RouteRequest, context: HandlerContext): vo
     case 'course-unavailable':
       sendRefusal(route.response, 409, stored);
   }
-};
-
-const parsedJson = (bytes: Uint8Array): unknown => {
-  try {
-    return JSON.parse(new TextDecoder().decode(bytes));
-  } catch {
-    return undefined;
-  }
-};
-
-type JsonBody =
-  { readonly status: 'parsed'; readonly value: unknown } | { readonly status: 'refused' };
-
-/** JSON only, so a cross-site form post cannot reach it: a form cannot send `application/json`. */
-const jsonBody = async (
-  { request, response }: RouteRequest,
-  maxBytes: number,
-): Promise<JsonBody> => {
-  if (mediaTypeOf(request) !== 'application/json') {
-    sendRefusal(response, 415, { status: 'unsupported-media-type' });
-    return { status: 'refused' };
-  }
-  const body = await readBody(request, maxBytes);
-  if (body.status === 'too-large') {
-    sendRefusal(response, 413, { status: 'payload-too-large' });
-    return { status: 'refused' };
-  }
-  return { status: 'parsed', value: parsedJson(body.bytes) };
 };
 
 export const remakeSummary = async (

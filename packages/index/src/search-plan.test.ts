@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { TopicTag } from '@cram/shared';
 import { COURSE, deck, EMBEDDER, firstFact, indexed, slide, vector } from './course-fixture';
-import { CourseIndex, type SearchQuery } from './course-index';
+import { CourseIndex } from './course-index';
+import type { SearchQuery } from './search-query';
 import { createSchema } from './schema';
 import { sourceIdOf } from './slide-row';
 

@@ -263,6 +263,30 @@ describe('DecksScreen', () => {
     ]);
   });
 
+  it('links each stored lecture and each indexed upload to its slide browser, and no other upload', async () => {
+    const stored = StoredLectures.parse({
+      state: 'read',
+      lectures: [lecture('week 2/lab', 1, [])],
+      report: { state: 'none' },
+    });
+    const indexed = { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] };
+    const { api } = fakeApi(() =>
+      storedStatus(
+        stored,
+        upload('l2', { ...indexed, summarised: false }),
+        upload('l3', { state: 'unreadable', reason: 'encrypted', detail: '' }),
+      ),
+    );
+    renderDecks(api);
+    await settle();
+    expect(
+      screen.getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')]),
+    ).toEqual([
+      ['week 2/lab', '#/courses/bio/decks/week%202%2Flab'],
+      ['l2', '#/courses/bio/decks/l2'],
+    ]);
+  });
+
   it('says why stored lectures are missing when the course file cannot be opened', async () => {
     const unavailable = StoredLectures.parse({
       state: 'course-unavailable',

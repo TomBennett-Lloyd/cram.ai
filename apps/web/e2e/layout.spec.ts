@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   await stubApi(page);
 });
 
-for (const path of ['/', '/#/courses/bio/decks']) {
+for (const path of ['/', '/#/courses/bio/decks', '/#/courses/bio/decks/l1']) {
   test(`${path} never scrolls sideways at the narrowest phone width`, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator('main')).toBeVisible();
@@ -30,6 +30,26 @@ test('a long file name wraps inside the decks list', async ({ page }) => {
   await expect(page.locator('.upload')).toHaveCount(1);
   expect(await overflows(page, '.upload')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
+});
+
+test('a long tag wraps inside its chip in the slide browser', async ({ page }) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  await expect(page.locator('.tag')).toHaveCount(3);
+  expect(await overflows(page, '.tag')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
+});
+
+test('each tag field and its Add button share one line at the narrowest phone width', async ({
+  page,
+}) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  const forms = page.locator('.tag-form');
+  await expect(forms).toHaveCount(2);
+  for (const form of await forms.all()) {
+    const field = await form.locator('input').boundingBox();
+    const button = await form.locator('button').boundingBox();
+    expect(field?.y).toBe(button?.y);
+  }
 });
 
 test('a portrait slide picture letterboxes inside the 16:9 frame instead of growing it', async ({
