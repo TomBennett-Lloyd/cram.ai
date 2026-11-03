@@ -7,6 +7,8 @@ const KindsBlock = z.strictObject({
   sentences: z.array(z.strictObject({ number: z.number(), text: z.string() })),
 });
 
+export const PassageBlock = z.strictObject({ lecture: z.string(), passage: z.string() });
+
 const StatementBlock = z.strictObject({ quotes: z.array(z.string()), statement: z.string() });
 
 const words = (text: string): readonly string[] => text.toLowerCase().match(/[a-z]{5,}/g) ?? [];
@@ -74,6 +76,10 @@ export const tutor =
             comb && text.startsWith('So') ? 'interpretation' : 'course-claim',
           ),
         });
+      }
+      case 'topic-tags': {
+        const { passage } = PassageBlock.parse(JSON.parse(prompt));
+        return content({ tags: [passage.split('\n')[0]?.toLowerCase() ?? ''] });
       }
       default:
         return { status: 'backend-failed', reason: `unscripted output ${wire.output.name}` };

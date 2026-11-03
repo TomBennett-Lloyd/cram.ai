@@ -7,6 +7,8 @@ sweep: PROMPT_TOKEN_BUDGET|REPLY_TOKEN_RESERVE|PROMPT_CHARS_PER_TOKEN|estimateTo
 carrier: packages/grounding/src/summarise-lecture.ts
 carrier: packages/grounding/src/summarise-lecture.test.ts
 carrier: packages/grounding/src/prompt-budget.test.ts
+carrier: packages/grounding/src/tag-facts.ts
+carrier: packages/grounding/src/tag-facts.test.ts
 carrier: packages/grounding/src/assemble-context.ts
 carrier: packages/grounding/src/assemble-context.test.ts
 carrier: packages/grounding/src/explain.ts

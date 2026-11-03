@@ -72,6 +72,7 @@ export const EvalReport = z.strictObject({
     summaryUnitYield: BaselineRow,
     sourceCoverage: BaselineRow,
     contextOverflow: BaselineRow,
+    tagRecall: BaselineRow,
     sentenceKindPrecision: BaselineRow,
     sentenceKindRecall: BaselineRow,
   }),

@@ -8,6 +8,7 @@ import { generationRequest } from './generation-prompt';
 import { rewriteRequest } from './rewrite-prompt';
 import { sentenceKindRequest } from './sentence-kind-prompt';
 import { sourceBlock } from './source-block';
+import { TAG_MAX_CHARS, tagRequest, TAGS_PER_FACT } from './tag-prompt';
 import { verifierRequest } from './verifier-prompt';
 
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -32,6 +33,7 @@ const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unkn
     'sentence-kind',
     (n) => (n === 0 ? sentenceKindRequest(['a'], ['q']) : sentenceKindRequest(['b', 'c'], ['r'])),
   ],
+  ['tag', (n) => (n === 0 ? tagRequest('The Hive', 'a') : tagRequest('Comb', 'b'))],
 ];
 
 const TRUTH_OR_CAVEAT =
@@ -191,5 +193,28 @@ describe('sentenceKindRequest', () => {
     expect(schema.safeParse({ kinds: ['interpretation', 'course-claim'] })).toMatchObject({
       success: false,
     });
+  });
+});
+
+describe('tagRequest', () => {
+  it('shows the passage beside its lecture’s title', () => {
+    expect(JSON.parse(tagRequest('Comb', 'Cells are square.').messages[1]?.content ?? '')).toEqual({
+      lecture: 'Comb',
+      passage: 'Cells are square.',
+    });
+  });
+
+  it('constrains the reply to at most TAGS_PER_FACT topics of at most TAG_MAX_CHARS characters', () => {
+    expect(chatWireRequest(tagRequest('Comb', 'a')).output.jsonSchema).toMatchObject({
+      properties: {
+        tags: { maxItems: TAGS_PER_FACT, items: { type: 'string', maxLength: TAG_MAX_CHARS } },
+      },
+    });
+  });
+
+  it('asks for the topics of any example the passage uses, never for what the passage says', () => {
+    const system = tagRequest('Comb', 'a').messages[0].content;
+    expect(system).toMatch(/subject of any example/);
+    expect(system).toMatch(/never what the passage says about it/);
   });
 });

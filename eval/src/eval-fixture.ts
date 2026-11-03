@@ -4,6 +4,7 @@ import { DeckLecture, DeckSlide } from './deck';
 import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { SentenceKindLabel } from './sentence-kind-label';
+import { TopicLabel } from './topic-label';
 
 export const slide = (overrides: Partial<z.input<typeof DeckSlide>> = {}): DeckSlide =>
   DeckSlide.parse({ slideNo: 1, title: 'Comb', body: ['Cells are square.'], ...overrides });
@@ -37,10 +38,14 @@ export const kindLabel = (
     ...overrides,
   });
 
+export const topicLabel = (overrides: Partial<z.input<typeof TopicLabel>> = {}): TopicLabel =>
+  TopicLabel.parse({ lectureId: 'l1', slideNo: 1, tags: ['comb'], ...overrides });
+
 export const course = (overrides: Partial<EvalCourse> = {}): EvalCourse => ({
   deck: [lecture('l1')],
   questions: [question()],
   labels: [label()],
   sentenceKinds: [kindLabel()],
+  topicLabels: [topicLabel()],
   ...overrides,
 });

@@ -1,5 +1,13 @@
 import type { Embedder } from '@cram/gateway';
-import { summariseLecture, type SummaryDeps, type SummaryOutcome } from '@cram/grounding';
+import {
+  type FactTagging,
+  lectureFacts,
+  summariseLecture,
+  type SummaryDeps,
+  type SummaryOutcome,
+  type TagDeps,
+  tagFacts,
+} from '@cram/grounding';
 import {
   type CourseIndex,
   embedSlideChunks,
@@ -89,6 +97,30 @@ export class IndexRetriever {
     for (const { lecture, slides } of embedded)
       opened.course.replaceLecture(lecture.deck, [], slides);
     return new IndexRetriever(opened.course, spec.embedder, spec.k);
+  }
+
+  async tag(deps: TagDeps): Promise<readonly FactTagging[]> {
+    const outcomes: FactTagging[] = [];
+    for (const { lectureId } of this.#course.lectures()) {
+      const facts = lectureFacts(this.#course.lectureSlides(lectureId), (id) =>
+        this.#course.chunks(id),
+      );
+      for (const fact of await tagFacts(facts, deps)) {
+        if (
+          fact.status === 'tagged' &&
+          this.#course.setTopics(
+            { sourceId: fact.sourceId, chunkNo: fact.chunkNo },
+            'tagger',
+            fact.tags,
+          ).status !== 'set'
+        )
+          throw new Error(
+            `IndexRetriever: ${fact.sourceId} chunk ${String(fact.chunkNo)} was read but is not stored`,
+          );
+        outcomes.push(fact);
+      }
+    }
+    return outcomes;
   }
 
   async summarise(deps: SummaryDeps): Promise<readonly SummaryOutcome[]> {

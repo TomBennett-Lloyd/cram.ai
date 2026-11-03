@@ -76,7 +76,7 @@ export const ATTRIBUTION_K = 3;
 /** Chunks each ranked list reads before its dedupe to slides (`docs/adr/0008-slide-chunking.md` § Decision (f)); provisional as `RETRIEVAL_K` is. */
 export const CANDIDATES_PER_LIST = 50;
 
-/** The topic list's weight in fusion; provisional until #426's measured run tunes it (#69). */
+/** The topic list's weight in fusion; provisional (#69): on the eval deck recall@k reads 43/47 at 0.25, 0.5, 1 and 2 and with no tags (#426), so it cannot choose one. */
 export const TOPIC_LIST_WEIGHT = 1;
 
 export interface SearchQuery {

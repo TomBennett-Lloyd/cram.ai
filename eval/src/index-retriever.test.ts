@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { IndexRetriever, type IndexRetrieverSpec } from './index-retriever';
 import { record } from './run-fixture';
 import { ScriptedGateway } from './scripted-gateway-fixture';
+import { PassageBlock } from './scripted-tutor-fixture';
 
 const deck = Deck.parse({
   lectureId: 'l1',
@@ -137,5 +138,38 @@ describe('IndexRetriever', () => {
     await expect(IndexRetriever.open(spec({ embedder: short }))).rejects.toThrow(
       'returned 2 results for 3 texts',
     );
+  });
+});
+
+describe('IndexRetriever.tag', () => {
+  it('tags every chunk but a references slide’s, and the tags reach retrieval through the topic list', async () => {
+    const references = record({
+      slideNo: 4,
+      kind: 'references',
+      title: 'References',
+      body: 'Guild handbook.',
+    });
+    const passages: string[] = [];
+    const { generator } = new ScriptedGateway((wire) => {
+      const { passage } = PassageBlock.parse(JSON.parse(wire.messages[1]?.content ?? ''));
+      passages.push(passage);
+      return {
+        status: 'content',
+        content: JSON.stringify({ tags: passage.includes('red') ? ['colour vision'] : [] }),
+      };
+    });
+    const retriever = await open([...SLIDES, references], 1);
+    const before = await retriever.retrieve('What does the course say about colour vision?');
+    const outcomes = await retriever.tag({ generator });
+    const after = await retriever.retrieve('What does the course say about colour vision?');
+    retriever.close();
+    expect(outcomes.map(({ sourceId, status }) => [sourceId, status])).toEqual([
+      ['l1/1', 'tagged'],
+      ['l1/2', 'tagged'],
+      ['l1/3', 'tagged'],
+    ]);
+    expect(passages.some((passage) => passage.includes('handbook'))).toBe(false);
+    expect(before.map(({ record: slide }) => slide.slideNo)).not.toEqual([3]);
+    expect(after.map(({ record: slide }) => slide.slideNo)).toEqual([3]);
   });
 });

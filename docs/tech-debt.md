@@ -146,3 +146,27 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `docs/adr/0009-explanation-answers.md` § Decision (o) (`lightFlagRateWide`, "every retrieved slide and loaded summary unit plus the candidates") and the 2026-11-02 (a) amendment ("`sources` is the retrieved set the explanation was written from"); `eval/src/ask-depths.ts` (`widened`); `packages/grounding/src/explain.ts` (`shown`)
 - What: since #423 both read the raw slides the prompt held, which differs from the retrieved set only when the budget drops a slide. (c) and (d) already say raw. The file is humanAlways, so the wording waits for the next 0009 amendment.
 - Source: PR #495 for #423 (review)
+
+## 2026-11-03 — untagged chunks and the tag pass are silent in the upload's progress
+
+- Where: `packages/shared/src/ingest-status.ts` (`UploadProgress`), `apps/web/src/copy.ts`, `apps/server/src/ingest-queue.ts` (`#tag`)
+- What: the indexed state reports `unembedded` and `summarised`, but a chunk the tag pass left untagged reaches only the server log. The pass also runs one generator call per chunk under the ingest job's state with no state of its own (`docs/standards/error-handling.md` rule 5). Suspected root cause: `UploadProgress` gained a field per pass (#422) instead of a shape that new passes join.
+- Source: PR #494 (review)
+
+## 2026-11-03 — the eval copies each ingest pass's read, call and write loop
+
+- Where: `eval/src/index-retriever.ts` (`tag`, `summarise`), `apps/server/src/fact-tagging.ts` (`tagStored`), `apps/server/src/lecture-digest.ts` (`summariseStored`)
+- What: each ingest-time pass is written twice, once over the server's course file and once over the eval's in-memory index (`docs/standards/structure.md` rule 7). #426 moved the fact read into `lectureFacts`, but the write loop is still copied. Suspected root cause: no package depends on both `@cram/grounding` and `@cram/index`, so there is nowhere to hold a pass that does both.
+- Source: PR #494 (review)
+
+## 2026-11-03 — the eval report's metric set has no single owner
+
+- Where: `eval/src/report.ts` (`EvalReport.metrics`), `eval/src/tag-recall.ts`; `docs/adr/0005-evaluation-as-gate.md` (d), `docs/adr/0006-image-only-slides.md` (h), `docs/adr/0009-explanation-answers.md` (o), `docs/adr/0010-misspelt-golden-variants.md` (d)
+- What: every row before `tagRecall` was defined in an ADR; `tagRecall` is defined only by its module's docblock and #426. Suspected root cause: no rule says where a new baseline row's definition lives.
+- Source: PR #494 (review)
+
+## 2026-11-03 — TopicTag admits a tag of invisible characters
+
+- Where: `packages/shared/src/topic-tag.ts` (`TopicTag`)
+- What: the regex treats `\u200b` as non-blank, so a tag with no visible text parses and could be stored and shown in #428's editor. #426's hostile corpus kept one. Suspected root cause: the schema's blank test is JavaScript's `\s`, not a visible-character test.
+- Source: PR #494 (review)

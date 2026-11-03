@@ -30,6 +30,8 @@ import { misspeltRetrievalRecall, retrievalRecall } from './retrieval-recall';
 import { summaryRows } from './summary-rows';
 import { type JudgedKind, sentenceKindAccuracy } from './sentence-kind-accuracy';
 import type { SentenceKindLabel } from './sentence-kind-label';
+import { tagRecall } from './tag-recall';
+import type { TopicLabel } from './topic-label';
 import { TimedGateway } from './timed-gateway';
 import { type JudgedLabel, verifierAccuracy } from './verifier-accuracy';
 import { verifierArmDecisions } from './verifier-arms';
@@ -48,6 +50,7 @@ export interface EvalRunSpec {
   readonly questions: readonly GoldenQuestion[];
   readonly labels: readonly HandLabel[];
   readonly sentenceKinds: readonly SentenceKindLabel[];
+  readonly topicLabels: readonly TopicLabel[];
   readonly gateway: ModelGateway;
   readonly clock: Clock;
 }
@@ -141,6 +144,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   });
   const ran = await (async () => {
     try {
+      const tagged = await retriever.tag({ generator: gateway.generator });
       const summaries = await retriever.summarise({
         gateway,
         strategy: PROVISIONAL_VERIFIER_STRATEGY,
@@ -159,6 +163,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
         askDeep(retrievals, gateway, strategy),
       );
       return {
+        tagged,
         summaries,
         retrievals,
         misspelt,
@@ -170,7 +175,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       retriever.close();
     }
   })();
-  const { summaries, retrievals, misspelt, light, deep, wide } = ran;
+  const { tagged, summaries, retrievals, misspelt, light, deep, wide } = ran;
   const labels = await byStrategy(LABEL_STRATEGIES, (strategy) =>
     judgeAll(spec.labels, gateway, strategy, spec.clock),
   );
@@ -231,6 +236,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       ...summaryRows(summaries),
       sourceCoverage: sourceCoverage(headline),
       contextOverflow: contextOverflow(light.asked),
+      tagRecall: tagRecall(spec.topicLabels, tagged),
     },
     promptTokens: promptTokens(light.asked),
     depths: {
