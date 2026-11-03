@@ -20,6 +20,16 @@ describe('ApiRefusal', () => {
     expect(ApiRefusal.safeParse({ status: 'report-changed' }).success).toBe(true);
   });
 
+  it('carries the chunk’s stored list on a tag edit made against another', () => {
+    const refusal = { status: 'tags-changed' };
+    expect(
+      ApiRefusal.safeParse({ ...refusal, tags: [{ tag: 'castes', origin: 'tagger' }] }).success,
+    ).toBe(true);
+    expect(ApiRefusal.safeParse({ ...refusal, tags: [] }).success).toBe(true);
+    expect(ApiRefusal.safeParse(refusal).success).toBe(false);
+    expect(ApiRefusal.safeParse({ ...refusal, tags: ['castes'] }).success).toBe(false);
+  });
+
   it('carries the embedder limit on a question too long to embed', () => {
     const refusal = { status: 'question-over-length' };
     expect(ApiRefusal.safeParse({ ...refusal, maxInputTokens: 512 }).success).toBe(true);

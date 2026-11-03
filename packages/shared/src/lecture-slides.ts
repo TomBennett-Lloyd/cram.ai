@@ -31,10 +31,11 @@ export const LectureSlides = z.strictObject({
 });
 export type LectureSlides = z.infer<typeof LectureSlides>;
 
-/** The whole tag list the student wants one chunk to hold. */
+/** The whole tag list the student wants one chunk to hold, refused unless the chunk still holds `base`, the list it was made against (#507). */
 export const TagEdit = z.strictObject({
   sourceId: SourceId,
   chunkNo: ChunkNo,
+  base: z.array(ChunkTag),
   tags: z.array(TopicTag),
 });
 export type TagEdit = z.infer<typeof TagEdit>;
