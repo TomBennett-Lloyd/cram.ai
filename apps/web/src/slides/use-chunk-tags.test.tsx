@@ -8,6 +8,7 @@ import {
   edits,
   HELD,
   isPut,
+  COMB,
   LECTURE,
   QUEEN,
   renderSlides,
@@ -174,6 +175,24 @@ describe('useChunkTags', () => {
       tags: ['royal jelly', 'drones'],
     });
     expect(screen.queryAllByRole('alert')).toEqual([]);
+  });
+
+  it('shows the refusal’s tags on a chunk of the replaced slide whose text is unchanged', async () => {
+    const stored = {
+      ...COMB,
+      chunks: [
+        { ...COMB.chunks[0], tags: [tag('cells', 'tagger')] },
+        { chunkNo: 2, textHash: textHash('6'), lines: ['Wax.'], tags: [] },
+      ],
+    };
+    const { api } = fakeApi((request) =>
+      isPut(request) ? { status: 409, body: { status: 'chunk-changed', slide: stored } } : LECTURE,
+    );
+    renderSlides(api);
+    await settle();
+    await addTag('slide 2, part 2', 'one');
+    expect(tagsOn('slide 2, part 1')).toEqual(['cells']);
+    expect(screen.queryByRole('list', { name: 'Tags on slide 2, part 2' })).toBeNull();
   });
 
   it('makes the edit after a refused one against the list the refusal carried', async () => {

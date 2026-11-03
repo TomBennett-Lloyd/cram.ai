@@ -27,7 +27,7 @@ const taken = <T>(ref: { current: T | undefined }): T | undefined => {
   return value;
 };
 
-/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time against the chunk's text (#534) and the list last stored (#507), the latest winning. */
+/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time, each a `TagEdit` against the chunk as last stored, the latest winning. */
 export const useChunkTags = (
   api: ApiClient,
   courseId: CourseId,

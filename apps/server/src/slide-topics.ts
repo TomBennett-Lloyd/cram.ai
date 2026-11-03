@@ -92,7 +92,7 @@ const chunkChanged = (course: CourseReader, sourceId: SourceId): TagEditOutcome 
   };
 };
 
-/** Writes the chunk's whole tag list (`CourseIndex.editTopics`) if it still holds the text (#534) and then the list (#507) the edit was made against; the caller is `IngestQueue`, the file's one writer. */
+/** Writes the chunk's whole tag list (`CourseIndex.editTopics`) unless `TagEdit` refuses it, checking text before list; the caller is `IngestQueue`, the file's one writer. */
 export const editStoredTags = (
   files: CourseFiles,
   courseId: CourseId,

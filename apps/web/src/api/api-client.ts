@@ -129,7 +129,7 @@ export class ApiClient {
     );
   }
 
-  /** Sets one chunk's whole tag list if it still holds `edit.base`, behind every write the server holds. */
+  /** Sets one chunk's whole tag list unless `TagEdit` refuses it, behind every write the server holds. */
   editTags(courseId: CourseId, edit: TagEdit): Promise<ApiResult<EditedTags>> {
     return this.#call(
       `/courses/${courseId}/tags`,

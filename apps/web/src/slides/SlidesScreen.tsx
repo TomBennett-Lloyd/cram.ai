@@ -84,7 +84,7 @@ const SlideView = ({
       {failure !== undefined && <Failed messages={[failureMessage(failure)]} />}
       {slide.chunks.map((chunk) => (
         <ChunkView
-          key={`${String(chunk.chunkNo)} ${chunk.textHash}`}
+          key={JSON.stringify([chunk.chunkNo, chunk.textHash, chunk.tags])}
           api={api}
           courseId={courseId}
           slide={slide}
