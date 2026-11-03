@@ -125,9 +125,11 @@ describe('correctSpelling', () => {
     expect(searched('2bcd', abcd)).toBe('as typed: 2bcd');
   });
 
-  it('corrects a token, and into a term, that holds a combining mark', () => {
-    expect(searched('cafe\u0301x', new FixtureLexicon({ cafex: 1 }))).toBe('cafex');
-    expect(searched('cafey', new FixtureLexicon({ 'cafe\u0301': 1 }))).toBe('cafe\u0301');
+  it('compares each word as the index stores it, and replaces the span it was typed as', () => {
+    const lexicon = new FixtureLexicon({ cafex: 1, abce: 1, efgh: 1 });
+    expect(searched('cafe\u0301x', lexicon)).toBe('as typed: cafe\u0301x');
+    expect(searched('Cafe\u0301y?', lexicon)).toBe('Cafex?');
+    expect(searched('abcd\u0903efgh', lexicon)).toBe('abce\u0903efgh');
   });
 
   it('never corrects a token into a term holding a digit', () => {
