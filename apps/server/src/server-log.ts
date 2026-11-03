@@ -1,4 +1,4 @@
-/** `outcome` is a name or a kind, never a message, which can quote a deck (`docs/adr/0004-storage.md` § Decision (b)). */
+/** `outcome` is a name, a kind or counts, never a message, which can quote a deck (`docs/adr/0004-storage.md` § Decision (b)). */
 export interface LogEntry {
   readonly operation: string;
   readonly courseId: string;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { citationValidity } from './citation-validity';
-import { asked, citing, grounded, NOT_COVERED, record, sentence } from './run-fixture';
+import { asked, citing, grounded, NOT_COVERED, record, retrieved, sentence } from './run-fixture';
 
 const slide = record();
 const said = sentence('Cells are square.', [slide]);
@@ -24,10 +24,15 @@ describe('citationValidity', () => {
     });
   });
 
-  it('fails a quote of a slide outside that call’s retrieved set', () => {
+  it('fails a quote of a slide outside that call’s prompt, though retrieval returned it', () => {
     const elsewhere = record({ slideNo: 2 });
     const stray = citing(elsewhere, 'Cells are square.');
     expect(citationValidity([asked(grounded([said], [slide], [stray]))])).toMatchObject({
+      failures: [{ quote: stray }],
+    });
+    const result = grounded([said], [slide, elsewhere], [stray]);
+    const dropped = { ...result, context: { ...result.context, raw: [retrieved(slide)] } };
+    expect(citationValidity([asked(dropped, [slide, elsewhere])])).toMatchObject({
       failures: [{ quote: stray }],
     });
   });

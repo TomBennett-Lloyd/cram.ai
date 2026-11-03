@@ -30,6 +30,8 @@ export const SUMMARY_REPLACED = 'This lecture’s summary has changed. Close and
 /** The fixed system string for a question no shown explanation answers (`docs/standards/grounding.md` rule 5). */
 export const NOT_COVERED = 'Your slides don’t cover this.';
 export const CLOSEST_SLIDES = 'Closest slides';
+export const LEFT_OUT =
+  'Not everything found fitted in one answer. These slides, or their lectures’ summaries, were left out:';
 export const SEARCHED_FOR = 'Searched for:';
 export const SOURCE_MISSING = 'Source not returned';
 export const SLIDE_HAS_NO_TEXT = 'This slide has no text to show.';

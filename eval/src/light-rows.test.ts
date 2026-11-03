@@ -1,4 +1,4 @@
-import type { ExplainResult } from '@cram/grounding';
+import { EMPTY_CONTEXT, type ExplainResult } from '@cram/grounding';
 import { describe, expect, it } from 'vitest';
 import { question } from './eval-fixture';
 import {
@@ -118,6 +118,7 @@ describe('contradictionSetLight', () => {
       status: 'model-failed',
       stage: 'generate',
       failure: { status: 'backend-failed', reason: 'down' },
+      context: EMPTY_CONTEXT,
     };
     expect(contradictionSetLight([light(failed)])).toMatchObject({
       failures: [{ problems: [{ kind: 'model-failed', stage: 'generate' }] }],

@@ -17,6 +17,7 @@ import {
 import {
   ATTRIBUTED_NOTE,
   contradictionRefLabel,
+  LEFT_OUT,
   MODEL_FAILED,
   NOT_COVERED,
   PENDING,
@@ -173,6 +174,39 @@ describe('AskScreen', () => {
     ]);
     fireEvent.click(within(answer()).getAllByRole('button')[0] ?? document.body);
     expect(screen.getByRole('dialog').querySelectorAll('mark')).toHaveLength(0);
+  });
+
+  it('says what was left out of the prompt, beside an answer or a not-covered reply, with each slide', async () => {
+    const leftOut = [COMB.sourceId];
+    const first = await askWith({ status: 200, body: { ...GROUNDED, leftOut } });
+    const note = within(answer()).getByText(LEFT_OUT);
+    const cards = note.nextElementSibling;
+    expect(cards?.querySelectorAll('li')).toHaveLength(1);
+    expect(cards?.textContent).toBe('Lecture 1: The HiveSlide 7The comb');
+    fireEvent.click(
+      within(cards instanceof HTMLElement ? cards : document.body).getByRole('button'),
+    );
+    expect(screen.getByRole('dialog')).toBeDefined();
+    first.view.unmount();
+    await askWith({
+      status: 200,
+      body: { status: 'not-covered', withheld: [], slides: [HIVE, COMB], leftOut },
+    });
+    const shown = within(answer())
+      .getAllByRole('button')
+      .map((card) => card.textContent);
+    expect(shown).toEqual([
+      'Lecture 1: The HiveSlide 4Castes',
+      'Lecture 1: The HiveSlide 7The comb',
+    ]);
+    expect(within(answer()).getByText(LEFT_OUT).nextElementSibling?.textContent).toBe(
+      'Lecture 1: The HiveSlide 7The comb',
+    );
+  });
+
+  it('shows no left-out note when nothing was left out', async () => {
+    await askWith({ status: 200, body: GROUNDED });
+    expect(within(answer()).queryByText(LEFT_OUT)).toBeNull();
   });
 
   it('says a slide with no text has none to show', async () => {

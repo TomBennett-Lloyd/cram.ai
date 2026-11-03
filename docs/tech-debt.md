@@ -68,12 +68,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Source: #159 review cycle 1
 - Update 2026-10-21 (#194): the fold moved to `packages/ingest/src/stored-text.ts` `storedText`, which every adapter's text passes through, so the merge now holds for PDF text and PPTX prose as well as equations; the Where line names the site it left.
 
-## 2026-10-21 — server tests hand-build the embedder identity
-
-- Where: `apps/server/src/upload.test.ts` `lectureDeckIn`
-- What: the test restates the identity formula `embedderIdentity` owns (`apps/server/src/slide-embedding.ts`) and the fixture's private vector dimension as a literal, so a change to either breaks the test with no pointer to the owner. `repair.test.ts` calls `embedderIdentity` instead.
-- Source: #147 review cycle 1
-
 ## 2026-10-21 — an `aria-disabled` button looks as live as an enabled one
 
 - Where: `apps/web/src/app.css` (`button:disabled` is the only inert-button style); `apps/web/src/shell/async-states.tsx` `Failed`'s Dismiss button
@@ -98,18 +92,6 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: only names ending in lowercase `.xml` or `.rels` are inflated, parts are looked up by exact case, and relationship targets are not percent-decoded, though OPC part names compare case-insensitively and may be escaped. A conforming package whose main, slide or notes part is named another way reads as `missing-part`, so `damaged`: a reader limit in the deck's vocabulary (`docs/standards/error-handling.md` rule 1, blame tiebreak). Predates #301, which made the main part's name come from a relationship and so more reachable.
 - Source: #301 review cycle 1
 
-## 2026-10-21 — `describeError` is copied in each gateway adapter
-
-- Where: `describeError` in `packages/gateway/src/adapters/onnx/encoder-artefact.ts` and in `packages/gateway/src/adapters/openai-http/http-failure.ts`
-- What: two adapters each write their own copy of the one-line description of a caught error. #171 merged the two copies inside the HTTP adapter into `http-failure.ts`. Merging across adapters belongs to the adapters root (`docs/standards/structure.md` rule 5), which is a change of its own.
-- Source: #171 review cycle 1
-
-## 2026-10-21 — `LoopbackEndpoint` is unbranded, so every generator entry point re-parses its config
-
-- Where: `LoopbackEndpoint` and `HttpGeneratorConfig` in `packages/gateway/src/role-config.ts`; `OpenAiHttpGenerator`'s constructor and `loadOpenAiHttpGenerator` in `packages/gateway/src/adapters/openai-http/openai-http-generator.ts`
-- What: a value of type `HttpGeneratorConfig` does not prove its endpoint is on loopback, so each entry point must parse it again before any request, and throw if it is not. #171's loader needed its own parse before `/api/show`, and a test now guards that parse. Branding the schema would move the proof into the type (`docs/standards/typing.md` rules 1 and 3), but it touches every consumer of the config.
-- Source: #171 review cycle 1
-
 ## 2026-10-21 — the `chunks` table stores text that no production path reads
 
 - Where: `packages/index/src/chunk-row.ts` (`CHUNK_TABLE`'s text columns); `packages/index/src/course-index.ts` `chunks()`
@@ -129,66 +111,17 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
 - Source: #368 review cycle 1
 
-## 2026-10-21 — a quoted citation is turned back into a line number by two test helpers
-
-- Where: `lineOf` and `generatedFrom` in `packages/grounding/src/ground.test.ts`; `unitReply` in `apps/server/src/ask.test.ts`
-- What: each writes a quoted `Citation` as the line number the model emits, the inverse of `resolveCitations`' lookup, so a change to the generator's citation shape leaves both wrong the same way (`docs/standards/structure.md` rule 7). `@cram/grounding` exports no test-fixture entry point, so `apps/server/src/server-fixture.ts` already re-declares `cite` and `answer` from `packages/grounding/src/fake-gateway-fixture.ts`; the fix is that entry point.
-- Source: #367 review cycle 1
-
-## 2026-10-21 — spelling correction rewrites correctly spelt words the course does not use, and nothing counts how often
-
-- Where: `packages/index/src/spelling-correction.ts` (`correctSpelling`); `packages/index/src/common-words.ts`
-- What: any letters-only token that is neither a course term, a common word, nor a `porter` inflection of a term within reach is rewritten to the nearest course term. A derivation the stemmer does not join is rewritten too: one clean golden question on the synthetic deck has `dormancy` become `dormant`. The only measure is that one-in-the-golden-set observation; #395 measures recall on misspelt variants, not wrong rewrites of clean questions. Suspected root cause: the guard is a bundled everyday-English list, and nothing measures its coverage against real student questions. A metric for clean questions rewritten would make the trade visible.
-- Source: PR for #393 (review)
-
-## 2026-10-21 — `TERM` and the keyword index's tokenizer disagree on combining marks
-
-- Where: `packages/index/src/fts-query.ts` (`TERM`); `packages/index/src/schema.ts` (`slides_fts`, default `unicode61`)
-- What: `TERM` keeps every `\p{M}` inside a token, while `unicode61` drops diacritic marks and splits a word at a spacing or enclosing mark (`\p{Mc}`, `\p{Me}`). In scripts whose words carry spacing marks, such as Indic vowel signs, a word reaches `slides_fts` as fragments. Search hides this, because a quoted multi-fragment term becomes a phrase match; spelling correction compares whole `TERM` tokens with fragment terms, so `isCourseTerm`'s phrase match is what keeps such a word as typed (`course-lexicon.test.ts`'s near-miss corpus). Suspected root cause: `TERM` was written for FTS5 quoting, not to mirror the tokenizer.
-- Source: PR for #393 (review)
-- Update 2026-11-02: `namedTags` (`packages/index/src/topics.ts`, #369) is a second consumer of `TERM`, and here the divergence decides topic membership. The words list folds `café` to `cafe`; the topic list does not. Under plain `unicode61`, three of `topics.test.ts`'s corpus pairs disagree with `namedTags`: `cafe culture`/`café`, `Istanbul`/`İstanbul`, and the NFC/NFD forms of `naïve bayes`. A word split at a spacing mark (`क ताब`/`किताब`) disagrees under `remove_diacritics 0` too.
-
 ## 2026-11-02 — the row-id zod schema is declared once per module
 
 - Where: `packages/index/src/course-index.ts` (`RowId`, `RowIds`), `packages/index/src/ranked-lists.ts`, `packages/index/src/topics.ts` (inline in `setFactTopics`, `TaggedChunks`), `packages/index/src/slide-row.ts`
 - What: four modules each declare a schema for an integer row id read back from SQLite. The intent is the same in each (`docs/standards/structure.md` rule 7). #369 added a copy instead of sharing one. Suspected root cause: no shared row-reading module in `@cram/index`.
 - Source: PR for #369 (review)
 
-## 2026-11-02 — "which lists `search` fuses" has carriers and no ledger
-
-- Where: `packages/index/src/course-index.ts` (`TOPIC_LIST_WEIGHT`, `search`'s docblock), `packages/index/src/topic-search.test.ts`, `docs/plan.md` § 3, `README.md`, `docs/adr/0009-explanation-answers.md` § Decision (n)
-- What: the claim that `search` fuses its words, vector and topic lists is carried in code and in prose. No ledger names those carriers, and the prose ledger in `docs/adr/0004-storage.md` (h) covers only (c)'s substrate. #369's review found two carriers its sweep missed (`README.md`, `eval/src/misspelt-retrieval.test.ts`). Its recipe: `git grep -n -i -E "two[- ](ranked |fused |candidate )?lists?|both (ranked |candidate )?lists|(bm25|words?|keyword|full-text|fts5?)( list)? and (the )?(vector|embedding)|vector and (bm25|words?)|fus(e|es|ed|ion) .{0,40}(lists|bm25|vector)|reciprocal rank|rrf|third (fused |ranked )?list|topic (membership|list)" -- ':/'`.
-- Source: PR for #369 (review)
-
-## 2026-11-02 — the hand-typed merge chain carries no head pin
-
-- Where: `.claude/skills/review-loop/SKILL.md` step 5 (the merge sequence under branch protection); `.claude/skills/run-issue/SKILL.md` step 4
-- What: `.claude/scripts/merge-pr.sh` now passes `--match-head-commit` on every `gh pr merge` (#408). The prose chain a merge owner types by hand still ends in a bare "then merge", so a hand-run merge can land a head that was pushed after its checks were read. The owner decision of 2026-11-02 that #408 cites does not hold on that path.
-- Source: #408 review cycle 1
-
-## 2026-11-02 — merge-pr.sh and review-loop cite docs/design/task-orchestrator.md, which this repo does not have
-
-- Where: `.claude/scripts/merge-pr.sh` (the update-branch step's rebase-skip comment and the merge step's bounce comment); `.claude/skills/review-loop/SKILL.md`
-- What: `docs/design/` holds only `design-principles.md`. The citation came across in the cumulo port and points nowhere.
-- Source: #408 review cycle 1
-
 ## 2026-11-02 — `docs/adr/README.md` § Amendments has no form for an owner-decided rule change
 
 - Where: `docs/adr/README.md` § Amendments; `docs/adr/0009-explanation-answers.md` § Amendments (the 2026-11-02 entry); `docs/adr/0003-model-roles-and-backends.md` § Amendments (the 2026-10-20 pin-shape entry)
 - What: § Amendments says "an amendment never touches reasoning … wrong reasoning is superseded", and it covers moved or wrong values. 0009's (d)/(g) rule changed by the owner's decision (entailment outweighs contradiction) and went in as an amendment, by the owner's instruction relayed for #420. 0003's pin-shape entry is a second owner-decided change written in amendment form. Suspected root cause: the README names two cases (a moved value, wrong reasoning) and not a third: a decision narrowed by the owner, with the rest of the reasoning standing. It should name that case, or route it to supersession.
 - Source: PR for #420 (review)
-
-## 2026-11-02 — `CLAUDE.md` "Nothing the tutor says is uncited" no longer holds at the deep depth
-
-- Where: `CLAUDE.md` § Hard constraints, the "Nothing the tutor says is uncited" bullet; `packages/grounding/src/verify-explanation.ts` (`verifyExplanation`)
-- What: since #424, a deep explanation keeps a neutral interpretation with `slides: []`, so a sentence the student reads names no slide, and the heading is literally false at the deep depth. The bullet's body also says "every sentence of it is classified", where `docs/adr/0009-explanation-answers.md` § Decision (d) Stage 2 classifies only the neutral sentences. 0009 (p) kept the headings and the file is humanAlways, so the wording is the owner's. Suspected root cause: the heading names 0001's guarantee, and 0009 kept it as a heading while narrowing what it guarantees.
-- Source: PR #450 (review)
-
-## 2026-11-02 — the deep-depth contract is restated at seven sites with no ledger
-
-- Where: `CLAUDE.md` § Hard constraints (two bullets); `README.md` (the slides-win paragraph, § How it works); `docs/plan.md` § 0; `docs/standards/grounding.md` rule 4; `AttributedSentence`'s docblock in `packages/shared/src/explanation.ts`
-- What: the rule for what the deep depth keeps and withholds — entailed, contradicted with none entailing, neutral claim, neutral interpretation — is restated at each site in its own words. #420 and #424 each trued it up one site at a time, and #424's first pass left two sites stating it without #420's amendment (an entailing slide wins), which review caught. Suspected root cause: there is no `.claude/ledgers/` entry owned by 0009 § Decision (d) whose sweep would gate the change.
-- Source: PR #450 (review)
 
 ## 2026-11-02 — the sentence-kind rows measure one sentence per judge call; production batches
 
@@ -201,6 +134,18 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/decks/DecksScreen.tsx` (`askedFor`, passed to `NoSummary` as `pressed`)
 - What: once a reader has pressed "Make the summary" for a lecture, every later failed summary for that lecture is announced as an alert, including one an upload or a rebuild's re-make made without a press. Suspected root cause: the press is held as a session-long set rather than tied to the one re-make it asked for.
 - Source: PR #456 for #422 (confirmation review)
+
+## 2026-11-02 — the comment-density ratchet penalises merging a duplicate
+
+- Where: `packages/grounding/src/prompt-budget.ts` (`requestTokens`); `packages/grounding/src/summarise-lecture.ts` (`promptTokens`, and the block cost in `summaryParts`); `packages/grounding/src/assemble-context.ts` (`blockTokens`); `.claude/scripts/check-comment-density.sh`
+- What: a request's token estimate and a block's cost are each written twice with the same intent (`docs/standards/structure.md` rule 7). Routing `summarise-lecture.ts` through `requestTokens` deletes code lines, which raises that file's comment ratio over its banked row, and the gate never lets a row rise, so the merge was left out of #423. Suspected root cause: the ratchet measures a ratio, so removing code reads as adding comments.
+- Source: PR #495 for #423 (review)
+
+## 2026-11-02 — ADR 0009 says "retrieved" for two sets the code now reads as the assembled slides
+
+- Where: `docs/adr/0009-explanation-answers.md` § Decision (o) (`lightFlagRateWide`, "every retrieved slide and loaded summary unit plus the candidates") and the 2026-11-02 (a) amendment ("`sources` is the retrieved set the explanation was written from"); `eval/src/ask-depths.ts` (`widened`); `packages/grounding/src/explain.ts` (`shown`)
+- What: since #423 both read the raw slides the prompt held, which differs from the retrieved set only when the budget drops a slide. (c) and (d) already say raw. The file is humanAlways, so the wording waits for the next 0009 amendment.
+- Source: PR #495 for #423 (review)
 
 ## 2026-11-03 — untagged chunks and the tag pass are silent in the upload's progress
 

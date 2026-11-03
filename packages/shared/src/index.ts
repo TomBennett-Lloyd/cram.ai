@@ -36,6 +36,7 @@ export { Unit, UnitKind } from './unit';
 export {
   CourseSummaries,
   LectureSummary,
+  type LoadedSummary,
   SummaryRemakeRequest,
   SummaryUnit,
 } from './lecture-summary';

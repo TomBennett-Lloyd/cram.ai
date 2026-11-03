@@ -285,7 +285,7 @@ describe('POST /courses/:id/ask', () => {
     const reply = await askBio(server);
     expect(reply.status).toBe(502);
     expect(reply.json).toEqual({ status: 'model-failed' });
-    expect(server.logs).toEqual([
+    expect(server.logs.filter(({ operation }) => operation !== 'ask context')).toEqual([
       { operation: 'ask generate', courseId: 'bio', outcome: 'invalid-output' },
     ]);
   });

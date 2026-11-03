@@ -1,7 +1,19 @@
 import type { Embedder, ModelGateway } from '@cram/gateway';
-import { ask, PROVISIONAL_NLI_THRESHOLDS, type SearchSentence } from '@cram/grounding';
-import { ATTRIBUTION_K, type CourseReader } from '@cram/index';
-import type { AskReply, CourseId, CourseUnavailableProblem, RetrievedSlide } from '@cram/shared';
+import {
+  ask,
+  explanationRequest,
+  PROVISIONAL_NLI_THRESHOLDS,
+  requestTokens,
+  type SearchSentence,
+} from '@cram/grounding';
+import { ATTRIBUTION_K, type CourseReader, loadSummaries } from '@cram/index';
+import type {
+  AskReply,
+  CourseId,
+  CourseUnavailableProblem,
+  LoadedSummary,
+  RetrievedSlide,
+} from '@cram/shared';
 import { type CourseFiles, courseExists, openToRead } from './course-file';
 import type { ServerLog } from './server-log';
 import { embedQuestion } from './slide-embedding';
@@ -23,6 +35,7 @@ type Retrieval =
   | {
       readonly status: 'retrieved';
       readonly slides: readonly RetrievedSlide[];
+      readonly summaries: readonly LoadedSummary[];
       readonly searched: string | undefined;
     };
 
@@ -36,9 +49,11 @@ const retrieve = async (
   const embedded = await embedQuestion(embedder, text);
   if (embedded.status === 'over-length')
     return { status: 'over-length', maxInputTokens: embedded.maxInputTokens };
+  const slides = course?.search({ text, embedding: embedded.vector }) ?? [];
   return {
     status: 'retrieved',
-    slides: course?.search({ text, embedding: embedded.vector }) ?? [],
+    slides,
+    summaries: course === undefined ? [] : loadSummaries(course, slides),
     searched: correction?.status === 'corrected' ? text : undefined,
   };
 };
@@ -68,16 +83,24 @@ const askOpen = async (
   try {
     const retrieval = await retrieve(course, question, gateway.embedder);
     if (retrieval.status === 'over-length') return retrieval;
-    const result = await ask(question, retrieval.slides, {
-      gateway,
-      thresholds: PROVISIONAL_NLI_THRESHOLDS,
-      searchSentence: sentenceSearch(course, gateway.embedder),
-    });
-    return { status: 'asked', result, retrieved: retrieval.slides, searched: retrieval.searched };
+    const { slides: retrieved, summaries } = retrieval;
+    const result = await ask(
+      question,
+      { retrieved, summaries },
+      {
+        gateway,
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+        searchSentence: sentenceSearch(course, gateway.embedder),
+      },
+    );
+    return { status: 'asked', result, retrieved, searched: retrieval.searched };
   } finally {
     course?.close();
   }
 };
+
+const contextOutcome = (question: string, { context }: Awaited<ReturnType<typeof ask>>): string =>
+  `${String(requestTokens(explanationRequest(question, context)))} prompt tokens, ${String(context.leftOut.length)} left out`;
 
 /** Retrieve on the corrected question (#393), then `@cram/grounding`'s `ask` on the typed one (`docs/standards/grounding.md` rule 2). */
 export const askCourse = async (
@@ -98,6 +121,9 @@ export const askCourse = async (
     return { status: 'question-over-length', maxInputTokens: asked.maxInputTokens };
   const { result, retrieved, searched } = asked;
   const named = searched === undefined ? {} : { searched };
+  const { leftOut } = result.context;
+  if (result.context.raw.length > 0)
+    deps.log({ operation: 'ask context', courseId, outcome: contextOutcome(question, result) });
   switch (result.status) {
     case 'grounded':
       return {
@@ -107,7 +133,7 @@ export const askCourse = async (
           explanation: result.explanation,
           withheld: [...result.withheld],
           slides: [...result.slides],
-          leftOut: [],
+          leftOut: [...leftOut],
           ...named,
         },
       };
@@ -118,7 +144,7 @@ export const askCourse = async (
           status: 'not-covered',
           withheld: [...result.withheld],
           slides: [...retrieved],
-          leftOut: [],
+          leftOut: [...leftOut],
           ...named,
         },
       };

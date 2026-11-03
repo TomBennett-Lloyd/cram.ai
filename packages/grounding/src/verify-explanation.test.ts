@@ -1,5 +1,5 @@
 import type { EntailmentResult, GeneratorReply, Recording } from '@cram/gateway';
-import type { RetrievedSlide } from '@cram/shared';
+import { type RetrievedSlide, SourceId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import {
   CONTRADICTED,
@@ -17,6 +17,7 @@ import {
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
 import { verifierRequest } from './prompts/verifier-prompt';
 import { slideText } from './slide-text';
+import { type Premise, slidePremise } from './premise';
 import { verifyExplanation } from './verify-explanation';
 
 const hive = slide('l1/1', 'Worker bees are male.');
@@ -39,7 +40,7 @@ const verify = (
   withSecondOpinion = false,
   sentences = [SENTENCE],
 ) =>
-  verifyExplanation(sentences, retrieved, {
+  verifyExplanation(sentences, retrieved.map(slidePremise), {
     gateway: fakeGateway(recordings),
     thresholds: PROVISIONAL_NLI_THRESHOLDS,
     secondOpinion: withSecondOpinion,
@@ -59,6 +60,31 @@ describe('verifyExplanation', () => {
         { text: 'Cells are square.', slides: ['l1/2'], contradicts: [] },
       ],
       withheld: [],
+    });
+  });
+
+  it('credits every slide each entailing premise names, once, and a contradicting premise names its first', async () => {
+    const units: Premise[] = [
+      { text: 'Workers are the males.', sources: [SourceId.parse('l1/3'), SourceId.parse('l1/1')] },
+      { text: 'Males work.', sources: [SourceId.parse('l1/1'), SourceId.parse('l1/4')] },
+    ];
+    const pairs = (sentence: string) =>
+      units.map(({ text }) => ({ premise: text, hypothesis: sentence }));
+    const entailedBoth = verifyExplanation([SENTENCE], units, {
+      gateway: fakeGateway([verifierRecording(pairs(SENTENCE), [ENTAILED, ENTAILED])]),
+      thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      secondOpinion: false,
+    });
+    await expect(entailedBoth).resolves.toMatchObject({
+      kept: [{ text: SENTENCE, slides: ['l1/3', 'l1/1', 'l1/4'] }],
+    });
+    const contradicted = verifyExplanation([SENTENCE], units, {
+      gateway: fakeGateway([verifierRecording(pairs(SENTENCE), [CONTRADICTED, NEUTRAL])]),
+      thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      secondOpinion: false,
+    });
+    await expect(contradicted).resolves.toMatchObject({
+      withheld: [{ reason: 'contradicted', sourceId: 'l1/3' }],
     });
   });
 
@@ -267,7 +293,7 @@ describe('verifyExplanation', () => {
     const { generator, verifier } = fakeGateway([]);
     const short = { pin: verifier.pin, entail: () => Promise.resolve([ENTAILED]) };
     await expect(
-      verifyExplanation([SENTENCE], retrieved, {
+      verifyExplanation([SENTENCE], retrieved.map(slidePremise), {
         gateway: { generator, verifier: short },
         thresholds: PROVISIONAL_NLI_THRESHOLDS,
         secondOpinion: false,

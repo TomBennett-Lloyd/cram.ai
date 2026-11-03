@@ -1,14 +1,16 @@
 import type { ModelGateway, Verifier } from '@cram/gateway';
 import {
   ask,
+  contextPremises,
+  contradictingSources,
   explain,
-  markContradictions,
   PROVISIONAL_NLI_THRESHOLDS,
+  slidePremise,
   VERIFICATION_DEPTH,
   type VerifierStrategy,
 } from '@cram/grounding';
 import { ATTRIBUTION_K } from '@cram/index';
-import type { RetrievedSlide } from '@cram/shared';
+import type { LoadedSummary, RetrievedSlide } from '@cram/shared';
 import type { AskedQuestion } from './asked-question';
 import type { GoldenQuestion } from './golden-question';
 import type { IndexRetriever } from './index-retriever';
@@ -18,6 +20,10 @@ import { forbiddenSentences } from './light-rows';
 export interface Retrieved {
   readonly question: GoldenQuestion;
   readonly retrieved: readonly RetrievedSlide[];
+}
+
+export interface ToAsk extends Retrieved {
+  readonly summaries: readonly LoadedSummary[];
 }
 
 /** The light run's verifier, counting the over-length pairs the mark skips (#366's A14). */
@@ -37,7 +43,7 @@ export interface Light {
 }
 
 export const askLight = async (
-  retrievals: readonly Retrieved[],
+  retrievals: readonly ToAsk[],
   retriever: IndexRetriever,
   gateway: ModelGateway,
   clock: Clock,
@@ -50,11 +56,11 @@ export const askLight = async (
   };
   const asked: AskedQuestion[] = [];
   const durationsMs: number[] = [];
-  for (const { question, retrieved } of retrievals) {
+  for (const { question, retrieved, summaries } of retrievals) {
     const result = await timed(
       clock,
       (ms) => durationsMs.push(ms),
-      () => ask(question.question, retrieved, deps),
+      () => ask(question.question, { retrieved, summaries }, deps),
     );
     asked.push({ question, retrieved, result });
   }
@@ -62,14 +68,14 @@ export const askLight = async (
 };
 
 export const askDeep = async (
-  retrievals: readonly Retrieved[],
+  retrievals: readonly ToAsk[],
   gateway: ModelGateway,
   strategy: VerifierStrategy,
 ): Promise<readonly AskedQuestion[]> => {
   const depth = { depth: VERIFICATION_DEPTH['revision-guide'], secondOpinion: strategy !== 'nli' };
   const asked: AskedQuestion[] = [];
-  for (const { question, retrieved } of retrievals) {
-    const result = await explain(question.question, retrieved, depth, {
+  for (const { question, retrieved, summaries } of retrievals) {
+    const result = await explain(question.question, { retrieved, summaries }, depth, {
       gateway,
       thresholds: PROVISIONAL_NLI_THRESHOLDS,
     });
@@ -78,38 +84,36 @@ export const askDeep = async (
   return asked;
 };
 
-/** `lightFlagRateWide`'s pass: each forbidden sentence against the retrieved set beside its candidates. */
+/** `lightFlagRateWide`'s pass: each forbidden sentence against the deep premises its prompt held, then each candidate beyond its raw slides. */
 export const widened = async (
   light: readonly AskedQuestion[],
   gateway: ModelGateway,
 ): Promise<readonly AskedQuestion[]> => {
   const wide: AskedQuestion[] = [];
   for (const item of light) {
-    const { result, retrieved } = item;
+    const { result } = item;
     const forbidden = forbiddenSentences(item);
     if (result.status !== 'grounded' || forbidden.length === 0) {
       wide.push(item);
       continue;
     }
-    const slidesOf = (ids: readonly string[]) =>
-      result.slides.filter(({ sourceId }) => ids.includes(sourceId));
-    const marked = await markContradictions(
+    const held = contextPremises(result.context);
+    const raw = new Set(result.context.raw.map(({ sourceId }) => sourceId));
+    const beyond = (ids: readonly string[]) =>
+      result.slides
+        .filter(({ sourceId }) => ids.includes(sourceId) && !raw.has(sourceId))
+        .map(slidePremise);
+    const contradicts = await contradictingSources(
       forbidden.map(({ sentence }) => ({
         text: sentence.text,
-        slides: [
-          ...retrieved,
-          ...slidesOf(sentence.slides).filter(
-            ({ sourceId }) => !retrieved.some((slide) => slide.sourceId === sourceId),
-          ),
-        ],
+        premises: [...held, ...beyond(sentence.slides)],
       })),
       (request) => gateway.verifier.entail(request),
       PROVISIONAL_NLI_THRESHOLDS,
     );
     const sentences = result.explanation.sentences.map((sentence, index) => {
-      const at = forbidden.findIndex((entry) => entry.index === index);
-      const mark = marked[at];
-      return mark === undefined ? sentence : { ...sentence, contradicts: mark.contradicts };
+      const marked = contradicts[forbidden.findIndex((entry) => entry.index === index)];
+      return marked === undefined ? sentence : { ...sentence, contradicts: [...marked] };
     });
     wide.push({
       ...item,

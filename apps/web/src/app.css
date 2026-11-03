@@ -115,7 +115,8 @@ input:not([type='file']) {
 .pending,
 .empty,
 .failed,
-.not-covered {
+.not-covered,
+.left-out {
   margin: 0;
 }
 

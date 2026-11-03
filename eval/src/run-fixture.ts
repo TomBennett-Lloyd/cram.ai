@@ -1,4 +1,4 @@
-import type { ExplainResult } from '@cram/grounding';
+import { EMPTY_CONTEXT, type ExplainResult } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
 import {
   type AttributedSentence,
@@ -81,10 +81,15 @@ export const grounded = (
     },
     withheld: [],
     slides: slides.map(retrieved),
+    context: { ...EMPTY_CONTEXT, raw: slides.map(retrieved) },
   };
 };
 
-export const NOT_COVERED: ExplainResult = { status: 'not-covered', withheld: [] };
+export const NOT_COVERED: ExplainResult = {
+  status: 'not-covered',
+  withheld: [],
+  context: EMPTY_CONTEXT,
+};
 
 export const asked = (
   result: ExplainResult,

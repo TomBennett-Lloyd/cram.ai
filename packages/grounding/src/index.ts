@@ -1,4 +1,5 @@
 export { ask, type AskDeps } from './ask';
+export { type AssembledContext, assembleContext, EMPTY_CONTEXT } from './assemble-context';
 export {
   attributeSentences,
   quotesIn,
@@ -7,17 +8,23 @@ export {
 } from './attribute-sentences';
 export { type ClaimSpan, claimSpans, spansOf, splitClaims } from './claims';
 export {
+  type BudgetedDeps,
   explain,
   type ExplainDepth,
   type ExplainDeps,
   type ExplainResult,
+  type ExplainSources,
   type ExplainStage,
   type SearchSentence,
 } from './explain';
 export { classifySentenceKinds } from './classify-sentence-kinds';
 export { type DraftUnit, type GenerationOutcome, generateUnits } from './generate-units';
 export { ground, type GroundingDeps, type GroundingResult, type GroundingStage } from './ground';
-export { markContradictions } from './mark-contradictions';
+export {
+  contradictingSources,
+  markContradictions,
+  type SentencePremises,
+} from './mark-contradictions';
 export type { ModelFailure } from './model-failure';
 export {
   type ClaimLabel,
@@ -27,6 +34,7 @@ export {
   type NliThresholds,
   PROVISIONAL_NLI_THRESHOLDS,
 } from './nli-verdict';
+export { contextPremises, type Premise, slidePremise } from './premise';
 export {
   GeneratedUnits,
   type GenerationTask,
@@ -66,6 +74,7 @@ export {
   PROMPT_CHARS_PER_TOKEN,
   PROMPT_TOKEN_BUDGET,
   REPLY_TOKEN_RESERVE,
+  requestTokens,
 } from './prompt-budget';
 export {
   SUMMARY_MAX_UNITS,

@@ -1,5 +1,5 @@
-import type { AskReply, RetrievedSlide } from '@cram/shared';
-import { CLOSEST_SLIDES, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR } from '../copy';
+import type { AskReply, RetrievedSlide, SourceId } from '@cram/shared';
+import { CLOSEST_SLIDES, LEFT_OUT, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR } from '../copy';
 import { Failed } from '../shell/async-states';
 import { ASK_DEPTH } from './ask-depth';
 import type { CitedSlide } from './cited-slide';
@@ -8,6 +8,27 @@ import { SlideCard } from './SlideCard';
 import { WithheldPanel } from './WithheldPanel';
 
 type OnOpen = (cited: CitedSlide) => void;
+
+const SlideCards = ({
+  slides,
+  onOpen,
+}: {
+  readonly slides: readonly RetrievedSlide[];
+  readonly onOpen: OnOpen;
+}) => (
+  <ul className="citations">
+    {slides.map((slide) => (
+      <li key={slide.sourceId}>
+        <SlideCard
+          slide={slide}
+          onOpen={() => {
+            onOpen({ slide, quotes: [] });
+          }}
+        />
+      </li>
+    ))}
+  </ul>
+);
 
 const ClosestSlides = ({
   slides,
@@ -21,22 +42,30 @@ const ClosestSlides = ({
     {slides.length > 0 && (
       <>
         <h2 className="closest-heading">{CLOSEST_SLIDES}</h2>
-        <ul className="citations">
-          {slides.map((slide) => (
-            <li key={slide.sourceId}>
-              <SlideCard
-                slide={slide}
-                onOpen={() => {
-                  onOpen({ slide, quotes: [] });
-                }}
-              />
-            </li>
-          ))}
-        </ul>
+        <SlideCards slides={slides} onOpen={onOpen} />
       </>
     )}
   </>
 );
+
+const LeftOut = ({
+  leftOut,
+  slides,
+  onOpen,
+}: {
+  readonly leftOut: readonly SourceId[];
+  readonly slides: readonly RetrievedSlide[];
+  readonly onOpen: OnOpen;
+}) =>
+  leftOut.length === 0 ? null : (
+    <>
+      <p className="left-out">{LEFT_OUT}</p>
+      <SlideCards
+        slides={slides.filter(({ sourceId }) => leftOut.includes(sourceId))}
+        onOpen={onOpen}
+      />
+    </>
+  );
 
 const SearchedFor = ({ searched }: { readonly searched: string | undefined }) =>
   searched === undefined ? null : (
@@ -65,6 +94,7 @@ export const AnswerView = ({
             depth={ASK_DEPTH}
             onOpen={onOpen}
           />
+          <LeftOut leftOut={reply.leftOut} slides={reply.slides} onOpen={onOpen} />
           <WithheldPanel withheld={reply.withheld} />
         </>
       );
@@ -72,7 +102,11 @@ export const AnswerView = ({
       return (
         <>
           <SearchedFor searched={reply.searched} />
-          <ClosestSlides slides={reply.slides} onOpen={onOpen} />
+          <ClosestSlides
+            slides={reply.slides.filter(({ sourceId }) => !reply.leftOut.includes(sourceId))}
+            onOpen={onOpen}
+          />
+          <LeftOut leftOut={reply.leftOut} slides={reply.slides} onOpen={onOpen} />
           <WithheldPanel withheld={reply.withheld} />
         </>
       );

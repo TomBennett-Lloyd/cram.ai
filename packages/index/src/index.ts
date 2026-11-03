@@ -30,6 +30,7 @@ export {
   type OpenCourseSpec,
   type ReadCourseResult,
 } from './open-course';
+export { loadSummaries } from './loaded-summaries';
 export { type RebuildReportDismissal } from './rebuild-report';
 export { SCHEMA_VERSION } from './schema';
 export { type SpellingCorrection } from './spelling-correction';
