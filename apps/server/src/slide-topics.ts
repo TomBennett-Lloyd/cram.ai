@@ -59,19 +59,35 @@ export const storedLectureSlides = (
 export type TagEditOutcome =
   | { readonly status: 'edited'; readonly edited: EditedTags }
   | { readonly status: 'no-such-course' | 'no-such-fact' }
+  | { readonly status: 'tags-changed'; readonly tags: ChunkTag[] }
   | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
-/** Writes the chunk's whole tag list (`CourseIndex.editTopics`); the caller is `IngestQueue`, the file's one writer. */
+const sameTags = (base: readonly ChunkTag[], served: readonly ChunkTag[]): boolean => {
+  const sorted = [...base].sort(tagOrder);
+  return (
+    sorted.length === served.length &&
+    sorted.every(({ tag, origin }, index) => {
+      const other = served[index];
+      return other?.tag === tag && other.origin === origin;
+    })
+  );
+};
+
+/** Writes the chunk's whole tag list (`CourseIndex.editTopics`) if it still holds `base` (#507); the caller is `IngestQueue`, the file's one writer. */
 export const editStoredTags = (
   files: CourseFiles,
   courseId: CourseId,
-  { sourceId, chunkNo, tags }: TagEdit,
+  { sourceId, chunkNo, base, tags }: TagEdit,
 ): TagEditOutcome => {
   if (!courseExists(files, courseId)) return { status: 'no-such-course' };
   const opened = openForWrite(files, courseId);
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   const { course } = opened;
   try {
+    if (!course.chunks(sourceId).some((chunk) => chunk.chunkNo === chunkNo))
+      return { status: 'no-such-fact' };
+    const held = chunkTags(course.topics(sourceId), chunkNo);
+    if (!sameTags(base, held)) return { status: 'tags-changed', tags: held };
     const set = course.editTopics({ sourceId, chunkNo }, tags);
     if (set.status === 'no-such-fact') return set;
     const stored = chunkTags(course.topics(sourceId), chunkNo);

@@ -20,7 +20,7 @@ const taken = <T>(ref: { current: T | undefined }): T | undefined => {
   return value;
 };
 
-/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time, the latest list winning. */
+/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time against the list last stored, the latest winning (#507). */
 export const useChunkTags = (
   api: ApiClient,
   courseId: CourseId,
@@ -35,11 +35,17 @@ export const useChunkTags = (
   const write = async (): Promise<void> => {
     writing.current = true;
     for (let tags = taken(next); tags !== undefined; tags = taken(next)) {
-      const result = await api.editTags(courseId, { ...fact, tags: [...tags] });
+      const result = await api.editTags(courseId, {
+        ...fact,
+        base: [...saved.current],
+        tags: [...tags],
+      });
       if (result.status === 'ok') {
         saved.current = result.value.tags;
         if (next.current === undefined) setShown(result.value.tags);
       } else {
+        if (result.status === 'refused' && result.refusal.status === 'tags-changed')
+          saved.current = result.refusal.tags;
         next.current = undefined;
         setFailure(result);
         setShown(saved.current);
