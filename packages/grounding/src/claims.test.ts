@@ -56,6 +56,22 @@ describe('splitClaims', () => {
     expect(splitClaims(text)).toHaveLength(2);
   });
 
+  it.each([
+    ['an opening double quote after the terminal', 'Workers are male.“ Drones are female.'],
+    ['an opening single quote after the terminal', 'Workers are male.‘ Drones are female.'],
+    ['a closing double quote before the capital', 'Workers are male. ”Drones are female.”'],
+    ['a closing single quote before the capital', 'Workers are male. ’Drones’ are female.'],
+  ])('splits at %s, a quote mark set the wrong way round', (_, text) => {
+    expect(splitClaims(text)).toHaveLength(2);
+  });
+
+  it.each([
+    ['a newline', '“Workers are male.”\nDrones are female.'],
+    ['a tab', '“Workers are male.”\tDrones are female.'],
+  ])('splits after a closing quote at %s', (_, text) => {
+    expect(splitClaims(text)).toEqual(['“Workers are male.”', 'Drones are female.']);
+  });
+
   it('splits between two quoted sentences', () => {
     expect(splitClaims('“Workers are male.” “Drones are female.”')).toEqual([
       '“Workers are male.”',
@@ -73,10 +89,7 @@ describe('splitClaims', () => {
   it.each([
     ['a quote mark with no terminal before it', 'They call them "workers" Drones differ.'],
     ['a full stop inside a word', 'Cells are 5.4mm Drones are not.'],
-    [
-      'a line pointer, which stays with the sentence before it',
-      'Workers are male. [1] Drones are female.',
-    ],
+    ['an opening bracket', 'Workers are male. [1] Drones are female.'],
   ])('does not split at %s', (_, text) => {
     expect(splitClaims(text)).toHaveLength(1);
   });

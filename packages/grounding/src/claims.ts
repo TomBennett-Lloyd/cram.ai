@@ -1,4 +1,8 @@
-const CLAIM_BOUNDARY = /(?<=[.!?]["'”’]*)\s+(?=["'“‘]*[\p{Lu}\p{N}])|(?<=;)\s+/u;
+const QUOTE_RUN = `["'“”‘’]*`;
+const CLAIM_BOUNDARY = new RegExp(
+  String.raw`(?<=[.!?]${QUOTE_RUN})\s+(?=${QUOTE_RUN}[\p{Lu}\p{N}])|(?<=;)\s+`,
+  'u',
+);
 
 /** The claim split that lets a three-class model return `partial` (`docs/adr/0003-model-roles-and-backends.md` § Decision (d)). */
 export const splitClaims = (text: string): readonly string[] =>
