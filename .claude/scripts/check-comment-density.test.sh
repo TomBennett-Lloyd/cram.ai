@@ -409,6 +409,81 @@ baseline_of | command grep -q 'packages/shared/src/b.ts' &&
 end
 
 # ==========================================================================================
+# 5b. --since: the ratchet lowers only the change set's rows (#402)
+# ==========================================================================================
+# The shape the cases rebuild is main's: b.ts fell in a commit that did not ratchet, so its
+# row is stale on the base, and the lane under test then lowers a.ts in its working tree.
+
+gitc() { # gitc <git args...> — git in the fixture, with an identity and no signing
+  git -C "$DIR" -c user.email=test@test -c user.name=test -c commit.gpgsign=false "$@"
+}
+
+# since_fixture <name> -> DIR, a one-commit repo whose b.ts row is stale on that commit and
+# whose a.ts has fallen since it, uncommitted.
+since_fixture() {
+  fixture "$1"
+  bootstrap
+  must printf 'export const later = 1;\n' >>"$DIR/packages/shared/src/b.ts"
+  must git init --quiet -b main "$DIR"
+  must gitc add -A
+  must gitc commit --quiet -m base
+  must printf 'export const later = 1;\n' >>"$DIR/packages/shared/src/a.ts"
+}
+
+begin "--ratchet --since lowers the changed file's row and leaves a stale row outside it"
+since_fixture since-scope
+run_check --ratchet --since main
+expect_rc 0
+expect_stdout "1 lowered, 0 added, 0 dropped"
+expect_stdout "packages/shared/src/a.ts: 20.00% (2000) -> 18.18% (1818)"
+expect_stdout "1 lower row(s) outside --since main left as they are"
+baseline_of | command grep -qE '^packages/shared/src/a\.ts	1818$' || bad "a.ts not lowered: $(baseline_of)"
+baseline_of | command grep -qE '^packages/shared/src/b\.ts	4000$' || bad "b.ts moved: $(baseline_of)"
+# No verdict moves: the row left high still passes the plain gate.
+run_check
+expect_rc 0
+expect_stdout "baseline is stale (1 lower)"
+end
+
+begin "--ratchet --since still adds a new file's row and drops a deleted file's, both off the diff"
+since_fixture since-census
+must srcfile "$DIR/packages/shared/src/new.ts" 1 9
+must gitc rm --quiet --cached "$DIR/apps/web/src/c.ts"
+must rm "$DIR/apps/web/src/c.ts"
+must gitc commit --quiet -m "main moves on"
+run_check --ratchet --since HEAD
+expect_rc 0
+expect_stdout "1 lowered, 1 added, 1 dropped"
+run_check
+expect_rc 0
+end
+
+begin "--since without --ratchet exits 2"
+fixture since-plain
+bootstrap
+run_check --since main
+expect_rc 2
+expect_stderr "means nothing without it"
+end
+
+begin "--since with no ref exits 2"
+fixture since-empty
+capture bash "$CHECK" --ratchet --since
+expect_rc 2
+expect_stderr "--since needs a git ref"
+end
+
+begin "--since an unknown ref exits 2 and writes nothing"
+since_fixture since-unknown
+must cp "$DIR/$BASELINE_REL" "$TMP_ROOT/since-unknown.before"
+run_check --ratchet --since no-such-ref
+expect_rc 2
+expect_stderr "no merge-base with HEAD"
+cmp -s "$TMP_ROOT/since-unknown.before" "$DIR/$BASELINE_REL" ||
+  bad "a refused --since run wrote the baseline"
+end
+
+# ==========================================================================================
 # 6. a file with no row — the issue's third negative control, and the median rule
 # ==========================================================================================
 

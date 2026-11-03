@@ -36,6 +36,15 @@
 # raises a row. A baseline that exists but holds no row is refused in both modes:
 # only a MISSING baseline bootstraps.
 #
+# `--since REF` scopes the lowering to the change set: only a row whose file
+# `git diff --name-only` lists against REF's merge-base with HEAD is lowered,
+# working-tree edits included, and a fallen row outside it stays as it is and is
+# counted in the summary. Adding and dropping rows is not scoped, since the plain
+# gate refuses a tree whose census is out of step. A lane passes
+# `--since origin/main` so its baseline diff holds its own rows (#402); a trim
+# batch omits it. It changes no verdict: an unlowered row is still at or above
+# its file's ratio.
+#
 # A gate that cannot be bootstrapped from an empty tree is a gate nobody can
 # adopt; absence of the checked surface is a pass, an inconsistent surface is
 # still a failure. So no member `src` directory and no baseline passes with a
@@ -48,7 +57,7 @@
 # No dependencies: bash (3.2, which macOS ships as /bin/bash), find and awk, with
 # no gawk extensions.
 #
-# Usage: bash .claude/scripts/check-comment-density.sh [--ratchet] [REPO_ROOT]
+# Usage: bash .claude/scripts/check-comment-density.sh [--ratchet [--since REF]] [REPO_ROOT]
 #        (or `pnpm check:comment-density`)
 #        REPO_ROOT defaults to the repo root above this script; the argument
 #        exists so the test harness can point the gate at throwaway fixtures.
@@ -68,6 +77,7 @@ SCALE=10000
 MIN_JUDGED_LINES=40
 
 ratchet=0
+since=""
 root_arg=""
 
 while [ $# -gt 0 ]; do
@@ -75,12 +85,21 @@ while [ $# -gt 0 ]; do
     --ratchet)
       ratchet=1
       ;;
+    --since)
+      if [ $# -lt 2 ] || [ -z "$2" ]; then
+        printf 'check-comment-density: --since needs a git ref\n' >&2
+        exit 2
+      fi
+      since="$2"
+      shift
+      ;;
     -h | --help)
       cat <<'EOF'
-Usage: bash .claude/scripts/check-comment-density.sh [--ratchet] [REPO_ROOT]
+Usage: bash .claude/scripts/check-comment-density.sh [--ratchet [--since REF]] [REPO_ROOT]
 
-  REPO_ROOT   repository to scan (default: the repo root above this script)
-  --ratchet   on a green run, rewrite the baseline downward (never upward)
+  REPO_ROOT    repository to scan (default: the repo root above this script)
+  --ratchet    on a green run, rewrite the baseline downward (never upward)
+  --since REF  with --ratchet, lower only rows for files changed since REF
 
 Exit: 0 pass, 1 a file above its row or the median, a file with no row, or a row
       with no file, 2 no verdict reached.
@@ -102,6 +121,11 @@ EOF
   shift
 done
 
+if [ -n "$since" ] && [ "$ratchet" = "0" ]; then
+  printf 'check-comment-density: --since scopes what --ratchet lowers, and means nothing without it\n' >&2
+  exit 2
+fi
+
 ROOT=${root_arg:-"$SCRIPT_DIR/../.."}
 if [ ! -d "$ROOT" ]; then
   printf 'check-comment-density: not a directory: %s\n' "$ROOT" >&2
@@ -112,6 +136,22 @@ BASELINE="$ROOT/$BASELINE_REL"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/check-comment-density.XXXXXX") || exit 2
 trap 'rm -rf "$TMP"' EXIT INT TERM
+
+# --- the change set ----------------------------------------------------------------------
+# Paths relative to ROOT (`--relative`), the form the baseline's rows take. With no
+# --since the scope file is empty and unused.
+
+: >"$TMP/scope"
+if [ -n "$since" ]; then
+  if ! fork=$(git -C "$ROOT" merge-base "$since" HEAD 2>/dev/null); then
+    printf 'check-comment-density: --since %s: no merge-base with HEAD in %s\n' "$since" "$ROOT" >&2
+    exit 2
+  fi
+  if ! git -C "$ROOT" diff --name-only --relative "$fork" -- >"$TMP/scope"; then
+    printf 'check-comment-density: --since %s: git diff failed in %s\n' "$since" "$ROOT" >&2
+    exit 2
+  fi
+fi
 
 # --- what to scan -------------------------------------------------------------------------
 
@@ -322,9 +362,11 @@ fi
 if ! awk -F'\t' \
   -v basefile="$TMP/base" -v median="$median" -v scale="$SCALE" \
   -v floor="$MIN_JUDGED_LINES" -v ratchet="$ratchet" \
-  -v viol="$TMP/violations" -v lowered="$TMP/lowered" \
+  -v scopefile="$TMP/scope" -v scoped="$([ -n "$since" ] && echo 1 || echo 0)" \
+  -v viol="$TMP/violations" -v lowered="$TMP/lowered" -v outside="$TMP/outside" \
   -v added="$TMP/added" -v dropped="$TMP/dropped" -v newbase="$TMP/newbase" '
 function pct(bp) { return sprintf("%.2f%% (%d)", bp / (scale / 100), bp) }
+FILENAME == scopefile { inscope[$0] = 1; next }
 FILENAME == basefile { base[$1] = $2; unseen[$1] = 1; next }
 {
   path = $1
@@ -336,6 +378,10 @@ FILENAME == basefile { base[$1] = $2; unseen[$1] = 1; next }
       printf "  ERROR %s: %s > baseline %s — %d comment / %d non-blank line(s)\n",
         path, pct(cur), pct(b), $3, $4 > viol
       next
+    }
+    if (cur < b && scoped && !(path in inscope)) {
+      printf "  %s\n", path > outside
+      cur = b
     }
     if (cur < b) printf "  %s: %s -> %s\n", path, pct(b), pct(cur) > lowered
     printf "%s\t%d\n", path, (cur < b ? cur : b) > newbase
@@ -359,11 +405,11 @@ END {
     if (!ratchet) printf "  ERROR %s: baseline row with no measured file\n", p > viol
   }
 }
-' "$TMP/base" "$TMP/current"; then
+' "$TMP/scope" "$TMP/base" "$TMP/current"; then
   printf 'check-comment-density: comparison against %s failed\n' "$BASELINE_REL" >&2
   exit 2
 fi
-for section in violations lowered added dropped newbase; do : >>"$TMP/$section"; done
+for section in violations lowered outside added dropped newbase; do : >>"$TMP/$section"; done
 
 violation_count=$(grep -c '' <"$TMP/violations" || true)
 unmeasurable_count=$(grep -c '' <"$TMP/unmeasurable" || true)
@@ -376,7 +422,8 @@ if [ "$violation_count" -gt 0 ]; then
   printf '(docs/standards/prose.md rule 6). A file with no row, a row with no file\n' >&2
   printf 'and a ratio that fell are banked with:\n\n' >&2
   printf '    bash .claude/scripts/check-comment-density.sh --ratchet\n\n' >&2
-  printf 'which adds, drops and lowers rows and never raises one.\n\n' >&2
+  printf 'which adds, drops and lowers rows and never raises one. A lane adds\n' >&2
+  printf 'the flag --since origin/main to lower only the rows of files it changed.\n\n' >&2
   printf 'A RENAMED file arrives as a new one:\n' >&2
   printf 'carry its row across to the new path in %s.\n' "$BASELINE_REL" >&2
   exit 1
@@ -387,6 +434,7 @@ fi
 lowered_count=$(grep -c '' <"$TMP/lowered" || true)
 added_count=$(grep -c '' <"$TMP/added" || true)
 dropped_count=$(grep -c '' <"$TMP/dropped" || true)
+outside_count=$(grep -c '' <"$TMP/outside" || true)
 drift=$((lowered_count + added_count + dropped_count))
 
 if [ "$ratchet" = "1" ]; then
@@ -421,6 +469,9 @@ fi
 
 printf 'check-comment-density: OK — %d file(s) at or below baseline; median %d bp, %d baseline row(s)' \
   "$measured" "$median" "$baseline_rows"
+if [ "$outside_count" -gt 0 ]; then
+  printf '; %d lower row(s) outside --since %s left as they are' "$outside_count" "$since"
+fi
 if [ "$ratchet" = "0" ] && [ "$lowered_count" -gt 0 ]; then
   printf '; baseline is stale (%d lower) — --ratchet banks it' "$lowered_count"
 fi
