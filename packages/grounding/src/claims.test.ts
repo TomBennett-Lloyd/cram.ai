@@ -124,16 +124,6 @@ describe('splitClaims', () => {
 
   it.each([
     [
-      'a currency sign',
-      'The hive costs £5. £20 Buys a nucleus.',
-      ['The hive costs £5.', '£20 Buys a nucleus.'],
-    ],
-    [
-      'a hash',
-      'Workers are male. #1 Drones are female.',
-      ['Workers are male.', '#1 Drones are female.'],
-    ],
-    [
       'an asterisk',
       'Workers are male. *Drones are female.',
       ['Workers are male.', '*Drones are female.'],
@@ -170,11 +160,33 @@ describe('splitClaims', () => {
     },
   );
 
-  it('splits before a currency sign before a numeral, as before the bare numeral', () => {
-    expect(splitClaims('The hive costs £5. £20 buys a nucleus.')).toEqual([
-      'The hive costs £5.',
-      '£20 buys a nucleus.',
-    ]);
+  it.each([
+    [
+      'a currency sign before a lowercase word',
+      'The hive costs £5. £20 buys a nucleus.',
+      ['The hive costs £5.', '£20 buys a nucleus.'],
+    ],
+    [
+      'a currency sign before a capital',
+      'The hive costs £5. £20 Buys a nucleus.',
+      ['The hive costs £5.', '£20 Buys a nucleus.'],
+    ],
+    [
+      'a hash before a capital',
+      'Workers are male. #1 Drones are female.',
+      ['Workers are male.', '#1 Drones are female.'],
+    ],
+  ])(
+    'splits before a symbol before a numeral, as before the bare numeral: %s',
+    (_, text, claims) => {
+      expect(splitClaims(text)).toEqual(claims);
+    },
+  );
+
+  it('reads a 100,000-mark run in under a second', () => {
+    const start = performance.now();
+    expect(splitClaims(`Fill in: ${'_'.repeat(100_000)} Done.`)).toHaveLength(1);
+    expect(performance.now() - start).toBeLessThan(1000);
   });
 
   it.each([
