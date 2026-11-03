@@ -245,3 +245,8 @@ Entry format:
 
 - Phase: implementation
 - Observed: the mutation pass's hostile corpus (14 inputs, judged by `@cram/grounding`'s `claimSpans` and `quotesIn`, the server's code, not the view's) disagreed on two — a line two slides hold, and overlapping quotes — where the view dropped the later quote's mark and number; `6b7f4db` merges overlaps and the corpus agrees 14/14, with 51 of 51 mutants killed and two empty-run guards deleted rather than declared equivalent (PR #472's § Mutation). The defect was found before review, by `.claude/agents/ticket-agent.md` § 4's hostile-corpus rule on a web surface. No new signal; recorded for a graduation check of that rule.
+
+## 2026-11-03 — PR #495 (PARTIAL Part of)
+
+- Phase: merge
+- Observed: the #423 lane reported `STATUS: PARTIAL` on one criterion only the owner can meet (reading their own deck's prompt tokens and overflow locally), shipped the PR ready, and opened its body with `Part of #423`, as `.claude/agents/ticket-agent.md` line 77 prescribes for an unmet criterion deferred past the branch ("`Part of #n` in the PR body so the issue stays open"). `.claude/scripts/merge-pr.sh`'s classify arm (lines 408–414) refuses a lane report whose issue no `Closes` line names, so the squash `5b08ce2` (2026-11-03 00:34Z) could only run under `--method squash`, and #423 stayed open as intended. Second lane on the arm the `PR #437 (PARTIAL Closes)` entry records, and the first where `Closes` would have been wrong: #437's residual was owned elsewhere and the merge owner closed #420 by hand, while #495's residual is #423's own. Both took the override; the agent file and the script disagree on the one shape the agent file names. Two lanes so far.
