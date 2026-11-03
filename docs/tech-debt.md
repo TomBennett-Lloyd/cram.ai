@@ -170,3 +170,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/shared/src/topic-tag.ts` (`TopicTag`)
 - What: the regex treats `\u200b` as non-blank, so a tag with no visible text parses and could be stored and shown in #428's editor. #426's hostile corpus kept one. Suspected root cause: the schema's blank test is JavaScript's `\s`, not a visible-character test.
 - Source: PR #494 (review)
+
+## 2026-11-03 — spelling correction's letters-only test is a JS regex over SQLite-folded terms
+
+- Where: `packages/index/src/spelling-correction.ts` (`LETTERS`), `packages/index/src/index-words.ts` (`IndexTokenizer`)
+- What: `LETTERS` decides which index terms may be corrected by JS's Unicode properties, while the terms come from SQLite's older Unicode table. So a code point that SQLite counts as a word character and that this Node's ICU calls unassigned makes its word uncorrectable. The error only ever leaves a word as typed. Suspected root cause: #489 moved the word boundaries onto FTS5 but left this classification on JS.
+- Source: PR for #489 (review)
+
+## 2026-11-03 — `INDEX_WORDS` is a process-wide SQLite connection reached by import, not injected
+
+- Where: `packages/index/src/index-words.ts` (`INDEX_WORDS`), imported by `packages/index/src/fts-query.ts`, `packages/index/src/topics.ts`, `packages/index/src/spelling-correction.ts`
+- What: `correctSpelling` and `namedTags` now reach a `:memory:` connection that is never closed. Before, `correctSpelling` reached SQLite only through its injected `Lexicon`. It is a cache of a deterministic function of the linked SQLite, so behaviour is unaffected, but `docs/standards/architecture.md` rule 3 prefers the adapter at the edge. Suspected root cause: the word model is needed by pure callers with no course connection, such as `eval/src/tag-recall.ts`.
+- Source: PR for #489 (review)

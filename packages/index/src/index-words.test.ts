@@ -20,7 +20,6 @@ afterEach(() => {
   temp.remove();
 });
 
-// Spacing marks (Mc), enclosing marks (Me), dotted capitals, NFC/NFD pairs, then near-misses of each.
 const NAMED = [
   'किताब',
   'क ताब',
@@ -161,6 +160,14 @@ describe('IndexTokenizer.words', () => {
 
   it('treats every BMP code point as slides_fts does', () => {
     expect(disagreements(new IndexTokenizer(), [everyBmpCodePoint()])).toEqual([]);
+  });
+
+  it("folds a word past FTS5's term-length cap whole, where slides_fts stores only a prefix", () => {
+    const atCap = 'a'.repeat(32768);
+    const pastCap = ['a'.repeat(32769), '\u0915'.repeat(11000)];
+    expect(disagreements(INDEX_WORDS, [atCap, ...pastCap]).map((row) => row.slice(0, 12))).toEqual(
+      pastCap.map((body) => JSON.stringify(body).slice(0, 12)),
+    );
   });
 
   it('gives each word the span it was typed as, and leaves no word outside the spans', () => {

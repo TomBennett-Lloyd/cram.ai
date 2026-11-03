@@ -5,7 +5,7 @@ import { carriedTags, namedTags, rankTopicMembers, type TagRow } from './topics'
 
 const tag = (text: string): TopicTag => TopicTag.parse(text);
 
-/** FTS5 declared as `slides_fts` is (`index-words.test.ts` holds the two equal), asked whether the query matches the tag as a phrase. */
+/** FTS5 declared as `slides_fts` is (`.claude/ledgers/index-tokenizer.ledger`), asked whether the query matches the tag as a phrase. */
 const ftsNames = (query: string, text: string): boolean => {
   const db = new Database(':memory:');
   try {
@@ -78,7 +78,7 @@ describe('namedTags', () => {
     expect(namedTags('drug drug interactions', tags)).toEqual(tags);
   });
 
-  it('never names a tag with no terms, nor a part of a word', () => {
+  it('never names a tag with no terms, nor a part of an index word', () => {
     expect(namedTags('what about +++ here', [tag('+++')])).toEqual([]);
     expect(namedTags('cellular respiration', [tag('cell')])).toEqual([]);
   });

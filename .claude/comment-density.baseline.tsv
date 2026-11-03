@@ -175,7 +175,7 @@ packages/index/src/edit-distance.ts	909
 packages/index/src/embed-chunks.ts	588
 packages/index/src/embedder-identity.ts	1111
 packages/index/src/fts-query.ts	1666
-packages/index/src/index-words.ts	361
+packages/index/src/index-words.ts	357
 packages/index/src/index.ts	0
 packages/index/src/indexed-slide.ts	246
 packages/index/src/lecture-summaries.ts	425

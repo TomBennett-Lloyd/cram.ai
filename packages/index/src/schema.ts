@@ -35,7 +35,7 @@ const quotedList = (values: readonly string[]): string =>
 const KINDS = quotedList(SlideKind.options);
 const ORIGINS = quotedList(TOPIC_ORIGINS);
 
-/** The `topics` table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/topics-table.ledger`. */
+/** The `topics` table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/topics-table.ledger`; `slides_fts`'s tokenizer's: `.claude/ledgers/index-tokenizer.ledger`. */
 const TABLES = `
   create table course (
     singleton integer primary key check (singleton = 1),

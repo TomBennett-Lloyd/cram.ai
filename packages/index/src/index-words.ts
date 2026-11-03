@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { z } from 'zod';
 
-/** A word as `slides_fts` cuts it: the `typed` span of the text from `start`, and the `term` the index stores for it. */
+/** A word as `slides_fts` cuts it: the `typed` span from `start`, and the `term` FTS5 folds it to before its term-length cap (`index-words.test.ts`). */
 export interface IndexWord {
   readonly typed: string;
   readonly start: number;
@@ -22,7 +22,7 @@ interface OpenWord {
 
 const ProbeRows = z.array(z.object({ doc: z.number().int(), term: z.string() }));
 
-/** No `tokenize` option, as `slides_fts` declares none in `schema.ts`; `index-words.test.ts` holds the two equal. */
+/** Declared as `slides_fts` is (`.claude/ledgers/index-tokenizer.ledger`); `index-words.test.ts` holds the two equal. */
 const PROBE_TABLES = `
   create virtual table probe using fts5(t);
   create virtual table probe_terms using fts5vocab(probe, instance);
@@ -34,6 +34,7 @@ export class IndexTokenizer {
   #probe: Database.Database | undefined;
 
   #learn(codePoints: readonly string[]): void {
+    if (codePoints.length === 0) return;
     if (this.#probe === undefined) {
       this.#probe = new Database(':memory:');
       this.#probe.exec(PROBE_TABLES);
