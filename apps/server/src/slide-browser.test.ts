@@ -3,7 +3,14 @@ import { dirname } from 'node:path';
 import { ChunkNo, CourseId, LectureSlides, SourceId, TopicTag } from '@cram/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
-import { openedUnder, restarted, seededDataDir, stopRestarted, uploadTo } from './repair-fixture';
+import {
+  markOlder,
+  openedUnder,
+  restarted,
+  seededDataDir,
+  stopRestarted,
+  uploadTo,
+} from './repair-fixture';
 import {
   GatedEmbedder,
   pdfDeck,
@@ -246,12 +253,23 @@ describe('PUT /courses/:id/tags', () => {
     expect(lost.json).toEqual({ status: 'tags-changed', tags: stored });
   });
 
-  it('says a chunk that is gone is not found, whatever list the edit was made against', async () => {
-    const { server } = await hive();
-    expect(await put(server.port, { ...EDIT, chunkNo: 2, tags: [] })).toMatchObject({
-      status: 404,
-      json: { status: 'not-found' },
-    });
+  it('refuses an edit made before a rebuild it waited behind, the rebuild having discarded the list', async () => {
+    const dataDir = await seededDataDir([QUEEN, SWARM]);
+    const seeded = await openedUnder(dataDir, new WordEmbedder());
+    if (seeded.status !== 'open') throw new Error(`course file: ${seeded.status}`);
+    seeded.course.setTopics(
+      { sourceId: SourceId.parse('l1/1'), chunkNo: ChunkNo.parse(1) },
+      'student',
+      [TopicTag.parse('castes')],
+    );
+    seeded.course.close();
+    markOlder(dataDir);
+    const gated = new GatedEmbedder();
+    const { server } = await restarted(dataDir, gated);
+    const edit = put(server.port, { ...FIRST, base: [HELD[0]], tags: ['castes', 'drones'] });
+    gated.open();
+    expect(await edit).toMatchObject({ status: 409, json: { status: 'tags-changed', tags: [] } });
+    expect(firstChunkTags(await lecture(server.port))).toEqual([]);
   });
 
   it('answers only PUT', async () => {

@@ -20,7 +20,7 @@ const taken = <T>(ref: { current: T | undefined }): T | undefined => {
   return value;
 };
 
-/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time against the list last stored, the latest winning, and a refusal shows the list the server holds (#507). */
+/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time against the list last stored, the latest winning (#507). */
 export const useChunkTags = (
   api: ApiClient,
   courseId: CourseId,
