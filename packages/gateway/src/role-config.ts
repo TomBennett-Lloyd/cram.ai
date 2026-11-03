@@ -5,7 +5,10 @@ import { EmbedderPin, GeneratorPin, RerankerPin, VerifierPin } from './pin';
 const LOOPBACK_HOST = /^(localhost|127(\.\d{1,3}){3}|\[::1\])$/;
 
 /** Loopback only: a private-network generator host is placed, not adopted (`docs/adr/0003-model-roles-and-backends.md` § Decision (j)). */
-export const LoopbackEndpoint = z.url({ protocol: /^https?$/, hostname: LOOPBACK_HOST });
+export const LoopbackEndpoint = z
+  .url({ protocol: /^https?$/, hostname: LOOPBACK_HOST })
+  .brand<'LoopbackEndpoint'>();
+export type LoopbackEndpoint = z.infer<typeof LoopbackEndpoint>;
 
 export const Sampling = z.strictObject({ temperature: z.number().min(0), seed: z.number().int() });
 export type Sampling = z.infer<typeof Sampling>;

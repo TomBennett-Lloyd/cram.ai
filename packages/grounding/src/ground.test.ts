@@ -5,6 +5,7 @@ import { splitClaims } from './claims';
 import {
   answer,
   cite,
+  emittedCitation,
   ENTAILED,
   fakeGateway,
   generatorRecording,
@@ -16,7 +17,6 @@ import {
 import { ground } from './ground';
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
 import { generationRequest } from './prompts/generation-prompt';
-import { slideLines } from './slide-text';
 import { rewriteRequest } from './prompts/rewrite-prompt';
 import { verifierRequest } from './prompts/verifier-prompt';
 import type { Quotes } from './verifier-input';
@@ -30,22 +30,16 @@ const retrieved = [
 
 const male = cite('l1/1', 'Worker bees are male.');
 const square = cite('l1/2', 'Bees build comb from square cells.');
+const queen = cite('l1/1', 'The queen is the colony’s only female.');
 /** Past every fixture slide's last line, so the citation names a line its slide does not have. */
 const NO_SUCH_LINE = 99;
 const PARTIAL_TEXT = 'Workers are male. They forage at night.';
 
-const lineOf = (citation: Citation, slides: readonly RetrievedSlide[]) => {
-  const slide = slides.find(({ sourceId }) => sourceId === citation.sourceId);
-  const index = slide === undefined ? -1 : slideLines(slide.record).indexOf(citation.quote);
-  if (index === -1)
-    throw new Error(`fixture: "${citation.quote}" is no line of ${citation.sourceId}`);
-  return { sourceId: citation.sourceId, line: index + 1 };
-};
 interface Reply {
   text: string;
   citations: (Citation | { sourceId: string; line: number })[];
 }
-/** The model's reply, each quoted citation written as the line number the model would emit. */
+/** The model's reply, each quoted citation as `emittedCitation` emits it. */
 const generatedFrom =
   (slides: readonly RetrievedSlide[]) =>
   (...units: Reply[]): Recording =>
@@ -53,7 +47,7 @@ const generatedFrom =
       units: units.map(({ text, citations }) => ({
         text,
         citations: citations.map((citation) =>
-          'quote' in citation ? lineOf(citation, slides) : citation,
+          'quote' in citation ? emittedCitation(citation, slides) : citation,
         ),
       })),
     });
@@ -131,8 +125,11 @@ describe('ground', () => {
     ).resolves.toEqual({ status: 'grounded', shown: [answer(first.text, [bullet])], withheld: [] });
   });
 
-  it('verifies a unit against the union of all its quotes', async () => {
-    const both = { text: 'Workers are male and build square cells.', citations: [male, square] };
+  it('verifies a unit against the union of all its quotes, two of them from one slide', async () => {
+    const both = {
+      text: 'Workers are male, the queen is the only female, and they build square cells.',
+      citations: [male, queen, square],
+    };
     await expect(run([generated(both), nli(both.text, both.citations, ENTAILED)])).resolves.toEqual(
       {
         status: 'grounded',

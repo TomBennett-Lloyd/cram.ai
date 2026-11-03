@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ChatWireRequest } from '../../chat';
-import type { HttpGeneratorConfig } from '../../role-config';
+import type { HttpGeneratorConfig, LoopbackEndpoint } from '../../role-config';
 
 const ChunkChoice = z.object({
   delta: z.object({ content: z.string().nullish() }),
@@ -16,7 +16,7 @@ export const ChatCompletionChunk = z.object({
 });
 export type ChatCompletionChunk = z.infer<typeof ChatCompletionChunk>;
 
-export const chatCompletionsUrl = (endpoint: string): URL =>
+export const chatCompletionsUrl = (endpoint: LoopbackEndpoint): URL =>
   new URL('chat/completions', endpoint.endsWith('/') ? endpoint : `${endpoint}/`);
 
 /** `reasoning_effort` is A12's setting, `docs/adr/0003-model-roles-and-backends.md` § Decision (k). */
