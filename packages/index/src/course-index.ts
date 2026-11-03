@@ -13,6 +13,7 @@ import {
   type SlideRecord,
   type SourceId,
   type StoredLecture,
+  type TopicOrigin,
   type TopicTag,
 } from '@cram/shared';
 import { z } from 'zod';
@@ -37,17 +38,18 @@ import { dropSummary, readSummaries, readSummary, writeSummary } from './lecture
 import { listed, listFilters, type SlideListing } from './list-filter';
 import { vectorList, wordList } from './ranked-lists';
 import { fuseByReciprocalRank } from './reciprocal-rank';
+import type { SearchQuery } from './search-query';
 import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
 import { createVectorTable } from './schema';
 import {
   carriedTags,
   dropSlideTopics,
+  editFactTopics,
   type FactRef,
   type TagRow,
   insertTagRows,
   slideTagRows,
   topicList,
-  type TopicOrigin,
   setFactTopics,
   type SetTopicsResult,
 } from './topics';
@@ -78,15 +80,6 @@ export const CANDIDATES_PER_LIST = 50;
 
 /** The topic list's weight in fusion; provisional (#69): on the eval deck recall@k reads 43/47 at 0.25, 0.5, 1 and 2 and with no tags (#426), so it cannot choose one. */
 export const TOPIC_LIST_WEIGHT = 1;
-
-export interface SearchQuery {
-  readonly text: string;
-  readonly embedding: Float32Array;
-  /** Off by default: references pages would dominate BM25 (#9's sizing comment, #78). */
-  readonly includeReferences?: boolean;
-  /** On for exam generation only (`docs/standards/grounding.md` rule 10); Ask and notes cite derived text unconfirmed. */
-  readonly excludeUnconfirmedDerived?: boolean;
-}
 
 export type RemoveLectureResult =
   { readonly status: 'removed' } | { readonly status: 'no-such-lecture' };
@@ -276,6 +269,11 @@ export class CourseIndex {
   /** Replaces a fact's topic tags of one origin (`docs/plan.md` §3.2): metadata, never content. */
   setTopics(fact: FactRef, origin: TopicOrigin, tags: readonly TopicTag[]): SetTopicsResult {
     return this.#db.transaction(() => setFactTopics(this.#db, fact, origin, tags))();
+  }
+
+  /** Sets a fact's whole tag list as the student edits it (#428); `editFactTopics` keeps a held tag's origin. */
+  editTopics(fact: FactRef, tags: readonly TopicTag[]): SetTopicsResult {
+    return this.#db.transaction(() => editFactTopics(this.#db, fact, tags))();
   }
 
   /** The student confirms the derived text of `seen`, the record they were shown beside its image (ADR 0006 § Decision (g)). */

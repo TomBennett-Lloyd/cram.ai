@@ -1,17 +1,15 @@
 import type { Database } from 'better-sqlite3';
-import { SlideKind, type CourseId } from '@cram/shared';
+import { SlideKind, TopicOrigin, type CourseId } from '@cram/shared';
 import { CHUNK_TABLE } from './chunk-row';
 import { CONFIRMATION_TABLE } from './confirmation';
 import type { EmbedderIdentity } from './embedder-identity';
 import { LECTURE_SUMMARY_TABLE } from './lecture-summaries';
 import { REBUILD_REPORT_TABLE } from './rebuild-report';
 import { STORED_DECK_TABLES } from './stored-deck';
-import { TOPIC_ORIGINS } from './topics';
 
 /**
  * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
- * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too.
- * Carriers: `.claude/ledgers/schema-version.ledger`.
+ * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too; carriers: `.claude/ledgers/schema-version.ledger`.
  */
 export const SCHEMA_VERSION = 12;
 
@@ -33,7 +31,7 @@ export const classifySchema = (
 const quotedList = (values: readonly string[]): string =>
   values.map((value) => `'${value}'`).join(', ');
 const KINDS = quotedList(SlideKind.options);
-const ORIGINS = quotedList(TOPIC_ORIGINS);
+const ORIGINS = quotedList(TopicOrigin.options);
 
 /** The `topics` table's name is reported by a rebuild that discards it; its ledger: `.claude/ledgers/topics-table.ledger`; `slides_fts`'s tokenizer's: `.claude/ledgers/index-tokenizer.ledger`. */
 const TABLES = `

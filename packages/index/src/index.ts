@@ -4,17 +4,9 @@ export {
   type CourseIndex,
   RETRIEVAL_K,
   type RemoveLectureResult,
-  type SearchQuery,
   TOPIC_LIST_WEIGHT,
 } from './course-index';
-export {
-  type FactRef,
-  namedTags,
-  type SetTopicsResult,
-  type TagRow,
-  TOPIC_ORIGINS,
-  type TopicOrigin,
-} from './topics';
+export { type FactRef, namedTags, type SetTopicsResult, type TagRow } from './topics';
 export { type SlideListing } from './list-filter';
 export { type ConfirmationState, type ConfirmResult } from './confirmation';
 export { embedSlideChunks, type EmbedTextResult, type EmbedTexts } from './embed-chunks';
@@ -33,6 +25,7 @@ export {
 export { loadSummaries } from './loaded-summaries';
 export { type RebuildReportDismissal } from './rebuild-report';
 export { SCHEMA_VERSION } from './schema';
+export { type SearchQuery } from './search-query';
 export { type SpellingCorrection } from './spelling-correction';
 export { sourceIdOf } from './slide-row';
 export {
