@@ -186,7 +186,7 @@ input:not([type='file']) {
   margin: 0;
 }
 
-/* Closer than the column's gap to the note and sources: one answer, several paragraphs (design.md rule 4). */
+/* Closer than the column's gap to the note and sources: one answer, several paragraphs (`docs/standards/design.md` rule 4). */
 .explanation-text p + p {
   margin-block-start: var(--space-2);
 }

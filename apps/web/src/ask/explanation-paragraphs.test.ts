@@ -77,6 +77,12 @@ describe('opensParagraph', () => {
   it('opens none at a blank line inside a sentence, nor at a sentence the text does not hold', () => {
     expect(opens('Castes\n\nDrones are male.', ['Castes\n\nDrones are male.'])).toEqual([false]);
     expect(opens('Drones.\n\nBees.', ['Drones.', 'Queens.'])).toEqual([false, false]);
+    expect(
+      opens('Bees fly. Castes\n\nDrones are male.', ['Bees fly.', 'Castes\n\nDrones are male.']),
+    ).toEqual([false, false]);
+    expect(
+      opens('Castes\n\nDrones are male. Workers.', ['Castes\n\nDrones are male.', 'Workers.']),
+    ).toEqual([false, false]);
   });
 
   it('keeps a quote across a paragraph break marked in each paragraph, its number after the last', () => {

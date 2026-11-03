@@ -55,7 +55,7 @@ export const NOT_COVERED_QUESTION = 'Who wrote Hamlet?';
 export const CONTRADICTED_QUESTION = 'Do drones forage?';
 export const CONTRADICTED_SENTENCE =
   'Drones forage for nectar in the comb, whose cells are hexagonal.';
-/** Its answer is three paragraphs, the last `CONTRADICTED_SENTENCE` (#466). */
+/** Its answer is in paragraphs, the last `CONTRADICTED_SENTENCE` (#466). */
 export const PARAGRAPHS_QUESTION = 'How is the hive organised?';
 /** A quote inside the contradicted sentence, so its underline and the mark's meet. */
 const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };

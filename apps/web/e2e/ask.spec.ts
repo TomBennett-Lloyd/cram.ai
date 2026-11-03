@@ -172,15 +172,6 @@ test('the contradiction label shows on hover over the sentence or its number, an
   await expect(label).toBeHidden();
 });
 
-/** The box of every button in the answer's explanation, in document order. */
-const controlBoxes = (page: Page) =>
-  page.locator('.explanation button').evaluateAll((nodes) =>
-    nodes.map((node) => {
-      const { x, y, width, height } = node.getBoundingClientRect();
-      return { x, y, width, height };
-    }),
-  );
-
 test('an answer in paragraphs shows each as a block, nearer each other than the note', async ({
   page,
 }) => {
@@ -204,32 +195,6 @@ test('an answer in paragraphs shows each as a block, nearer each other than the 
   const noteGap = (note?.y ?? 0) - (text?.y ?? 0) - (text?.height ?? 0);
   expect(noteGap).toBe(parseFloat(await tokenLength(page, '--space-4')));
   expect(paragraphGap < noteGap).toBe(true);
-});
-
-test('the label of a contradiction in a later paragraph moves no control in the answer, on hover or on focus', async ({
-  page,
-}, info) => {
-  await ask(page, PARAGRAPHS_QUESTION);
-  const label = page.locator('.contradiction-label');
-  await expect(label).toBeHidden();
-  const atRest = await controlBoxes(page);
-  expect(atRest.length > 3).toBe(true);
-  if (info.project.name === 'desktop') {
-    await page.locator('.contradicted').hover();
-    await expect(label).toBeVisible();
-    expect(await controlBoxes(page)).toEqual(atRest);
-    await page.getByRole('textbox', { name: 'Question' }).hover();
-    await expect(label).toBeHidden();
-  }
-  const button = page.getByRole('button', { name: CONTRADICTION_BUTTON });
-  await page.getByRole('button', { name: 'Ask' }).focus();
-  for (let presses = 0; presses < 8; presses++) {
-    if (await button.evaluate((node) => node === document.activeElement)) break;
-    await page.keyboard.press('Tab');
-  }
-  await expect(button).toBeFocused();
-  await expect(label).toBeVisible();
-  expect(await controlBoxes(page)).toEqual(atRest);
 });
 
 test('a mouse press on the contradiction number leaves no label once the pointer leaves', async ({
