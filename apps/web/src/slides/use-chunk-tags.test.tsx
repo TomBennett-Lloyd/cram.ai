@@ -1,3 +1,4 @@
+import { TagEdit } from '@cram/shared';
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi } from '../api/api-fixture';
@@ -135,14 +136,13 @@ describe('useChunkTags', () => {
       record: { ...QUEEN.record, title: 'The queens' },
       chunks: [
         { chunkNo: 1, textHash: textHash('4'), lines: ['One queen per hive'], tags: [] },
-        { chunkNo: 2, textHash: textHash('5'), lines: ['She lays'], tags: [tag('royal jelly')] },
+        { chunkNo: 2, textHash: textHash('1'), lines: ['She lays'], tags: [tag('royal jelly')] },
       ],
     };
     let refuse: (() => void) | undefined;
     const { api, sent } = fakeApi(async (request) => {
       if (!isPut(request)) return LECTURE;
-      if (edits([request]).some((edit) => JSON.stringify(edit).includes(textHash('5'))))
-        return echoed(request);
+      if (TagEdit.parse(JSON.parse(request.body)).chunkNo === 2) return echoed(request);
       await new Promise<void>((resolve) => {
         refuse = resolve;
       });
@@ -169,7 +169,7 @@ describe('useChunkTags', () => {
     expect(edits(sent)[1]).toEqual({
       sourceId: 'l1/1',
       chunkNo: 2,
-      textHash: textHash('5'),
+      textHash: textHash('1'),
       base: [tag('royal jelly')],
       tags: ['royal jelly', 'drones'],
     });

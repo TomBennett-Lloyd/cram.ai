@@ -27,7 +27,7 @@ apps/server/src/server-log.ts	1111
 apps/server/src/server.ts	347
 apps/server/src/slide-browser-fixture.ts	384
 apps/server/src/slide-embedding.ts	454
-apps/server/src/slide-topics.ts	267
+apps/server/src/slide-topics.ts	272
 apps/server/src/tag-handlers.ts	169
 apps/web/src/App.tsx	0
 apps/web/src/api/api-client.ts	642

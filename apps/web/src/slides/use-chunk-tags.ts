@@ -56,9 +56,9 @@ export const useChunkTags = (
         if (result.status === 'refused' && result.refusal.status === 'tags-changed')
           saved.current = result.refusal.tags;
         setShown(saved.current);
+        setFailure(result);
         if (result.status === 'refused' && result.refusal.status === 'chunk-changed')
           onSlideChanged(result.refusal.slide, result);
-        else setFailure(result);
       }
     }
     writing.current = false;

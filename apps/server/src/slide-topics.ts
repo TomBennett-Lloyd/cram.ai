@@ -103,9 +103,7 @@ export const editStoredTags = (
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   const { course } = opened;
   try {
-    const chunks = course.chunks(sourceId);
-    if (chunks.length === 0) return { status: 'no-such-fact' };
-    const chunk = chunks.find((each) => each.chunkNo === chunkNo);
+    const chunk = course.chunks(sourceId).find((each) => each.chunkNo === chunkNo);
     if (chunk === undefined || textHashOf(chunk) !== textHash)
       return chunkChanged(course, sourceId);
     const held = chunkTags(course.topics(sourceId), chunkNo);
