@@ -112,11 +112,26 @@ const LONG_TAG = 'hexagonalcombcellgeometry'.repeat(3);
 const lectureSlides = (hiveTags: readonly ChunkTag[]) => ({
   lectureId: 'l1',
   slides: [
-    { ...HIVE, chunks: [{ chunkNo: 1, lines: HIVE.record.body.split('\n'), tags: hiveTags }] },
+    {
+      ...HIVE,
+      chunks: [
+        {
+          chunkNo: 1,
+          textHash: '1'.repeat(64),
+          lines: HIVE.record.body.split('\n'),
+          tags: hiveTags,
+        },
+      ],
+    },
     {
       ...COMB,
       chunks: [
-        { chunkNo: 1, lines: [COMB.record.body], tags: [{ tag: LONG_TAG, origin: 'tagger' }] },
+        {
+          chunkNo: 1,
+          textHash: '2'.repeat(64),
+          lines: [COMB.record.body],
+          tags: [{ tag: LONG_TAG, origin: 'tagger' }],
+        },
       ],
     },
   ],

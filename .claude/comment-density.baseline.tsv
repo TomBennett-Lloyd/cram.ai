@@ -25,9 +25,10 @@ apps/server/src/routes.ts	227
 apps/server/src/server-fixture.ts	268
 apps/server/src/server-log.ts	1111
 apps/server/src/server.ts	347
+apps/server/src/slide-browser-fixture.ts	384
 apps/server/src/slide-embedding.ts	454
-apps/server/src/slide-topics.ts	326
-apps/server/src/tag-handlers.ts	172
+apps/server/src/slide-topics.ts	267
+apps/server/src/tag-handlers.ts	169
 apps/web/src/App.tsx	0
 apps/web/src/api/api-client.ts	642
 apps/web/src/api/api-context.ts	1111
@@ -48,7 +49,7 @@ apps/web/src/ask/explanation-marks-fixture.ts	666
 apps/web/src/ask/explanation-marks.ts	468
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	430
+apps/web/src/copy.ts	426
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
@@ -66,10 +67,10 @@ apps/web/src/shell/AppHeader.tsx	277
 apps/web/src/shell/async-states.tsx	416
 apps/web/src/shell/route.ts	217
 apps/web/src/shell/use-route.ts	0
-apps/web/src/slides/SlidesScreen.tsx	82
+apps/web/src/slides/SlidesScreen.tsx	65
 apps/web/src/slides/TagEditor.tsx	135
-apps/web/src/slides/slides-fixture.tsx	144
-apps/web/src/slides/use-chunk-tags.ts	169
+apps/web/src/slides/slides-fixture.tsx	140
+apps/web/src/slides/use-chunk-tags.ts	144
 apps/web/src/slides/use-lecture-slides.ts	416
 apps/web/src/theme.ts	909
 eval/src/ask-depths.ts	170
@@ -221,7 +222,7 @@ packages/ingest/src/slide-text.ts	689
 packages/ingest/src/stored-output-equations.ts	340
 packages/ingest/src/stored-output-fixture.ts	180
 packages/ingest/src/stored-text.ts	1176
-packages/shared/src/api-refusal.ts	370
+packages/shared/src/api-refusal.ts	357
 packages/shared/src/ask.ts	1562
 packages/shared/src/citation.ts	4000
 packages/shared/src/course-list.ts	2000
@@ -230,7 +231,7 @@ packages/shared/src/embed-text.ts	1428
 packages/shared/src/explanation.ts	2500
 packages/shared/src/index.ts	0
 packages/shared/src/ingest-status.ts	566
-packages/shared/src/lecture-slides.ts	487
+packages/shared/src/lecture-slides.ts	454
 packages/shared/src/lecture-summary.ts	2058
 packages/shared/src/non-blank-text.ts	0
 packages/shared/src/quotable-text.ts	512
