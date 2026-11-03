@@ -74,6 +74,13 @@ describe('opensParagraph', () => {
     ]);
   });
 
+  it('opens a paragraph at the sentence after a heading the claim split ends at a blank line', () => {
+    expect(opens('Castes\n\nDrones are male.', ['Castes', 'Drones are male.'])).toEqual([
+      false,
+      true,
+    ]);
+  });
+
   it('opens none at a blank line inside a sentence, nor at a sentence the text does not hold', () => {
     expect(opens('Castes\n\nDrones are male.', ['Castes\n\nDrones are male.'])).toEqual([false]);
     expect(opens('Drones.\n\nBees.', ['Drones.', 'Queens.'])).toEqual([false, false]);

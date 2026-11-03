@@ -1,6 +1,8 @@
+import { BLANK_LINE } from '@cram/shared';
+
 const CLOSE_RUN = String.raw`[\p{Ps}\p{Pe}\p{Pi}\p{Pf}"']*`;
 const CLAIM_BOUNDARY = new RegExp(
-  String.raw`(?<=[.!?]${CLOSE_RUN})\s+(?=${CLOSE_RUN}[\p{Lu}\p{N}])|(?<=;)\s+`,
+  String.raw`(?<=[.!?]${CLOSE_RUN})\s+(?=${CLOSE_RUN}[\p{Lu}\p{N}])|(?<=;)\s+|${BLANK_LINE.source}`,
   'u',
 );
 
