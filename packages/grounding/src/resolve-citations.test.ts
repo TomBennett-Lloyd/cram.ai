@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answer, cite, draft, line, slide } from './fake-gateway-fixture';
+import { answer, cite, draft, emittedCitation, line, slide } from './fake-gateway-fixture';
 import { quotesResolve, resolveCitations } from './resolve-citations';
 
 const hive = slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.', {
@@ -135,5 +135,34 @@ describe('quotesResolve', () => {
     });
     for (const quote of ['Castes', 'never leave the hive', 'A drone at rest'])
       expect(holds(quote, [noted])).toBe(true);
+  });
+});
+
+describe('emittedCitation', () => {
+  const noted = slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.', {
+    title: 'Castes',
+    speakerNotes: 'Drones never leave the hive.',
+    imageCaptions: ['A drone at rest'],
+  });
+  const retrieved = [comb, noted];
+  const lookedUp = (quote: string) =>
+    resolveCitations([draft('x', [emittedCitation(cite('l1/1', quote), retrieved)])], retrieved)
+      .resolved[0]?.quotes;
+
+  it('emits the citation resolveCitations looks up as the quote, for every line of every field', () => {
+    for (const quote of [
+      'Castes',
+      'Worker bees are male.',
+      'The queen is the colony’s only female.',
+      'Drones never leave the hive.',
+      'A drone at rest',
+    ])
+      expect(lookedUp(quote)).toEqual([quote]);
+  });
+
+  it('refuses a quote that is no line of its slide: part of a line, a span across two, another slide’s', () => {
+    for (const quote of ['Worker bees', 'male. The queen', 'Bees build comb from square cells.'])
+      expect(() => lookedUp(quote)).toThrow(`"${quote}" is no line of l1/1`);
+    expect(() => emittedCitation(cite('l9/9', 'Castes'), retrieved)).toThrow('no line of l9/9');
   });
 });
