@@ -29,7 +29,7 @@ apps/server/src/slide-embedding.ts	454
 apps/server/src/slide-topics.ts	389
 apps/server/src/tag-handlers.ts	175
 apps/web/src/App.tsx	0
-apps/web/src/api/api-client.ts	683
+apps/web/src/api/api-client.ts	642
 apps/web/src/api/api-context.ts	1111
 apps/web/src/api/api-fixture.ts	218
 apps/web/src/api/api-result.ts	1250
@@ -47,11 +47,12 @@ apps/web/src/ask/cited-slide.ts	952
 apps/web/src/ask/explanation-marks.ts	480
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	468
+apps/web/src/copy.ts	434
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
-apps/web/src/decks/DecksScreen.tsx	535
+apps/web/src/decks/DecksScreen.tsx	507
+apps/web/src/decks/LectureName.tsx	476
 apps/web/src/decks/LectureSummary.tsx	384
 apps/web/src/decks/decks-fixture.tsx	289
 apps/web/src/decks/summary-fixture.ts	0
@@ -62,8 +63,12 @@ apps/web/src/main.tsx	0
 apps/web/src/shell/AppErrorBoundary.tsx	1428
 apps/web/src/shell/AppHeader.tsx	277
 apps/web/src/shell/async-states.tsx	416
-apps/web/src/shell/route.ts	357
+apps/web/src/shell/route.ts	217
 apps/web/src/shell/use-route.ts	0
+apps/web/src/slides/SlidesScreen.tsx	82
+apps/web/src/slides/TagEditor.tsx	519
+apps/web/src/slides/use-chunk-tags.ts	188
+apps/web/src/slides/use-lecture-slides.ts	416
 apps/web/src/theme.ts	909
 eval/src/ask-depths.ts	170
 eval/src/asked-question.ts	1250

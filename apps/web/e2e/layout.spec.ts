@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   await stubApi(page);
 });
 
-for (const path of ['/', '/#/courses/bio/decks']) {
+for (const path of ['/', '/#/courses/bio/decks', '/#/courses/bio/decks/l1']) {
   test(`${path} never scrolls sideways at the narrowest phone width`, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator('main')).toBeVisible();
@@ -29,6 +29,13 @@ test('a long file name wraps inside the decks list', async ({ page }) => {
   await page.goto('/#/courses/bio/decks');
   await expect(page.locator('.upload')).toHaveCount(1);
   expect(await overflows(page, '.upload')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
+});
+
+test('a long tag wraps inside its chip in the slide browser', async ({ page }) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  await expect(page.locator('.tag')).toHaveCount(3);
+  expect(await overflows(page, '.tag')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
 });
 

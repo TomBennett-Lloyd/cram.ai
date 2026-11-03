@@ -470,3 +470,88 @@ mark,
   text-decoration-thickness: var(--line-md);
   text-underline-offset: auto;
 }
+
+.browsed-slides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browsed-slide,
+.browsed-chunk,
+.tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.browsed-slide h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.browsed-slide-number {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.browsed-slide-derived {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.browsed-chunk-lines {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding-inline-start: var(--space-3);
+  border-width: var(--line-sm);
+  border-style: solid;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+}
+
+/* The tag pass's tag, unchecked by any verifier, against the student's own (#496). */
+.tag[data-origin='tagger'] {
+  border-style: dashed;
+}
+
+.tag-text {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.tag-remove {
+  padding: 0 var(--space-2);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-tight);
+}
+
+.tag-form {
+  display: flex;
+  gap: var(--space-2);
+}
