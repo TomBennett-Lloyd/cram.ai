@@ -163,6 +163,33 @@ describe('SlidesScreen', () => {
     expect(screen.queryByRole('list', { name: 'Tags on slide 1' })).toBeNull();
   });
 
+  it('hands the focus to the next tag when the first of several is removed', async () => {
+    const { api } = fakeApi((request) => (isPut(request) ? echoed(request) : LECTURE));
+    renderSlides(api);
+    await settle();
+    await addTag('slide 1', 'apple');
+    const first = screen.getByRole('button', { name: 'Remove the tag apple' });
+    first.focus();
+    fireEvent.click(first);
+    await settle();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Remove the tag castes' }),
+    );
+  });
+
+  it('hands the focus back to the tag before when the last of several is removed', async () => {
+    const { api } = fakeApi((request) => (isPut(request) ? echoed(request) : LECTURE));
+    renderSlides(api);
+    await settle();
+    const last = screen.getByRole('button', { name: 'Remove the suggested tag the queen' });
+    last.focus();
+    fireEvent.click(last);
+    await settle();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Remove the tag castes' }),
+    );
+  });
+
   it('leaves the focus where it was when a tag is removed by a press that did not focus its button', async () => {
     const { api } = fakeApi((request) => (isPut(request) ? echoed(request) : LECTURE));
     renderSlides(api);
@@ -175,13 +202,10 @@ describe('SlidesScreen', () => {
   });
 
   it('writes edits one at a time, sending only the latest list once the write in flight returns', async () => {
-    let release: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const gates: (() => void)[] = [];
     const { api, sent } = fakeApi(async (request) => {
       if (!isPut(request)) return LECTURE;
-      if (sent.filter(isPut).length === 1) await held;
+      await new Promise<void>((resolve) => gates.push(resolve));
       return echoed(request);
     });
     renderSlides(api);
@@ -189,15 +213,25 @@ describe('SlidesScreen', () => {
     await addTag('slide 1', 'one');
     await addTag('slide 1', 'two');
     await addTag('slide 1', 'three');
-    expect(tagsOn('slide 1')).toEqual(['castes', 'one', 'the queen', 'three', 'two']);
+    const shown = ['castes', 'one', 'the queen', 'three', 'two'];
+    expect(tagsOn('slide 1')).toEqual(shown);
+    expect(
+      screen
+        .getByRole('button', { name: 'Remove the tag one' })
+        .closest('.tag')
+        ?.getAttribute('data-origin'),
+    ).toBe('student');
     expect(edits(sent)).toHaveLength(1);
-    release();
+    gates[0]?.();
+    await settle();
+    expect(tagsOn('slide 1')).toEqual(shown);
+    gates[1]?.();
     await settle();
     expect(edits(sent)).toEqual([
       { sourceId: 'l1/1', chunkNo: 1, tags: ['castes', 'the queen', 'one'] },
       { sourceId: 'l1/1', chunkNo: 1, tags: ['castes', 'one', 'the queen', 'two', 'three'] },
     ]);
-    expect(tagsOn('slide 1')).toEqual(['castes', 'one', 'the queen', 'three', 'two']);
+    expect(tagsOn('slide 1')).toEqual(shown);
   });
 
   it('puts the stored list back and says why when a write is refused, and clears the alert at the next edit', async () => {
@@ -216,6 +250,9 @@ describe('SlidesScreen', () => {
     refuse = false;
     await addTag('slide 1', 'drones');
     expect(screen.queryAllByRole('alert')).toEqual([]);
+    expect(tagsOn('slide 1')).toEqual(['castes', 'drones', 'the queen']);
+    refuse = true;
+    await addTag('slide 1', 'swarming');
     expect(tagsOn('slide 1')).toEqual(['castes', 'drones', 'the queen']);
   });
 

@@ -72,6 +72,15 @@ describe('CourseIndex.editTopics', () => {
     ]);
   });
 
+  it('adds a tag the slide’s other chunk holds, and leaves that chunk’s row alone', () => {
+    course.editTopics(firstFact(second), tags('osmosis', 'pressure'));
+    expect(course.topics(second)).toEqual([
+      { chunkNo: 1, origin: 'student', tag: 'osmosis' },
+      { chunkNo: 1, origin: 'student', tag: 'pressure' },
+      { chunkNo: 2, origin: 'tagger', tag: 'pressure' },
+    ]);
+  });
+
   it('reports a fact the course does not hold and writes nothing', () => {
     for (const fact of [
       firstFact(SourceId.parse('lecture-9/1')),

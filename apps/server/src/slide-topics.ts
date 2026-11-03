@@ -14,7 +14,7 @@ import {
 import { type CourseFiles, courseExists, openForWrite, openToRead } from './course-file';
 
 /** A tag both origins hold is shown once, as the student's. */
-const chunkTags = (rows: readonly TagRow[], chunkNo: ChunkNo): ChunkTag[] => {
+export const chunkTags = (rows: readonly TagRow[], chunkNo: ChunkNo): ChunkTag[] => {
   const byTag = new Map<string, ChunkTag>();
   for (const { chunkNo: rowChunk, origin, tag } of rows)
     if (rowChunk === chunkNo && (origin === 'student' || !byTag.has(tag)))
