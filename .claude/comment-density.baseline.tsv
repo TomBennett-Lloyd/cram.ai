@@ -239,7 +239,7 @@ packages/shared/src/split-chunk.ts	617
 packages/shared/src/style-exemplar.ts	2173
 packages/shared/src/topic-tag.ts	1111
 packages/shared/src/unit.ts	2666
-packages/shared/src/verification-depth.ts	1666
+packages/shared/src/verification-depth.ts	1428
 packages/shared/src/verification.ts	1250
 packages/shared/src/withheld.ts	689
 packages/ui/src/index.ts	0
