@@ -181,9 +181,14 @@ input:not([type='file']) {
   gap: var(--space-4);
 }
 
-.explanation-text,
+.explanation-text p,
 .attributed-note {
   margin: 0;
+}
+
+/* Closer than the column's gap to the note and sources: one answer, several paragraphs (design.md rule 4). */
+.explanation-text p + p {
+  margin-block-start: var(--space-2);
 }
 
 .explanation-quote {
