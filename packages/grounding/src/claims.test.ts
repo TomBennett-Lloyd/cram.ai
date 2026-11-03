@@ -123,11 +123,87 @@ describe('splitClaims', () => {
   });
 
   it.each([
+    [
+      'a currency sign',
+      'The hive costs £5. £20 Buys a nucleus.',
+      ['The hive costs £5.', '£20 Buys a nucleus.'],
+    ],
+    [
+      'a hash',
+      'Workers are male. #1 Drones are female.',
+      ['Workers are male.', '#1 Drones are female.'],
+    ],
+    [
+      'an asterisk',
+      'Workers are male. *Drones are female.',
+      ['Workers are male.', '*Drones are female.'],
+    ],
+    [
+      'an underscore',
+      'Workers are male. _Drones_ are female.',
+      ['Workers are male.', '_Drones_ are female.'],
+    ],
+    [
+      'a backtick',
+      'Workers are male. `Drones` are female.',
+      ['Workers are male.', '`Drones` are female.'],
+    ],
+    [
+      'an arrow',
+      'Workers are male. →Drones are female.',
+      ['Workers are male.', '→Drones are female.'],
+    ],
+    [
+      'an ornament quote',
+      'Workers are male. ❝Drones are female.❞',
+      ['Workers are male.', '❝Drones are female.❞'],
+    ],
+    [
+      'a substitution mark',
+      'Workers are male. ⸀Drones are female.',
+      ['Workers are male.', '⸀Drones are female.'],
+    ],
+  ])(
+    'splits before %s before a capital and keeps it with the sentence it opens',
+    (_, text, claims) => {
+      expect(splitClaims(text)).toEqual(claims);
+    },
+  );
+
+  it('splits before a currency sign before a numeral, as before the bare numeral', () => {
+    expect(splitClaims('The hive costs £5. £20 buys a nucleus.')).toEqual([
+      'The hive costs £5.',
+      '£20 buys a nucleus.',
+    ]);
+  });
+
+  it.each([
+    ['a trademark sign', 'Workers are male.™ Drones are female.', 'Workers are male.™'],
+    ['a footnote asterisk', 'Workers are male.* Drones are female.', 'Workers are male.*'],
+    ['a dagger', 'Workers are male.† Drones are female.', 'Workers are male.†'],
+    ['closing emphasis', '_Workers are male._ Drones are female.', '_Workers are male._'],
+    ['an ornament quote', '❝Workers are male.❞ Drones are female.', '❝Workers are male.❞'],
+    ['a substitution mark', 'Workers are male.⸀ Drones are female.', 'Workers are male.⸀'],
+  ])('keeps %s after the terminal with the sentence it ends', (_, text, first) => {
+    expect(splitClaims(text)).toEqual([first, 'Drones are female.']);
+  });
+
+  it.each(['055D', '060D', '066B', '066C', 'FE10', 'FE11', 'FE13', 'FE14'])(
+    'does not split at U+%s after the terminal, a mark UAX #29 continues through',
+    (hex) => {
+      const mark = String.fromCodePoint(Number.parseInt(hex, 16));
+      expect(splitClaims(`Workers are male.${mark} Drones are female.`)).toHaveLength(1);
+    },
+  );
+
+  it.each([
     ['after a closing quote', '"Is it?" she asked.'],
     ['after an opening quote', 'Workers are male. "drones" are not.'],
     ['after an opening parenthesis', 'Workers are male. (see the diagram) and drones are not.'],
     ['after a closing parenthesis', '(Workers are male.) drones are female.'],
     ['in a parenthesised enumerator', 'Workers are male. (i) Drones are female.'],
+    ['after an asterisk', 'Workers are male. *drones* are not.'],
+    ['after a mark between the terminal and the space', 'Workers are male.* drones are not.'],
   ])('does not split before a lowercase word %s', (_, text) => {
     expect(splitClaims(text)).toHaveLength(1);
   });
@@ -137,6 +213,8 @@ describe('splitClaims', () => {
     ['a full stop inside a word', 'Cells are 5.4mm Drones are not.'],
     ['a dash before the capital', 'Workers are male. —Drones are female.'],
     ['a comma after the terminal', 'Some castes, e.g., Drones, never forage.'],
+    ['a circled capital after the terminal', 'Workers are male.Ⓐ Drones are female.'],
+    ['a circled lowercase letter before the capital', 'Workers are male. ⓐDrones are female.'],
   ])('does not split at %s', (_, text) => {
     expect(splitClaims(text)).toHaveLength(1);
   });
