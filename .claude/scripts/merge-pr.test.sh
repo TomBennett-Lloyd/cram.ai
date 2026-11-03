@@ -1328,10 +1328,11 @@ expect_stderr 'the lane report names #21 but no Closes or Part of line does'
 expect_not_merged squash
 end
 
-# PRs #437, #495 and #500 each opened their body with `Part of #<n>`, as ticket-agent
-# rule 5 has a PARTIAL lane write it, and each was refused here and merged only under
-# --method squash. The line is a declaration, read at a line's start like the report
-# header; prose naming the issue mid-line, or a Part of line for another issue, is not.
+# PRs #437, #495 and #500 each opened their body with `Part of #<n>`, and each was
+# refused here and merged only under --method squash. The reader requires a line to
+# open with `Part of #<n>`, like the report header; ticket-agent rules 5 and 7 do not
+# yet say so. Prose naming the issue mid-line, or a Part of line for another issue,
+# declares nothing.
 begin "a PARTIAL lane report with a Part of line for its issue merges --squash and leaves it open"
 fixture lane-part-of
 V_BODY='Part of #21. The issue stays open for its deferred criterion.\n## Lane report — issue #21\nSTATUS: PARTIAL — one criterion deferred'
@@ -1345,6 +1346,18 @@ expect_called "pr update-branch $PR"
 expect_merged squash
 expect_not_merged rebase
 expect_stdout 'nothing to verify'
+end
+
+begin "a Part of line after the first, in a CRLF body, still declares the lane's issue"
+fixture lane-part-of-crlf
+V_BODY='What and why.\r\nPart of #21.\r\n## Lane report — issue #21\r\nSTATUS: PARTIAL — one criterion deferred'
+V_COMMITS="#21: the half that ships"
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_stdout 'Part of #21 so it stays open -> squash'
+expect_merged squash
 end
 
 begin "a lane report naming its issue as part of something mid-line is still refused at classify"

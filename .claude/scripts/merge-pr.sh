@@ -592,7 +592,7 @@ step 'classify' "PR #$pr_number is $pr_state on '$pr_head_ref'; $merge_reason; $
 # run — the cost this script exists to save.
 if [ "$already_merged" = "0" ]; then
   [ -n "$merge_method" ] || fail 'classify' \
-    "$merge_reason — cannot tell a single-issue squash from a batch rebase. Correct the Closes lines or the lane declarations in the body, or pass --method squash|rebase"
+    "$merge_reason — cannot tell a single-issue squash from a batch rebase. Correct the Closes or Part of lines or the lane declarations in the body, or pass --method squash|rebase"
   # Ahead of the curated-history check, so that a HUMAN batch carrying its
   # verdict commit is told the rule rather than a commit count; a batch whose
   # verdict was folded by hand would pass that count (#105). Naming the member is

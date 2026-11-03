@@ -182,3 +182,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/index-words.ts` (`INDEX_WORDS`), imported by `packages/index/src/fts-query.ts`, `packages/index/src/topics.ts`, `packages/index/src/spelling-correction.ts`
 - What: `correctSpelling` and `namedTags` now reach a `:memory:` connection that is never closed. Before, `correctSpelling` reached SQLite only through its injected `Lexicon`. It is a cache of a deterministic function of the linked SQLite, so behaviour is unaffected, but `docs/standards/architecture.md` rule 3 prefers the adapter at the edge. Suspected root cause: the word model is needed by pure callers with no course connection, such as `eval/src/tag-recall.ts`.
 - Source: PR for #489 (review)
+
+## 2026-11-03 — a Part of lane's log-union commit carries no `#<n>:` subject prefix
+
+- Where: `.claude/scripts/merge-pr.sh` (the union step's `subject=` and the comment above it)
+- What: the union commit's `#<n>:` prefix comes only from `pr_closes[0]`. A lane report whose issue a `Part of` line names now reaches that step without `--method`, with no Closes line, so its union commit lands on the branch unprefixed; the squash flattens it, so `main` is unaffected. The comment's "a PR merged under an explicit --method may have no Closes line" no longer covers every such PR. Fix direction: fall back to `pr_lanes[0]` when `pr_closes` is empty, and true the comment.
+- Source: PR #504 (review)
