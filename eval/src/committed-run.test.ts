@@ -10,7 +10,7 @@ import { readRun } from './run-files';
 import { replayMismatches, unreadRunMessage } from './tier-one-mismatch';
 
 // Tier 1 over the committed tier-2 run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)).
-// Each failure names its `TierOneMismatch` kind; any of them means re-run `pnpm eval` (#460).
+// Each failure names its `TierOneMismatch` kind (#460).
 const course = readEvalCourse();
 if (course.status !== 'read') throw new Error(`${course.where}: ${course.message}`);
 const read = readRun(EVAL_ROOT);

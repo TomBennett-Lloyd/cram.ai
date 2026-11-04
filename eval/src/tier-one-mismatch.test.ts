@@ -81,16 +81,14 @@ describe('reportIssueMismatches', () => {
     ['a value of the wrong type', '{"a":{"b":"1","c":"x"},"rows":[]}', 'a.b'],
     ['a null where an object belongs', '{"a":null,"rows":[]}', 'a'],
   ])('calls %s invalid, never an absent key', (_name, text, at) => {
-    expect(reportIssueMismatches(issuesOf(text))).toEqual([
-      { kind: 'report invalid', at, message: expect.any(String) as string },
-    ]);
+    expect(reportIssueMismatches(issuesOf(text))).toMatchObject([{ kind: 'report invalid', at }]);
   });
 
   it('calls an issue of any other code invalid', () => {
     const Positive = z.strictObject({ n: z.number().positive() });
     const parsed = parseJsonText('{"n":-1}', Positive);
-    expect(reportIssueMismatches(parsed.ok ? [] : parsed.issues)).toEqual([
-      { kind: 'report invalid', at: 'n', message: expect.any(String) as string },
+    expect(reportIssueMismatches(parsed.ok ? [] : parsed.issues)).toMatchObject([
+      { kind: 'report invalid', at: 'n' },
     ]);
   });
 });

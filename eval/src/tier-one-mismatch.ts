@@ -5,7 +5,7 @@ import type { EvalReport } from './report';
 import { untimed } from './replay-run';
 import type { EvalRunRead } from './run-files';
 
-/** Why tier 1 (`eval/src/committed-run.test.ts`) is red, by kind (#460). */
+/** Why tier 1 (`eval/src/committed-run.test.ts`) is red, by kind (#460; `.claude/ledgers/tier-one-mismatch-kinds.ledger`). */
 export type TierOneMismatch =
   | { readonly kind: 'report key absent'; readonly at: string }
   | { readonly kind: 'report key retired'; readonly at: string }
