@@ -12,6 +12,7 @@ import {
 } from './course-fixture';
 import { textHashOf } from './confirmation';
 import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
+import type { SlideListing } from './list-filter';
 import { loadSummaries } from './loaded-summaries';
 import { SCHEMA_VERSION } from './schema';
 import { sourceIdOf } from './slide-row';
@@ -221,7 +222,7 @@ describe('CourseIndex.lectureSlides and loadSummaries excluding unconfirmed deri
   });
 
   it('lists every slide of the lecture by default, and leaves the unconfirmed derived one out when asked', () => {
-    const slideNos = (listing?: { readonly excludeUnconfirmedDerived: boolean }) =>
+    const slideNos = (listing?: SlideListing) =>
       course.lectureSlides(DERIVED.lectureId, listing).map(({ record }) => record.slideNo);
     expect(slideNos()).toEqual([1, 2, 3]);
     expect(slideNos({ excludeUnconfirmedDerived: true })).toEqual([2, 3]);

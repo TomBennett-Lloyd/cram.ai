@@ -25,16 +25,18 @@ const lipids = retrieved(
   slide({ lectureId: 'lecture-3', lectureTitle: 'Lecture 3', body: 'Lipids store energy.' }),
 );
 
+const unitCiting = (...slides: readonly RetrievedSlide[]) => ({
+  text: `Summarised: ${slides.map(({ record }) => record.body).join(' ')}`,
+  citations: slides.map(({ sourceId, record }) => ({ sourceId, quote: record.body })),
+  kind: 'lecture-summary' as const,
+});
+
 const summaryCiting = (...slides: readonly RetrievedSlide[]): LectureSummary => {
   const [first] = slides;
   if (first === undefined) throw new Error('summaryCiting: no slide');
   return LectureSummary.parse({
     lectureId: first.record.lectureId,
-    units: slides.map(({ sourceId, record }) => ({
-      text: `Summarised: ${record.body}`,
-      citations: [{ sourceId, quote: record.body }],
-      kind: 'lecture-summary',
-    })),
+    units: slides.map((slide) => unitCiting(slide)),
   });
 };
 
@@ -51,12 +53,6 @@ const course = (
         slide.record.lectureId === lectureId &&
         !(listing.excludeUnconfirmedDerived === true && unconfirmed.includes(slide)),
     ),
-});
-
-const unitCiting = (...slides: readonly RetrievedSlide[]) => ({
-  text: `Summarised: ${slides.map(({ record }) => record.body).join(' ')}`,
-  citations: slides.map(({ sourceId, record }) => ({ sourceId, quote: record.body })),
-  kind: 'lecture-summary' as const,
 });
 
 describe('loadSummaries', () => {
@@ -84,7 +80,7 @@ describe('loadSummaries for exam generation, leaving out unconfirmed derived sli
   const EXAM = { excludeUnconfirmedDerived: true };
   const mixed = LectureSummary.parse({
     lectureId: one.record.lectureId,
-    units: [unitCiting(one), unitCiting(two, three), unitCiting(three)],
+    units: [unitCiting(one), unitCiting(two, three), unitCiting(three, two), unitCiting(three)],
   });
 
   it('drops each line citing a left-out slide, even beside an eligible one, and the slides only it cited', () => {
