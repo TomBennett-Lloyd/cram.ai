@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Recording, recordingKey } from '@cram/gateway';
+import type { z } from 'zod';
 import { attempt } from './file-attempt';
 import { parseJsonLines, parseJsonText } from './json-text';
 import { EvalReport } from './report';
@@ -41,13 +42,18 @@ export const writeRun = async (root: string, run: EvalRun): Promise<void> => {
 
 export type EvalRunRead =
   | { readonly status: 'read'; readonly run: EvalRun }
-  | { readonly status: 'invalid'; readonly where: string; readonly message: string };
+  | {
+      readonly status: 'invalid';
+      readonly where: string;
+      readonly message: string;
+      readonly reportIssues: readonly z.core.$ZodIssue[];
+    };
 
-const invalid = (where: string, message: string): EvalRunRead => ({
-  status: 'invalid',
-  where,
-  message,
-});
+const invalid = (
+  where: string,
+  message: string,
+  reportIssues: readonly z.core.$ZodIssue[] = [],
+): EvalRunRead => ({ status: 'invalid', where, message, reportIssues });
 
 const readText = (root: string, path: string) =>
   attempt(() => readFileSync(join(root, path), 'utf8'));
@@ -64,7 +70,7 @@ export const readRun = (root: string): EvalRunRead => {
   const reportText = readText(root, reportFile(commit));
   if (!reportText.ok) return invalid(reportFile(commit), 'not found');
   const report = parseJsonText(reportText.value, EvalReport);
-  if (!report.ok) return invalid(reportFile(commit), report.message);
+  if (!report.ok) return invalid(reportFile(commit), report.message, report.issues);
   if (report.value.measuredCommit !== commit)
     return invalid(reportFile(commit), `measured ${report.value.measuredCommit}, not ${commit}`);
   const lines = readText(root, recordingsFile(commit));
