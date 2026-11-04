@@ -168,7 +168,8 @@ the section before you dispatch.
    (`docs/standards/evidence.md`) — go in the in-flight table rows, never into issues.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
    `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
-   poll, a merge taken only from `CLEAN`, and then, only once the PR reports `MERGED`, the
+   poll, a merge taken only from `CLEAN` and pinned with `--match-head-commit` to the
+   head whose checks it read, and then, only once the PR reports `MERGED`, the
    label removal, the `Closes`-issue check and the worktree reap. It is idempotent and
    re-runnable from any state, so the repair for a chain that dies mid-poll is to run it
    again; a failure names the step the next run resumes from. It never fills a **Verdict** —

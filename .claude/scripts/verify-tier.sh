@@ -58,6 +58,20 @@
 # a file ("testing.md rule 7"). Those cost a full run, the direction this script
 # is allowed to be wrong in.
 #
+# FIXTURE-ONLY HARNESSES (#471) are the one declared exception: FIXTURE_ONLY_HARNESSES
+# below names the harnesses whose markdown strings are fixture text, and the guard
+# does not grep them. The soundness argument, per member: it runs its subject only
+# against repositories it builds under its tmp root, passing that root on every
+# invocation that gets past argument parsing, and it reads from the working tree
+# only its neighbours in .claude/scripts and .claude/workflow.json. So no markdown
+# file here can reach it. A member keeps the exemption only while its source shows
+# no other way out of its directory: no `..` path component but `/../workflow.json`,
+# and no `dirname` but the one of its own BASH_SOURCE. That check is a floor, not a
+# proof; the routes it cannot see are #471's accepted residual, with CI's
+# `verify:full` on every PR as the backstop.
+# The exemption is this rung's alone: the census and rung 3's selection still see
+# the harness, so a change to merge-pr.sh still runs merge-pr.test.sh.
+#
 # ---------------------------------------------------------------------------
 # RUNG 2 — source-prose and source-emit (cumulo#477, #292)
 #
@@ -172,10 +186,10 @@
 # having run nothing.
 #
 # WHERE THE RUNGS DISAGREE, deliberately. A markdown-only change set whose file a
-# test names goes full (rung 1's guard); the same file alongside any other class
-# runs that test instead of everything. Rung 1 is cumulo#476's and is left as it
-# was: both answers are safe, and the cheaper one is not worth reopening a merged
-# decision for.
+# test outside FIXTURE_ONLY_HARNESSES names goes full (rung 1's guard); the same
+# file alongside any other class runs that test instead of everything. Rung 1 is
+# cumulo#476's and is left as it was: both answers are safe, and the cheaper one
+# is not worth reopening a merged decision for.
 #
 # ---------------------------------------------------------------------------
 # SCRIPTS AND LEDGERS (#292)
@@ -431,6 +445,32 @@ census_tests() {
   return 0
 }
 
+# The harnesses rung 1's guard does not grep; the RUNG 1 docblock states each one's
+# soundness argument.
+FIXTURE_ONLY_HARNESSES=(
+  .claude/scripts/merge-pr.test.sh
+  .claude/scripts/fill-verdict.test.sh
+)
+
+# fixture_only <test path> -> 0 when the path is a FIXTURE_ONLY_HARNESSES member
+# whose source passes the RUNG 1 docblock's climb check, 1 otherwise, including
+# when the source cannot be read.
+fixture_only() {
+  local h src
+  local climb='/../workflow.json' own_dir="dirname \"\${BASH_SOURCE[0]}\""
+  for h in "${FIXTURE_ONLY_HARNESSES[@]}"; do
+    [ "$1" = "$h" ] || continue
+    src=$(cat -- "$ROOT/$1") || return 1
+    src=${src//"$climb"/}
+    src=${src//"$own_dir"/}
+    # `...` is a git range, not a path component, so a dot on either side excludes it.
+    grep -qE '(^|[^.])[.][.]($|[^.])|dirname' <<<"$src"
+    [ $? -eq 1 ]
+    return
+  done
+  return 1
+}
+
 # change_set_patterns -> writes to $PATTERNS the fixed strings a test file is
 # searched for: every changed path, every changed basename, and every member of
 # the script closure.
@@ -454,8 +494,12 @@ guard_hits() {
 
   files=()
   while IFS= read -r f; do
-    files+=("$f")
+    fixture_only "$f" || files+=("$f")
   done <"$TESTS"
+  if [ "${#files[@]}" -eq 0 ]; then
+    reason="every test file is a fixture-only harness — an empty scan is not a clean one"
+    return 1
+  fi
 
   # -F: the patterns are paths, and a path's dots are not wildcards.
   grep -nF -f "$PATTERNS" -- "${files[@]}" >"$TMP/hits" 2>/dev/null
@@ -1032,7 +1076,7 @@ classify_tier() {
   if [ -z "$(grep -v -E '\.md$' "$CHANGED" | head -n 1)" ]; then
     if guard_hits; then
       tier=docs
-      reason="every path is markdown, and no test references one of them"
+      reason="every path is markdown, and no test outside the fixture-only harnesses references one of them"
       # The legs that can observe markdown at all; verify:root is not among
       # them because `verify` has already run it before reaching this script.
       legs="$DOCS_LEGS"
