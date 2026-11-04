@@ -61,7 +61,11 @@ that gets decided into a surface lands in that surface's record.
    share fixed x-positions across samples; a moving cursor changes values, never layout.
    Position may track the pointer continuously; content switches only at data cadence.
    Geometry settles before first paint — a surface that appears and then visibly resizes is
-   the same defect. (cumulo#284 D7/D12; cumulo#330; cumulo#343)
+   the same defect. Content that a hover or a focus reveals moves nothing else: its box is
+   reserved at rest, or it floats without covering a control. A check of it reads the box of
+   every control in the reveal's containing block before and after the reveal, not only the
+   one hovered or focused, and confirms that the revealed box overlaps none of them.
+   (cumulo#284 D7/D12; cumulo#330; cumulo#343; #474)
 
 7. **Measure the container, never assume the viewport.** For regular components existing in
    several format versions: measure the container, divide by the slots, take the largest version

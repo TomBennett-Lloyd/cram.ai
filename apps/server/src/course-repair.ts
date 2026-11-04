@@ -1,5 +1,6 @@
 import {
   type EmbedSlides,
+  type LectureKey,
   type OpenCourseResult,
   type ParseDeck,
   rebuildCourse,
@@ -34,10 +35,11 @@ const embedStored =
 export type RepairOutcome =
   RebuildCourseResult['status'] | OpenCourseResult['status'] | 'reembedded';
 
-export const repairCourse = async (
-  courseId: CourseId,
-  deps: IngestDeps,
-): Promise<RepairOutcome> => {
+export type RepairReport =
+  | { readonly outcome: Exclude<RepairOutcome, 'deck-unreadable'> }
+  | { readonly outcome: 'deck-unreadable'; readonly lectureKey: LectureKey };
+
+export const repairCourse = async (courseId: CourseId, deps: IngestDeps): Promise<RepairReport> => {
   const spec = {
     path: courseFilePath(deps.files.dataDir, courseId),
     courseId,
@@ -45,12 +47,14 @@ export const repairCourse = async (
   };
   const embed = embedStored(deps);
   const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed });
+  if (rebuilt.status === 'deck-unreadable')
+    return { outcome: rebuilt.status, lectureKey: rebuilt.lectureKey };
   if (rebuilt.status !== 'embedder-mismatch') {
     if ('course' in rebuilt) rebuilt.course.close();
-    return rebuilt.status;
+    return { outcome: rebuilt.status };
   }
   const reembedded = await reembedCourse(spec, embed);
-  if (reembedded.status !== 'open') return reembedded.status;
+  if (reembedded.status !== 'open') return { outcome: reembedded.status };
   reembedded.course.close();
-  return 'reembedded';
+  return { outcome: 'reembedded' };
 };
