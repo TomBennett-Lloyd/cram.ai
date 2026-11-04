@@ -108,7 +108,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-21 — the slide panel's 16:9 frame letterboxes a portrait page
 
 - Where: `.slide-figure` in `apps/web/src/app.css`; `SlideImage` in `packages/shared/src/deck.ts`
-- What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
+- What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/render-page.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
 - Source: #368 review cycle 1
 
 ## 2026-11-02 — the row-id zod schema is declared once per module

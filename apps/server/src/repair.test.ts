@@ -8,6 +8,7 @@ import {
   HIVE,
   HIVE_STORED,
   markOlder,
+  olderDataDir,
   openedUnder,
   repairedStatus,
   repairLog,
@@ -105,6 +106,23 @@ describe('start-up repair', () => {
       'hive.v2',
     ]);
     opened.course.close();
+  });
+
+  it('renders and stores the slide images of a PDF deck stored with none, as decks stored before rendering are', async () => {
+    const dataDir = await olderDataDir('The Hive', await pdfDeck(HIVE));
+    const server = await restarted(dataDir);
+    expect(await repairLog(server)).toEqual([
+      { operation: 'repair', courseId: 'bio', outcome: 'rebuilt' },
+    ]);
+    await repairedStatus(server);
+    for (const slideNo of ['1', '2']) {
+      const query = new URLSearchParams({ lectureId: 'l1', slideNo }).toString();
+      const response = await fetch(
+        new URL(`/courses/bio/slide-image?${query}`, server.server.origin),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe('image/png');
+    }
   });
 
   it('rebuilds an older course file whose rows no rebuild carries over, and reports them until dismissed, across restarts', async () => {

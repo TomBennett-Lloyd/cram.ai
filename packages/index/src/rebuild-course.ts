@@ -1,6 +1,13 @@
 import Database from 'better-sqlite3';
 import { existsSync, renameSync, rmSync } from 'node:fs';
-import type { CourseId, Deck, DiscardedTable, LectureId, SlideRecord } from '@cram/shared';
+import type {
+  CourseId,
+  Deck,
+  DiscardedTable,
+  LectureId,
+  SlideImage,
+  SlideRecord,
+} from '@cram/shared';
 import { z } from 'zod';
 import { CHUNK_TABLE_NAME } from './chunk-row';
 import type { CourseIndex } from './course-index';
@@ -27,13 +34,26 @@ export type ParsedDeck =
   | { readonly status: 'parsed'; readonly slides: readonly SlideRecord[] }
   | { readonly status: 'unreadable' };
 
-/** Injected so the index never depends on ingest (#9). */
+/** `ParseDeck` and `RenderDeck` are injected so the index never depends on ingest (#9). */
 export type ParseDeck = (deck: Deck, courseId: CourseId) => Promise<ParsedDeck>;
+
+export type RenderDeck = (deck: Deck) => Promise<readonly SlideImage[]>;
 
 export interface RebuildDeps {
   readonly parse: ParseDeck;
   readonly embed: EmbedSlides;
+  readonly render: RenderDeck;
 }
+
+/** A lecture's stored images carry across unchanged; one stored with none, as before #107, is rendered (#359). */
+const imagesOf = async (
+  old: Database.Database,
+  deck: Deck,
+  render: RenderDeck,
+): Promise<readonly SlideImage[]> => {
+  const stored = readSlideImages(old, deck.lectureId);
+  return stored.length > 0 ? stored : render(deck);
+};
 
 export type RebuildCourseResult =
   | Exclude<OpenCourseResult, { status: 'older-schema' }>
@@ -126,7 +146,7 @@ const writeRebuilt = async (
         if (parsed.status === 'unreadable')
           return { status: 'deck-unreadable', lectureId, lectureKey };
         const slides = await embedSlides('rebuildCourse', parsed.slides, deps.embed);
-        course.replaceLecture(deck, readSlideImages(old, lectureId), slides);
+        course.replaceLecture(deck, await imagesOf(old, deck, deps.render), slides);
       } catch (error) {
         throw new Error(`rebuildCourse: lecture ${lectureId} did not rebuild`, { cause: error });
       }

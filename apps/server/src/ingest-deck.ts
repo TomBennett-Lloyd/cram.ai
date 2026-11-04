@@ -1,10 +1,17 @@
 import type { ModelGateway } from '@cram/gateway';
-import { type DeckFile, ingestPdf, ingestPptx, UNTITLED_LECTURE } from '@cram/ingest';
+import {
+  type DeckFile,
+  ingestPdf,
+  ingestPptx,
+  renderPdfDeck,
+  UNTITLED_LECTURE,
+} from '@cram/ingest';
 import {
   type CourseId,
   Deck,
   type DeckMediaType,
   type LectureId,
+  type SlideImage,
   type SlideRecord,
   type UploadProgress,
 } from '@cram/shared';
@@ -31,8 +38,17 @@ const ADAPTERS = {
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': ingestPptx,
 } satisfies Record<DeckMediaType, (deck: DeckFile) => unknown>;
 
-/** `deck` read by the adapter for `mediaType`. */
 export const ingestFile = (mediaType: DeckMediaType, deck: DeckFile) => ADAPTERS[mediaType](deck);
+
+const RENDERERS = {
+  'application/pdf': renderPdfDeck,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': () =>
+    Promise.resolve([]),
+} satisfies Record<DeckMediaType, (bytes: Uint8Array) => Promise<readonly SlideImage[]>>;
+
+/** One image per slide of a deck `ingestFile` read; PPTX renders none yet (#169). */
+export const renderFile = (mediaType: DeckMediaType, bytes: Uint8Array) =>
+  RENDERERS[mediaType](bytes);
 
 /** The deck as the course file stores it; a deck with no slides has no title to read. */
 export const lectureDeck = (job: IngestJob, records: readonly SlideRecord[]): Deck =>
@@ -49,11 +65,12 @@ export const ingestDeck = async (job: IngestJob, deps: IngestDeps): Promise<Uplo
   if (ingested.status === 'unreadable')
     return { state: 'unreadable', reason: ingested.reason, detail: ingested.detail };
   const records = ingested.slides;
+  const images = await renderFile(job.mediaType, job.bytes);
   const slides = await embedSlides(deps.gateway.embedder, records);
   const opened = openForWrite(deps.files, job.courseId);
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   try {
-    opened.course.replaceLecture(lectureDeck(job, records), ingested.images, slides);
+    opened.course.replaceLecture(lectureDeck(job, records), images, slides);
     const stored = opened.course.lectures().find(({ lectureId }) => lectureId === job.lectureId);
     if (stored === undefined)
       throw new Error(`ingestDeck: lecture ${job.lectureId} was not stored`);

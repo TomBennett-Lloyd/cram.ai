@@ -6,7 +6,7 @@
 apps/server/src/ask-course.ts	66
 apps/server/src/compose-server.ts	330
 apps/server/src/course-file.ts	535
-apps/server/src/course-repair.ts	363
+apps/server/src/course-repair.ts	350
 apps/server/src/data-directory.ts	652
 apps/server/src/dev-proxy.ts	967
 apps/server/src/dev.ts	232
@@ -15,7 +15,7 @@ apps/server/src/gateway-config.ts	543
 apps/server/src/handlers.ts	96
 apps/server/src/http-body.ts	188
 apps/server/src/index.ts	0
-apps/server/src/ingest-deck.ts	517
+apps/server/src/ingest-deck.ts	410
 apps/server/src/ingest-queue.ts	469
 apps/server/src/lecture-digest.ts	270
 apps/server/src/loopback.ts	1666
@@ -105,7 +105,7 @@ eval/src/replay-run.ts	735
 eval/src/report.ts	515
 eval/src/retrieval-recall.ts	1538
 eval/src/run-eval.ts	115
-eval/src/run-files.ts	597
+eval/src/run-files.ts	547
 eval/src/run-fixture.ts	0
 eval/src/scripted-gateway-fixture.ts	370
 eval/src/scripted-tutor-fixture.ts	370
@@ -113,6 +113,7 @@ eval/src/sentence-kind-accuracy.ts	769
 eval/src/sentence-kind-label.ts	909
 eval/src/summary-rows.ts	2000
 eval/src/tag-recall.ts	500
+eval/src/tier-one-mismatch.ts	212
 eval/src/timed-gateway.ts	83
 eval/src/topic-label.ts	833
 eval/src/verifier-accuracy.ts	937
@@ -195,8 +196,8 @@ packages/index/src/list-filter.ts	1621
 packages/index/src/loaded-summaries.ts	384
 packages/index/src/open-course.ts	731
 packages/index/src/ranked-lists.ts	250
-packages/index/src/rebuild-course.ts	670
-packages/index/src/rebuild-fixture.ts	454
+packages/index/src/rebuild-course.ts	659
+packages/index/src/rebuild-fixture.ts	392
 packages/index/src/rebuild-report.ts	740
 packages/index/src/reciprocal-rank.ts	740
 packages/index/src/schema.ts	568
@@ -206,13 +207,13 @@ packages/index/src/spelling-correction.ts	508
 packages/index/src/stored-deck.ts	652
 packages/index/src/stored-lectures.ts	1250
 packages/index/src/topics.ts	437
-packages/ingest/src/adapters/deck-file.ts	645
+packages/ingest/src/adapters/deck-file.ts	500
 packages/ingest/src/adapters/pdf/deck-fixture.ts	756
-packages/ingest/src/adapters/pdf/ingest-pdf.ts	740
+packages/ingest/src/adapters/pdf/ingest-pdf.ts	707
 packages/ingest/src/adapters/pdf/logical-order.ts	1029
-packages/ingest/src/adapters/pdf/render-page.ts	1333
+packages/ingest/src/adapters/pdf/render-page.ts	1111
 packages/ingest/src/adapters/pptx/deck-fixture.ts	729
-packages/ingest/src/adapters/pptx/ingest-pptx.ts	701
+packages/ingest/src/adapters/pptx/ingest-pptx.ts	625
 packages/ingest/src/adapters/pptx/omml.ts	751
 packages/ingest/src/adapters/pptx/ooxml.ts	530
 packages/ingest/src/adapters/pptx/slide-xml.ts	681

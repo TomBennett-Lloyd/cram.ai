@@ -1,0 +1,12 @@
+# The kinds a tier-1 failure names (docs/standards/architecture.md rule 9; #460).
+owner: eval/src/tier-one-mismatch.ts
+claim: why eval/src/committed-run.test.ts is red — report key absent, report key retired, report invalid, recording miss or value moved — as TierOneMismatch declares it, and which of them a lane may declare red by design
+cite: `TierOneMismatch`
+sweep: TierOneMismatch|report key (absent|retired)|report invalid|recording miss|value moved|tier-one-mismatch-kinds\.ledger
+carrier: eval/src/tier-one-mismatch.test.ts
+carrier: eval/src/committed-run.test.ts
+carrier: eval/README.md
+carrier: .claude/agents/ticket-agent.md
+excluded: docs/review-feedback.md
+excluded: .claude/skills/run-issue/SKILL.md
+excluded: eval/src/run-eval.ts

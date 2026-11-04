@@ -233,6 +233,7 @@ describe('a rebuild', () => {
       parse: (stored) =>
         Promise.resolve({ status: 'parsed', slides: records.get(stored.lectureId) ?? [] }),
       embed: embedWhole((slides) => Promise.resolve(slides.map(() => vector(1, 0, 0, 0)))),
+      render: () => Promise.resolve([]),
     });
     if (rebuilt.status !== 'rebuilt') throw new Error(`expected a rebuild, got ${rebuilt.status}`);
     course = rebuilt.course;
