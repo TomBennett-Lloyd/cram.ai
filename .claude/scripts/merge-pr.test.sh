@@ -961,7 +961,7 @@ run_merge
 expect_rc 1
 expect_stderr 'feedback — FAILED'
 expect_stderr 'merge.amendmentRule refuses this filled entry'
-expect_stderr "does not carry this added line: $AM_LINE"
+expect_stderr 'does not carry this block whole and in order'
 expect_not_merged squash
 end
 

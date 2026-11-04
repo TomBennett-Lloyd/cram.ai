@@ -124,30 +124,49 @@ function blocks(hunks) {
   return out;
 }
 
-/** Arm (a): every added line of each ADR is in the comment as itself or `+`-prefixed, every removed line `-`-prefixed. */
+/** Where `run` sits in `lines` as one contiguous slice whose two neighbours pass `edge`, or -1. */
+function bounded(lines, run, edge) {
+  for (let i = 0; i + run.length <= lines.length; i++)
+    if (
+      run.every((l, k) => lines[i + k] === l) &&
+      edge(lines[i - 1]) &&
+      edge(lines[i + run.length])
+    )
+      return i;
+  return -1;
+}
+
+const trimBlank = (list) => {
+  const out = [...list];
+  while (out.length && out[0] === '') out.shift();
+  while (out.length && out[out.length - 1] === '') out.pop();
+  return out;
+};
+
+/**
+ * Arm (a): each changed block of each ADR is in the comment whole and in diff order, either as
+ * its diff lines (`-` then `+`, no other diff line beside them) or, for a pure addition, as its
+ * own paragraph or fenced block.
+ */
 export function planNamedReason(files, hits, body) {
-  const lines = new Set(body.split('\n').map((l) => l.trimEnd()));
+  const lines = body.split('\n').map((l) => l.trimEnd());
+  const notDiff = (l) => l === undefined || !/^[+-]/.test(l);
+  const ownParagraph = (l) => l === undefined || l === '' || l.startsWith('```');
   let seen = 0;
   for (const hit of hits) {
     for (const b of blocks(fileFor(files, hit).hunks)) {
-      for (const [sign, list] of [
-        ['-', b.removed],
-        ['+', b.added],
-      ]) {
-        for (const raw of list) {
-          const l = raw.trimEnd();
-          seen++;
-          const named = lines.has(sign + l) || (sign === '+' && lines.has(l));
-          if (!named)
-            return (
-              hit +
-              ': the plan comment does not carry this ' +
-              (sign === '+' ? 'added' : 'removed') +
-              ' line: ' +
-              l
-            );
-        }
-      }
+      seen++;
+      const removed = b.removed.map((l) => l.trimEnd());
+      const added = b.added.map((l) => l.trimEnd());
+      const asDiff = [...removed.map((l) => '-' + l), ...added.map((l) => '+' + l)];
+      if (bounded(lines, asDiff, notDiff) >= 0) continue;
+      const asText = trimBlank(added);
+      if (!removed.length && asText.length && bounded(lines, asText, ownParagraph) >= 0) continue;
+      return (
+        hit +
+        ': the plan comment does not carry this block whole and in order: ' +
+        (removed[0] ?? asText[0] ?? '')
+      );
     }
   }
   return seen
@@ -173,6 +192,32 @@ function pairReason(before, after, moved) {
   return { paths };
 }
 
+/**
+ * Why a pure-addition block is not one dated entry appended at the file's end: an optional
+ * `## Amendments` heading, one `ENTRY` line, then only blank lines and lines indented under it.
+ */
+function appendedReason(b) {
+  const added = b.added;
+  let i = 0;
+  const skipBlank = () => {
+    while (i < added.length && added[i].trim() === '') i++;
+  };
+  skipBlank();
+  if (added[i] === '## Amendments') {
+    i++;
+    skipBlank();
+  }
+  if (!b.eof || !ENTRY.test(added[i] ?? ''))
+    return (
+      'an added block that is not the dated entry appended at the end: ' +
+      (added[i] ?? '(blank lines)')
+    );
+  const outside = added.slice(i + 1).find((l) => l.trim() !== '' && !/^ {2}/.test(l));
+  return outside === undefined
+    ? null
+    : 'the appended entry is followed by a line outside it: ' + outside;
+}
+
 /** Arm (b): inline pairs that change only moved paths, and one dated entry appended at each file's end. */
 export function pathMoveReason(files, hits) {
   const moved = { from: new Set(), to: new Set() };
@@ -185,17 +230,8 @@ export function pathMoveReason(files, hits) {
     let entry = false;
     for (const b of blocks(fileFor(files, hit).hunks)) {
       if (!b.removed.length) {
-        const first = b.added.find((l) => l.trim() !== '');
-        if (
-          !b.eof ||
-          !(first === '## Amendments' || ENTRY.test(first ?? '')) ||
-          !b.added.some((l) => ENTRY.test(l))
-        )
-          return (
-            hit +
-            ': an added block that is not the dated entry appended at the end: ' +
-            (first ?? '(blank lines)')
-          );
+        const r = appendedReason(b);
+        if (r) return hit + ': ' + r;
         entry = true;
         continue;
       }

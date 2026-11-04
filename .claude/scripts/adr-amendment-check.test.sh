@@ -24,6 +24,7 @@ must git config --file "$GIT_CONFIG_GLOBAL" core.hooksPath "$TMP_ROOT/no-hooks"
 must git config --file "$GIT_CONFIG_GLOBAL" init.defaultBranch main
 
 ADR=docs/adr/0009-thing.md
+FENCE=$(printf '\140\140\140')
 OLD=packages/a/src/depth.ts
 NEW=packages/b/src/depth.ts
 REPO="" DIFF=""
@@ -369,6 +370,32 @@ for tail in $'  - a stray bullet\n- **2026-11-03 — (f): x** (#2).' $'## Amendm
 done
 end
 
+begin "path-move: the appended entry carries nothing after it: no heading, no second entry, no section"
+for tail in '## Decision, revised' '- **2026-11-04 — (c): another entry** (#3).' '- **(c) The depth is deep.**' 'Ask is deep.' ' one space in'; do
+  case_ctx="tail '$tail'"
+  repo "pm-after-$RANDOM"
+  move
+  sub "$LINE" "$MOVED"
+  entry
+  printf '\n%s\n  - more.\n' "$tail" >>"$REPO/$ADR"
+  diff_
+  run path-move "$DIFF" "$ADR"
+  expect_rc 1
+  expect_stdout 'the appended entry is followed by a line outside it'
+done
+end
+
+begin "path-move: an entry may hold blank lines between its indented lines"
+repo pm-blank-inside
+move
+sub "$LINE" "$MOVED"
+entry
+printf '\n    | a | b |\n    | - | - |\n\n  - After the table.\n' >>"$REPO/$ADR"
+diff_
+run path-move "$DIFF" "$ADR"
+expect_rc 0
+end
+
 begin "path-move: a first amendment that adds the heading passes"
 repo pm-first
 must node -e '
@@ -440,6 +467,16 @@ run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
 expect_rc 0
 end
 
+begin "plan-named: a pure addition pasted inside a bare fence is named"
+repo pn-fence
+entry
+diff_
+{ printf '## Plan\nThe entry:\n%s\n' "$FENCE"; sed -n '/^@@/,$p' "$DIFF" | sed -n 's/^+//p'; printf '%s\nMore plan.\n' "$FENCE"; } >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 0
+end
+
 begin "plan-named: CRLF line ends and trailing spaces in the comment still match"
 repo pn-crlf
 entry
@@ -458,7 +495,7 @@ printf '## Plan\n\n  - Ask is light.\n+  - Ask is deep.\n' >"$TMP_ROOT/body"
 comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
 run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
 expect_rc 1
-expect_stdout 'does not carry this removed line:   - Ask is light.'
+expect_stdout 'does not carry this block whole and in order:   - Ask is light.'
 printf '## Plan\n\n-  - Ask is light.\n+  - Ask is deep.\n' >"$TMP_ROOT/body"
 comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
 run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
@@ -481,8 +518,106 @@ for where in first last; do
   diff_
   run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
   expect_rc 1
-  expect_stdout 'does not carry this added line'
+  expect_stdout 'does not carry this block whole and in order'
 done
+end
+
+begin "plan-named: a plan that pastes a replacement does not name the deletion alone"
+repo pn-halfpair
+sub "  - Ask is light." "  - Ask is deep."
+diff_
+plan_with_diff
+must git -C "$REPO" reset --quiet --hard
+must node -e '
+  const fs = require("fs"); const p = process.argv[1];
+  fs.writeFileSync(p, fs.readFileSync(p, "utf8").replace("  - Ask is light.\n", ""));
+' "$REPO/$ADR"
+diff_
+grep -q '^-  - Ask is light\.$' "$DIFF" || bad "fixture: the diff does not delete the line"
+grep -q '^+[^+]' "$DIFF" && bad "fixture: the diff adds a line"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+expect_stdout 'does not carry this block whole and in order:   - Ask is light.'
+end
+
+begin "plan-named: an added line quoted inside the plan's prose does not name it"
+repo pn-prose
+printf '  - Ask is deep too.\n' >>"$REPO/$ADR"
+diff_
+printf '## Plan\n\n### Risks\nSomeone may propose this line, which we reject:\n  - Ask is deep too.\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+expect_stdout 'does not carry this block whole and in order:   - Ask is deep too.'
+printf '## Plan\n\n  - Ask is deep too.\n\nThat is the line.\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 0
+end
+
+begin "plan-named: a block's lines out of order, or split across the plan, refuse"
+repo pn-order
+entry
+diff_
+plus_lines() { sed -n '/^@@/,$p' "$DIFF" | sed -n 's/^+//p'; }
+{ printf '## Plan\n\n'; plus_lines | tail -1; plus_lines | sed '$d'; } >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+{ printf '## Plan\n\n'; plus_lines | head -1; printf '\nand later:\n\n'; plus_lines | sed '1d'; } >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+end
+
+begin "plan-named: a pasted diff block with more diff lines beside it does not name the smaller block"
+repo pn-maximal
+sub "  - Ask is light." "  - Ask is deep."
+diff_
+printf '## Plan\n\n%sdiff\n-  - Ask is light.\n+  - Ask is deep.\n+  - And so is the guide.\n%s\n' "$FENCE" "$FENCE" >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+end
+
+begin "plan-named: a replacement named only by its new line as text refuses"
+repo pn-bare-replace
+sub "  - Ask is light." "  - Ask is deep."
+diff_
+printf '## Plan\n\n  - Ask is deep.\n\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+end
+
+begin "plan-named: a pasted entry at the very end of a comment with no trailing newline is named"
+repo pn-eof
+entry
+diff_
+{ printf '## Plan\n\n'; sed -n '/^@@/,$p' "$DIFF" | sed -n 's/^+//p'; } | node -e 'process.stdout.write(require("fs").readFileSync(0, "utf8").replace(/\n$/, ""))' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 0
+end
+
+begin "plan-named: an addition opening with blank lines is named by its text without them"
+repo pn-leadblank
+printf '\n\n- **2026-11-03 — (f): spaced** (#2).\n  - Was: x.\n' >>"$REPO/$ADR"
+diff_
+printf '## Plan\n\n- **2026-11-03 — (f): spaced** (#2).\n  - Was: x.\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 0
+end
+
+begin "plan-named: an addition of blank lines only is not named by any paragraph break"
+repo pn-blankonly
+printf '\n\n' >>"$REPO/$ADR"
+diff_
+printf '## Plan\n\nNothing about the ADR.\n\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
 end
 
 begin "plan-named: a substring of a plan line does not name the line"
