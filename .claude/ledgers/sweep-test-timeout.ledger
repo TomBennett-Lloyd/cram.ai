@@ -1,0 +1,11 @@
+# The bound a sweep-sized test or hook gets (docs/standards/architecture.md rule 9; #588).
+owner: packages/shared/src/sweep-test-timeout.ts
+claim: a test or hook whose work is proportional to a table it sweeps or the PDFs it renders takes SWEEP_TEST_TIMEOUT_MS, per test, never as a global vitest timeout
+cite: SWEEP_TEST_TIMEOUT_MS
+sweep: SWEEP_TEST_TIMEOUT_MS|\.claude/ledgers/sweep-test-timeout\.ledger|timeout: 60_000|(?i:proportional to a table|sweep-sized test)
+carrier: packages/ingest/src/stored-text.test.ts
+carrier: packages/ingest/src/stored-output-pin.test.ts
+carrier: packages/index/src/index-words.test.ts
+carrier: eval/src/render-deck.test.ts
+carrier: eval/src/ingested-course.test.ts
+carrier: packages/ui/src/frontend-gate/frontend-gate.test.ts
