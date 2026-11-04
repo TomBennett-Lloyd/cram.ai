@@ -91,7 +91,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # only the curated-history check, whose first test is a count comparison against
 # the Closes count, so a list truncated at 100 refuses rather than merges for any
 # PR closing fewer than 100 issues.
-PR_JSON_FIELDS='baseRefName,body,commits,headRefName,headRefOid,labels,mergeStateStatus,number,state,statusCheckRollup,url'
+PR_JSON_FIELDS='baseRefName,body,commits,headRefName,headRefOid,labels,mergeStateStatus,number,state,statusCheckRollup,title,url'
 
 # The numeric knobs are validated here rather than where they are used. Under
 # `set -u` without `set -e`, a `[ "$x" -gt 0 ]` on a non-numeric value prints an
@@ -307,6 +307,9 @@ pr_lanes=()
 pr_batches=()
 pr_partof=()
 pr_commits=()
+pr_strays_squash=()
+pr_strays_rebase=()
+pr_json=""
 check_names=()
 check_statuses=()
 check_conclusions=()
@@ -339,6 +342,9 @@ read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
   pr_batches=()
   pr_partof=()
   pr_commits=()
+  pr_strays_squash=()
+  pr_strays_rebase=()
+  pr_json="$json"
   check_names=()
   check_statuses=()
   check_conclusions=()
@@ -359,6 +365,12 @@ read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
       batch) pr_batches+=("$a") ;;
       partof) pr_partof+=("$a") ;;
       commit) pr_commits+=("$a") ;;
+      stray)
+        case "$a" in
+          squash) pr_strays_squash+=("$b") ;;
+          rebase) pr_strays_rebase+=("$b") ;;
+        esac
+        ;;
       check)
         check_names+=("$a")
         check_statuses+=("$b")
@@ -588,6 +600,31 @@ curated_history_ok() { # -> 0, or 1 with the reason on stdout
   return 0
 }
 
+# A closing keyword closes its issue at merge from the PR body or from the message that lands
+# on main, whether or not a Closes line names it: beddd61's message closed #404, which its retro
+# meant to leave open (#617). pr-facts.mjs owns the grammar and computes both scopes.
+stray_closes_ok() { # -> 0, or 1 with the reason on stdout
+  local strays=()
+  if [ "$merge_method" = "--rebase" ]; then
+    strays=(${pr_strays_rebase[@]+"${pr_strays_rebase[@]}"})
+  else
+    strays=(${pr_strays_squash[@]+"${pr_strays_squash[@]}"})
+  fi
+  [ "${#strays[@]}" -eq 0 ] && return 0
+  printf 'a closing keyword for an issue no Closes line names would close it at merge:%s — reword it, or add the Closes line if this PR does close that issue' \
+    "$(printf ' "%s"' "${strays[@]}")"
+  return 1
+}
+
+# squash_message <out file> -> 0 with the message in the file, or 1 with the reason on stdout.
+squash_message() {
+  local err
+  err=$(printf '%s' "$pr_json" | node "$script_dir/pr-facts.mjs" --squash-message 2>&1 >"$1") || {
+    printf 'cannot build the squash message: %s' "$err"
+    return 1
+  }
+}
+
 step 'classify' "PR #$pr_number is $pr_state on '$pr_head_ref'; $merge_reason; $class_summary"
 
 # Deferring these to the merge step would mean refusing AFTER
@@ -606,6 +643,10 @@ if [ "$already_merged" = "0" ]; then
   fi
   if [ "$merge_method" = "--rebase" ]; then
     curated_reason=$(curated_history_ok) || fail 'classify' "$curated_reason"
+  fi
+  stray_reason=$(stray_closes_ok) || fail 'classify' "$stray_reason"
+  if [ "$merge_method" = "--squash" ]; then
+    squash_reason=$(squash_message /dev/null) || fail 'classify' "$squash_reason"
   fi
 fi
 
@@ -1608,6 +1649,7 @@ elif [ "$already_merged" = "0" ]; then
   if [ "$merge_method" = "--rebase" ]; then
     curated_reason=$(curated_history_ok) || fail 'merge' "$curated_reason, on head $pr_head_sha"
   fi
+  stray_reason=$(stray_closes_ok) || fail 'merge' "$stray_reason, on head $pr_head_sha"
 
   # The bounce is prescribed only for the two states it is the repair for. The
   # rule is scoped that way where it is stated — .claude/skills/run-issue/SKILL.md's
@@ -1632,8 +1674,22 @@ elif [ "$already_merged" = "0" ]; then
   fi
   [ "$pr_merge_state" = "CLEAN" ] || fail 'merge' "mergeStateStatus is '$pr_merge_state', not CLEAN — a merge is only ever taken from CLEAN"
 
-  merge_out=$(gh_call pr merge "$pr_number" "$merge_method" --match-head-commit "$checked_head_sha" 2>&1)
+  # A squash names its own message, built from this same read: left to GitHub, it is the
+  # branch's commit messages, which review never reads (#617).
+  merge_args=("$merge_method" --match-head-commit "$checked_head_sha")
+  msg_file=""
+  if [ "$merge_method" = "--squash" ]; then
+    msg_file=$(mktemp "${TMPDIR:-/tmp}/merge-pr-msg.XXXXXX") || fail 'merge' "could not create a temp file for the squash message"
+    squash_reason=$(squash_message "$msg_file") || {
+      rm -f "$msg_file"
+      fail 'merge' "$squash_reason"
+    }
+    tail -n +3 "$msg_file" >"$msg_file.body"
+    merge_args+=(--subject "$(head -n 1 "$msg_file")" --body-file "$msg_file.body")
+  fi
+  merge_out=$(gh_call pr merge "$pr_number" "${merge_args[@]}" 2>&1)
   merge_rc=$?
+  [ -z "$msg_file" ] || rm -f "$msg_file" "$msg_file.body"
   [ "$merge_rc" -eq 0 ] || fail 'merge' "gh pr merge $merge_method --match-head-commit $checked_head_sha exited $merge_rc: $merge_out"
 
   # Merged is not what gh's exit code says; it is what the PR says.
