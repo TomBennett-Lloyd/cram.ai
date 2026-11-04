@@ -37,7 +37,7 @@ apps/web/src/api/api-result.ts	1250
 apps/web/src/api/deck-file.ts	1428
 apps/web/src/ask/AnswerView.tsx	0
 apps/web/src/ask/AskScreen.tsx	0
-apps/web/src/ask/ExplanationView.tsx	357
+apps/web/src/ask/ExplanationView.tsx	333
 apps/web/src/ask/SlideCard.tsx	500
 apps/web/src/ask/SlideDialog.tsx	576
 apps/web/src/ask/SlideFigure.tsx	416
@@ -46,9 +46,10 @@ apps/web/src/ask/WithheldPanel.tsx	0
 apps/web/src/ask/cited-slide.ts	952
 apps/web/src/ask/explanation-marks-fixture.ts	666
 apps/web/src/ask/explanation-marks.ts	378
+apps/web/src/ask/explanation-view-fixture.tsx	312
 apps/web/src/ask/quote-marks.ts	322
 apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	393
+apps/web/src/copy.ts	391
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
