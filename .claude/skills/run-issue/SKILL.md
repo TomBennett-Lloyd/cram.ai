@@ -58,7 +58,7 @@ the section before you dispatch.
    without this (#486). `conserve` budget mode: one lane.
    **Load gate** (owner, 2026-11-04, #483): immediately before every dispatch, in either
    lane, read `sysctl -n vm.loadavg` and `sysctl -n hw.ncpu`; while the middle figure, the
-   5-minute load average, is above three times the core count, hold the lane. A held lane
+   5-minute load average, is above twice the core count, hold the lane. A held lane
    keeps its in-flight row, marked `held: load <x>`, and goes out once a later read shows the
    figure at or under that line; re-read at every report and merge. The hold lifts on the
    measurement alone: it is not a sequencing decision and never a reason to batch. While anything is
