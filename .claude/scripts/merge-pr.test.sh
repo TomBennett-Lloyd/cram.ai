@@ -1330,9 +1330,9 @@ end
 
 # PRs #437, #495 and #500 each opened their body with `Part of #<n>`, and each was
 # refused here and merged only under --method squash. The reader requires a line to
-# open with `Part of #<n>`, like the report header; ticket-agent rules 5 and 7 do not
-# yet say so. Prose naming the issue mid-line, or a Part of line for another issue,
-# declares nothing.
+# open with `Part of #<n>`, like the report header, as ticket-agent rules 5 and 7 now
+# say. Prose naming the issue mid-line, or a Part of line for another issue, declares
+# nothing.
 begin "a PARTIAL lane report with a Part of line for its issue merges --squash and leaves it open"
 fixture lane-part-of
 V_BODY='Part of #21. The issue stays open for its deferred criterion.\n## Lane report — issue #21\nSTATUS: PARTIAL — one criterion deferred'
