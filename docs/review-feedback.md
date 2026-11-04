@@ -568,3 +568,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/standards/grounding.md` rule 10 labels every citation or reference to derived text, and 0009 (i) put the label on the sources entry alone, so an in-text quotation from a slide read from its picture looked and was named exactly like typed text.
 - **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one. Each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
 - **Verdict**: approved 2026-11-05 — "approve 645"
+
+## 2026-11-04 — issue #629 — compaction-hooks-registered
+
+- **Category**: pending — filled at merge
+- **Feedback**: the owner's ask, 2026-11-04 (chat, quoted in #629): "add the PreCompact hook to settings.json and we could lower the limit to something smaller if we have a decent preCompact hook hopefully?" The PR asks the owner to decide:
+  - accept two registrations in `.claude/settings.json`, which grants every session a hook: `PreCompact` (all triggers) running `.claude/hooks/pre-compact-snapshot.sh`, and a `SessionStart` entry with matcher `compact` running `.claude/hooks/post-compact-reinject.sh`. Both exit 0 on every path, call no network command, and carry repo state only (branch, commit subjects, changed paths), never file content;
+  - accept that the snapshot is kept in the git directory (`git rev-parse --git-path`), not in a gitignored file inside the work tree as the issue proposed;
+  - whether to merge before the live subagent run the issue's item 4 asks for. The lane could not run it (the nested `claude -p` it needs is not logged in, and logging in is not the lane's to do), so whether either hook fires inside a subagent is unestablished, and `.claude/agents/ticket-agent.md` carries no `autoCompactWindow` yet. The PR body holds the exact run recipe and the window proposal.
+- **Why**: `.claude/settings.json` is `humanAlways`: it grants every session hooks, and only the owner widens it (`merge.humanAlwaysRule`, #440). A hook that runs on every compaction of every session on this machine is the kind of grant that rule is for.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
