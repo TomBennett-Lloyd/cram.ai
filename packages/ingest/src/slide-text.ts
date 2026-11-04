@@ -1,5 +1,5 @@
 import type { SlideKind, SlideNo } from '@cram/shared';
-import type { PageText, TextLine } from './page-text';
+import type { LineBox, PageText, TextLine } from './page-text';
 
 /** A page with fewer words than this outside its page number has a thin text layer (#9). */
 export const THIN_TEXT_LAYER_WORDS = 5;
@@ -7,6 +7,9 @@ export const THIN_TEXT_LAYER_WORDS = 5;
 export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', '–', '➢', '➤'] as const;
 
 /** Titles that mark a references page (#9), which `CourseIndex.search` leaves out by default (#78). */
+/** A line this many of its ems below a bullet's last line, or nearer, can be its wrapped continuation (slide-text.test.ts). */
+export const CONTINUATION_EMS = 1.5;
+
 export const REFERENCES_TITLE =
   /^(references|reference list|bibliography|further readings?|reading lists?|works cited)\b/i;
 
@@ -28,6 +31,18 @@ const markerOf = (text: string): string | undefined =>
 const isPageNumber = (line: TextLine, slideNo: SlideNo): boolean =>
   DIGITS_ONLY.test(line.text) && Number(line.text) === slideNo;
 
+const joinedBox = (marker: TextLine, next: TextLine): { box?: LineBox } => {
+  if (next.box === undefined) return {};
+  if (marker.box === undefined) return { box: next.box };
+  return {
+    box: {
+      left: Math.min(marker.box.left, next.box.left),
+      right: Math.max(marker.box.right, next.box.right),
+      baseline: next.box.baseline,
+    },
+  };
+};
+
 /** A line that is only a bullet marker takes the line after it; a trailing one is dropped. */
 const joinBulletMarkers = (lines: readonly TextLine[]): TextLine[] => {
   const joined: TextLine[] = [];
@@ -39,7 +54,8 @@ const joinBulletMarkers = (lines: readonly TextLine[]): TextLine[] => {
       continue;
     }
     const next = lines[i + 1];
-    if (next !== undefined) joined.push({ text: `${line.text} ${next.text}`, size: next.size });
+    if (next !== undefined)
+      joined.push({ text: `${line.text} ${next.text}`, size: next.size, ...joinedBox(line, next) });
     i++;
   }
   return joined;
@@ -76,21 +92,34 @@ const titleRange = (lines: readonly TextLine[]): readonly [number, number] => {
   return first !== undefined && isTitleCandidate(first) ? [0, 1] : [0, 0];
 };
 
-/** One bullet or plain line per `\n`: an unmarked line after a bullet is its wrapped continuation. */
+const continues = (last: TextLine, line: TextLine): boolean => {
+  if (last.box === undefined || line.box === undefined) return true;
+  const drop = last.box.baseline - line.box.baseline;
+  return (
+    line.box.left <= last.box.right &&
+    line.box.right >= last.box.left &&
+    drop > 0 &&
+    drop <= CONTINUATION_EMS * Math.max(last.size, line.size)
+  );
+};
+
+/** One bullet or plain line per `\n`: an unmarked line after a bullet continues it, in its column and within a line's height when both have a box (#567). */
 const bodyOf = (lines: readonly TextLine[]): string => {
   const blocks: string[] = [];
-  let bullet: string | undefined;
-  for (const { text } of lines) {
-    if (markerOf(text) !== undefined) {
-      if (bullet !== undefined) blocks.push(bullet);
-      bullet = text;
-    } else if (bullet !== undefined) {
-      bullet += ` ${text}`;
+  let bullet: { text: string; last: TextLine } | undefined;
+  for (const line of lines) {
+    if (markerOf(line.text) !== undefined) {
+      if (bullet !== undefined) blocks.push(bullet.text);
+      bullet = { text: line.text, last: line };
+    } else if (bullet !== undefined && continues(bullet.last, line)) {
+      bullet = { text: `${bullet.text} ${line.text}`, last: line };
     } else {
-      blocks.push(text);
+      if (bullet !== undefined) blocks.push(bullet.text);
+      bullet = undefined;
+      blocks.push(line.text);
     }
   }
-  if (bullet !== undefined) blocks.push(bullet);
+  if (bullet !== undefined) blocks.push(bullet.text);
   return blocks.join('\n');
 };
 
@@ -116,7 +145,7 @@ const wordCount = (text: string): number => text.match(WORD)?.length ?? 0;
 export const slideText = (page: PageText, slideNo: SlideNo): SlideText => {
   const lines = joinBulletMarkers(
     page.lines
-      .map((line) => ({ text: collapse(line.text), size: line.size }))
+      .map((line) => ({ ...line, text: collapse(line.text) }))
       .filter((line) => line.text !== '' && !isPageNumber(line, slideNo)),
   );
   const { title, bodyLines } =

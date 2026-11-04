@@ -33,6 +33,9 @@ export interface FixtureLine {
    * self-authored pdfLaTeX export of `first`, `pdftotext <deck>.pdf - | grep -o 'ﬁ'`.
    */
   readonly toUnicode?: true;
+  readonly at?: readonly [number, number];
+  /** In a form XObject of its own, as a deck's footer is assumed to reach pdf.js with no `hasEOL` (#567): check with `mutool show <deck>.pdf 'pages/1/Resources/XObject'`. */
+  readonly form?: true;
 }
 
 export interface FixtureAnnotation {
@@ -110,11 +113,17 @@ const encode = (
   };
 };
 
-const showCodes = (page: PDFPage, name: string, codes: string, size: number, y: number): void => {
+const showCodes = (
+  page: PDFPage,
+  name: string,
+  codes: string,
+  size: number,
+  [x, y]: readonly [number, number],
+): void => {
   page.pushOperators(
     beginText(),
     setFontAndSize(name, size),
-    moveText(40, y),
+    moveText(x, y),
     showText(PDFHexString.of(codes)),
     endText(),
   );
@@ -159,25 +168,33 @@ export const buildDeck = async (deck: FixtureDeck): Promise<Uint8Array> => {
     const size = fixture.size ?? PAGE;
     const page = doc.addPage([size[0], size[1]]);
     page.node.setFontDictionary(PDFName.of(MATH_FONT), mathFont);
-    let y = size[1];
+    let next = size[1];
     for (const [index, line] of fixture.lines.entries()) {
-      y -= line.size * 1.2;
-      if (line.mathItalic) {
-        showCodes(page, MATH_FONT, hex(line.text, 2), line.size, y);
+      if (line.at === undefined) next -= line.size * 1.2;
+      const at = line.at ?? [40, next];
+      const [x, y] = at;
+      if (line.form) {
+        const scratch = doc.addPage([size[0], size[1]]);
+        scratch.drawText(line.text, { x, y, size: line.size, font });
+        const embedded = await doc.embedPage(scratch);
+        doc.removePage(doc.getPageCount() - 1);
+        page.drawPage(embedded, { x: 0, y: 0 });
+      } else if (line.mathItalic) {
+        showCodes(page, MATH_FONT, hex(line.text, 2), line.size, at);
       } else if (line.toUnicode) {
         const { codes, texts } = encode(line.text);
         const name = `${TO_UNICODE_FONT}${String(index)}`;
         page.node.setFontDictionary(PDFName.of(name), toUnicodeFont(doc, texts));
-        showCodes(page, name, codes, line.size, y);
+        showCodes(page, name, codes, line.size, at);
       } else if (line.scaled) {
         page.pushOperators(
           pushGraphicsState(),
           concatTransformationMatrix(SCALE, 0, 0, SCALE, 0, 0),
         );
-        page.drawText(line.text, { x: 40 / SCALE, y: y / SCALE, size: line.size / SCALE, font });
+        page.drawText(line.text, { x: x / SCALE, y: y / SCALE, size: line.size / SCALE, font });
         page.pushOperators(popGraphicsState());
       } else {
-        page.drawText(line.text, { x: 40, y, size: line.size, font });
+        page.drawText(line.text, { x, y, size: line.size, font });
       }
     }
     if (fixture.annotations !== undefined) {

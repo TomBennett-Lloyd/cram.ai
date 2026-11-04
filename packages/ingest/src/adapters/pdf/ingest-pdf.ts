@@ -2,16 +2,12 @@ import { SlideNo, type SlideImage } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
-import type { PageText, TextLine } from '../../page-text';
+import type { PageText } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
-import { logicalOrder } from './logical-order';
+import { layOutPages, PdfTextItem, type PdfPageText } from './page-layout';
 import { renderSlideImage, type PdfDocument } from './render-page';
 
-const TextItem = z.object({
-  str: z.string(),
-  transform: z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
-  hasEOL: z.boolean(),
-});
+const ViewBox = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 
 const Annotation = z.object({
   subtype: z.string().nullable(),
@@ -46,28 +42,6 @@ export type PdfUnreadableReason = ReturnType<typeof reasonOf>;
 
 export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 
-/** Hundredths of a point: pdf.js composes matrices in floating point, so equal sizes can differ in the last bits. */
-const glyphSize = (transform: z.infer<typeof TextItem>['transform']): number =>
-  Math.round(Math.hypot(transform[2], transform[3]) * 100) / 100;
-
-/** pdf.js ends a line with `hasEOL`; a line's size is its largest non-blank glyph. */
-const linesOf = (items: readonly unknown[]): TextLine[] => {
-  const lines: TextLine[] = [];
-  let text = '';
-  let size = 0;
-  for (const item of z.array(TextItem).parse(items)) {
-    text += logicalOrder(item.str);
-    if (item.str.trim() !== '') size = Math.max(size, glyphSize(item.transform));
-    if (item.hasEOL) {
-      lines.push({ text, size });
-      text = '';
-      size = 0;
-    }
-  }
-  lines.push({ text, size });
-  return lines;
-};
-
 interface ReadDeck {
   readonly pages: readonly PageText[];
   readonly images: readonly SlideImage[];
@@ -75,19 +49,24 @@ interface ReadDeck {
 
 /** Each page's text with pdf.js's own Unicode fold off, so `storedText`'s is the only one (#256), and its rendering. */
 const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
-  const pages: PageText[] = [];
+  const texts: (PdfPageText & { readonly notes: string })[] = [];
   const images: SlideImage[] = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
     const { items } = await page.getTextContent({ disableNormalization: true });
+    const [, bottom, , top] = ViewBox.parse(page.view);
     const annotations = z.array(Annotation).parse(await page.getAnnotations());
     const notes = annotations
       .filter((annotation) => annotation.subtype === 'Text')
       .map((annotation) => annotation.contentsObj?.str ?? '')
       .join('\n');
-    pages.push({ lines: linesOf(items), notes });
+    texts.push({ items: z.array(PdfTextItem).parse(items), bottom, height: top - bottom, notes });
     images.push(await renderSlideImage(pdf, SlideNo.parse(pageNo)));
   }
+  const pages = layOutPages(texts).map(({ page, lines }): PageText => ({
+    lines,
+    notes: page.notes,
+  }));
   return { pages, images };
 };
 
