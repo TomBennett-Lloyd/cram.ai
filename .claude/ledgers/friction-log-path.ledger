@@ -11,3 +11,4 @@ carrier: .claude/skills/review-loop/SKILL.md
 carrier: .claude/skills/triage/SKILL.md
 carrier: CLAUDE.md
 excluded: docs/adr/0009-explanation-answers.md
+excluded: .claude/scripts/verify-tier.test.sh

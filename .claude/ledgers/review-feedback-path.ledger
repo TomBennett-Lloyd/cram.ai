@@ -30,3 +30,4 @@ excluded: docs/adr/0006-image-only-slides.md
 excluded: docs/friction-log.md
 excluded: docs/adr/0007-desktop-packaging.md
 excluded: docs/adr/0009-explanation-answers.md
+excluded: .claude/scripts/verify-tier.test.sh

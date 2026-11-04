@@ -569,6 +569,142 @@ expect_stdout "verify tier: docs — 1 file(s)"
 expect_not_stdout "guard: "
 end
 
+# FIXTURE-ONLY HARNESSES (#471). exempt_fixture <name> -> a fixture whose base holds both
+# FIXTURE_ONLY_HARNESSES members, each naming the paths the real ones name as fixture text,
+# merge-pr.test.sh with its one sanctioned climb, and the three markdown files they name.
+exempt_fixture() {
+  must fixture "$1"
+  write_in .claude/scripts/merge-pr.test.sh "V_FILES='CLAUDE.md docs/review-feedback.md docs/friction-log.md'; cat \"\$SCRIPTS/../workflow.json\""
+  write_in .claude/scripts/fill-verdict.test.sh 'LOG=docs/review-feedback.md'
+  write_in CLAUDE.md '# Project'
+  write_in docs/review-feedback.md '# Review feedback'
+  write_in docs/friction-log.md '# Friction log'
+  seed_origin 'chore: fixture-only harnesses'
+}
+
+begin "a friction-log append the fixture-only harnesses name is the docs tier"
+exempt_fixture exempt_friction
+must printf '\n## an entry\n' >>"$WT/docs/friction-log.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: docs — 1 file(s); every path is markdown, and no test outside the fixture-only harnesses references one of them"
+expect_stdout "verify tier: dry run — would run: $DOCS_LEGS"
+expect_not_stdout "guard: "
+end
+
+begin "CLAUDE.md and a review-feedback entry together are the docs tier"
+exempt_fixture exempt_humanalways
+write_in CLAUDE.md '# Project, revised'
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: docs — 2 file(s)"
+expect_not_stdout "guard: "
+end
+
+# The exemption names harnesses, not paths: a test outside the list that names the same file
+# is the guard's ordinary case, and the exempt harnesses' own hits stay out of the report.
+begin "a test outside the fixture-only list naming the changed markdown still forces full"
+exempt_fixture exempt_other_test
+write_in src/feedback.test.ts "const log = 'docs/review-feedback.md';"
+seed_origin 'test: read the feedback log'
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+expect_stdout "guard: src/feedback.test.ts:1:"
+expect_not_stdout "guard: .claude/scripts/merge-pr.test.sh"
+expect_not_stdout "guard: .claude/scripts/fill-verdict.test.sh"
+end
+
+# Membership is the whole path, so each axis a path can vary on gets one look-alike: another
+# directory above it, a suffix after it, and the bare basename.
+begin "a test whose path only resembles a fixture-only harness is not exempt"
+exempt_fixture exempt_lookalike
+write_in tools/.claude/scripts/merge-pr.test.sh 'LOG=docs/review-feedback.md'
+write_in .claude/scripts/merge-pr.test.sh.orig 'LOG=docs/review-feedback.md'
+write_in fill-verdict.test.sh 'LOG=docs/review-feedback.md'
+seed_origin 'test: look-alike harnesses'
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "guard: tools/.claude/scripts/merge-pr.test.sh:1:"
+expect_stdout "guard: .claude/scripts/merge-pr.test.sh.orig:1:"
+expect_stdout "guard: fill-verdict.test.sh:1:"
+end
+
+# The soundness argument is checked, not trusted: a member whose source shows another way out
+# of .claude/scripts loses its exemption, and its hits count again. Each route gets a member of
+# its own, so no arm of the check is covered only by another arm's input, and the `..` routes
+# sit at three positions on a line: beside the sanctioned climb, at the end, at the start.
+begin "a fixture-only harness that climbs out by a .. path component is not exempt"
+exempt_fixture exempt_climb
+write_in .claude/scripts/merge-pr.test.sh "cat \"\$SCRIPTS/../workflow.json\" \"\$SCRIPTS/../../docs/review-feedback.md\""
+write_in .claude/scripts/fill-verdict.test.sh "LOG=docs/review-feedback.md; cd \"\$SCRIPTS\" && cd .."
+seed_origin 'test: harnesses climb to the working tree'
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "guard: .claude/scripts/merge-pr.test.sh:1:"
+expect_stdout "guard: .claude/scripts/fill-verdict.test.sh:1:"
+end
+
+begin "a fixture-only harness that finds a directory other than its own is not exempt"
+exempt_fixture exempt_dirname
+write_in .claude/scripts/merge-pr.test.sh "cat \"\$(dirname \"\$SCRIPTS\")/docs/review-feedback.md\""
+write_in .claude/scripts/fill-verdict.test.sh "../docs/review-feedback.md is the log"
+seed_origin 'test: harnesses find the working tree'
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "guard: .claude/scripts/merge-pr.test.sh:1:"
+expect_stdout "guard: .claude/scripts/fill-verdict.test.sh:1:"
+end
+
+# The sanctioned routes are exactly what the real harnesses hold: SCRIPTS from their own
+# BASH_SOURCE, merge-pr.test.sh's climb to workflow.json, and a git range is not a climb.
+begin "a fixture-only harness holding only the sanctioned routes and a git range stays exempt"
+exempt_fixture exempt_sanctioned
+write_in .claude/scripts/merge-pr.test.sh "SCRIPTS=\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd); cat \"\$SCRIPTS/../workflow.json\"; git diff main...HEAD -- docs/review-feedback.md"
+seed_origin 'test: the sanctioned routes'
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: docs — 1 file(s)"
+expect_not_stdout "guard: "
+end
+
+# A member whose source cannot be read cannot be shown to stay inside its directory. The member
+# is a symlink to a file outside the clone, so making it unreadable leaves the change set
+# markdown-only: git hashes the link, not what it points at.
+begin "a fixture-only harness that cannot be read is not exempt"
+exempt_fixture exempt_unreadable
+must printf 'LOG=docs/review-feedback.md\n' >"$ROOT/harness-source"
+must rm "$WT/.claude/scripts/fill-verdict.test.sh"
+must ln -s "$ROOT/harness-source" "$WT/.claude/scripts/fill-verdict.test.sh"
+seed_origin 'test: the harness is a link'
+must chmod 000 "$ROOT/harness-source"
+must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+run_tier
+must chmod 644 "$ROOT/harness-source"
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s); the guard grep over the test files failed"
+end
+
+begin "a census holding only fixture-only harnesses is the full tier"
+exempt_fixture exempt_only
+must gitc "$WT" rm --quiet src/app.test.ts
+must gitc "$WT" commit --quiet -m 'chore: drop the tests'
+must gitc "$WT" push --quiet origin main
+must printf '\n## an entry\n' >>"$WT/docs/friction-log.md"
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s); every test file is a fixture-only harness — an empty scan is not a clean one"
+end
+
 # An empty census is a broken census, not a clean one — the rule the check:* gates apply to
 # their own scans. A repository whose test files cannot be found has no evidence to offer
 # about what its tests can see, so it does not get the tier that depends on that evidence.
@@ -888,6 +1024,20 @@ expect_stdout "bash .claude/scripts/tier-hook.test.sh && bash .claude/scripts/ti
 expect_not_stdout "tier-other.test.sh"
 expect_not_stdout "check-module-names.test.sh"
 expect_not_stdout "verify-tier.test.sh"
+end
+
+# The fixture-only exemption is rung 1's alone (#471): the census and this rung's selection
+# still see the harness, so an edit to its subject runs it.
+begin "an edit to a fixture-only harness's subject still runs that harness"
+script_fixture script_exempt
+write_in .claude/scripts/merge-pr.sh 'echo merges'
+write_in .claude/scripts/merge-pr.test.sh 'bash .claude/scripts/merge-pr.sh; LOG=docs/review-feedback.md'
+seed_origin 'chore: a fixture-only harness and its subject'
+write_in .claude/scripts/merge-pr.sh 'echo merges # now with a note'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 shell script(s); observing tests: .claude/scripts/merge-pr.test.sh"
+expect_stdout "bash .claude/scripts/merge-pr.test.sh"
 end
 
 # The runner's own leg is the slot its edit reaches, and it replaces the selected harnesses:
