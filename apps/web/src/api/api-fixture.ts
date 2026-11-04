@@ -81,6 +81,10 @@ export const WITHHELD: WithheldSentence[] = [
   { reason: 'unsupported', text: 'Queens rule the hive.' },
 ];
 
+export const DROPPED: WithheldSentence[] = [
+  { reason: 'dangling-citation', text: 'Worker bees are female.', sourceId: SourceId.parse('s1') },
+];
+
 const SENTENCES = [
   sentence('Workers are female.', ['s1']),
   sentence('Drones are male, and comb cells are hexagonal.', ['s1', 's2']),
@@ -94,7 +98,7 @@ export const GROUNDED: Extract<AskReply, { status: 'grounded' }> = {
     sentences: SENTENCES,
     sources: [SourceId.parse('s1'), SourceId.parse('s2')],
   },
-  withheld: WITHHELD,
+  withheld: DROPPED,
   slides: [HIVE, COMB],
   leftOut: [],
 };

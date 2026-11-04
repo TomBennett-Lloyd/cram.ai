@@ -1,4 +1,4 @@
-import { CourseId, type Explanation } from '@cram/shared';
+import { CourseId, type Explanation, SourceId } from '@cram/shared';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { ApiClient } from '../api/api-client';
@@ -6,6 +6,7 @@ import { ApiContext } from '../api/api-context';
 import {
   COMB,
   CONTRADICTED,
+  DROPPED,
   fakeApi,
   GROUNDED,
   HIVE,
@@ -17,6 +18,7 @@ import {
 import {
   ATTRIBUTED_NOTE,
   contradictionRefLabel,
+  DROPPED_QUOTES_NOTE,
   LEFT_OUT,
   MODEL_FAILED,
   NOT_COVERED,
@@ -24,7 +26,9 @@ import {
   SEARCHED_FOR,
   SLIDE_CONTRADICTION,
   SLIDE_HAS_NO_TEXT,
+  SOURCE_MISSING,
   sourceRefLabel,
+  SOURCES,
 } from '../copy';
 import { AskScreen } from './AskScreen';
 
@@ -104,7 +108,9 @@ describe('AskScreen', () => {
     fireEvent.click(number);
     const entry = within(answer()).getByRole('button', { name: /Slide 7/ });
     expect(document.activeElement).toBe(entry);
-    const hive = within(answer()).getByRole('button', { name: /Slide 4/ });
+    const hive = within(screen.getByRole('list', { name: SOURCES })).getByRole('button', {
+      name: /Slide 4/,
+    });
     hive.focus();
     fireEvent.click(hive);
     const dialog = screen.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 4' });
@@ -124,14 +130,56 @@ describe('AskScreen', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('folds what was withheld, with the reason, apart from the answer', async () => {
-    await askWith({ status: 200, body: GROUNDED });
-    const panel = answer().querySelector('details');
-    expect(panel?.open).toBe(false);
-    expect(panel?.querySelector('summary')?.textContent).toBe('Withheld (1)');
-    expect(panel?.textContent).toContain('Queens rule the hive.');
-    expect(panel?.textContent).toContain('No slide this answer was written from says it.');
+  it('folds the quote marks it dropped under their own heading, each line beside the slide it opens', async () => {
+    const comb = {
+      reason: 'dangling-citation',
+      text: 'Cells are hexagonal.',
+      sourceId: COMB.sourceId,
+    };
+    await askWith({ status: 200, body: { ...GROUNDED, withheld: [...DROPPED, comb] } });
+    const panels = [...answer().querySelectorAll('details')];
+    expect(panels.map((panel) => panel.querySelector('summary')?.textContent)).toEqual([
+      'Quote marks removed (2)',
+    ]);
+    const [panel] = panels;
+    if (panel === undefined) throw new Error('no panel');
+    expect(panel.open).toBe(false);
+    expect(panel.querySelector('.withheld-reason')?.textContent).toBe(DROPPED_QUOTES_NOTE);
+    const entries = [...panel.querySelectorAll(':scope > ul > li')];
+    expect(entries.map((entry) => entry.querySelector('.withheld-text')?.textContent)).toEqual([
+      'Worker bees are female.',
+      'Cells are hexagonal.',
+    ]);
+    expect(entries.map((entry) => entry.querySelector('.slide-card-number')?.textContent)).toEqual([
+      'Slide 4',
+      'Slide 7',
+    ]);
+    const card = entries[1]?.querySelector('button');
+    if (card === null || card === undefined) throw new Error('no card');
+    fireEvent.click(card);
+    const dialog = screen.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 7' });
+    expect(dialog.querySelectorAll('mark')).toHaveLength(0);
+  });
+
+  it('keeps a reason that withholds a sentence under Withheld, with that reason, apart from the dropped quote marks', async () => {
+    await askWith({ status: 200, body: { ...GROUNDED, withheld: [...WITHHELD, ...DROPPED] } });
+    const [dropped, cut] = answer().querySelectorAll('details');
+    expect(dropped?.querySelector('summary')?.textContent).toBe('Quote marks removed (1)');
+    expect(dropped?.textContent).not.toContain('Queens');
+    expect(cut?.querySelector('summary')?.textContent).toBe('Withheld (1)');
+    expect(cut?.textContent).toContain('Queens rule the hive.');
+    expect(cut?.textContent).toContain('No slide this answer was written from says it.');
+    expect(cut?.textContent).not.toContain('Worker bees');
     expect(answer().querySelector('.explanation')?.textContent).not.toContain('Queens');
+  });
+
+  it('names a dropped quote mark’s slide as missing when the reply lacks it', async () => {
+    const lost = { reason: 'dangling-citation', text: '[3]', sourceId: SourceId.parse('s9') };
+    await askWith({ status: 200, body: { ...GROUNDED, withheld: [lost] } });
+    const panel = answer().querySelector('details');
+    expect(panel?.querySelector('.withheld-text')?.textContent).toBe('[3]');
+    expect(panel?.querySelector('.citation-missing')?.textContent).toBe(SOURCE_MISSING);
+    expect(panel?.querySelector('button')).toBeNull();
   });
 
   it('names what was searched when the reply corrected a typo, and nothing when it did not', async () => {
