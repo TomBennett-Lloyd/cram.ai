@@ -42,8 +42,8 @@
 # decoration: the soundness guard refuses to certify a change set it could not
 # check against anything, so a fixture with no test files would take the
 # fail-closed path and the docs tier would be unreachable for reasons that have
-# nothing to do with the case. One case removes it deliberately, to assert that
-# refusal.
+# nothing to do with the case. The cases that remove it do so deliberately, to
+# assert that refusal.
 #
 # One case runs the classifier against the REAL repository with no argument:
 # every other case pins it to a fixture, so without it the shipped default path
@@ -677,6 +677,24 @@ must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: docs — 1 file(s)"
+expect_not_stdout "guard: "
+end
+
+# The shipped members, not stand-ins: the real merge-pr.test.sh and fill-verdict.test.sh,
+# copied in, must pass the climb check as they stand, so an edit that adds a climb to either
+# goes red here rather than silently costing the exemption. Each names one of the changed
+# files as fixture text (merge-pr.test.sh's V_FILES, fill-verdict.test.sh's fixture ADR), and
+# neither basename exists in this repository.
+begin "the real fixture-only harnesses, naming the changed markdown, leave the docs tier"
+must fixture exempt_real
+must mkdir -p "$WT/.claude/scripts"
+must cp "$SCRIPTS/merge-pr.test.sh" "$SCRIPTS/fill-verdict.test.sh" "$WT/.claude/scripts/"
+seed_origin 'chore: the real fixture-only harnesses'
+write_in docs/notes.md '# Notes'
+write_in docs/adr/0001-old.md '# 0001 — Old'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: docs — 2 file(s)"
 expect_not_stdout "guard: "
 end
 
