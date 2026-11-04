@@ -1562,7 +1562,8 @@ elif [ "$already_merged" = "0" ]; then
   # rule is scoped that way where it is stated — .claude/skills/run-issue/SKILL.md's
   # batch lane step 4 says "a batch that is BEHIND or conflicted" — and the scoping
   # is load-bearing rather than pedantic: BLOCKED (branch protection), UNKNOWN
-  # (GitHub still computing) and DRAFT all reach this point too. The residual, so nobody rediscovers it as a bug: a batch that is
+  # (GitHub still computing) and DRAFT all reach this point too. The residual, so
+  # nobody rediscovers it as a bug: a batch that is
   # BOTH stale and blocked reports BLOCKED, so it falls through to the generic
   # refusal and is told its state with no repair named. It is never merged; the
   # merge owner reads the state and finds the second blocker. Prescribing a
