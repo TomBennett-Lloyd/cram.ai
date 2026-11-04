@@ -1,6 +1,7 @@
 import type {
   ChatRequest,
   ChatResult,
+  CutOffAt,
   Embedder,
   EmbedderPin,
   EmbeddingResult,
@@ -20,7 +21,18 @@ import type {
   Verifier,
   VerifierPin,
 } from '@cram/gateway';
+import { z } from 'zod';
 import { type Clock, timed } from './latency';
+
+const Count = z.number().int().nonnegative();
+
+export const GeneratorCutOffs = z.strictObject({ tokenLimit: Count, timeout: Count });
+export type GeneratorCutOffs = z.infer<typeof GeneratorCutOffs>;
+
+const CUT_OFF_KEY = {
+  'token-limit': 'tokenLimit',
+  timeout: 'timeout',
+} as const satisfies Record<CutOffAt, keyof GeneratorCutOffs>;
 
 class Durations {
   readonly #byRole = new Map<Role, number[]>();
@@ -39,6 +51,7 @@ class Durations {
 interface Timing {
   readonly clock: Clock;
   readonly durations: Durations;
+  readonly cutOffs: Record<keyof GeneratorCutOffs, number>;
 }
 
 const timedCall = <T>(timing: Timing, role: Role, call: () => Promise<T>): Promise<T> =>
@@ -65,8 +78,10 @@ class TimedGenerator implements Generator {
     this.#timing = timing;
   }
 
-  chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
-    return timedCall(this.#timing, 'generator', () => this.#inner.chat(request));
+  async chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
+    const result = await timedCall(this.#timing, 'generator', () => this.#inner.chat(request));
+    if (result.status === 'cut-off') this.#timing.cutOffs[CUT_OFF_KEY[result.cutOffAt]] += 1;
+    return result;
   }
 }
 
@@ -118,16 +133,17 @@ class TimedVerifier implements Verifier {
   }
 }
 
-/** Forwards every call and keeps each one's wall-clock duration, per role. */
+/** Forwards every call and keeps each one's wall-clock duration, per role, and its generator cut-offs. */
 export class TimedGateway implements ModelGateway {
   readonly generator: Generator;
   readonly verifier: Verifier;
   readonly embedder: Embedder;
   readonly reranker: Reranker | null;
   readonly #durations = new Durations();
+  readonly #cutOffs = { tokenLimit: 0, timeout: 0 };
 
   constructor(inner: ModelGateway, clock: Clock) {
-    const timing = { clock, durations: this.#durations };
+    const timing = { clock, durations: this.#durations, cutOffs: this.#cutOffs };
     this.generator = new TimedGenerator(inner.generator, timing);
     this.verifier = new TimedVerifier(inner.verifier, timing);
     this.embedder = new TimedEmbedder(inner.embedder, timing);
@@ -136,5 +152,9 @@ export class TimedGateway implements ModelGateway {
 
   durations(role: Role): readonly number[] {
     return this.#durations.of(role);
+  }
+
+  cutOffs(): GeneratorCutOffs {
+    return { ...this.#cutOffs };
   }
 }

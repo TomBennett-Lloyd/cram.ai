@@ -102,7 +102,7 @@ eval/src/read-eval-course.ts	0
 eval/src/recording-gateway.ts	342
 eval/src/render-deck.ts	709
 eval/src/replay-run.ts	735
-eval/src/report.ts	515
+eval/src/report.ts	505
 eval/src/retrieval-recall.ts	1538
 eval/src/run-eval.ts	115
 eval/src/run-files.ts	597
@@ -113,7 +113,7 @@ eval/src/sentence-kind-accuracy.ts	769
 eval/src/sentence-kind-label.ts	909
 eval/src/summary-rows.ts	2000
 eval/src/tag-recall.ts	500
-eval/src/timed-gateway.ts	83
+eval/src/timed-gateway.ts	73
 eval/src/topic-label.ts	833
 eval/src/verifier-accuracy.ts	937
 eval/src/verifier-arms.ts	757

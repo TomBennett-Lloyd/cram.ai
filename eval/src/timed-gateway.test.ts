@@ -28,6 +28,23 @@ describe('TimedGateway', () => {
     expect(gateway.durations('reranker')).toEqual([]);
   });
 
+  it('counts the generator replies cut off, by what stopped each, and none of the others', async () => {
+    const replies = [
+      { status: 'truncated', content: '"a', cutOffAt: 'token-limit' },
+      { status: 'truncated', content: '"b', cutOffAt: 'timeout' },
+      { status: 'truncated', content: '"c', cutOffAt: 'token-limit' },
+      { status: 'content', content: '"d"' },
+      { status: 'content', content: 'not json' },
+      { status: 'backend-failed', cause: 'timeout', reason: 'TimeoutError' },
+    ] as const;
+    let call = 0;
+    const inner = new ScriptedGateway(() => replies[call++] ?? replies[3]);
+    const gateway = new TimedGateway(inner, steppingClock(1));
+    expect(gateway.cutOffs()).toEqual({ tokenLimit: 0, timeout: 0 });
+    await Promise.all(replies.map(() => gateway.generator.chat(request)));
+    expect(gateway.cutOffs()).toEqual({ tokenLimit: 2, timeout: 1 });
+  });
+
   it('reports the sampling its inner generator reports', () => {
     const reseeded = { temperature: 0.5, seed: 7 };
     const inner = new ScriptedGateway(() => ({ status: 'content', content: '1' }), null, reseeded);

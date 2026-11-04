@@ -16,6 +16,7 @@ import { DerivedCoverageRow } from './derived-text';
 import { LatencySummary } from './latency';
 import { LightSetRow } from './light-rows';
 import { BaselineRow, NotMeasurable } from './metric-row';
+import { GeneratorCutOffs } from './timed-gateway';
 import { ArmDecision } from './verifier-arms';
 
 export const MachineClass = z.enum(['target-cpu-laptop', 'dev-apple-silicon']);
@@ -98,5 +99,6 @@ export const EvalReport = z.strictObject({
     generatorTimeToFirstToken: NotMeasurable,
     generatorTokensPerSecond: NotMeasurable,
   }),
+  generatorCutOffs: GeneratorCutOffs,
 });
 export type EvalReport = z.infer<typeof EvalReport>;
