@@ -507,8 +507,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-03 — issue #465 — verification-depth-owned-in-shared
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to accept one dated amendment to `docs/adr/0009-explanation-answers.md`. (f)'s owner path for `VERIFICATION_DEPTH` moves from `packages/grounding/src/verification-depth.ts` to `packages/shared/src/verification-depth.ts`, trued up inline, with an `## Amendments` entry that names the sweep. It also asks the owner to accept the issue's first fix rather than its second: the constant moves into `@cram/shared`, and `AskReply`'s grounded arm does not gain a `depth` field.
 - **Why**: `apps/web` cannot depend on `@cram/grounding`, which pulls in `@cram/gateway`'s native runtimes, so `apps/web/src/ask/ask-depth.ts` restated `VERIFICATION_DEPTH.ask` as `ASK_DEPTH`. That was a second copy of an owned value (`docs/standards/architecture.md` rule 9), kept honest only by its ledger. Both the server and the web already import `@cram/shared`. Option 2 would also have amended the ADR, at (a)'s listed fields for `AskReply`, and it would have changed the wire schema, the server and two fixtures to carry a value both builds already share.
 - **How applied**: the value is unchanged. The web's copy is deleted, and so are the grounding owner file and its re-export. `packages/grounding/src/ask.ts`, `eval/src/ask-depths.ts` and `apps/web/src/ask/AnswerView.tsx` import from `@cram/shared`. `.claude/ledgers/verification-depth.ledger` re-points its owner and swaps its web carrier for `AnswerView.tsx`. Plan and sweep: https://github.com/TomBennett-Lloyd/cram.ai/issues/465#issuecomment-6597413440.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-04 — "approve 499, 530, 504"; the (f) owner-path amendment and option 1 stand
