@@ -198,10 +198,11 @@ export class CourseIndex {
     );
   }
 
-  lectureSlides(lectureId: LectureId): readonly RetrievedSlide[] {
-    return this.#storedSlides('where lecture_id = ? order by slide_no', lectureId).map(
-      ({ sourceId, record }) => ({ sourceId, record }),
-    );
+  lectureSlides(lectureId: LectureId, listing: SlideListing = {}): readonly RetrievedSlide[] {
+    return this.#storedSlides(
+      `where lecture_id = ? ${listed(listing)} order by slide_no`,
+      lectureId,
+    ).map(({ sourceId, record }) => ({ sourceId, record }));
   }
 
   setSummary(summary: LectureSummary): void {
