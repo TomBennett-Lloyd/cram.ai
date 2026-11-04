@@ -2,8 +2,7 @@
 # Ends the processes left behind by worktrees that no longer exist, which hold the shared
 # machine's load up and redden other lanes' verify runs on timeouts (#483). A process is an
 # orphan when its cwd or its command line names <main>/.claude/worktrees/<name> and no entry
-# <name> exists there any more. A worktree that still exists is reap-worktree.sh's to judge:
-# "merged" also reads true of a branch just cut from main, with its lane running inside it.
+# <name> exists there any more. A worktree that still exists is reap-worktree.sh's to judge.
 #
 # Usage: sweep-orphans.sh [--dry-run]   (finds the repo from the cwd; sweep-worktrees.sh runs it)
 # Exit:  0 the sweep ran (finding nothing is a normal outcome), 2 unexpected failure, or an
@@ -152,7 +151,12 @@ if [ "$dry_run" = "1" ]; then
   exit 0
 fi
 
-alive() { kill -0 "$1" 2>/dev/null; }
+# A zombie answers `kill -0` but has ended: its parent reaps it on the parent's own schedule.
+alive() {
+  local stat
+  stat=$(ps -o stat= -p "$1" 2>/dev/null) || return 1
+  case "$stat" in *Z*) return 1 ;; esac
+}
 for pid in $orphan_pids; do kill -TERM "$pid" 2>/dev/null; done
 for _ in $(seq 25); do
   left=""

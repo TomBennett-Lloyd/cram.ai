@@ -24,11 +24,11 @@ shipped_scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # The scripts under test, overridable so the same cases can be run against an older revision as
 # a negative control (testing.md rule 4: a regression case is only worth its line count once it
 # has been seen to fail on the pre-fix code). Same convention as lint-shell.test.sh's
-# LINT_SHELL_GATE, but a directory rather than a file: these four scripts source and exec each
-# other by name, so they can only be swapped as a set.
+# LINT_SHELL_GATE, but a directory rather than a file: these scripts source and exec each other
+# by name, so they can only be swapped as a set.
 #
 #   mkdir /tmp/pre
-#   for s in worktree-lib reap-worktree rebranch-worktree sweep-worktrees; do
+#   for s in worktree-lib reap-worktree rebranch-worktree sweep-worktrees sweep-orphans; do
 #     git show <rev>:.claude/scripts/$s.sh >/tmp/pre/$s.sh
 #   done
 #   chmod +x /tmp/pre/*.sh
@@ -42,8 +42,7 @@ shipped_scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # which is why one recipe can serve both: case 32 is what pins the shipped behaviour, and it
 # builds its own mode-644 copy rather than relying on how the recipe was run.
 #
-# From #483 on, sweep-worktrees.sh also runs sweep-orphans.sh, so a revision from then adds
-# sweep-orphans to the loop. Those files are the whole of what the directory needs to hold: harness-lib.sh is always
+# Those files are the whole of what the directory needs to hold: harness-lib.sh is always
 # the shipped one, so an extracted revision from before it existed still runs.
 #
 # Unset — how `pnpm test:scripts` runs it — is the shipped set.

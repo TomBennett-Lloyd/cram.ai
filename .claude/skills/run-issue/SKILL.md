@@ -62,8 +62,8 @@ the section before you dispatch.
    keeps its in-flight row, marked `held: load <x>`, and goes out once a later read shows the
    figure at or under that line; re-read at every report and merge. The hold lifts on the
    measurement alone: it is not a sequencing decision and never a reason to batch. While anything is
-   held, `bash .claude/scripts/sweep-worktrees.sh --dry-run` lists as `WOULD-KILL` any
-   process still naming a worktree that no longer exists, which a real sweep ends. The
+   held, `bash .claude/scripts/sweep-worktrees.sh --dry-run` lists as `WOULD-KILL` the
+   orphans `.claude/scripts/sweep-orphans.sh`'s header defines, which a real sweep ends. The
    evidence, lanes' verify runs red on load timeouts, is #483's.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
    mode and the overlap note — nothing else; it reads the issue and the files.

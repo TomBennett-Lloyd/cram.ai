@@ -31,7 +31,7 @@ fixture() {
   must git init --quiet -b main "$ROOT/main"
 }
 
-# Every parked process is one perl, never a shell with a `sleep` child: a child would hold the
+# Every parked process is a single process, never a shell with a `sleep` child: a child would hold the
 # same cwd and be a second orphan, and would outlive the cleanup's kill holding the
 # harness's stdout open.
 #
@@ -262,6 +262,29 @@ alive "$stubborn" && bad "the TERM-ignoring orphan survived"
 end
 
 # ==========================================================================================
+begin "an orphan whose live parent has not reaped it is ended, not a survivor"
+fixture zombie
+GZ="$W/gone-zombie" perl -e 'my $p = fork; if (!$p) { exec "perl", "-e", "sleep 60", "--", $ENV{GZ} } sleep 60' &
+parent=$!
+bg_pids="$bg_pids $parent"
+child=""
+for _ in $(seq 150); do
+  child=$(ps -A -o pid= -o ppid= | awk -v p="$parent" '$2 == p { print $1; exit }')
+  [ -n "$child" ] && ps -ww -o command= -p "$child" | grep -qF -- "$W/gone-zombie" && break
+  sleep 0.2
+done
+[ -n "$child" ] || {
+  printf 'FATAL harness could not observe the forked child\n' >&2
+  exit 2
+}
+sweep
+expect_rc 0
+expect_out "KILLED $child"
+expect_not_out "survived"
+alive "$parent" || bad "the parent, which names no worktree, was ended"
+end
+
+# ==========================================================================================
 # The age guard reads ps's etime, [[dd-]hh:]mm:ss. A ps wrapper rewrites one parked process's
 # etime so each field's arm is reached; everything else is the real ps.
 real_ps=$(command -v ps) || exit 2
@@ -313,6 +336,27 @@ for tool in ps lsof; do
   expect_rc 2
 done
 case_ctx=""
+end
+
+# ==========================================================================================
+# A ps wrapper that leaves out one row stands for a process that started after the table was
+# read: lsof then names a pid the table lacks.
+begin "a cwd holder missing from the process table is not a candidate"
+fixture unlisted
+must mkdir "$W/gone-unlisted" "$TMP_ROOT/drop"
+park_cwd "$W/gone-unlisted"
+unlisted=$PARKED
+must rm -rf "$W/gone-unlisted"
+cat >"$TMP_ROOT/drop/ps" <<EOF
+#!/usr/bin/env bash
+"$real_ps" "\$@" | awk -v p="\$FAKE_DROP" '\$1 != p'
+EOF
+must chmod +x "$TMP_ROOT/drop/ps"
+capture -C "$ROOT/main" env PATH="$TMP_ROOT/drop:$PATH" FAKE_DROP="$unlisted" \
+  WORKTREE_ORPHAN_MIN_AGE_MINUTES=0 bash "$SUBJECT" --dry-run
+expect_rc 0
+expect_unlisted "$unlisted"
+expect_out "orphans: would kill 0"
 end
 
 finish
