@@ -9,10 +9,9 @@
 # cycle-1 findings were claims that batch had minted itself, cumulo#520's cycle-2
 # findings were five for five in the reporting prose with none in the diff, and
 # cumulo#520's title said "3 trued, 3 raised" where its body said five and five. That
-# title is what became history: `merge-pr.sh`'s squash merge passes no `--subject`,
-# and this repository's `squash_merge_commit_title` is `COMMIT_OR_PR_TITLE` — so a
-# branch of more than one commit (cumulo#512's six, cumulo#520's four) squashes under
-# its PR title, and `6943ee6` carries cumulo#520's.
+# title is what became history: a branch of more than one commit (cumulo#512's six,
+# cumulo#520's four) squashed under its PR title, and `6943ee6` carries cumulo#520's.
+# `merge-pr.sh` now squashes every branch under its PR title (#617).
 # `docs/standards/prose.md` rule 2 already applies the cure to figures —
 # generate them, never type them — and this script is that rule pointed at the
 # report itself.
