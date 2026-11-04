@@ -34,7 +34,7 @@
 #                  case-sensitive string
 # A case runs when any selector matches it. A selected run ends on the same
 # `N passed, M failed` line, and one that matches nothing exits 2 as a harness that ran no
-# cases. With no selector the run is exactly the unselected one (#434).
+# cases (#434).
 # Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke or a usage error.
 set -uo pipefail
 
@@ -832,7 +832,7 @@ case_selected() { # case_selected <section> <title> — any --section or --case 
 # gate_cases <harness file> -> its case region on stdout, each case gated on case_selected.
 # The lines above the sentinel come out blank, so an error in the copy names the source line.
 # A heredoc line reading `begin …` or exactly `end` would be taken for a case boundary; each
-# shape this cannot read as cases exits 2 rather than gating the wrong span.
+# shape this cannot read as cases exits 2.
 gate_cases() {
   awk -v sentinel="$CASES_SENTINEL" '
     function die(msg) {
