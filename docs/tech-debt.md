@@ -60,6 +60,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
 - What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares.
 - Source: issue #9 (review cycle 1)
+- Update 2026-11-04 (#567): a PDF line now carries a `box`, so `bodyOf` stands a line outside the bullet's column beside it and ends the bullet at an in-column line above it or further than `CONTINUATION_EMS` below; a footer is partitioned out before the body is read (`layOutPages` in `packages/ingest/src/adapters/pdf/page-layout.ts`). What remains: an unmarked line in the bullet's column within that reach, such as a closing sentence directly under a list, still joins the bullet, and PPTX lines carry no box.
 
 ## 2026-10-20 — the PPTX math fold merges letters whose style carries meaning
 

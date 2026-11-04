@@ -4,10 +4,8 @@ import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
 import type { PageText } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
-import { layOutPages, PdfTextItem, type PdfPageText } from './page-layout';
+import { layOutPages, pageTextOf, type PdfPageText } from './page-layout';
 import { renderSlideImage, type PdfDocument } from './render-page';
-
-const ViewBox = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 
 const Annotation = z.object({
   subtype: z.string().nullable(),
@@ -47,20 +45,17 @@ interface ReadDeck {
   readonly images: readonly SlideImage[];
 }
 
-/** Each page's text with pdf.js's own Unicode fold off, so `storedText`'s is the only one (#256), and its rendering. */
 const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
   const texts: (PdfPageText & { readonly notes: string })[] = [];
   const images: SlideImage[] = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
-    const { items } = await page.getTextContent({ disableNormalization: true });
-    const [, bottom, , top] = ViewBox.parse(page.view);
     const annotations = z.array(Annotation).parse(await page.getAnnotations());
     const notes = annotations
       .filter((annotation) => annotation.subtype === 'Text')
       .map((annotation) => annotation.contentsObj?.str ?? '')
       .join('\n');
-    texts.push({ items: z.array(PdfTextItem).parse(items), bottom, height: top - bottom, notes });
+    texts.push({ ...(await pageTextOf(pdf, pageNo)), notes });
     images.push(await renderSlideImage(pdf, SlideNo.parse(pageNo)));
   }
   const pages = layOutPages(texts).map(({ page, lines }): PageText => ({

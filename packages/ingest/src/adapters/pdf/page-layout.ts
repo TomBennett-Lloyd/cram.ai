@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { LineBox, TextLine } from '../../page-text';
 import { logicalOrder } from './logical-order';
+import type { PdfDocument } from './render-page';
 
 export const PdfTextItem = z.object({
   str: z.string(),
@@ -10,11 +11,21 @@ export const PdfTextItem = z.object({
 });
 export type PdfTextItem = z.infer<typeof PdfTextItem>;
 
+const ViewBox = z.tuple([z.number(), z.number(), z.number(), z.number()]);
+
 export interface PdfPageText {
   readonly items: readonly PdfTextItem[];
   readonly bottom: number;
   readonly height: number;
 }
+
+/** pdf.js's own Unicode fold off, so `storedText`'s is the only one (#256). */
+export const pageTextOf = async (pdf: PdfDocument, pageNo: number): Promise<PdfPageText> => {
+  const page = await pdf.getPage(pageNo);
+  const { items } = await page.getTextContent({ disableNormalization: true });
+  const [, bottom, , top] = ViewBox.parse(page.view);
+  return { items: z.array(PdfTextItem).parse(items), bottom, height: top - bottom };
+};
 
 export interface LaidOutPage<P extends PdfPageText> {
   readonly page: P;
@@ -25,7 +36,7 @@ export interface LaidOutPage<P extends PdfPageText> {
 /** The share of a page's height, from its bottom edge, a footer sits in (page-layout.test.ts). */
 export const FOOTER_BAND = 0.1;
 
-/** A gap wider than this many ems of the smaller glyph on a shared baseline separates two columns (page-layout.test.ts). */
+/** A gap wider than this many ems of the smaller glyph, either side of a line on its baseline, separates two columns (page-layout.test.ts). */
 export const COLUMN_GAP_EMS = 3;
 
 const DIGITS_ONLY = /^\d+$/;
@@ -54,14 +65,14 @@ const isPageNumber = (item: PdfTextItem, pageNo: number, page: PdfPageText): boo
 };
 
 /** pdf.js joins what its content stream orders next, a form XObject's text included (#567); a sub- or superscript moves the baseline by less than its glyph. */
-const breaksLine = (last: Placed, next: Placed): boolean => {
+const breaksLine = (line: LineBox, last: Placed, next: Placed): boolean => {
   const em = Math.min(last.size, next.size);
   return (
-    Math.abs(next.baseline - last.baseline) > em || next.left - last.right > COLUMN_GAP_EMS * em
+    Math.abs(next.baseline - last.baseline) > em ||
+    Math.max(next.left - line.right, line.left - next.right) > COLUMN_GAP_EMS * em
   );
 };
 
-/** A page's lines: pdf.js's `hasEOL` ends one, and so does `breaksLine`; a line's size is its largest non-blank glyph. */
 export const linesOf = (page: PdfPageText, pageNo: number): TextLine[] => {
   const lines: TextLine[] = [];
   let text = '';
@@ -73,15 +84,20 @@ export const linesOf = (page: PdfPageText, pageNo: number): TextLine[] => {
     text = '';
     size = 0;
     box = undefined;
-    last = undefined;
   };
   for (const item of page.items) {
     const placed = item.str.trim() === '' ? undefined : placedOf(item);
-    if (placed !== undefined && isPageNumber(item, pageNo, page)) {
+    if (isPageNumber(item, pageNo, page)) {
       if (item.hasEOL) end();
       continue;
     }
-    if (placed !== undefined && last !== undefined && breaksLine(last, placed)) end();
+    if (
+      placed !== undefined &&
+      box !== undefined &&
+      last !== undefined &&
+      breaksLine(box, last, placed)
+    )
+      end();
     text += logicalOrder(item.str);
     if (placed !== undefined) {
       size = Math.max(size, placed.size);
@@ -115,11 +131,9 @@ const repeatedFooter = (
   pages: readonly (readonly [PdfPageText, readonly TextLine[]])[],
 ): FooterTest => {
   const pagesWith = new Map<string, number>();
-  for (const [page, lines] of pages) {
+  for (const [, lines] of pages) {
     const keys = new Set(
-      lines.flatMap(({ box, ...line }) =>
-        box !== undefined && inLowerHalf(box, page) ? [positionKey(line, box)] : [],
-      ),
+      lines.flatMap(({ box, ...line }) => (box === undefined ? [] : [positionKey(line, box)])),
     );
     for (const key of keys) pagesWith.set(key, (pagesWith.get(key) ?? 0) + 1);
   }

@@ -1,7 +1,12 @@
 import { SlideNo } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import type { PageText, TextLine } from './page-text';
-import { slideText as readSlide, THIN_TEXT_LAYER_WORDS, type SlideText } from './slide-text';
+import {
+  CONTINUATION_EMS,
+  slideText as readSlide,
+  THIN_TEXT_LAYER_WORDS,
+  type SlideText,
+} from './slide-text';
 
 const TITLE = 48;
 const BODY = 28;
@@ -152,6 +157,82 @@ describe('slideText bullets', () => {
       3,
     );
     expect(text).toEqual({ kind: 'content', title: 'Kinetics', body: ENOUGH });
+  });
+});
+
+const boxed = (
+  text: string,
+  [left, right, baseline]: readonly [number, number, number],
+  size = BODY,
+): TextLine => ({ text, size, box: { left, right, baseline } });
+
+const bodyOf = (...lines: TextLine[]): string =>
+  slideText(page(line('Kinetics', TITLE), ...lines), 3).body;
+
+describe('slideText bullet continuation by geometry (#567)', () => {
+  const BULLET = boxed(`• ${ENOUGH}`, [40, 400, 300]);
+  const below = (left: number, right: number, drop: number, size = BODY): TextLine =>
+    boxed('continued here', [left, right, 300 - drop], size);
+  const joined = `• ${ENOUGH} continued here`;
+  const apart = `• ${ENOUGH}\ncontinued here`;
+  const beside = `continued here\n• ${ENOUGH}`;
+  const reach = CONTINUATION_EMS * BODY;
+
+  it('continues a bullet with a line in its column within reach below, a wrap at double spacing included', () => {
+    expect(bodyOf(BULLET, below(55, 300, 2.4 * BODY))).toBe(joined);
+    expect(bodyOf(BULLET, below(55, 300, reach))).toBe(joined);
+    expect(bodyOf(BULLET, below(55, 300, reach + 0.01))).toBe(apart);
+  });
+
+  it('stops at a line on the same baseline or above the bullet', () => {
+    expect(bodyOf(BULLET, below(55, 300, 0))).toBe(apart);
+    expect(bodyOf(BULLET, below(55, 300, -10))).toBe(apart);
+  });
+
+  it("stands a line whose x-range misses the bullet's beside it, on either side, leaving the bullet open", () => {
+    expect(bodyOf(BULLET, below(400, 500, 20))).toBe(joined);
+    expect(bodyOf(BULLET, below(400.01, 500, 20))).toBe(beside);
+    expect(bodyOf(BULLET, below(0, 40, 20))).toBe(joined);
+    expect(bodyOf(BULLET, below(0, 39.99, 20))).toBe(beside);
+    expect(bodyOf(BULLET, boxed('Side label', [700, 800, 300]), below(55, 300, 20))).toBe(
+      `Side label\n${joined}`,
+    );
+  });
+
+  it('measures the line height in the larger of the two sizes', () => {
+    const larger = 1.5 * BODY;
+    const drop = (CONTINUATION_EMS * (BODY + larger)) / 2;
+    expect(bodyOf(BULLET, below(55, 300, drop, larger))).toBe(joined);
+    expect(bodyOf(boxed(`• ${ENOUGH}`, [40, 400, 300], larger), below(55, 300, drop))).toBe(joined);
+  });
+
+  it('measures from the last line the bullet took, not its first', () => {
+    const step = (CONTINUATION_EMS * BODY * 2) / 3;
+    expect(
+      bodyOf(BULLET, below(55, 300, step), boxed('and further', [55, 300, 300 - 2 * step])),
+    ).toBe(`${joined} and further`);
+  });
+
+  it('leaves a bullet closed once an in-column line stops it, so a later in-column line stays its own', () => {
+    expect(bodyOf(BULLET, boxed('Above it', [55, 300, 310]), below(55, 300, 20))).toBe(
+      `• ${ENOUGH}\nAbove it\ncontinued here`,
+    );
+  });
+
+  it('continues as before when either line has no box', () => {
+    expect(bodyOf(line(`• ${ENOUGH}`), below(700, 800, -10))).toBe(joined);
+    expect(bodyOf(BULLET, line('continued here'))).toBe(joined);
+  });
+
+  it("boxes a lone marker and its line together, so a continuation under the marker's reach still joins", () => {
+    const marker = boxed('•', [40, 50, 300]);
+    const text = boxed(ENOUGH, [60, 400, 300]);
+    expect(bodyOf(marker, text, below(41, 55, 20))).toBe(joined);
+    expect(bodyOf(line('•'), text, below(41, 55, 20))).toBe(beside);
+    expect(bodyOf(marker, line(ENOUGH), below(700, 800, -10))).toBe(joined);
+    const reach = CONTINUATION_EMS * BODY;
+    const lower = boxed(ENOUGH, [60, 400, 290]);
+    expect(bodyOf(marker, lower, boxed('continued here', [55, 300, 290 - reach]))).toBe(joined);
   });
 });
 

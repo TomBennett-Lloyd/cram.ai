@@ -57,6 +57,23 @@ export interface FixtureDeck {
   readonly brokenPageTree?: 'kid-not-a-reference' | 'kids-not-an-array' | 'circular';
 }
 
+/** The issue's synthetic slide (#567), its footer and labels drawn through form XObjects as pdf.js met them. */
+export const CALL_OUT_SLIDE: readonly FixtureLine[] = [
+  { text: 'Lecture title', size: 28, at: [300, 490] },
+  { text: 'term = short definition', size: 12, at: [680, 500] },
+  { text: 'Heading:', size: 18, at: [40, 440] },
+  { text: '• First bullet.', size: 18, at: [40, 410] },
+  { text: '• Second bullet, wrapped', size: 18, at: [40, 380] },
+  { text: 'onto a second line.', size: 18, at: [55, 358] },
+  { text: '• Example: a sentence the tutor should be able to quote.', size: 18, at: [90, 320] },
+  { text: '1', size: 10, at: [900, 20], form: true },
+  { text: '© Example College: Course, Year. AB / CD.', size: 10, at: [300, 20], form: true },
+  { text: 'in a call-out box', size: 12, at: [680, 486], form: true },
+  { text: 'Key:', size: 12, at: [40, 320], form: true },
+  { text: 'label', size: 12, at: [40, 300], form: true },
+  { text: "Pronounced 'x'", size: 12, at: [680, 410], form: true },
+];
+
 const PAGE: [number, number] = [960, 540];
 const SCALE = 0.3;
 const MATH_FONT = 'MathItalic';

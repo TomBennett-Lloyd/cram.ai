@@ -7,8 +7,8 @@ export const THIN_TEXT_LAYER_WORDS = 5;
 export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', '–', '➢', '➤'] as const;
 
 /** Titles that mark a references page (#9), which `CourseIndex.search` leaves out by default (#78). */
-/** A line this many of its ems below a bullet's last line, or nearer, can be its wrapped continuation (slide-text.test.ts). */
-export const CONTINUATION_EMS = 1.5;
+/** A line this many ems below a bullet's last line, or nearer, can be its wrapped continuation: a wrap at double spacing still is (slide-text.test.ts). */
+export const CONTINUATION_EMS = 2.5;
 
 export const REFERENCES_TITLE =
   /^(references|reference list|bibliography|further readings?|reading lists?|works cited)\b/i;
@@ -92,27 +92,30 @@ const titleRange = (lines: readonly TextLine[]): readonly [number, number] => {
   return first !== undefined && isTitleCandidate(first) ? [0, 1] : [0, 0];
 };
 
-const continues = (last: TextLine, line: TextLine): boolean => {
-  if (last.box === undefined || line.box === undefined) return true;
+type Fit = 'continues' | 'beside' | 'stops';
+
+const fitOf = (last: TextLine, line: TextLine): Fit => {
+  if (last.box === undefined || line.box === undefined) return 'continues';
+  if (line.box.left > last.box.right || line.box.right < last.box.left) return 'beside';
   const drop = last.box.baseline - line.box.baseline;
-  return (
-    line.box.left <= last.box.right &&
-    line.box.right >= last.box.left &&
-    drop > 0 &&
-    drop <= CONTINUATION_EMS * Math.max(last.size, line.size)
-  );
+  return drop > 0 && drop <= CONTINUATION_EMS * Math.max(last.size, line.size)
+    ? 'continues'
+    : 'stops';
 };
 
-/** One bullet or plain line per `\n`: an unmarked line after a bullet continues it, in its column and within a line's height when both have a box (#567). */
+/** One bullet or plain line per `\n`: a line `fitOf` continues joins the open bullet, one beside it stands alone and leaves it open. */
 const bodyOf = (lines: readonly TextLine[]): string => {
   const blocks: string[] = [];
   let bullet: { text: string; last: TextLine } | undefined;
   for (const line of lines) {
+    const fit = bullet === undefined ? 'stops' : fitOf(bullet.last, line);
     if (markerOf(line.text) !== undefined) {
       if (bullet !== undefined) blocks.push(bullet.text);
       bullet = { text: line.text, last: line };
-    } else if (bullet !== undefined && continues(bullet.last, line)) {
+    } else if (bullet !== undefined && fit === 'continues') {
       bullet = { text: `${bullet.text} ${line.text}`, last: line };
+    } else if (fit === 'beside') {
+      blocks.push(line.text);
     } else {
       if (bullet !== undefined) blocks.push(bullet.text);
       bullet = undefined;
