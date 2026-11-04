@@ -60,6 +60,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `bodyOf` in `packages/ingest/src/slide-text.ts`; `TextLine` in `packages/ingest/src/page-text.ts`
 - What: an unmarked line after a bullet is read as that bullet's wrapped continuation, because `TextLine` carries no geometry to tell a wrap from a new paragraph. A closing sentence, a source line or a footer after a bullet list ends up inside the last bullet. The text is kept and nothing is split mid-bullet, but the line structure is lost. Suspected root cause: `TextLine` has no x-indent. Adding one changes the boundary #10's PPTX adapter shares.
 - Source: issue #9 (review cycle 1)
+- Update 2026-11-04 (#567): a PDF line now carries a `box`, so `bodyOf` stands a line outside the bullet's column beside it and ends the bullet at an in-column line above it or further than `CONTINUATION_EMS` below; a footer is partitioned out before the body is read (`layOutPages` in `packages/ingest/src/adapters/pdf/page-layout.ts`). What remains: an unmarked line in the bullet's column within that reach, such as a closing sentence directly under a list, still joins the bullet, and PPTX lines carry no box.
 
 ## 2026-10-20 — the PPTX math fold merges letters whose style carries meaning
 
@@ -164,3 +165,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/web/src/decks/DecksSummaryWithheld.test.tsx:80,124`, `apps/web/e2e/decks-summary.spec.ts:13` (`'Withheld (n)'`); owner `apps/web/src/copy.ts` (`withheldHeading`, `droppedQuotesHeading`)
 - What: since #579 moved the withheld panels' headings into `copy.ts`, the summary-surface tests still restate the `Withheld (` literal, while `ask.spec.ts` and `AskScreen.test.tsx` cite the owner and `copy.test.ts` pins the literal once. A second asserting site is a carrier under `docs/standards/architecture.md` rule 9 and has no ledger. Suspected root cause: no repo rule says whether a UI-copy literal asserted in a test gets a ledger or cites `copy.ts`, so each lane picks one.
 - Source: PR for #579 (review)
+
+## 2026-11-04 — a hostile corpus's grammar is drawn from the fields the code reads, not each field's domain
+
+- Where: `.claude/agents/ticket-agent.md` rule 4 (list (a), the input grammar); the #567 lane's differential corpus
+- What: #567's corpus varied pdf.js `transform`'s translation and scale but not its rotation, and varied deck size but not content repeated across pages. Both hid a regression the differential then reported as zero head-regressions: a rotated page's lines broke at every item, and a build's repeated step was read as a footer. Review found both. Suspected root cause: list (a) is enumerated from the fields the guard reads, so a field's components the code ignores, and any cross-unit repetition an aggregating rule reads, never become constructs.
+- Source: PR for #567 (review cycle 1)
+
+## 2026-11-04 — the repeated-footer rule drops a small lower-half line a deck repeats on most pages
+
+- Where: `repeatedFooter` in `packages/ingest/src/adapters/pdf/page-layout.ts`
+- What: a line that recurs at one position on more than half a PDF deck's pages, in the lower half and smaller than the rest of the deck's text, is read as a footer and kept out of the body. A build's small "Source: …" line repeated on most pages is read that way too, so it reaches neither the body nor retrieval. A step repeated at body size stays. Suspected root cause: position, repetition and size are all the text layer tells a footer by.
+- Source: PR for #567 (review cycle 1)

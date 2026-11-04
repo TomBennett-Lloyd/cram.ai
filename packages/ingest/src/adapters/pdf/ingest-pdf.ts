@@ -1,16 +1,10 @@
 import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
-import type { PageText, TextLine } from '../../page-text';
+import type { PageText } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
-import { logicalOrder } from './logical-order';
+import { layOutPages, pageTextOf, type PdfPageText } from './page-layout';
 import type { PdfDocument } from './render-page';
-
-const TextItem = z.object({
-  str: z.string(),
-  transform: z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
-  hasEOL: z.boolean(),
-});
 
 const Annotation = z.object({
   subtype: z.string().nullable(),
@@ -45,41 +39,22 @@ export type PdfUnreadableReason = ReturnType<typeof reasonOf>;
 
 export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 
-/** Hundredths of a point: pdf.js composes matrices in floating point, so equal sizes can differ in the last bits. */
-const glyphSize = (transform: z.infer<typeof TextItem>['transform']): number =>
-  Math.round(Math.hypot(transform[2], transform[3]) * 100) / 100;
-
-/** pdf.js ends a line with `hasEOL`; a line's size is its largest non-blank glyph. */
-const linesOf = (items: readonly unknown[]): TextLine[] => {
-  const lines: TextLine[] = [];
-  let text = '';
-  let size = 0;
-  for (const item of z.array(TextItem).parse(items)) {
-    text += logicalOrder(item.str);
-    if (item.str.trim() !== '') size = Math.max(size, glyphSize(item.transform));
-    if (item.hasEOL) {
-      lines.push({ text, size });
-      text = '';
-      size = 0;
-    }
-  }
-  lines.push({ text, size });
-  return lines;
-};
-
 const read = async (pdf: PdfDocument): Promise<readonly PageText[]> => {
-  const pages: PageText[] = [];
+  const texts: (PdfPageText & { readonly notes: string })[] = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
-    const { items } = await page.getTextContent({ disableNormalization: true });
     const annotations = z.array(Annotation).parse(await page.getAnnotations());
     const notes = annotations
       .filter((annotation) => annotation.subtype === 'Text')
       .map((annotation) => annotation.contentsObj?.str ?? '')
       .join('\n');
-    pages.push({ lines: linesOf(items), notes });
+    texts.push({ ...(await pageTextOf(pdf, pageNo)), notes });
   }
-  return pages;
+  return layOutPages(texts).map(({ page, lines, footer }): PageText => ({
+    lines,
+    footer: footer.map((line) => line.text),
+    notes: page.notes,
+  }));
 };
 
 /** A PDF deck as one slide per page, read with pdf.js's own Unicode fold off so `storedText`'s is the only one (#256); `renderPdfDeck` renders its images. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */
