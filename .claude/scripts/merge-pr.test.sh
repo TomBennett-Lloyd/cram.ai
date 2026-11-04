@@ -3551,6 +3551,7 @@ must printf '%s\n' \
   'preamble=1' \
   "$CASES_SENTINEL" \
   'shared=1' \
+  '# == a heading, not a rule ==' \
   '# ====' \
   '# 1. a plain number' \
   '# ====' \
@@ -3581,6 +3582,7 @@ expected=$(printf '%s\n' \
   '' \
   '' \
   'shared=1' \
+  '# == a heading, not a rule ==' \
   '# ====' \
   '# 1. a plain number' \
   '# ====' \
@@ -3628,6 +3630,7 @@ gate_refuses() {
   expect_rc 2
   expect_stderr "FATAL gate_cases: $TMP_ROOT/gate-bad.sh line"
   expect_stderr "$fragment"
+  [ "$(printf '%s\n' "$err" | grep -c FATAL)" = "1" ] || bad "expected one FATAL line; got: $err"
 }
 
 begin "gate_cases exits 2 on every region it cannot read as cases"
@@ -3658,6 +3661,18 @@ case_ctx="code after finish"
 gate_refuses 'the region does not end on finish' \
   "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' 'begin "a"' 'end' 'finish' 'x=1'
 case_ctx=""
+end
+
+begin "a selected run of a harness gate_cases refuses exits 2 and runs no case"
+# Without the refusal the copy is all blank lines, and sourcing it would exit 0.
+must mkdir -p "$TMP_ROOT/selfcopy"
+must cp "$SCRIPTS/harness-lib.sh" "$TMP_ROOT/selfcopy/"
+must grep -vxF -- "$CASES_SENTINEL" "$SELF" >"$TMP_ROOT/selfcopy/merge-pr.test.sh"
+capture bash "$TMP_ROOT/selfcopy/merge-pr.test.sh" --section 1 </dev/null
+expect_rc 2
+expect_stderr 'FATAL gate_cases'
+expect_stderr 'no sentinel line'
+expect_not_stdout 'PASS'
 end
 
 finish
