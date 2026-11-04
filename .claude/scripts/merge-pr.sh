@@ -35,7 +35,8 @@
 # 2026-11-02 (#408), verbatim: "okay yeah lets enable rebase merging but we need
 # to ensure the merge process is entirely deterministic to ensure that there's
 # only ever one commit per issue". How exactly that check matches a member is #409.
-# The merge step enforces it, and its comment says how.
+# The merge step enforces it, and its comment says how. The prose that restates the
+# pin is listed in .claude/ledgers/merge-head-pin.ledger.
 #
 # Usage:
 #   merge-pr.sh [--method squash|rebase] <pr-number> [repo-root]
@@ -1219,12 +1220,11 @@ EOF
 # because a watch looked green" — it is NOT unconditional across merge methods.
 #
 # A --rebase batch never runs it. `gh pr update-branch` writes a MERGE COMMIT, and
-# .claude/skills/run-issue/SKILL.md step 4 says why that is fatal there: a merge
-# commit breaks the one-commit-per-member invariant and blocks rebase-merge
+# .claude/skills/run-issue/SKILL.md's batch lane step 4 says why that is fatal there: a
+# merge commit breaks the one-commit-per-member invariant and blocks rebase-merge
 # outright, so a batch that is BEHIND or conflicted gets a "curate onto latest
-# main" bounce to the branch's owner instead (the same rule is carried by
-# .claude/agents/task-orchestrator.md's bounce paragraphs and mirrored in
-# docs/design/task-orchestrator.md). Running it anyway would pollute the branch
+# main" bounce to the branch's owner instead (.claude/agents/task-orchestrator.md
+# rule 7 states the bounce's procedure). Running it anyway would pollute the branch
 # first and only then refuse at the merge step — a refusal that costs exactly what
 # it exists to prevent.
 
@@ -1559,9 +1559,9 @@ elif [ "$already_merged" = "0" ]; then
   fi
 
   # The bounce is prescribed only for the two states it is the repair for. The
-  # rule is scoped that way at both its carriers — run-issue step 4 and
-  # docs/design/task-orchestrator.md both say "a batch that is BEHIND or
-  # conflicted" — and the scoping is load-bearing rather than pedantic: BLOCKED
+  # rule is scoped that way where it is stated — run-issue's batch lane step 4 says
+  # "a batch that is BEHIND or conflicted" — and the scoping is load-bearing rather
+  # than pedantic: BLOCKED
   # (branch protection), UNKNOWN (GitHub still computing) and DRAFT all reach this
   # point too. The residual, so nobody rediscovers it as a bug: a batch that is
   # BOTH stale and blocked reports BLOCKED, so it falls through to the generic
