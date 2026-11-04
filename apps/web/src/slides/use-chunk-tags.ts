@@ -1,4 +1,11 @@
-import { type ChunkTag, type CourseId, type TagEdit, tagOrder, type TopicTag } from '@cram/shared';
+import {
+  type BrowsedSlide,
+  type ChunkTag,
+  type CourseId,
+  type TagEdit,
+  tagOrder,
+  type TopicTag,
+} from '@cram/shared';
 import { useRef, useState } from 'react';
 import type { ApiClient } from '../api/api-client';
 import type { ApiFailure } from '../api/api-result';
@@ -20,12 +27,13 @@ const taken = <T>(ref: { current: T | undefined }): T | undefined => {
   return value;
 };
 
-/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time, the latest list winning. */
+/** An edit shows at once, a held tag keeping its origin (`CourseIndex.editTopics`); writes go one at a time, each a `TagEdit` against the chunk as last stored, the latest winning. */
 export const useChunkTags = (
   api: ApiClient,
   courseId: CourseId,
-  fact: Pick<TagEdit, 'sourceId' | 'chunkNo'>,
+  fact: Pick<TagEdit, 'sourceId' | 'chunkNo' | 'textHash'>,
   stored: readonly ChunkTag[],
+  onSlideChanged: (slide: BrowsedSlide, failure: ApiFailure) => void,
 ): ChunkTags => {
   const [shown, setShown] = useState(stored);
   const [failure, setFailure] = useState<ApiFailure | undefined>(undefined);
@@ -35,14 +43,22 @@ export const useChunkTags = (
   const write = async (): Promise<void> => {
     writing.current = true;
     for (let tags = taken(next); tags !== undefined; tags = taken(next)) {
-      const result = await api.editTags(courseId, { ...fact, tags: [...tags] });
+      const result = await api.editTags(courseId, {
+        ...fact,
+        base: [...saved.current],
+        tags: [...tags],
+      });
       if (result.status === 'ok') {
         saved.current = result.value.tags;
         if (next.current === undefined) setShown(result.value.tags);
       } else {
         next.current = undefined;
-        setFailure(result);
+        if (result.status === 'refused' && result.refusal.status === 'tags-changed')
+          saved.current = result.refusal.tags;
         setShown(saved.current);
+        setFailure(result);
+        if (result.status === 'refused' && result.refusal.status === 'chunk-changed')
+          onSlideChanged(result.refusal.slide, result);
       }
     }
     writing.current = false;

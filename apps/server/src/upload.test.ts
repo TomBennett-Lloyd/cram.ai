@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { request as httpRequest } from 'node:http';
 import { dirname } from 'node:path';
 import { CourseId, LectureId, COURSE_ID_MAX_LENGTH, SlideNo } from '@cram/shared';
-import { type CourseIndex, EmbedderIdentity, openCourse } from '@cram/index';
+import { type CourseIndex, openCourse } from '@cram/index';
 import { afterEach, describe, expect, it } from 'vitest';
 import { courseFilePath } from './data-directory';
 import { MAX_ASK_BYTES, MAX_DECK_BYTES } from './handlers';
@@ -19,6 +19,7 @@ import {
   uploadPath,
   WordEmbedder,
 } from './server-fixture';
+import { embedderIdentity } from './slide-embedding';
 
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const HIVE = [['The Hive', 'Worker bees are male in this course.'], []];
@@ -55,13 +56,12 @@ const upload = async (
   path = uploadPath('bio', 'l1', 'hive.pdf'),
 ) => send(server.port, { method: 'POST', path, headers: { 'content-type': contentType }, body });
 
-/** The `bio` course file, opened under the identity `WordEmbedder`'s pin names, given to `read`. */
-const readCourse = <T>(dataDir: string, read: (course: CourseIndex) => T): T => {
-  const { pin } = new WordEmbedder();
+/** The `bio` course file, opened under `WordEmbedder`'s identity, given to `read`. */
+const readCourse = async <T>(dataDir: string, read: (course: CourseIndex) => T): Promise<T> => {
   const opened = openCourse({
     path: courseFilePath(dataDir, CourseId.parse('bio')),
     courseId: CourseId.parse('bio'),
-    embedder: EmbedderIdentity.parse({ model: `${pin.model}@${pin.sha256}`, dimension: 8 }),
+    embedder: await embedderIdentity(new WordEmbedder()),
   });
   if (opened.status !== 'open') throw new Error(`course file: ${opened.status}`);
   try {
@@ -202,7 +202,7 @@ describe('the course file an upload writes', () => {
     const deck = await pdfDeck(HIVE);
     await upload(server, deck);
     await settledStatus(server.server.port, 'bio');
-    const stored = lectureDeckIn(server.dataDir);
+    const stored = await lectureDeckIn(server.dataDir);
     expect(stored?.lectureTitle).toBe('The Hive');
     expect(new Uint8Array(stored?.content ?? [])).toEqual(deck);
   });
@@ -211,7 +211,7 @@ describe('the course file an upload writes', () => {
     const server = await started();
     await upload(server, await pdfDeck(HIVE));
     await settledStatus(server.server.port, 'bio');
-    const images = readCourse(server.dataDir, (course) =>
+    const images = await readCourse(server.dataDir, (course) =>
       [1, 2, 3].map((slideNo) => course.slideImage(LectureId.parse('l1'), SlideNo.parse(slideNo))),
     );
     expect(images.map((image) => image?.mediaType)).toEqual(['image/png', 'image/png', undefined]);
@@ -222,7 +222,7 @@ describe('the course file an upload writes', () => {
     await upload(server, await pdfDeck(HIVE));
     await server.server.close();
     test = undefined;
-    expect(lectureDeckIn(server.dataDir)?.lectureTitle).toBe('The Hive');
+    expect((await lectureDeckIn(server.dataDir))?.lectureTitle).toBe('The Hive');
     rmSync(server.dataDir, { recursive: true, force: true });
   });
 

@@ -11,8 +11,11 @@ export type ChunkTag = z.infer<typeof ChunkTag>;
 export const tagOrder = (a: ChunkTag, b: ChunkTag): number =>
   a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0;
 
+const TextHash = z.string().regex(/^[0-9a-f]{64}$/);
+
 export const BrowsedChunk = z.strictObject({
   chunkNo: ChunkNo,
+  textHash: TextHash,
   lines: z.array(z.string()),
   tags: z.array(ChunkTag),
 });
@@ -31,10 +34,12 @@ export const LectureSlides = z.strictObject({
 });
 export type LectureSlides = z.infer<typeof LectureSlides>;
 
-/** The whole tag list the student wants one chunk to hold. */
+/** The whole tag list the student wants one chunk to hold, refused unless the chunk still holds the text (`textHash`, #534) and the list (`base`, #507) it was made against. */
 export const TagEdit = z.strictObject({
   sourceId: SourceId,
   chunkNo: ChunkNo,
+  textHash: TextHash,
+  base: z.array(ChunkTag),
   tags: z.array(TopicTag),
 });
 export type TagEdit = z.infer<typeof TagEdit>;

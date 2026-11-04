@@ -140,6 +140,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/grounding/src/prompt-budget.ts` (`requestTokens`); `packages/grounding/src/summarise-lecture.ts` (`promptTokens`, and the block cost in `summaryParts`); `packages/grounding/src/assemble-context.ts` (`blockTokens`); `.claude/scripts/check-comment-density.sh`
 - What: a request's token estimate and a block's cost are each written twice with the same intent (`docs/standards/structure.md` rule 7). Routing `summarise-lecture.ts` through `requestTokens` deletes code lines, which raises that file's comment ratio over its banked row, and the gate never lets a row rise, so the merge was left out of #423. Suspected root cause: the ratchet measures a ratio, so removing code reads as adding comments.
 - Source: PR #495 for #423 (review)
+- Update 2026-11-03 (#490): a second instance. Deleting `describeError`'s copy from `packages/gateway/src/adapters/onnx/encoder-artefact.ts` took its ratio from 740 to 750 (6 comment / 80 non-blank lines) with no comment added; the PR re-wrapped the manifest check's docblock onto two lines, same words, to land under the row.
 
 ## 2026-11-02 — ADR 0009 says "retrieved" for two sets the code now reads as the assembled slides
 
@@ -182,3 +183,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/index-words.ts` (`INDEX_WORDS`), imported by `packages/index/src/fts-query.ts`, `packages/index/src/topics.ts`, `packages/index/src/spelling-correction.ts`
 - What: `correctSpelling` and `namedTags` now reach a `:memory:` connection that is never closed. Before, `correctSpelling` reached SQLite only through its injected `Lexicon`. It is a cache of a deterministic function of the linked SQLite, so behaviour is unaffected, but `docs/standards/architecture.md` rule 3 prefers the adapter at the edge. Suspected root cause: the word model is needed by pure callers with no course connection, such as `eval/src/tag-recall.ts`.
 - Source: PR for #489 (review)
+
+## 2026-11-03 — check-comment-density's `--since` gives one message for four different git failures
+
+- Where: `.claude/scripts/check-comment-density.sh` (the change-set section, its `merge-base` call)
+- What: the `merge-base` call throws away git's stderr. A misspelt ref, a ref that was never fetched, a ROOT that is not a git repo and two histories with no common ancestor all print the same "no merge-base with HEAD", so the reader cannot tell which one happened (`docs/standards/error-handling.md` rules 1 and 4). Suspected root cause: the refusal was written for the one case a fixture exercises, an unknown ref, and git's own message was never passed through.
+- Source: PR #536 (review)

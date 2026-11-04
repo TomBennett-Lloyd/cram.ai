@@ -2,7 +2,9 @@
 owner: packages/index/src/schema.ts
 claim: the course file's topic tags live in a table named topics, the name a rebuild's DiscardedTable carries
 cite: packages/index/src/schema.ts
-sweep: packages/index/src/schema\.ts|create table topics\b|'topics'|\btopics: \[|\.claude/ledgers/topics-table\.ledger
+# The quoted name is swept as a table field or enum member, never bare: bare, it also matched CourseReader's
+# topics method in a key union or Pick<>, which cost a verify run to #428 and #534.
+sweep: packages/index/src/schema\.ts|create table topics\b|table: 'topics'|enum\(\['topics'|\btopics: \[|\.claude/ledgers/topics-table\.ledger
 carrier: apps/web/src/copy.ts
 carrier: packages/shared/src/ingest-status.ts
 carrier: apps/web/src/copy.test.ts
@@ -19,4 +21,3 @@ excluded: docs/standards/testing.md
 excluded: .claude/comment-density.baseline.tsv
 excluded: docs/adr/0008-slide-chunking.md
 excluded: docs/tech-debt.md
-excluded: packages/index/src/open-course.ts
