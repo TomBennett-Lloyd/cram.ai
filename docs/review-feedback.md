@@ -552,3 +552,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/workflow.json`, `CLAUDE.md` and `docs/adr/**` are `humanAlways`, and this changes which `humanAlways` PRs reach the owner at all, so the wording is the owner's to approve. A gate never passes through the gate it defines.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved 2026-11-04 — "approve 606"
+
+## 2026-11-04 — issue #464 — derived-label-on-in-text-references
+
+- **Category**: pending — filled at merge
+- **Feedback**: the owner's decision on #464, 2026-11-04 (chat, relayed verbatim on the issue): "Label the in-text references too." `docs/standards/grounding.md` rule 10 and `docs/adr/0006-image-only-slides.md` § Decision (f) stand, and `docs/adr/0009-explanation-answers.md` § Decision (i) moves by the amendment the plan comment pasted verbatim: https://github.com/TomBennett-Lloyd/cram.ai/issues/464#issuecomment-6643411095
+- **Why**: rule 10 labels every citation or reference to derived text, and 0009 (i) put the label on the sources entry alone, so an in-text quotation from a slide read from its picture looked and was named exactly like typed text.
+- **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one; each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
+- **Verdict**: pending — filled at merge
