@@ -39,6 +39,7 @@ export type CourseReader = Pick<
   | 'confirmation'
   | 'slidesTagged'
   | 'lectures'
+  | 'lectureKey'
   | 'lectureSlides'
   | 'chunks'
   | 'topics'

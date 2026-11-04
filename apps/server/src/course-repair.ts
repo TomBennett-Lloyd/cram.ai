@@ -1,12 +1,13 @@
 import {
   type EmbedSlides,
+  type LectureKey,
   type OpenCourseResult,
   type ParseDeck,
   rebuildCourse,
   type RebuildCourseResult,
   reembedCourse,
 } from '@cram/index';
-import type { CourseId, LectureId } from '@cram/shared';
+import type { CourseId } from '@cram/shared';
 import { courseFilePath } from './data-directory';
 import { type IngestDeps, ingestFile } from './ingest-deck';
 import { embedSlides } from './slide-embedding';
@@ -36,7 +37,7 @@ export type RepairOutcome =
 
 export type RepairReport =
   | { readonly outcome: Exclude<RepairOutcome, 'deck-unreadable'> }
-  | { readonly outcome: 'deck-unreadable'; readonly lectureId: LectureId };
+  | { readonly outcome: 'deck-unreadable'; readonly lectureKey: LectureKey };
 
 export const repairCourse = async (courseId: CourseId, deps: IngestDeps): Promise<RepairReport> => {
   const spec = {
@@ -47,7 +48,7 @@ export const repairCourse = async (courseId: CourseId, deps: IngestDeps): Promis
   const embed = embedStored(deps);
   const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed });
   if (rebuilt.status === 'deck-unreadable')
-    return { outcome: rebuilt.status, lectureId: rebuilt.lectureId };
+    return { outcome: rebuilt.status, lectureKey: rebuilt.lectureKey };
   if (rebuilt.status !== 'embedder-mismatch') {
     if ('course' in rebuilt) rebuilt.course.close();
     return { outcome: rebuilt.status };

@@ -152,9 +152,7 @@ describe('POST /courses/:id/decks', () => {
     const server = await started(startTestServer(gatewayOf([], new FailingEmbedder())));
     await upload(server, await pdfDeck(HIVE));
     expect(await progressOf(server)).toEqual([{ state: 'failed' }]);
-    expect(server.logs).toEqual([
-      { operation: 'ingest', courseId: 'bio', lectureId: 'l1', outcome: 'Error' },
-    ]);
+    expect(server.logs).toEqual([{ operation: 'ingest', courseId: 'bio', outcome: 'Error' }]);
   });
 
   it('reports a course file it cannot open as unavailable, naming the index’s reason', async () => {

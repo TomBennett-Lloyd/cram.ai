@@ -138,7 +138,7 @@ describe('the tag pass at upload', () => {
       {
         operation: 'tag',
         courseId: 'bio',
-        lectureId: 'l1',
+        lectureKey: 1,
         outcome: 'untagged 1/2 invalid-output',
       },
     ]);
@@ -158,7 +158,7 @@ describe('the tag pass at upload', () => {
       {
         operation: 'tag',
         courseId: 'bio',
-        lectureId: 'l1',
+        lectureKey: 1,
         outcome: 'untagged 3/3 backend-failed,invalid-output',
       },
     ]);
@@ -201,7 +201,7 @@ describe('the tag pass at upload', () => {
       {
         operation: 'tag',
         courseId: 'bio',
-        lectureId: 'l1',
+        lectureKey: 1,
         outcome: 'untagged 1/2 invalid-output',
       },
     ]);
@@ -214,11 +214,11 @@ describe('the tag pass at upload', () => {
         throw new RangeError('broken');
       }),
     );
-    const { uploads } = await upload(server, bytes, 'l7');
+    const { uploads } = await upload(server, bytes);
     expect(uploads.map(({ progress }) => progress.state)).toEqual(['indexed']);
-    expect(await storedTags(server, ['l7/1'])).toEqual([[]]);
+    expect(await storedTags(server, ['l1/1'])).toEqual([[]]);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', lectureId: 'l7', outcome: 'RangeError' },
+      { operation: 'tag', courseId: 'bio', lectureKey: 1, outcome: 'RangeError' },
     ]);
   });
 

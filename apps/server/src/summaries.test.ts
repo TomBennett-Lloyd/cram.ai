@@ -156,7 +156,7 @@ describe('the lecture digest at upload', () => {
       {
         operation: 'summarise generate',
         courseId: 'bio',
-        lectureId: 'l1',
+        lectureKey: 1,
         outcome: 'backend-failed',
       },
     ]);
@@ -174,8 +174,8 @@ describe('the lecture digest at upload', () => {
       { state: 'indexed', slideCount: 2, imageOnly: [2], unembedded: [], summarised: false },
     ]);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', lectureId: 'l1', outcome: 'TypeError' },
-      { operation: 'summarise', courseId: 'bio', lectureId: 'l1', outcome: 'TypeError' },
+      { operation: 'tag', courseId: 'bio', lectureKey: 1, outcome: 'TypeError' },
+      { operation: 'summarise', courseId: 'bio', lectureKey: 1, outcome: 'TypeError' },
     ]);
   });
 
