@@ -570,21 +570,24 @@ expect_not_stdout "guard: "
 end
 
 # FIXTURE-ONLY HARNESSES (#471). exempt_fixture <name> -> a fixture whose base holds both
-# FIXTURE_ONLY_HARNESSES members, each naming the paths the real ones name as fixture text,
-# merge-pr.test.sh with its one sanctioned climb, and the three markdown files they name.
+# FIXTURE_ONLY_HARNESSES members, each naming markdown paths as fixture text the way the real
+# ones name the project instructions and the append-only logs, merge-pr.test.sh with its one
+# sanctioned climb, and the three markdown files they name. The names are tier-fixture-* for
+# the reason fixture() gives, and because this harness naming the real files would make it a
+# guard hit on every change to them.
 exempt_fixture() {
   must fixture "$1"
-  write_in .claude/scripts/merge-pr.test.sh "V_FILES='CLAUDE.md docs/review-feedback.md docs/friction-log.md'; cat \"\$SCRIPTS/../workflow.json\""
-  write_in .claude/scripts/fill-verdict.test.sh 'LOG=docs/review-feedback.md'
-  write_in CLAUDE.md '# Project'
-  write_in docs/review-feedback.md '# Review feedback'
-  write_in docs/friction-log.md '# Friction log'
+  write_in .claude/scripts/merge-pr.test.sh "V_FILES='tier-fixture-instructions.md docs/tier-fixture-feedback.md docs/tier-fixture-friction.md'; cat \"\$SCRIPTS/../workflow.json\""
+  write_in .claude/scripts/fill-verdict.test.sh 'LOG=docs/tier-fixture-feedback.md'
+  write_in tier-fixture-instructions.md '# Project'
+  write_in docs/tier-fixture-feedback.md '# Review feedback'
+  write_in docs/tier-fixture-friction.md '# Friction log'
   seed_origin 'chore: fixture-only harnesses'
 }
 
 begin "a friction-log append the fixture-only harnesses name is the docs tier"
 exempt_fixture exempt_friction
-must printf '\n## an entry\n' >>"$WT/docs/friction-log.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-friction.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: docs — 1 file(s); every path is markdown, and no test outside the fixture-only harnesses references one of them"
@@ -592,10 +595,10 @@ expect_stdout "verify tier: dry run — would run: $DOCS_LEGS"
 expect_not_stdout "guard: "
 end
 
-begin "CLAUDE.md and a review-feedback entry together are the docs tier"
+begin "an instructions file and a review-feedback entry together are the docs tier"
 exempt_fixture exempt_humanalways
-write_in CLAUDE.md '# Project, revised'
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+write_in tier-fixture-instructions.md '# Project, revised'
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: docs — 2 file(s)"
@@ -606,9 +609,9 @@ end
 # is the guard's ordinary case, and the exempt harnesses' own hits stay out of the report.
 begin "a test outside the fixture-only list naming the changed markdown still forces full"
 exempt_fixture exempt_other_test
-write_in src/feedback.test.ts "const log = 'docs/review-feedback.md';"
+write_in src/feedback.test.ts "const log = 'docs/tier-fixture-feedback.md';"
 seed_origin 'test: read the feedback log'
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
@@ -621,11 +624,11 @@ end
 # directory above it, a suffix after it, and the bare basename.
 begin "a test whose path only resembles a fixture-only harness is not exempt"
 exempt_fixture exempt_lookalike
-write_in tools/.claude/scripts/merge-pr.test.sh 'LOG=docs/review-feedback.md'
-write_in .claude/scripts/merge-pr.test.sh.orig 'LOG=docs/review-feedback.md'
-write_in fill-verdict.test.sh 'LOG=docs/review-feedback.md'
+write_in tools/.claude/scripts/merge-pr.test.sh 'LOG=docs/tier-fixture-feedback.md'
+write_in .claude/scripts/merge-pr.test.sh.orig 'LOG=docs/tier-fixture-feedback.md'
+write_in fill-verdict.test.sh 'LOG=docs/tier-fixture-feedback.md'
 seed_origin 'test: look-alike harnesses'
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full"
@@ -640,10 +643,10 @@ end
 # sit at three positions on a line: beside the sanctioned climb, at the end, at the start.
 begin "a fixture-only harness that climbs out by a .. path component is not exempt"
 exempt_fixture exempt_climb
-write_in .claude/scripts/merge-pr.test.sh "cat \"\$SCRIPTS/../workflow.json\" \"\$SCRIPTS/../../docs/review-feedback.md\""
-write_in .claude/scripts/fill-verdict.test.sh "LOG=docs/review-feedback.md; cd \"\$SCRIPTS\" && cd .."
+write_in .claude/scripts/merge-pr.test.sh "cat \"\$SCRIPTS/../workflow.json\" \"\$SCRIPTS/../../docs/tier-fixture-feedback.md\""
+write_in .claude/scripts/fill-verdict.test.sh "LOG=docs/tier-fixture-feedback.md; cd \"\$SCRIPTS\" && cd .."
 seed_origin 'test: harnesses climb to the working tree'
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full"
@@ -653,10 +656,10 @@ end
 
 begin "a fixture-only harness that finds a directory other than its own is not exempt"
 exempt_fixture exempt_dirname
-write_in .claude/scripts/merge-pr.test.sh "cat \"\$(dirname \"\$SCRIPTS\")/docs/review-feedback.md\""
-write_in .claude/scripts/fill-verdict.test.sh "../docs/review-feedback.md is the log"
+write_in .claude/scripts/merge-pr.test.sh "cat \"\$(dirname \"\$SCRIPTS\")/docs/tier-fixture-feedback.md\""
+write_in .claude/scripts/fill-verdict.test.sh "../docs/tier-fixture-feedback.md is the log"
 seed_origin 'test: harnesses find the working tree'
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full"
@@ -668,9 +671,9 @@ end
 # BASH_SOURCE, merge-pr.test.sh's climb to workflow.json, and a git range is not a climb.
 begin "a fixture-only harness holding only the sanctioned routes and a git range stays exempt"
 exempt_fixture exempt_sanctioned
-write_in .claude/scripts/merge-pr.test.sh "SCRIPTS=\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd); cat \"\$SCRIPTS/../workflow.json\"; git diff main...HEAD -- docs/review-feedback.md"
+write_in .claude/scripts/merge-pr.test.sh "SCRIPTS=\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd); cat \"\$SCRIPTS/../workflow.json\"; git diff main...HEAD -- docs/tier-fixture-feedback.md"
 seed_origin 'test: the sanctioned routes'
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: docs — 1 file(s)"
@@ -682,12 +685,12 @@ end
 # markdown-only: git hashes the link, not what it points at.
 begin "a fixture-only harness that cannot be read is not exempt"
 exempt_fixture exempt_unreadable
-must printf 'LOG=docs/review-feedback.md\n' >"$ROOT/harness-source"
+must printf 'LOG=docs/tier-fixture-feedback.md\n' >"$ROOT/harness-source"
 must rm "$WT/.claude/scripts/fill-verdict.test.sh"
 must ln -s "$ROOT/harness-source" "$WT/.claude/scripts/fill-verdict.test.sh"
 seed_origin 'test: the harness is a link'
 must chmod 000 "$ROOT/harness-source"
-must printf '\n## an entry\n' >>"$WT/docs/review-feedback.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
 must chmod 644 "$ROOT/harness-source"
 expect_rc 0 "$rc"
@@ -699,7 +702,7 @@ exempt_fixture exempt_only
 must gitc "$WT" rm --quiet src/app.test.ts
 must gitc "$WT" commit --quiet -m 'chore: drop the tests'
 must gitc "$WT" push --quiet origin main
-must printf '\n## an entry\n' >>"$WT/docs/friction-log.md"
+must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-friction.md"
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full — 1 file(s); every test file is a fixture-only harness — an empty scan is not a clean one"
@@ -1031,7 +1034,7 @@ end
 begin "an edit to a fixture-only harness's subject still runs that harness"
 script_fixture script_exempt
 write_in .claude/scripts/merge-pr.sh 'echo merges'
-write_in .claude/scripts/merge-pr.test.sh 'bash .claude/scripts/merge-pr.sh; LOG=docs/review-feedback.md'
+write_in .claude/scripts/merge-pr.test.sh 'bash .claude/scripts/merge-pr.sh; LOG=docs/tier-fixture-feedback.md'
 seed_origin 'chore: a fixture-only harness and its subject'
 write_in .claude/scripts/merge-pr.sh 'echo merges # now with a note'
 run_tier
