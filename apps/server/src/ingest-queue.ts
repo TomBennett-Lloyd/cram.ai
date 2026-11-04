@@ -10,12 +10,18 @@ import {
   UploadId,
   type UploadProgress,
 } from '@cram/shared';
-import { dismissRebuildReport, type RebuildReportDismissal, storedLectures } from './course-file';
+import type { LectureKey } from '@cram/index';
+import {
+  dismissRebuildReport,
+  lectureKeyOf,
+  type RebuildReportDismissal,
+  storedLectures,
+} from './course-file';
 import { repairCourse, type RepairOutcome } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { tagStored, taggingLogOutcome } from './fact-tagging';
 import { type DigestOutcome, summariseStored } from './lecture-digest';
-import { errorName, type ServerLog } from './server-log';
+import { errorName, lectureEntry, type LogEntry, type ServerLog } from './server-log';
 import { editStoredTags, type TagEditOutcome } from './slide-topics';
 
 const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
@@ -58,38 +64,44 @@ export class IngestQueue {
     this.#record(job.courseId, { ...upload, progress });
   }
 
+  #keyOf(courseId: CourseId, lectureId: LectureId): LectureKey | undefined {
+    return lectureKeyOf(this.#deps.files, courseId, lectureId);
+  }
+
   /** The job's top-level boundary (`docs/standards/error-handling.md` rule 2): a throw is `failed`, logged. */
   async #run(job: IngestJob, upload: Upload): Promise<void> {
     this.#progress(job, upload, { state: 'ingesting' });
+    let key: LectureKey | undefined;
     try {
+      key = this.#keyOf(job.courseId, job.lectureId);
       const progress = await ingestDeck(job, this.#deps);
       if (progress.state === 'indexed') await this.#tag(job);
       this.#progress(job, upload, progress);
     } catch (error) {
-      this.#log({ operation: 'ingest', courseId: job.courseId, outcome: errorName(error) });
+      this.#log(lectureEntry('ingest', job.courseId, key, errorName(error)));
       this.#progress(job, upload, { state: 'failed' });
     }
   }
 
   async #tag(job: IngestJob): Promise<void> {
+    let key: LectureKey | undefined;
     try {
-      const outcome = await tagStored(job.courseId, job.lectureId, this.#deps);
-      const logged = taggingLogOutcome(outcome);
-      if (logged !== undefined)
-        this.#log({ operation: 'tag', courseId: job.courseId, outcome: logged });
+      key = this.#keyOf(job.courseId, job.lectureId);
+      const logged = taggingLogOutcome(await tagStored(job.courseId, job.lectureId, this.#deps));
+      if (logged !== undefined) this.#log(lectureEntry('tag', job.courseId, key, logged));
     } catch (error) {
-      this.#log({ operation: 'tag', courseId: job.courseId, outcome: errorName(error) });
+      this.#log(lectureEntry('tag', job.courseId, key, errorName(error)));
     }
   }
 
-  async #summarise(courseId: CourseId, lectureId: LectureId): Promise<DigestOutcome> {
+  async #summarise(
+    courseId: CourseId,
+    lectureId: LectureId,
+    key: LectureKey | undefined,
+  ): Promise<DigestOutcome> {
     const outcome = await summariseStored(courseId, lectureId, this.#deps);
     if (outcome.status === 'model-failed')
-      this.#log({
-        operation: `summarise ${outcome.stage}`,
-        courseId,
-        outcome: outcome.failure.status,
-      });
+      this.#log(lectureEntry(`summarise ${outcome.stage}`, courseId, key, outcome.failure.status));
     return outcome;
   }
 
@@ -99,10 +111,13 @@ export class IngestQueue {
     if (indexed?.state !== 'indexed') return;
     this.#progress(job, upload, { state: 'summarising' });
     let summarised = false;
+    let key: LectureKey | undefined;
     try {
-      summarised = (await this.#summarise(job.courseId, job.lectureId)).status === 'summarised';
+      key = this.#keyOf(job.courseId, job.lectureId);
+      const outcome = await this.#summarise(job.courseId, job.lectureId, key);
+      summarised = outcome.status === 'summarised';
     } catch (error) {
-      this.#log({ operation: 'summarise', courseId: job.courseId, outcome: errorName(error) });
+      this.#log(lectureEntry('summarise', job.courseId, key, errorName(error)));
     }
     this.#progress(job, upload, { ...indexed, summarised });
   }
@@ -137,15 +152,17 @@ export class IngestQueue {
   /** The re-make's top-level boundary (`docs/standards/error-handling.md` rule 2): a throw is `failed`, logged. */
   async #remake(courseId: CourseId, lectureId: LectureId): Promise<void> {
     this.#setRemake(courseId, { lectureId, progress: { state: 'running' } });
+    let key: LectureKey | undefined;
     try {
-      const outcome = await this.#summarise(courseId, lectureId);
+      key = this.#keyOf(courseId, lectureId);
+      const outcome = await this.#summarise(courseId, lectureId, key);
       const done =
         outcome.status === 'course-unavailable' || outcome.status === 'no-such-lecture'
           ? { state: 'failed' as const }
           : { state: 'done' as const, summarised: outcome.status === 'summarised' };
       this.#setRemake(courseId, { lectureId, progress: done });
     } catch (error) {
-      this.#log({ operation: 'summarise', courseId, outcome: errorName(error) });
+      this.#log(lectureEntry('summarise', courseId, key, errorName(error)));
       this.#setRemake(courseId, { lectureId, progress: { state: 'failed' } });
     }
   }
@@ -162,17 +179,17 @@ export class IngestQueue {
   /** The repair's top-level boundary (`docs/standards/error-handling.md` rule 2): a throw is logged by name. */
   async #repair(courseId: CourseId): Promise<void> {
     this.#repairs.set(courseId, { state: 'running' });
-    let outcome: string;
+    let report: Pick<LogEntry, 'outcome' | 'lectureKey'>;
     try {
       const repaired = await repairCourse(courseId, this.#deps);
-      outcome = repaired;
-      this.#repairs.set(courseId, { state: REPAIR_STATE[repaired] });
-      if (repaired === 'rebuilt') this.#remakeAll(courseId);
+      report = repaired;
+      this.#repairs.set(courseId, { state: REPAIR_STATE[repaired.outcome] });
+      if (repaired.outcome === 'rebuilt') this.#remakeAll(courseId);
     } catch (error) {
-      outcome = errorName(error);
+      report = { outcome: errorName(error) };
       this.#repairs.set(courseId, { state: 'failed' });
     }
-    if (outcome !== 'open') this.#log({ operation: 'repair', courseId, outcome });
+    if (report.outcome !== 'open') this.#log({ operation: 'repair', courseId, ...report });
   }
 
   /** Queued behind every write so far; a rejection reaches the caller and never stalls the queue. */
