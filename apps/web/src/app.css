@@ -476,7 +476,7 @@ mark,
   text-underline-offset: auto;
 }
 
-/* Read from the slide's picture: told from a typed quote's solid line and a contradiction's wavy one by style alone; dashed is the tag pass's (`docs/standards/design.md` rule 9; `apps/web/e2e/ask.spec.ts`). */
+/* Read from the slide's picture: told from a typed quote's solid line and a contradiction's wavy one by style alone; dashed is `.tag[data-origin='tagger']`'s (`docs/standards/design.md` rule 9; `apps/web/e2e/ask.spec.ts`). */
 .explanation-quote[data-derived],
 .source-ref[data-derived] {
   text-decoration-line: underline;
