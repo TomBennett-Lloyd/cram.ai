@@ -2,7 +2,7 @@
 
 _Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
 
-**Trigger:** offering command output — a grep, an exit status, a diff — as evidence that something worked, that something matches, or that nothing remains; writing a harness or a scripted edit whose result you will report; or writing a figure, a verdict or a claim about how a tool behaves into a plan comment, PR body, lane report, commit message or comment.
+**Trigger:** offering command output — a grep, an exit status, a diff — as evidence that something worked, that something matches, or that nothing remains; writing a harness or a scripted edit whose result you will report; or writing a figure, a verdict or a claim about how a tool behaves into a plan comment, PR body, lane report, commit message or comment; or writing an inline edit, a wait on a process, a multi-step git chain or a heredoc'd body (§ Host conventions).
 
 Every idiom catalogued below printed something that read as proof and was not. Use the sanctioned forms; when you recognise a member of the catalogue, replace it rather than annotate it.
 
@@ -55,6 +55,39 @@ Every idiom catalogued below printed something that read as proof and was not. U
 14. **A pattern pasted inside double quotes.** Inside `"…"` the shell runs each backtick pair as a command substitution and turns `\$` into a bare `$`, so grep receives a different pattern from the one on the page and searches it without complaint. In a multi-arm sweep the dead arm stays hidden, because the control comes back through another arm and "each control appears" still holds. #488's plan comment pasted two recorded sweeps double-quoted: the `@\$\{[a-zA-Z.]*pin\.sha256\}` arm reached grep as `@$\{…`, with `$` an anchor, and the ``model: `[^`]*@`` arm lost its middle to a substitution, yet each sweep's owner or carrier still came back, through its `\.sha256\}` and `EmbedderIdentity\.parse\(` arms. Review caught it (PR #514). Fixture (Apple Git-157, at `3c298e3`): `git grep -n -E '@\$\{[a-zA-Z.]*pin\.sha256\}' origin/main -- ':/'` returns `apps/server/src/slide-embedding.ts:26` and exits 0; the same command with the pattern double-quoted returns nothing and exits 1. Replacement: a recorded pattern is single-quoted, and one that must hold a `'` is read from a file with `-f`. A report that names the arm a control is hit by takes that from the arm run alone (sanctioned form 7).
 
 15. **An escape typed into a tool call can land as the character it names.** Text an agent hands a tool, whether a quoted heredoc, a Python string or a PR body, sometimes arrives holding the raw code point where the six characters of a `\u` escape were typed, and the same spelling survives intact in the next call, so nothing on the page predicts which. Rendered, the two are indistinguishable: U+2028 reads as a line break, U+00A0 as a space, U+200B as nothing, so a readback by `cat` or by eye (sanctioned form 4) passes over the wrong bytes. The #518 lane's escapes for U+2028, U+2029 and U+00A0 landed raw twice, first in a test file and then in the PR body, where review found them (PR #538). Fixture (PR #538's retro session, five `<<'EOF'` heredoc probes read with `od -c`): the first wrote `\u2028`, `\u2029` and `\u00a0` as the bytes `342 200 250`, `342 200 251` and `302 240`, the third did the same to `\u200b`, `\ufeff` and `\u00e9`, and the fifth kept `\u2028`, `\u00a0` and `\u200b` as typed. The shell never interprets a quoted heredoc, so the substitution happened before it ran. The first draft of this entry, written the same way, landed all nine of those escapes raw. Replacement: a file or body meant to hold escapes is checked on its bytes before it is committed or posted (a body through the file `--body-file` reads), by a pattern with no `\u` in it to be rewritten: `perl -CSD -ne '$n++ while /(?![ \t])[\p{Z}\p{Cf}]/g; END { print $n+0, "\n" }' <file>` counts the raw space, separator and format characters (sanctioned form 2) and must print 0; a visible substitution, such as the third probe's accented letter, it leaves to the reader. Its positive control is `packages/index/src/index-words.test.ts`, whose hostile-alphabet strings hold raw U+200B, U+200D and U+00AD beside brace-form escapes, and on which it prints a non-zero count.
+
+## Host conventions
+
+Commands here run on macOS — BSD userland, zsh, Apple Git — behind a tool layer that hands your text to the shell. These lines govern the commands that act rather than report, and each was learned from its own damage.
+
+1. **A chain whose later step must not run after an earlier failure is joined with `&&`.** `;` runs the next step whatever the last one returned: in one of the #302 lane's rebase rounds a delete script whose assertion failed still reached `rebase --continue`, and a tip commit had to make the missed deletion (PR #329). Form 1's `cmd > out 2>&1; rc=$?` keeps its `;`, because capturing the code is the one step that must run on failure.
+
+2. **A wait on a process takes the harness's exit notice or polls its pid, never `pgrep -f <pattern>`.** `pgrep -f` matches every process whose command line holds the pattern. macOS's `pgrep` leaves out only its own ancestors (`man pgrep`, `-a`), so one wait loop does end, but two loops on one pattern each find the other's shell and neither ends: the #268 lane's two `until ! pgrep -f 268-mut/mutate.py` loops ran 4 h 44 min past the merge, and the merge owner's `kill` was refused (PR #289). Fixture (#487): two `zsh -c 'until ! pgrep -f <pattern> …'` loops, with no process of that name running, were both alive after 6 s; one alone exited at once. Replacement: run the long command as a background tool call and take the harness's notice of its exit; a wait that must be a loop records `$!` in the call that starts the process and polls `kill -0 <pid>`.
+
+3. **An inline edit of a file holding non-ASCII text runs in python, decoding both sides.** A perl one-liner mixes decoded and undecoded text unless every side agrees. Without `-CSD`, a replacement written as `\x{…}` makes perl encode the whole string, so under `-0777` every non-ASCII character already in the file is encoded a second time: the #449 batch's one inline perl edit of `.claude/skills/run-issue/SKILL.md` showed 99/69 lines changed against 33/3 expected and was reversed line by line (PR #449). With `-CSD`, the file is decoded and the program's literal is not, and the edit matches nothing (member 13). Fixture (#487, perl 5.34.1): in a file holding an em dash and the line `old line`, `perl -0777 -pi -e 's/old/new \x{2014}/'` warns `Wide character in print`, exits 0, and turns the existing dash's bytes `342 200 224` into `303 242 302 200 302 224`. `sed -i` takes a suffix argument on BSD, so the GNU spelling `sed -i 's/…/…/' <file>` reads the script as the suffix and fails. Replacement, which also asserts its count (sanctioned form 8):
+
+   ```
+   python3 - <file> <<'EOF'
+   import sys
+   p, want = sys.argv[1], 1
+   s = open(p, encoding='utf-8').read()
+   old, new = '<old>', '<new>'
+   n = s.count(old)
+   if n != want: sys.exit(f'expected {want} matches, found {n}')
+   open(p, 'w', encoding='utf-8').write(s.replace(old, new))
+   print(f'replaced {n}', file=sys.stderr)
+   EOF
+   ```
+
+   Form 8's perl recipe stays sanctioned for a byte-exact replacement: it passes the file, `OLD` and `NEW` all as bytes.
+
+4. **A heredoc whose body is text is `<<'EOF'`.** An unquoted delimiter expands the body as double quotes do (member 14), so every backtick span in a PR body runs as a command. The #450 lane rewrote its PR body through one: 24 of its lane report's 37 spans ran, and where `git diff --name-only origin/main...HEAD` had been quoted, its output was spliced in (PR #450). Post the written file with `--body-file`, which is also the file member 15's byte check reads.
+
+5. **A grep pattern stays inside BSD grep's bounds.** macOS `command grep -E` and `git grep -E` both refuse a repetition bound above 255 (`maximum repetition exceeds 255`, exit 2 and exit 128). So the #449 plan's acceptance grep `[^.]{0,300}` could not run, and the `tr '\n' ' '` fallback missed phrases wrapped across lines, because each wrapped line's indent joins the phrase (PR #449). Replacement: a bound of 255 or less; otherwise `git grep -P` for tracked files (member 10's engine) or `perl -ne` anywhere, both of which accept it. A phrase that may wrap is matched by `perl -0777 -ne` with `\s+` between its words.
+
+6. **A `\u` escape in a tool parameter is member 15.** The #283 lane's `\uXXXX` arrived as the character it names and cost three regex lines rewritten twice (PR #313), a second instance of that member. This line adds no rule of its own.
+
+7. **A commit or merge message is passed with `-m` or `-F <file>`, never on stdin.** `git commit -F -` reads stdin, but `git merge -F -` reads a file named `-`. Fixture (#487, Apple Git-157): `git merge --no-ff --no-edit -F - <branch>` exits 129 with `error: could not read file '-'`. The #443 lane stopped BEHIND on it, and the merge owner's `gh pr update-branch` cleared it (PR #443). One form serves both commands.
 
 ## Adding a member
 

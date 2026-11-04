@@ -8,6 +8,7 @@ import {
   type TopicOrigin,
   type UploadProgress,
   type WithheldSentence,
+  type WithheldUnit,
 } from '@cram/shared';
 import type { ApiFailure } from './api/api-result';
 
@@ -26,6 +27,8 @@ export const PENDING = {
 export const SUMMARY = 'Summary';
 export const NO_SUMMARY = 'No summary yet.';
 export const SUMMARY_FAILED = 'The summary couldn’t be made.';
+export const SUMMARY_ALL_WITHHELD =
+  'No line drafted for this summary passed the check against its slides.';
 export const MAKE_SUMMARY = 'Make the summary';
 export const SUMMARY_REPLACED = 'This lecture’s summary has changed. Close and reopen it.';
 
@@ -221,6 +224,22 @@ export const progressMessage = (progress: UploadProgress): string => {
       return `${fileUnopened(progress.problem)}, so the deck was not indexed.`;
     case 'failed':
       return 'Something went wrong reading this deck. Upload it again.';
+  }
+};
+
+export const withheldUnitMessage = (withheld: WithheldUnit): string => {
+  switch (withheld.reason) {
+    case 'dangling-citation':
+      return 'It cites no slide line, or a line its slide doesn’t have, so it couldn’t be checked.';
+    case 'unsupported':
+      return 'The slides it cites don’t say it.';
+    case 'partial':
+      switch (withheld.policy) {
+        case 'drop':
+          return 'The slides it cites say only part of it, so it was left out.';
+        case 'rewrite-once':
+          return 'The slides it cites say only part of it, and a rewrite didn’t fix that.';
+      }
   }
 };
 
