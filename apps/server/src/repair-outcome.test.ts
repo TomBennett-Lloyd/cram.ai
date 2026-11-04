@@ -64,7 +64,7 @@ describe('a start-up repair’s outcome', () => {
   it('fails, and logs as no-stored-decks, the repair of an older file that holds no decks', async () => {
     const dataDir = await seededDataDir();
     const db = new DatabaseSync(courseFilePath(dataDir, BIO));
-    db.exec('drop table slide_images; drop table decks');
+    db.exec('drop table slide_images; drop table lecture_summaries; drop table decks');
     db.close();
     markOlder(dataDir);
     const server = await restarted(dataDir);
