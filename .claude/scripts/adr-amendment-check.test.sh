@@ -114,6 +114,22 @@ run footprint "$DIFF" "$ADR"
 expect_rc 0
 end
 
+begin "footprint: content lines that read as file headers inside a hunk stay content"
+repo fp-headerish
+sub "  - Ask is light." "-- a dash-led line"
+must git -C "$REPO" commit --quiet -am 'dash-led line'
+sub "-- a dash-led line" "++ a plus-led line"
+diff_
+grep -q '^--- a dash-led line$' "$DIFF" || bad "fixture: no header-shaped removed line"
+grep -q '^+++ a plus-led line$' "$DIFF" || bad "fixture: no header-shaped added line"
+run footprint "$DIFF" "$ADR"
+expect_rc 0
+printf '## Plan\n--- a dash-led line\n+++ a plus-led line\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 0
+end
+
 begin "footprint: each non-amendment shape refuses, naming it"
 repo fp-bad
 printf '# new\n' >"$REPO/docs/adr/0010-new.md"
@@ -388,18 +404,17 @@ end
 
 begin "path-move: a second ADR in the PR is held to the same test"
 repo pm-two-adrs
+cp "$REPO/$ADR" "$REPO/docs/adr/0003-other.md"
+must git -C "$REPO" add -A
+must git -C "$REPO" commit --quiet -m 'second adr'
 move
 sub "$LINE" "$MOVED"
 entry
-cp "$REPO/docs/adr/0000-template.md" "$TMP_ROOT/keep"
-must git -C "$REPO" show "HEAD:$ADR" >"$REPO/docs/adr/0003-other.md"
-must git -C "$REPO" add -A
-must git -C "$REPO" commit --quiet -m 'second adr'
 printf '  - an unrelated line\n' >>"$REPO/docs/adr/0003-other.md"
 diff_
-git -C "$REPO" diff --cached -M HEAD~1 >"$DIFF"
 run path-move "$DIFF" "$ADR" docs/adr/0003-other.md
 expect_rc 1
+expect_stdout 'docs/adr/0003-other.md: an added block that is not the dated entry appended at the end'
 end
 
 # ==========================================================================================
@@ -528,6 +543,98 @@ run frobnicate
 expect_rc 2
 end
 
+begin "footprint: the ADR pattern's anchors, directory and extension each hold"
+repo fp-shape
+diff_
+for hit in other/docs/adr/0009-x.md docs/adr/0009-sub/x.md docs/adr/0009-x.txt docs/adr/009-x.md; do
+  case_ctx="$hit"
+  run footprint "$DIFF" "$hit"
+  expect_rc 1
+  expect_stdout 'is not an ADR file'
+done
+end
+
+begin "footprint: an ADR copied to a new number is not an amendment"
+repo fp-copy
+cp "$REPO/$ADR" "$REPO/docs/adr/0011-copy.md"
+must git -C "$REPO" add -A
+git -C "$REPO" diff --cached -C -C >"$DIFF"
+grep -q '^copy from' "$DIFF" || bad "fixture: git did not report a copy"
+run footprint "$DIFF" docs/adr/0011-copy.md
+expect_rc 1
+expect_stdout 'is a copy'
+end
+
+begin "footprint, plan-named and path-move: a mode-only change to an ADR changes no line"
+repo fp-mode
+must chmod +x "$REPO/$ADR"
+diff_
+grep -q '^new mode' "$DIFF" || bad "fixture: git did not report a mode change"
+run footprint "$DIFF" "$ADR"
+expect_rc 0
+printf '## Plan\n' >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+expect_stdout 'changes no line'
+run path-move "$DIFF" "$ADR"
+expect_rc 1
+end
+
+begin "path-move: a moved path git C-quotes (a non-ASCII byte) still matches the ADR's span"
+repo pm-quoted
+q_old=packages/a/src/dépth.ts q_new=packages/b/src/dépth.ts
+printf 'export const DEPTH = 1;\n' >"$REPO/$q_old"
+sub "$LINE" "  - The depth is owned by \`$q_old\`, and its ledger is declared with it."
+must git -C "$REPO" add -A
+must git -C "$REPO" commit --quiet -m 'quoted owner'
+must mkdir -p "$REPO/packages/b/src"
+must git -C "$REPO" mv "$q_old" "$q_new"
+sub "  - The depth is owned by \`$q_old\`, and its ledger is declared with it." "  - The depth is owned by \`$q_new\`, and its ledger is declared with it."
+entry
+diff_
+grep -q '^rename from "' "$DIFF" || bad "fixture: git did not quote the path"
+run path-move "$DIFF" "$ADR"
+expect_rc 0
+end
+
+begin "path-move: a new path the PR adds, beside an old one it keeps, is not a move"
+repo pm-addonly
+must mkdir -p "$REPO/packages/b/src"
+printf 'a different file\nof several lines\n' >"$REPO/$NEW"
+sub "$LINE" "$MOVED"
+entry
+diff_
+run path-move "$DIFF" "$ADR"
+expect_rc 1
+expect_stdout "is not a file this PR moves"
+end
+
+begin "path-move: an appended block opening with a near-miss entry refuses"
+for tail in '  - **2026-11-03 — (f): indented** (#2).' '- **2026-11-03 - (f): a hyphen** (#2).' '- **2026-11-3 — (f): short day** (#2).'; do
+  case_ctx="tail '$tail'"
+  repo "pm-nearentry-$RANDOM"
+  move
+  sub "$LINE" "$MOVED"
+  printf '%s\n' "$tail" >>"$REPO/$ADR"
+  diff_
+  run path-move "$DIFF" "$ADR"
+  expect_rc 1
+  expect_stdout 'not the dated entry appended at the end'
+done
+end
+
+begin "plan-named: a heading that only starts with Plan is not a plan comment"
+repo pn-planning
+entry
+diff_
+{ printf '## Planning notes\n'; sed -n '/^@@/,$p' "$DIFF"; } >"$TMP_ROOT/body"
+comment "$TMP_ROOT/plan.json" "$TMP_ROOT/body"
+run plan-named "$DIFF" "$TMP_ROOT/plan.json" 560 "$ADR"
+expect_rc 1
+expect_stdout 'is not a plan comment'
+end
+
 # ==========================================================================================
 # cite
 # ==========================================================================================
@@ -566,6 +673,9 @@ expect_stdout 'cannot read the repository'
 run cite "$PRURL" "https://github.com/O/R/pull/560#issuecomment-123" 560
 expect_rc 1
 expect_stdout 'cites 0'
+run cite "x $PRURL" "$C" 560
+expect_rc 1
+expect_stdout 'cannot read the repository'
 end
 
 finish

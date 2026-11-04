@@ -3,12 +3,13 @@
 // gh stays in one place and every verdict here is a function of its inputs.
 //
 //   footprint  <diff> <hit>...                    is this an amendment PR?
-//   cite       <pr-url> <verdict-line> <closes>...  the plan comment the Verdict cites (its id)
+//   cite       <pr-url> <verdict-lines> <closes>... prints the cited plan comment's `<id> <issue>`
 //   plan-named <diff> <comment.json> <issue> <hit>... arm (a)
 //   path-move  <diff> <hit>...                    arm (b)
 //
-// <hit> is each humanAlways path in the PR. Exit 0 passes (cite prints the comment id), 1 refuses
+// <hit> is each humanAlways path in the PR. Exit 0 passes, 1 refuses
 // with the reason on stdout, 2 means an input was unreadable.
+import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 
 const ADR_FILE = /^docs\/adr\/(?!0000-)\d{4}-[^/]+\.md$/;
@@ -32,10 +33,23 @@ const read = (path) => {
   }
 };
 
-const unquote = (p) => (p.startsWith('"') && p.endsWith('"') ? JSON.parse(p) : p);
-const strip = (p, side) => {
-  const u = unquote(p);
-  return u === '/dev/null' ? null : u.replace(side, '');
+const ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13 };
+/** A path as git prints it: C-quoted, octal bytes and all, when it holds a byte core.quotePath escapes. */
+const unquote = (p) => {
+  if (!(p.length > 1 && p.startsWith('"') && p.endsWith('"'))) return p;
+  const s = p.slice(1, -1);
+  const bytes = [];
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '\\') bytes.push(...Buffer.from(s[i]));
+    else if (/[0-7]/.test(s[i + 1])) {
+      bytes.push(parseInt(s.slice(i + 1, i + 4), 8));
+      i += 3;
+    } else {
+      i++;
+      bytes.push(ESCAPES[s[i]] ?? s.charCodeAt(i));
+    }
+  }
+  return Buffer.from(bytes).toString('utf8');
 };
 
 /** git's unified diff (`gh pr diff`) as files of hunks; `\ No newline` markers are dropped. */
@@ -43,9 +57,13 @@ export function parseDiff(text) {
   const files = [];
   let f = null;
   let hunk = null;
-  for (const line of text.replace(/\r\n/g, '\n').split('\n')) {
+  for (const line of text.split('\n')) {
     if (line.startsWith('diff --git ')) {
-      f = { oldPath: null, newPath: null, kind: 'modify', hunks: [] };
+      // A header-only diff (a mode change) names its path here alone: `a/P b/P`.
+      const rest = line.slice(11);
+      const half = rest.slice(2, (rest.length - 3) / 2 + 1);
+      const same = rest === 'a/' + half + ' b/' + half ? half : null;
+      f = { oldPath: same, newPath: same, kind: 'modify', hunks: [] };
       files.push(f);
       hunk = null;
       continue;
@@ -60,17 +78,13 @@ export function parseDiff(text) {
       else if (line.startsWith('copy from '))
         [f.kind, f.oldPath] = ['copy', unquote(line.slice(10))];
       else if (line.startsWith('copy to ')) f.newPath = unquote(line.slice(8));
-      else if (line.startsWith('--- ')) f.oldPath = strip(line.slice(4), /^a\//);
-      else if (line.startsWith('+++ ')) f.newPath = strip(line.slice(4), /^b\//);
+      else if (line.startsWith('--- ')) f.oldPath = unquote(line.slice(4)).replace(/^a\//, '');
+      else if (line.startsWith('+++ ')) f.newPath = unquote(line.slice(4)).replace(/^b\//, '');
     }
     if (line.startsWith('@@')) {
       hunk = [];
       f.hunks.push(hunk);
     } else if (hunk && /^[ +-]/.test(line)) hunk.push({ t: line[0], text: line.slice(1) });
-  }
-  for (const g of files) {
-    if (g.kind === 'add') g.oldPath = null;
-    if (g.kind === 'delete') g.newPath = null;
   }
   return files;
 }
@@ -89,7 +103,10 @@ export function footprintReason(files, hits) {
   return null;
 }
 
-/** Each run of changed lines between context lines; `eof` when no context follows it. */
+/**
+ * Each run of changed lines between context lines. `eof` marks one no context follows, which is
+ * the file's end under git's default three lines of context, the form `gh pr diff` prints.
+ */
 function blocks(hunks) {
   const out = [];
   for (const hunk of hunks) {
@@ -102,19 +119,14 @@ function blocks(hunks) {
       if (!cur) out.push((cur = { removed: [], added: [], eof: false }));
       (l.t === '-' ? cur.removed : cur.added).push(l.text);
     }
-    if (cur && hunk === hunks[hunks.length - 1]) cur.eof = true;
+    if (cur) cur.eof = true;
   }
   return out;
 }
 
 /** Arm (a): every added line of each ADR is in the comment as itself or `+`-prefixed, every removed line `-`-prefixed. */
 export function planNamedReason(files, hits, body) {
-  const lines = new Set(
-    body
-      .replace(/\r\n/g, '\n')
-      .split('\n')
-      .map((l) => l.trimEnd()),
-  );
+  const lines = new Set(body.split('\n').map((l) => l.trimEnd()));
   let seen = 0;
   for (const hit of hits) {
     for (const b of blocks(fileFor(files, hit).hunks)) {
@@ -124,7 +136,6 @@ export function planNamedReason(files, hits, body) {
       ]) {
         for (const raw of list) {
           const l = raw.trimEnd();
-          if (l.trim() === '') continue;
           seen++;
           const named = lines.has(sign + l) || (sign === '+' && lines.has(l));
           if (!named)

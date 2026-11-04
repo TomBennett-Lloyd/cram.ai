@@ -107,6 +107,12 @@ one — a fraction of a ceiling, a "roughly half", a duration computed at a run 
 line of a basis caveat — which carries no copy of the number that moved. Rule 10 says how to
 shape a sweep that reaches it.
 
+**Who approves an amendment.** An amendment's PR is `humanAlways`, but two kinds merge on green
+CI plus review APPROVE without the owner: one whose text the plan comment pasted before the
+first edit, and one that only trues up a file path the same PR moves. `.claude/workflow.json` →
+`merge.amendmentRule` owns both tests. An as-it-stood annotation is never the second kind: it is
+the premise-side form above, so the owner reads it.
+
 ## Index
 
 - [0001 — Grounding architecture: retrieval + citation + verification, not fine-tuning](0001-grounding-architecture.md) — superseded by 0009

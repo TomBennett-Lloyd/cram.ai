@@ -113,6 +113,10 @@ the section before you dispatch.
    more: the pasted Decision mapping, against the plan comment as it stood at the `PROCEED`
    and against the ADR's § Decision. An extra the lane did not list is a `FIX —` bounce,
    never a merge.
+   An ADR amendment whose report names a `merge.amendmentRule` arm in `Classification:`
+   owes that bounce and the label no more. For arm (a) your diff check reads the plan comment's edit history,
+   where the amendment's text must predate the branch's first commit to the ADR;
+   `merge-pr.sh` checks the diff for either arm.
    **Merge order** — whenever a PR is ready (this step's diff check done, CI green on the
    reported head) and another PR is ready or another lane is in flight, in both lanes
    (batch lane step 4 cites this). It orders ready PRs, and holds one only for the

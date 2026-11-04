@@ -22,6 +22,7 @@ carrier: .claude/scripts/check-no-network-egress.sh
 carrier: .claude/scripts/fill-verdict.sh
 carrier: .claude/scripts/adr-amendment-check.mjs
 carrier: .claude/scripts/adr-amendment-check.test.sh
+carrier: docs/adr/README.md
 carrier: .github/workflows/ci.yml
 excluded: docs/review-feedback.md
 excluded: docs/friction-log.md
