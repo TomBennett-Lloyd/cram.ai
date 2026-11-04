@@ -18,6 +18,10 @@ carrier: packages/grounding/src/resolve-citations.test.ts
 carrier: packages/grounding/src/ground.test.ts
 carrier: apps/web/src/copy.ts
 carrier: apps/web/src/copy.test.ts
+carrier: apps/web/src/ask/WithheldPanel.tsx
+carrier: apps/web/src/ask/AskScreen.test.tsx
+carrier: apps/web/src/api/api-fixture.ts
+carrier: apps/web/e2e/hermetic-api.ts
 carrier: apps/server/src/summaries.test.ts
 carrier: apps/web/src/decks/DecksSummaryWithheld.test.tsx
 carrier: packages/grounding/src/summarise-lecture.test.ts

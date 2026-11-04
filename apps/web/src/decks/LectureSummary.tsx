@@ -11,6 +11,7 @@ import {
   SUMMARY_ALL_WITHHELD,
   SUMMARY_FAILED,
   SUMMARY_REPLACED,
+  withheldHeading,
   withheldUnitMessage,
 } from '../copy';
 import type { CitedSlide } from '../ask/cited-slide';
@@ -173,7 +174,7 @@ export const SummaryWithheld = ({
   readonly onOpen: OnOpen;
 }) =>
   count === 0 ? null : (
-    <WithheldDetails count={count} onOpen={onLoad}>
+    <WithheldDetails heading={withheldHeading(count)} onOpen={onLoad}>
       <DigestBody
         lectureId={lectureId}
         state={state}
