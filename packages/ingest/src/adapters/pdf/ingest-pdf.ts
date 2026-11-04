@@ -1,11 +1,10 @@
-import { SlideNo, type SlideImage } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
 import type { PageText, TextLine } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
 import { logicalOrder } from './logical-order';
-import { renderSlideImage, type PdfDocument } from './render-page';
+import type { PdfDocument } from './render-page';
 
 const TextItem = z.object({
   str: z.string(),
@@ -68,15 +67,8 @@ const linesOf = (items: readonly unknown[]): TextLine[] => {
   return lines;
 };
 
-interface ReadDeck {
-  readonly pages: readonly PageText[];
-  readonly images: readonly SlideImage[];
-}
-
-/** Each page's text with pdf.js's own Unicode fold off, so `storedText`'s is the only one (#256), and its rendering. */
-const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
+const read = async (pdf: PdfDocument): Promise<readonly PageText[]> => {
   const pages: PageText[] = [];
-  const images: SlideImage[] = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
     const { items } = await page.getTextContent({ disableNormalization: true });
@@ -86,19 +78,18 @@ const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
       .map((annotation) => annotation.contentsObj?.str ?? '')
       .join('\n');
     pages.push({ lines: linesOf(items), notes });
-    images.push(await renderSlideImage(pdf, SlideNo.parse(pageNo)));
   }
-  return { pages, images };
+  return pages;
 };
 
-/** A PDF deck as one slide and one rendered image per page. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */
+/** A PDF deck as one slide per page, read with pdf.js's own Unicode fold off so `storedText`'s is the only one (#256); `renderPdfDeck` renders its images. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */
 export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
   const sourceHash = sourceHashOf(deck.bytes);
-  let deckRead: ReadDeck;
+  let pages: readonly PageText[];
   try {
     const pdf = await getDocumentProxy(new Uint8Array(deck.bytes), { verbosity: 0 });
     try {
-      deckRead = await read(pdf);
+      pages = await read(pdf);
     } finally {
       await pdf.loadingTask.destroy();
     }
@@ -115,7 +106,6 @@ export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
   }
   return {
     status: 'ingested',
-    slides: slidesFromPages(deckRead.pages, { ...deck, sourceHash }),
-    images: deckRead.images,
+    slides: slidesFromPages(pages, { ...deck, sourceHash }),
   };
 };

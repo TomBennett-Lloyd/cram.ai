@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { SCHEMA_VERSION } from '@cram/index';
-import { SWEEP_TEST_TIMEOUT_MS } from '@cram/shared/sweep-test-timeout';
 import { describe, expect, it } from 'vitest';
 import { storedOutputCorpus as corpus } from './stored-output-fixture';
 
@@ -18,8 +17,7 @@ const sha256 = (data: string | Uint8Array): string =>
   createHash('sha256').update(data).digest('hex');
 
 describe('the records @cram/ingest stores', () => {
-  // Reading the corpus renders every one of its PDF pages (#107).
-  it('are the ones SCHEMA_VERSION was cut for', { timeout: SWEEP_TEST_TIMEOUT_MS }, async () => {
+  it('are the ones SCHEMA_VERSION was cut for', async () => {
     const records = (await corpus()).flatMap(([bytes, slides]) =>
       slides.map((slide) => ({ ...slide, sourceHash: slide.sourceHash === sha256(bytes) })),
     );
