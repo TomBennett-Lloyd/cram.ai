@@ -14,6 +14,7 @@ import type { SearchSentence } from './explain';
 import type { EntailmentScores } from './nli-verdict';
 import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
 import { type SentenceKind, sentenceKindRequest } from './prompts/sentence-kind-prompt';
+import { scoredPremises, slidePremise } from './premise';
 import { resolveCitations } from './resolve-citations';
 import { slideText } from './slide-text';
 
@@ -116,8 +117,25 @@ export const answer = (text: string, citations: readonly Citation[]): Unit => ({
   kind: 'lecture-summary',
 });
 
+const scoredTexts = (slide: RetrievedSlide): readonly string[] =>
+  scoredPremises([slidePremise(slide)]).map(({ text }) => text);
+
 export const pairsOf = (hypothesis: string, slides: readonly RetrievedSlide[]): EntailmentPair[] =>
-  slides.map((slide) => ({ premise: slideText(slide.record), hypothesis }));
+  slides.flatMap((slide) => scoredTexts(slide).map((premise) => ({ premise, hypothesis })));
+
+export const bySlide = (
+  slides: readonly RetrievedSlide[],
+  results: readonly EntailmentResult[],
+): EntailmentResult[] => {
+  if (results.length !== slides.length)
+    throw new Error(
+      `bySlide: ${String(results.length)} results for ${String(slides.length)} slides`,
+    );
+  return slides.flatMap((slide, at) => {
+    const result = results[at];
+    return result === undefined ? [] : scoredTexts(slide).map(() => result);
+  });
+};
 
 export const scriptedSearch = (
   candidates: Readonly<Record<string, readonly RetrievedSlide[]>>,

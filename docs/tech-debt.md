@@ -190,6 +190,12 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: the `merge-base` call throws away git's stderr. A misspelt ref, a ref that was never fetched, a ROOT that is not a git repo and two histories with no common ancestor all print the same "no merge-base with HEAD", so the reader cannot tell which one happened (`docs/standards/error-handling.md` rules 1 and 4). Suspected root cause: the refusal was written for the one case a fixture exercises, an unknown ref, and git's own message was never passed through.
 - Source: PR #536 (review)
 
+## 2026-11-03 — a Part of lane's log-union commit carries no `#<n>:` subject prefix
+
+- Where: `.claude/scripts/merge-pr.sh` (the union step's `subject=` and the comment above it)
+- What: the union commit's `#<n>:` prefix comes only from `pr_closes[0]`. A lane report whose issue a `Part of` line names now reaches that step without `--method`, with no Closes line, so its union commit lands on the branch unprefixed; the squash flattens it, so `main` is unaffected. The comment's "a PR merged under an explicit --method may have no Closes line" no longer covers every such PR. Fix direction: fall back to `pr_lanes[0]` when `pr_closes` is empty, and true the comment.
+- Source: PR #504 (review)
+
 ## 2026-11-04 — `LogEntry` is one shape for every operation, so a lecture job can drop its key
 
 - Where: `apps/server/src/server-log.ts` (`LogEntry`, `lectureEntry`); its callers `apps/server/src/ingest-queue.ts`, `apps/server/src/ask-course.ts`, `apps/server/src/server.ts`

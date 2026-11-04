@@ -65,8 +65,16 @@ describe('verifyExplanation', () => {
 
   it('credits every slide each entailing premise names, once, and a contradicting premise names its first', async () => {
     const units: Premise[] = [
-      { text: 'Workers are the males.', sources: [SourceId.parse('l1/3'), SourceId.parse('l1/1')] },
-      { text: 'Males work.', sources: [SourceId.parse('l1/1'), SourceId.parse('l1/4')] },
+      {
+        text: 'Workers are the males.',
+        lines: ['Workers are the males.'],
+        sources: [SourceId.parse('l1/3'), SourceId.parse('l1/1')],
+      },
+      {
+        text: 'Males work.',
+        lines: ['Males work.'],
+        sources: [SourceId.parse('l1/1'), SourceId.parse('l1/4')],
+      },
     ];
     const pairs = (sentence: string) =>
       units.map(({ text }) => ({ premise: text, hypothesis: sentence }));
