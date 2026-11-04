@@ -58,7 +58,7 @@ the section before you dispatch.
    without this (#486). `conserve` budget mode: one lane.
    **Load gate** (owner, 2026-11-04, #483): immediately before every dispatch, in either
    lane, read `sysctl -n vm.loadavg` and `sysctl -n hw.ncpu`; while the middle figure, the
-   5-minute load average, is above three times the core count, hold the lane. A held lane
+   5-minute load average, is above twice the core count, hold the lane. A held lane
    keeps its in-flight row, marked `held: load <x>`, and goes out once a later read shows the
    figure at or under that line; re-read at every report and merge. The hold lifts on the
    measurement alone: it is not a sequencing decision and never a reason to batch. While anything is
@@ -129,6 +129,10 @@ the section before you dispatch.
    more: the pasted Decision mapping, against the plan comment as it stood at the `PROCEED`
    and against the ADR's § Decision. An extra the lane did not list is a `FIX —` bounce,
    never a merge.
+   An ADR amendment whose report names a `merge.amendmentRule` arm in `Classification:`
+   owes that bounce and the label no more. For arm (a) your diff check reads the plan comment's edit history,
+   where the amendment's text must predate the branch's first commit to the ADR;
+   `merge-pr.sh` checks the diff for either arm.
    **Merge order** — whenever a PR is ready (this step's diff check done, CI green on the
    reported head) and another PR is ready or another lane is in flight, in both lanes
    (batch lane step 4 cites this). It orders ready PRs, and holds one only for the
@@ -150,13 +154,14 @@ the section before you dispatch.
    `git merge-tree --write-tree --name-only --no-messages origin/main <H>`.
    The paths the first lists and the second does not, less
    `.claude/scripts/merge-pr.sh`'s `APPEND_ONLY_LOGS` (that script unions them), are what
-   `R`'s landing adds to `H`'s conflicts; an empty difference means `R` adds none. What
-   each open head then pays is owned elsewhere: a single-issue PR `BEHIND` takes
-   `gh pr update-branch`, yours and mechanical, and `DIRTY` on a non-log path takes a
-   `REBASE —` bounce, lane-side (both step 5); a `--rebase` batch, `BEHIND` or `DIRTY`
-   alike, is refused by `.claude/scripts/merge-pr.sh`'s merge step and takes a "curate
-   onto latest main" round, lane-side (batch lane step 4) — PR #394 paid two, the second
-   landing only while other merges were held (#413). Two keys order the set, in
+   `R`'s landing adds to `H`'s conflicts; an empty difference means `R` adds none. When
+   each open head pays, and what, is step 5's: a head is brought current as it comes next in
+   this order, save the two exceptions step 5 names — a single-issue PR `BEHIND` by
+   `merge-pr.sh`'s own update-branch, `DIRTY` on a non-log path by a `REBASE —` bounce,
+   lane-side; a `--rebase` batch,
+   `BEHIND` or `DIRTY` alike, is refused by `.claude/scripts/merge-pr.sh`'s merge step and
+   takes a "curate onto latest main" round, lane-side (batch lane step 4) — PR #394 paid
+   two, the second landing only while other merges were held (#413). Two keys order the set, in
    precedence. (1) Unblocking impact: a ready PR an in-flight lane `Depends on`, or whose
    read against an in-flight branch that is still before its verify, review or PR comes
    back non-empty, goes first, so the conflict lands before that lane's PR rather than
@@ -164,14 +169,17 @@ the section before you dispatch.
    lane still pays it at step 5, and #448 owns the entry that would let it rebase before
    it invests. (2) Among the rest, the PR
    whose landing costs the other open heads the fewest lane-side rounds goes first, ties
-   to the one ready longest; the heads counted include a curated batch whose checks are
-   still running on its new head, so a ready PR whose landing would cost that batch
-   another round waits for that one CI run — the one wait this order prices. A curated
-   batch is priced by (2), not special-cased (owner direction 2026-11-02, #413). Two
+   to the one ready longest. The one wait this order prices is step 5's: a PR whose round
+   step 5 started as next keeps its place until it merges or that round stops, so a
+   curated batch whose checks are still running on its new head is not overtaken by a
+   ready PR whose landing would cost it another round, and only a key (1) PR goes ahead of
+   it. A curated batch is priced by (2), not special-cased (owner direction 2026-11-02,
+   #413); PR #449 paid three curate rounds with no content change because #455 and then
+   #443 were moved ahead of it mid-curate (#614). Two
    ready eval-bearing PRs (step 1) overlap whatever the read prints, since each committed
    run stands for its whole tree (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)):
-   the one whose tier-2 run is committed goes first, and the other takes one step 5
-   `REBASE —` bounce to re-record after it lands, even when it reads only `BEHIND`, because
+   the one whose tier-2 run is committed goes first, and the other, once it is next, takes
+   one step 5 `REBASE —` bounce to re-record, even when it reads only `BEHIND`, because
    `gh pr update-branch` cannot re-record. No run in progress is overtaken (#486). The
    order and the read it rests on — commands, output and exit codes, written from the captured run
    (`docs/standards/evidence.md`) — go in the in-flight table rows, never into issues.
@@ -187,10 +195,30 @@ the section before you dispatch.
    a `humanAlways` PR whose entry still carries the `pending — filled at merge` placeholder
    is refused outright — so the fill above stays a bounce to the agent, and every judgement
    this prose owns stays yours.
-5. **Rebase hand-off** — your next touchpoint, and only when `main` moved. After every
-   merge, `gh pr view --json mergeStateStatus` on each open lane PR. `BEHIND` → run
-   `gh pr update-branch` yourself; it is mechanical. `DIRTY` → after `git fetch origin`, set
-   `b=origin/<branch>` and read the conflicted set,
+5. **Rebase hand-off** — your next touchpoint, and only when `main` moved. This step owns
+   when an open PR is brought current. After every merge, read
+   `gh pr view --json mergeStateStatus` on each open lane PR, and each `DIRTY` one's
+   conflicted set (below), into its in-flight table row; then act on the **next** PR
+   alone — the head of step 4's **Merge order** over the ready set (an `awaiting-review` PR
+   joins it at the owner's approval), which by key (1) is a ready PR an in-flight lane
+   `Depends on` when there is one. Every other open PR is recorded and left, because
+   the next merge makes any head bought for it now stale again, and only the
+   update-branch the merge itself runs buys a head that can merge (#614). Two exceptions
+   act on a PR that is not next. A non-log `DIRTY` on a PR whose lane is still at work —
+   PR open, no report yet — takes the `REBASE —` bounce at once, since the conflict is
+   cheapest close to its cause and the lane still holds the context.
+   An `awaiting-review` PR is never brought current while it waits on the owner's word —
+   PR #499 merged `main` three times while it waited, and none of those heads was the one
+   that merged (#614) — so its recorded state goes in the review-guide relay, and on the
+   approval it is next and takes the one round below that its state then calls for. When
+   that round is a `REBASE —` bounce, relay the resolution to the owner before the merge,
+   since the approval covered the head before it, as pasted
+   `git range-diff <old base>..<approved head> origin/main..<new head>`, or
+   `git show --remerge-diff <merge commit>` on a branch that took `main` by merge.
+   For the next PR: `BEHIND` → nothing here; `bash .claude/scripts/merge-pr.sh <pr>` runs
+   `gh pr update-branch` as the merge's own first step, and that is the one CI round. A
+   `--rebase` batch, `BEHIND` or `DIRTY`, takes batch lane step 4's curate bounce. `DIRTY` →
+   after `git fetch origin`, set `b=origin/<branch>` and read the conflicted set,
    `git merge-tree --write-tree --name-only --no-messages origin/main "$b" | tail -n +2`.
    Every path in it one of `.claude/scripts/merge-pr.sh`'s `APPEND_ONLY_LOGS` → no bounce:
    the PR waits as it is, and `bash .claude/scripts/merge-pr.sh <pr>` unions the conflict at
@@ -219,8 +247,8 @@ the section before you dispatch.
    arithmetic there is the check, and (c) is its input. A PR that opened `DIRTY` on those
    logs alone is the lane's to clear before its report (`.claude/agents/ticket-agent.md`
    rule 7, #279), so a report arriving with one is a step 4 `FIX —`. A `DIRTY` that
-   arrives after the report takes this step's arms above unchanged — logs alone wait for
-   `merge-pr.sh`'s union, any other path is the `REBASE —` bounce — because the lane
+   arrives after the report takes this step's arms above as the PR comes next — logs alone
+   wait for `merge-pr.sh`'s union, any other path is the `REBASE —` bounce — because the lane
    pushes nothing unprompted after `DONE` (`.claude/agents/ticket-agent.md` rule 5).
    A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase, or
    mid-merge on an eval-report branch, and pushes nothing more, which makes the worktree
@@ -310,7 +338,8 @@ labels` for planApproval.alwaysRequiredFor; read the plan's Risks for user-only
    it never runs `gh pr update-branch` on a `--rebase` PR — it reports the bounce below
    instead of taking it, since only the branch's owner can curate and force-push.
    A batch that is BEHIND or conflicted gets a "curate onto latest main" bounce instead of
-   `gh pr update-branch` (a merge commit would break the invariant and block rebase-merge);
+   `gh pr update-branch` (a merge commit would break the invariant and block rebase-merge),
+   sent when it is next (ticket-agent lane step 5, which owns when a head is brought current);
    after the force-push, wait for the new head's checks as usual, that head's place in the
    queue set by the same **Merge order**. HUMAN-class (a
    single issue only, per the ritual above): notify the owner with the

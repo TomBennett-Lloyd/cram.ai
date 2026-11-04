@@ -114,6 +114,7 @@ V_CHECKS=""
 V_COMMITS=""
 V_BODY=""
 V_BASE_REF=""
+V_URL=""
 V_TITLE=""
 
 reset_view() {
@@ -126,6 +127,7 @@ reset_view() {
   V_CHECKS="checks:COMPLETED:SUCCESS,gitleaks:COMPLETED:SUCCESS"
   V_COMMITS="#12: the change"
   V_BODY="What and why. Closes #12"
+  V_URL="https://example.test/pull/$PR"
   V_TITLE="#12: the change"
 }
 
@@ -200,7 +202,7 @@ EOF
 }
 
 pr_json() {
-  printf '{"number":%s,"state":"%s","url":"https://example.test/pull/%s",' "$PR" "$V_STATE" "$PR"
+  printf '{"number":%s,"state":"%s","url":"%s",' "$PR" "$V_STATE" "$V_URL"
   printf '"title":"%s",' "$V_TITLE"
   printf '"baseRefName":"%s",' "$V_BASE_REF"
   printf '"headRefName":"%s","headRefOid":"%s","mergeStateStatus":"%s","body":"%s",' \
@@ -249,6 +251,12 @@ gh_stub() { # gh_stub <path> <state dir>
 state="$2"
 printf '%s\n' "\$*" >>"\$state/calls.log"
 case "\$1 \$2" in
+  "api repos/{owner}/{repo}/issues/comments/"*)
+    [ -f "\$state/comment.json" ] && cat "\$state/comment.json"
+    rc=0
+    [ -f "\$state/comment.rc" ] && read -r rc <"\$state/comment.rc"
+    exit "\$rc"
+    ;;
   "api "*)
     [ -f "\$state/files" ] && cat "\$state/files"
     rc=0
@@ -1046,6 +1054,153 @@ run_merge
 expect_rc 1
 expect_stderr 'feedback — FAILED'
 expect_stderr 'adds no lines to docs/review-feedback.md'
+expect_not_merged squash
+end
+
+# ==========================================================================================
+# 5b. merge.amendmentRule: a filled amendment entry is held to its arm's check (#560)
+# ==========================================================================================
+# The verdicts are adr-amendment-check.test.sh's; these cases assert the wiring: which arm
+# the Category and footprint pick, that the plan comment is fetched only for arm (a), and
+# that a refusal leaves the PR unmerged.
+AM_ADR=docs/adr/0009-thing.md
+AM_LINE="  - Was: \`a/x.ts\`."
+AM_COMMENT=https://github.com/O/R/issues/12#issuecomment-77
+
+# am_case <name> <category> <verdict> <ADR diff body> — an amendment PR's fixture.
+am_case() {
+  fixture "$1"
+  V_URL=https://github.com/O/R/pull/$PR
+  V_FILES="$AM_ADR,docs/review-feedback.md"
+  {
+    printf '%s\n' "$4"
+    printf 'diff --git a/docs/review-feedback.md b/docs/review-feedback.md\n--- a/docs/review-feedback.md\n+++ b/docs/review-feedback.md\n@@ -1,0 +2,4 @@\n'
+    printf '+## 2026-11-04 — issue #12 — amendment\n+\n+- **Category**: %s\n+- **Verdict**: %s\n' "$2" "$3"
+  } >"$STATE/diff"
+  write_view default
+  write_merged_view
+}
+
+AM_APPEND="diff --git a/$AM_ADR b/$AM_ADR
+--- a/$AM_ADR
++++ b/$AM_ADR
+@@ -10,3 +10,5 @@
+ x
+ y
+ z
++- **2026-11-04 — (f): moved** (#12).
++$AM_LINE"
+
+am_comment() { # am_comment <body> [issue]
+  node -e 'process.stdout.write(JSON.stringify({ issue_url: "https://api.github.com/repos/O/R/issues/" + process.argv[2], body: process.argv[1] }))' \
+    "$1" "${2:-12}" >"$STATE/comment.json" || exit 2
+}
+
+begin "an approved-at-plan amendment whose plan comment carries every line merges, after the comment is read"
+am_case am-plan-ok approved-at-plan "approved at plan 2026-11-04 — named verbatim in $AM_COMMENT" "$AM_APPEND"
+am_comment "## Plan (ticket-agent lane)
++- **2026-11-04 — (f): moved** (#12).
++$AM_LINE"
+run_merge
+expect_rc 0
+expect_stdout 'entry on the branch, both placeholders filled'
+expect_called 'api repos/{owner}/{repo}/issues/comments/77'
+expect_merged squash
+end
+
+begin "an approved-at-plan amendment whose text differs from the plan's is refused, unmerged"
+am_case am-plan-differs approved-at-plan "approved at plan 2026-11-04 — named verbatim in $AM_COMMENT" "$AM_APPEND"
+am_comment "## Plan (ticket-agent lane)
++- **2026-11-04 — (f): moved** (#12).
++  - Was: \`a/y.ts\`."
+run_merge
+expect_rc 1
+expect_stderr 'feedback — FAILED'
+expect_stderr 'merge.amendmentRule refuses this filled entry'
+expect_stderr 'does not carry this block whole and in order'
+expect_not_merged squash
+end
+
+begin "an approved-at-plan amendment whose Verdict cites no plan comment is refused before any fetch, qualifier or none"
+for cat in 'approved-at-plan' 'approved-at-plan (plan-named amendment)' 'approved-at-plan(plan-named amendment)'; do
+  case_ctx="$cat"
+  am_case "am-plan-nocite-${#cat}" "$cat" "approved at plan 2026-11-04 — PROCEED" "$AM_APPEND"
+  run_merge
+  expect_rc 1
+  expect_stderr 'cites 0'
+  expect_not_called 'api repos/{owner}/{repo}/issues/comments/77'
+  expect_not_merged squash
+done
+end
+
+begin "an unreadable plan comment fails the feedback step, unmerged"
+am_case am-plan-404 approved-at-plan "approved at plan 2026-11-04 — named verbatim in $AM_COMMENT" "$AM_APPEND"
+must printf '1\n' >"$STATE/comment.rc"
+run_merge
+expect_rc 1
+expect_stderr 'feedback — FAILED'
+expect_stderr 'plan comment 77 exited 1'
+expect_not_merged squash
+end
+
+begin "approved-at-plan on a footprint that is not an amendment keeps the PROCEED path"
+am_case am-plan-newadr approved-at-plan "approved at plan 2026-11-04 — the PROCEED's words" "diff --git a/docs/adr/0011-new.md b/docs/adr/0011-new.md
+new file mode 100644
+--- /dev/null
++++ b/docs/adr/0011-new.md
+@@ -0,0 +1 @@
++# 0011"
+V_FILES="docs/adr/0011-new.md,docs/review-feedback.md"
+write_view default
+run_merge
+expect_rc 0
+expect_not_called 'api repos/{owner}/{repo}/issues/comments/77'
+expect_merged squash
+end
+
+AM_MOVE="diff --git a/a/x.ts b/b/x.ts
+similarity index 100%
+rename from a/x.ts
+rename to b/x.ts
+diff --git a/$AM_ADR b/$AM_ADR
+--- a/$AM_ADR
++++ b/$AM_ADR
+@@ -4,3 +4,3 @@
+ x
+-  - Owned by \`a/x.ts\`.
++  - Owned by \`b/x.ts\` (moved 2026-11-04; see § Amendments).
+ y
+@@ -10,3 +10,4 @@
+ x
+ y
+ z
++- **2026-11-04 — (f): moved** (#12)."
+
+begin "a path-move-amendment whose ADR follows a moved file merges, with no comment fetched"
+am_case am-move-ok path-move-amendment 'path move, no owner decision owed — a/x.ts → b/x.ts' "$AM_MOVE"
+V_FILES="a/x.ts,b/x.ts,$AM_ADR,docs/review-feedback.md"
+write_view default
+run_merge
+expect_rc 0
+expect_not_called 'api repos/{owner}/{repo}/issues/comments/77'
+expect_merged squash
+end
+
+begin "a path-move-amendment that adds an as-it-stood annotation is refused, unmerged"
+am_case am-move-annot path-move-amendment 'path move, no owner decision owed' "${AM_MOVE/ (moved 2026-11-04; see § Amendments)/ _(Quoted as it stood when this was written.)_}"
+run_merge
+expect_rc 1
+expect_stderr 'words outside a path change'
+expect_not_merged squash
+end
+
+begin "a path-move-amendment on a PR touching another humanAlways path is refused"
+am_case am-move-claude path-move-amendment 'path move, no owner decision owed' "$AM_MOVE"
+V_FILES="CLAUDE.md,$AM_ADR,docs/review-feedback.md"
+write_view default
+run_merge
+expect_rc 1
+expect_stderr 'CLAUDE.md is not an ADR file'
 expect_not_merged squash
 end
 
