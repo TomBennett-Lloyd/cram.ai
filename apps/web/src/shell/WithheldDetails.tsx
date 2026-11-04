@@ -5,11 +5,11 @@ import type { ReactNode } from 'react';
  * (`docs/standards/grounding.md` rule 7); `onOpen` runs each time it is opened.
  */
 export const WithheldDetails = ({
-  count,
+  heading,
   onOpen,
   children,
 }: {
-  readonly count: number;
+  readonly heading: string;
   readonly onOpen?: (() => void) | undefined;
   readonly children: ReactNode;
 }) => (
@@ -19,7 +19,7 @@ export const WithheldDetails = ({
       if (event.currentTarget.open) onOpen?.();
     }}
   >
-    <summary>Withheld ({count})</summary>
+    <summary>{heading}</summary>
     {children}
   </details>
 );

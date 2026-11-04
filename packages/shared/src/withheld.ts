@@ -30,3 +30,4 @@ export const WithheldSentence = z.discriminatedUnion('reason', [
   }),
 ]);
 export type WithheldSentence = z.infer<typeof WithheldSentence>;
+export type DroppedPointer = Extract<WithheldSentence, { reason: 'dangling-citation' }>;

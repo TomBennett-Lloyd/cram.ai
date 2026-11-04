@@ -1,5 +1,5 @@
-import { SlideImage, type SlideNo } from '@cram/shared';
-import { type getDocumentProxy, renderPageAsImage } from 'unpdf';
+import { SlideImage, SlideNo } from '@cram/shared';
+import { getDocumentProxy, renderPageAsImage } from 'unpdf';
 
 export type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
 
@@ -11,8 +11,21 @@ export const renderSlideImage = async (pdf: PdfDocument, slideNo: SlideNo): Prom
   const { width, height } = page.getViewport({ scale: 1 });
   const png = await renderPageAsImage(pdf, slideNo, {
     canvasImport: () => import('@napi-rs/canvas'),
-    // The canvas truncates its size; half a pixel keeps a rounded-down quotient whole (ingest-pdf.test.ts).
+    // The canvas truncates its size; half a pixel keeps a rounded-down quotient whole (render-page.test.ts).
     scale: (SLIDE_IMAGE_LONG_EDGE_PX + 0.5) / Math.max(width, height),
   });
   return SlideImage.parse({ slideNo, mediaType: 'image/png', content: new Uint8Array(png) });
+};
+
+/** Apart from `ingestPdf`, so reading text renders nothing (#359); pdf.js gets a copy, since it detaches the bytes the caller stores (render-page.test.ts). */
+export const renderPdfDeck = async (bytes: Uint8Array): Promise<readonly SlideImage[]> => {
+  const pdf = await getDocumentProxy(new Uint8Array(bytes), { verbosity: 0 });
+  try {
+    const images: SlideImage[] = [];
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++)
+      images.push(await renderSlideImage(pdf, SlideNo.parse(pageNo)));
+    return images;
+  } finally {
+    await pdf.loadingTask.destroy();
+  }
 };

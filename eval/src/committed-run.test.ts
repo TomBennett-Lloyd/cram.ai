@@ -5,15 +5,16 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { ingestedCourse } from './ingested-course';
 import { passed } from './metric-row';
 import { EVAL_COURSE_ID, EVAL_ROOT, readEvalCourse } from './read-eval-course';
-import { replayRun, untimed } from './replay-run';
+import { replayRun } from './replay-run';
 import { readRun } from './run-files';
+import { replayMismatches, unreadRunMessage } from './tier-one-mismatch';
 
 // Tier 1 over the committed tier-2 run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)).
-// A miss here means the pipeline asks something the run never recorded: re-run `pnpm eval`.
+// Each failure names its `TierOneMismatch` kind (#460).
 const course = readEvalCourse();
 if (course.status !== 'read') throw new Error(`${course.where}: ${course.message}`);
 const read = readRun(EVAL_ROOT);
-if (read.status !== 'read') throw new Error(`${read.where}: ${read.message}`);
+if (read.status !== 'read') throw new Error(unreadRunMessage(read));
 const { run } = read;
 
 const RENDER_AND_REPLAY_BOUND_MS = 120_000;
@@ -28,13 +29,13 @@ describe('the committed tier-2 run', () => {
   it(
     'replays to its own report, less wall-clock time',
     async () => {
-      const replayed = await replayRun({
+      const replay = replayRun({
         run,
         courseId: EVAL_COURSE_ID,
         course: course.course,
         lectures: await ingestedCourse(course.course.deck, EVAL_COURSE_ID, dir),
       });
-      expect(untimed(replayed)).toEqual(untimed(run.report));
+      expect(await replayMismatches(run.report, replay)).toEqual([]);
     },
     RENDER_AND_REPLAY_BOUND_MS,
   );

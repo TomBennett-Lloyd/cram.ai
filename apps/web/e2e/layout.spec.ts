@@ -86,6 +86,9 @@ test('an answer and its open slide fit the narrowest phone width', async ({ page
   await expect(page.locator('.sentence-refs')).toHaveCount(2);
   expect(await overflows(page, '.slide-card')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
+  await page.locator('details.withheld summary').click();
+  expect(await overflows(page, '.withheld, .withheld .slide-card')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
   await page.locator('.slide-card').first().click();
   const dialog = page.getByRole('dialog');
   const box = await dialog.boundingBox();

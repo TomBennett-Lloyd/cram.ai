@@ -33,6 +33,7 @@ const deps: RebuildDeps = {
   embed: embedWhole((slides: readonly SlideRecord[]) =>
     Promise.resolve(slides.map(() => vector(1, 0, 0, 0))),
   ),
+  render: () => Promise.resolve([]),
 };
 
 /** A current course file with one lecture and `notes` rows no rebuild carries over, then marked older. */

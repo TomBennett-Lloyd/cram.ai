@@ -103,6 +103,22 @@ begin_with_esbuild() {
   return 1
 }
 
+# begin_with_typescript <name> -> begin_with_esbuild's contract for the root devDependency the
+# guard's comment check reprints .ts files with.
+begin_with_typescript() {
+  begin "$1"
+  [ -n "$TOOL_REPO" ] && [ -f "$TOOL_REPO/node_modules/typescript/lib/typescript.js" ] && return 0
+  if [ -n "$TOOL_REPO" ] && [ -d "$TOOL_REPO/node_modules" ]; then
+    bad "node_modules is installed but holds no typescript, the root devDependency the guard reprints with"
+    end
+    return 1
+  fi
+  printf 'SKIP %s — no node_modules under %s, so no typescript to reprint with\n' \
+    "$1" "${TOOL_REPO:-<no repository>}"
+  skipped=$((skipped + 1))
+  return 1
+}
+
 ROOT=""
 WT=""
 
@@ -569,6 +585,164 @@ expect_stdout "verify tier: docs — 1 file(s)"
 expect_not_stdout "guard: "
 end
 
+# COMMENTS (#566): a citation in a comment is not a reference. One file per comment shape and
+# per extension the check reprints, each with code after the comment so a reprint that dropped
+# or shifted a line would show.
+if begin_with_typescript "comments citing the changed markdown, in every reprinted language, leave the docs tier"; then
+  must fixture comment_citations
+  write_in src/line.test.ts "// \`docs/tier-fixture-guide.md\` § Intro
+it('a', () => {});"
+  write_in src/trailing.test.ts "it('a', () => {}); // docs/tier-fixture-guide.md"
+  write_in src/colon.test.ts "// tier-fixture-guide.md, section a:2: b
+it('a', () => {});"
+  must printf "// tier-fixture-guide.md\r\nit('a', () => {});\r\n" >"$WT/src/crlf.test.ts"
+  write_in src/block.test.ts "/**
+ * The guide (tier-fixture-guide.md) is cited, never read.
+ */
+it('a', () => {});"
+  write_in src/view.test.tsx "// tier-fixture-guide.md
+const el = <p>a</p>;"
+  write_in src/plain.test.js "/* tier-fixture-guide.md */ it('a', () => {});"
+  write_in src/el.test.jsx "// tier-fixture-guide.md
+const el = <p>a</p>;"
+  write_in src/esm.test.mjs "// tier-fixture-guide.md
+export const a = 1;"
+  write_in src/cjs.test.cjs "// tier-fixture-guide.md
+module.exports = 1;"
+  write_in tools/line.test.sh '# docs/tier-fixture-guide.md is cited, never read
+echo a'
+  write_in tools/trailing.test.sh 'echo a # tier-fixture-guide.md
+echo b'
+  seed_origin 'test: cite the guide'
+  write_in docs/tier-fixture-guide.md '# Guide, revised'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: docs — 1 file(s); every path is markdown, and no test outside the fixture-only harnesses references one of them outside a comment"
+  expect_not_stdout "guard: "
+  end
+fi
+
+# The shapes a line-shape rule would get wrong: the path in code beside a comment that also names
+# it (by basename, then by a block comment ahead of the code), and comment-looking lines that are
+# data to the parser — a template literal, a heredoc, a multi-line string — plus a `#` that is
+# parameter expansion. Each must stay a printed hit.
+if begin_with_typescript "a path in code, or a comment-shaped line inside a string, is still a hit"; then
+  must fixture comment_lookalikes
+  write_in src/beside.test.ts "const p = join(d, 'tier-fixture-guide.md'); // docs/tier-fixture-guide.md"
+  write_in src/ahead.test.ts "/* tier-fixture-guide.md */ const p = 'tier-fixture-guide.md';"
+  write_in src/template.test.ts 'const fixture = `
+// docs/tier-fixture-guide.md
+`;'
+  write_in tools/heredoc.test.sh "cat <<'EOF'
+# docs/tier-fixture-guide.md
+EOF"
+  write_in tools/string.test.sh 'doc="a
+# docs/tier-fixture-guide.md
+"'
+  write_in tools/expand.test.sh "echo \"\${p#tier-fixture-guide.md}\""
+  write_in tools/assigned.test.sh "p=\"\$d/tier-fixture-guide.md\" # tier-fixture-guide.md"
+  seed_origin 'test: name the guide in code'
+  write_in docs/tier-fixture-guide.md '# Guide, revised'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+  expect_stdout "guard: src/beside.test.ts:1:"
+  expect_stdout "guard: src/ahead.test.ts:1:"
+  expect_stdout "guard: src/template.test.ts:2:"
+  expect_stdout "guard: tools/heredoc.test.sh:2:"
+  expect_stdout "guard: tools/string.test.sh:2:"
+  expect_stdout "guard: tools/expand.test.sh:1:"
+  expect_stdout "guard: tools/assigned.test.sh:1:"
+  end
+fi
+
+# Fail closed: a comment the check cannot reprint keeps its hit. A parse error in each
+# language; a heredoc left open, which `bash -n` passes and the wrapped reprint does not; an
+# extension with no reprint; a test path that holds another test's path and `:1:`, whose
+# live hit must not be read as that test's comment; and a stray `}` that would close the
+# wrapper early, whose command must not run.
+if begin_with_typescript "a comment hit the check cannot reprint stays a hit, and nothing in it runs"; then
+  must fixture comment_unprintable
+  write_in src/broken.test.ts "// tier-fixture-guide.md
+const = ;"
+  write_in tools/broken.test.sh '# tier-fixture-guide.md
+if then'
+  write_in tools/open.test.sh '# tier-fixture-guide.md
+cat <<EOF'
+  write_in src/notes.test.txt '// tier-fixture-guide.md'
+  write_in src/cite.test.ts '// tier-fixture-guide.md'
+  write_in 'src/cite.test.ts:1:name.test.ts' "const p = 'tier-fixture-guide.md';"
+  write_in tools/escape.test.sh "# tier-fixture-guide.md
+}
+touch '$ROOT/escaped'
+f() {
+:"
+  seed_origin 'test: comments past reprinting'
+  write_in docs/tier-fixture-guide.md '# Guide, revised'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+  expect_stdout "guard: src/broken.test.ts:1:"
+  expect_stdout "guard: tools/broken.test.sh:1:"
+  expect_stdout "guard: tools/open.test.sh:1:"
+  expect_stdout "guard: src/notes.test.txt:1:"
+  expect_stdout "guard: src/cite.test.ts:1:name.test.ts:1:"
+  expect_not_stdout "guard: src/cite.test.ts:1://"
+  expect_stdout "guard: tools/escape.test.sh:1:"
+  [ ! -e "$ROOT/escaped" ] || bad "the reprint ran a command from tools/escape.test.sh"
+  end
+fi
+
+# A live hit after a NUL byte and holding one, beside another test's comment-only hit: grep must
+# report the line rather than call the file binary, or the comment would be the only hit left
+# to drop.
+if begin_with_typescript "a live hit in a file grep would call binary stays a hit"; then
+  must fixture comment_binary
+  must printf "\000\nconst p = 'tier-fixture-guide.md'; /* \000 */\n" >"$WT/src/binary.test.ts"
+  write_in src/cite.test.ts '// tier-fixture-guide.md'
+  seed_origin 'test: a binary test file'
+  write_in docs/tier-fixture-guide.md '# Guide, revised'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+  expect_stdout "guard: src/binary.test.ts:2:"
+  expect_not_stdout "guard: src/cite.test.ts"
+  end
+fi
+
+# A node that fails stands in for any failure of the comment check: every hit is kept, and
+# printed as path:line:text, not as grep's --null output.
+begin "when the comment check cannot run, a comment hit stays a hit"
+must fixture comment_no_node
+must mkdir -p "$ROOT/bin"
+must printf '#!/bin/sh\nexit 1\n' >"$ROOT/bin/node"
+must chmod +x "$ROOT/bin/node"
+write_in tools/line.test.sh '# tier-fixture-guide.md'
+seed_origin 'test: cite the guide'
+write_in docs/tier-fixture-guide.md '# Guide, revised'
+capture env PATH="$ROOT/bin:$PATH" bash "$TIER" --dry-run "$WT"
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+expect_stdout "guard: tools/line.test.sh:1:# tier-fixture-guide.md"
+end
+
+# With no typescript reachable the .ts comment keeps its hit, and the .sh comment, which bash
+# reprints, is still dropped. The classifier copy sits outside any repository, as in the
+# no-esbuild case.
+begin "with no typescript reachable, a .ts comment stays a hit and a .sh comment does not"
+must fixture comment_no_typescript
+must mkdir -p "$ROOT/tool"
+must cp "$TIER" "$ROOT/tool/verify-tier.sh"
+write_in src/line.test.ts '// tier-fixture-guide.md'
+write_in tools/line.test.sh '# tier-fixture-guide.md'
+seed_origin 'test: cite the guide'
+write_in docs/tier-fixture-guide.md '# Guide, revised'
+capture env GIT_CEILING_DIRECTORIES="$ROOT" bash "$ROOT/tool/verify-tier.sh" --dry-run "$WT"
+expect_rc 0 "$rc"
+expect_stdout "guard: src/line.test.ts:1:"
+expect_not_stdout "guard: tools/line.test.sh"
+end
+
 # FIXTURE-ONLY HARNESSES (#471). exempt_fixture <name> -> a fixture whose base holds both
 # FIXTURE_ONLY_HARNESSES members, each naming markdown paths as fixture text the way the real
 # ones name the project instructions and the append-only logs, merge-pr.test.sh with its one
@@ -590,7 +764,7 @@ exempt_fixture exempt_friction
 must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-friction.md"
 run_tier
 expect_rc 0 "$rc"
-expect_stdout "verify tier: docs — 1 file(s); every path is markdown, and no test outside the fixture-only harnesses references one of them"
+expect_stdout "verify tier: docs — 1 file(s); every path is markdown, and no test outside the fixture-only harnesses references one of them outside a comment"
 expect_stdout "verify tier: dry run — would run: $DOCS_LEGS"
 expect_not_stdout "guard: "
 end
