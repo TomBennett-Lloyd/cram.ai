@@ -35,4 +35,5 @@ export {
   type ParsedDeck,
   type RebuildCourseResult,
   type RebuildDeps,
+  type RenderDeck,
 } from './rebuild-course';

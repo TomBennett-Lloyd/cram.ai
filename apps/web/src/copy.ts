@@ -3,6 +3,7 @@ import {
   type CourseUnavailableProblem,
   DiscardableTable,
   type DiscardedTable,
+  type DroppedPointer,
   type SlideRecord,
   type StoredLecture,
   type TopicOrigin,
@@ -243,10 +244,15 @@ export const withheldUnitMessage = (withheld: WithheldUnit): string => {
   }
 };
 
-export const withheldMessage = (withheld: WithheldSentence): string => {
+export const withheldHeading = (count: number): string => `Withheld (${String(count)})`;
+
+export const droppedQuotesHeading = (count: number): string =>
+  `Quote marks removed (${String(count)})`;
+export const DROPPED_QUOTES_NOTE =
+  'The answer marked these as quotes, but doesn’t repeat them word for word, or names a line its slide doesn’t have, so the marks were taken off. Taking a mark off removed no words.';
+
+export const withheldMessage = (withheld: Exclude<WithheldSentence, DroppedPointer>): string => {
   switch (withheld.reason) {
-    case 'dangling-citation':
-      return 'The answer marked this line as a quote, but doesn’t repeat it word for word, or the slide has no such line.';
     case 'contradicted':
       return 'A slide this answer was written from says otherwise.';
     case 'unsupported':

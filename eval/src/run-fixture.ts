@@ -3,6 +3,7 @@ import { sourceIdOf } from '@cram/index';
 import {
   type AttributedSentence,
   type Citation,
+  CourseId,
   Deck,
   type RetrievedSlide,
   SlideRecord,
@@ -12,6 +13,9 @@ import type { AskedQuestion } from './asked-question';
 import { question } from './eval-fixture';
 import type { GoldenQuestion } from './golden-question';
 import type { IndexedLecture } from './index-retriever';
+import type { EvalReport } from './report';
+import { runEval } from './run-eval';
+import { ScriptedGateway } from './scripted-gateway-fixture';
 
 export const record = (overrides: Partial<z.input<typeof SlideRecord>> = {}): SlideRecord =>
   SlideRecord.parse({
@@ -96,3 +100,20 @@ export const asked = (
   slides: readonly SlideRecord[] = [record()],
   golden: GoldenQuestion = question(),
 ): AskedQuestion => ({ question: golden, retrieved: slides.map(retrieved), result });
+
+export const scriptedReport = async (measuredCommit: string): Promise<EvalReport> =>
+  runEval({
+    facts: { measuredCommit, pullRequest: 1, machineClass: 'dev-apple-silicon' },
+    courseId: CourseId.parse('hollowmere'),
+    lectures: [indexedLecture('l1')],
+    questions: [],
+    labels: [],
+    sentenceKinds: [],
+    topicLabels: [],
+    gateway: new ScriptedGateway(() => ({
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'unused',
+    })),
+    clock: () => 0,
+  });

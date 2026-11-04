@@ -3,12 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PROVISIONAL_DEFAULT_PINS, type Recording } from '@cram/gateway';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { indexedLecture } from './run-fixture';
-import { runEval } from './run-eval';
+import { scriptedReport } from './run-fixture';
 import { readRun, RECORDINGS_DIR, recordingsText, REPORTS_DIR, writeRun } from './run-files';
-import { ScriptedGateway } from './scripted-gateway-fixture';
-import { CourseId } from '@cram/shared';
-import type { EvalReport } from './report';
 
 const embedding = (text: string): Recording => ({
   role: 'embedder',
@@ -26,27 +22,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
-
-const scriptedReport = async (measuredCommit: string): Promise<EvalReport> =>
-  runEval({
-    facts: {
-      measuredCommit,
-      pullRequest: 1,
-      machineClass: 'dev-apple-silicon',
-    },
-    courseId: CourseId.parse('hollowmere'),
-    lectures: [indexedLecture('l1')],
-    questions: [],
-    labels: [],
-    sentenceKinds: [],
-    topicLabels: [],
-    gateway: new ScriptedGateway(() => ({
-      status: 'backend-failed',
-      cause: 'request-error',
-      reason: 'unused',
-    })),
-    clock: () => 0,
-  });
 
 describe('recordingsText', () => {
   it('writes one recording per line in key order, whatever order they were made in', () => {
@@ -96,6 +71,7 @@ describe('readRun', () => {
       status: 'invalid',
       where: RECORDINGS_DIR,
       message: 'not found',
+      reportIssues: [],
     });
   });
 
@@ -121,6 +97,7 @@ describe('readRun', () => {
       status: 'invalid',
       where: 'reports/abc1234.json',
       message: 'not found',
+      reportIssues: [],
     });
   });
 
@@ -128,6 +105,23 @@ describe('readRun', () => {
     await writeRun(root, { report: await scriptedReport('abc1234'), recordings: [] });
     await writeFile(join(root, 'reports/abc1234.json'), '{}');
     expect(readRun(root)).toMatchObject({ status: 'invalid', where: 'reports/abc1234.json' });
+  });
+
+  it('carries the schema issues of a report that is not an EvalReport', async () => {
+    const report = await scriptedReport('abc1234');
+    await writeRun(root, { report, recordings: [] });
+    const lacking = JSON.stringify({ ...report, retrievalK: undefined });
+    await writeFile(join(root, 'reports/abc1234.json'), lacking);
+    expect(readRun(root)).toMatchObject({
+      status: 'invalid',
+      reportIssues: [{ code: 'invalid_type', path: ['retrievalK'] }],
+    });
+  });
+
+  it('carries no schema issues for a recording that does not parse', async () => {
+    await writeRun(root, { report: await scriptedReport('abc1234'), recordings: [] });
+    await writeFile(recordingsAt('abc1234.jsonl'), '{}\n');
+    expect(readRun(root)).toMatchObject({ status: 'invalid', reportIssues: [] });
   });
 
   it('is invalid when the report measured another commit than the recordings name', async () => {
@@ -142,6 +136,7 @@ describe('readRun', () => {
       status: 'invalid',
       where: 'reports/def5678.json',
       message: 'measured abc1234, not def5678',
+      reportIssues: [],
     });
   });
 

@@ -54,9 +54,20 @@
 # case: could a test observe THESE files? Any hit is printed with file and line,
 # and forces the full tier. The basename arm is what catches a path assembled at
 # run time — join(root, 'docs', 'x.md') contains no repo-relative path but does
-# contain the basename — and it costs false positives on prose that merely names
-# a file ("testing.md rule 7"). Those cost a full run, the direction this script
-# is allowed to be wrong in.
+# contain the basename — and it costs false positives on a string that merely
+# names a file (`expect_stderr "testing.md rule 8"`). Those cost a full run, the
+# direction this script is allowed to be wrong in.
+#
+# COMMENTS (#566) are not references: a citation by path is the form prose.md
+# rule 3 asks for. A hit line is dropped when replacing every pattern occurrence
+# on it leaves the file's comment-free reprint unchanged. The reprint is
+# TypeScript's printer with removeComments for .ts/.tsx/.js/.jsx/.mjs/.cjs, from
+# a parse with no diagnostics only; for .sh it is bash's own `declare -f` of the
+# file wrapped as one function body behind a `:`, so a file of comments alone is
+# still a body, and only once `bash -n` passes, so no `}` in the file can close
+# the wrapper and run what follows it. Anything the step cannot reprint keeps
+# its hits, and so does text a reprint keeps although it is a comment (bash 3.2
+# keeps a `$(…)` verbatim).
 #
 # FIXTURE-ONLY HARNESSES (#471) are the one declared exception: FIXTURE_ONLY_HARNESSES
 # below names the harnesses whose markdown strings are fixture text, and the guard
@@ -186,7 +197,7 @@
 # having run nothing.
 #
 # WHERE THE RUNGS DISAGREE, deliberately. A markdown-only change set whose file a
-# test outside FIXTURE_ONLY_HARNESSES names goes full (rung 1's guard); the same
+# test outside FIXTURE_ONLY_HARNESSES names outside a comment goes full (rung 1's guard); the same
 # file alongside any other class runs that test instead of everything. Rung 1 is
 # cumulo#476's and is left as it was: both answers are safe, and the cheaper one
 # is not worth reopening a merged decision for.
@@ -484,6 +495,54 @@ change_set_patterns() {
   return 0
 }
 
+# drop_comment_hits -> writes to $TMP/hits, as path:line:text, each hit in
+# $TMP/hits.nul (grep -n --null output) except those whose every pattern
+# occurrence sits in a comment (see COMMENTS in the RUNG 1 docblock). Keeps
+# every hit when the check cannot run.
+drop_comment_hits() {
+  find_typescript
+  node -e '
+const fs = require("fs");
+const { spawnSync } = require("child_process");
+const [tsPath, hitsFile, patternsFile, liveFile] = process.argv.slice(1);
+const ts = tsPath ? require(tsPath) : null;
+const printer = ts && ts.createPrinter({ removeComments: true });
+const kinds = { ts: "TS", tsx: "TSX", js: "JS", jsx: "JSX", mjs: "JS", cjs: "JS" };
+const reprint = (file, text) => {
+  const ext = file.slice(file.lastIndexOf(".") + 1);
+  if (ext === "sh") {
+    if (spawnSync("bash", ["-n"], { input: text }).status !== 0) return null;
+    const r = spawnSync("bash", [], { input: "__vt_reprint() {\n:\n" + text + "\n}\ndeclare -f __vt_reprint\n", encoding: "utf8" });
+    return r.status === 0 ? r.stdout : null;
+  }
+  if (!printer || !(ext in kinds)) return null;
+  const sf = ts.createSourceFile("f." + ext, text, ts.ScriptTarget.Latest, false, ts.ScriptKind[kinds[ext]]);
+  return sf.parseDiagnostics.length === 0 ? printer.printFile(sf) : null;
+};
+const patterns = fs.readFileSync(patternsFile, "utf8").split("\n").filter(Boolean);
+const files = new Map();
+const commentOnly = (file, n) => {
+  if (!files.has(file)) {
+    const text = fs.readFileSync(file, "utf8");
+    files.set(file, { lines: text.split("\n"), base: reprint(file, text) });
+  }
+  const { lines, base } = files.get(file);
+  if (base === null) return false;
+  const blanked = patterns.reduce((line, p) => line.split(p).join("_".repeat(p.length)), lines[n - 1]);
+  if (blanked === lines[n - 1]) return false;
+  return reprint(file, [...lines.slice(0, n - 1), blanked, ...lines.slice(n)].join("\n")) === base;
+};
+const live = [];
+for (const hit of fs.readFileSync(hitsFile, "utf8").split("\n").filter(Boolean)) {
+  const file = hit.slice(0, hit.indexOf("\0"));
+  const [, n, text] = /^(\d+):(.*)$/s.exec(hit.slice(file.length + 1));
+  if (!commentOnly(file, Number(n))) live.push(file + ":" + n + ":" + text + "\n");
+}
+fs.writeFileSync(liveFile, live.join(""));
+' "$TYPESCRIPT" "$TMP/hits.nul" "$PATTERNS" "$TMP/hits" >/dev/null 2>&1 ||
+    tr '\0' ':' <"$TMP/hits.nul" >"$TMP/hits"
+}
+
 # guard_hits -> 0 the change set is unobservable by any test, 1 it may not be.
 # Writes the offending file:line matches to $TMP/hits when it returns 1.
 guard_hits() {
@@ -501,10 +560,14 @@ guard_hits() {
     return 1
   fi
 
-  # -F: the patterns are paths, and a path's dots are not wildcards.
-  grep -nF -f "$PATTERNS" -- "${files[@]}" >"$TMP/hits" 2>/dev/null
+  # -F: the patterns are paths, and a path's dots are not wildcards. -a: GNU
+  # grep otherwise withholds a binary file's lines from stdout and still exits 0.
+  # --null: a test path may itself hold `:1:`.
+  grep -naF --null -f "$PATTERNS" -- "${files[@]}" >"$TMP/hits.nul" 2>/dev/null
   case $? in
     0)
+      drop_comment_hits
+      [ -s "$TMP/hits" ] || return 0
       reason="a test file references a markdown path in this change set"
       return 1
       ;;
@@ -544,6 +607,15 @@ find_dev_tool() {
     done
   done
   return 1
+}
+
+# find_typescript -> sets $TYPESCRIPT to typescript.js under node_modules, or to
+# "" when there is none, looking once per run.
+find_typescript() {
+  if [ "$typescript_looked" = 0 ]; then
+    typescript_looked=1
+    TYPESCRIPT=$(find_dev_tool typescript/lib/typescript.js) || TYPESCRIPT=""
+  fi
 }
 
 # prove_comment_only <path> <loader> -> 0 when the path's minified emit is
@@ -588,10 +660,7 @@ reprint_unchanged() {
     ts | tsx | js) ;;
     *) return 1 ;;
   esac
-  if [ "$typescript_looked" = 0 ]; then
-    typescript_looked=1
-    TYPESCRIPT=$(find_dev_tool typescript/lib/typescript.js) || TYPESCRIPT=""
-  fi
+  find_typescript
   [ -n "$TYPESCRIPT" ] || return 1
   node -e '
 const ts = require(process.argv[1]);
@@ -1076,7 +1145,7 @@ classify_tier() {
   if [ -z "$(grep -v -E '\.md$' "$CHANGED" | head -n 1)" ]; then
     if guard_hits; then
       tier=docs
-      reason="every path is markdown, and no test outside the fixture-only harnesses references one of them"
+      reason="every path is markdown, and no test outside the fixture-only harnesses references one of them outside a comment"
       # The legs that can observe markdown at all; verify:root is not among
       # them because `verify` has already run it before reaching this script.
       legs="$DOCS_LEGS"
