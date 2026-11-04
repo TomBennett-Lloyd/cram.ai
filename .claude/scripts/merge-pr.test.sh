@@ -3459,15 +3459,29 @@ end
 # 24. the case selector runs what it names and nothing beside it (#434)
 # ==========================================================================================
 # The harness runs itself, and the count line is the verdict: $'\n1 passed' is not a
-# substring of '11 passed'. stdin is /dev/null so no child reads a loop's here-doc.
+# substring of '11 passed'. self_run gives each child /dev/null on stdin, so none reads a loop's here-doc.
 # The synthetic regions are built with printf, never a here-doc: in a selected run this
 # section is itself gated, and a here-doc line reading `begin …` would be a case boundary.
 SELF="$SCRIPTS/merge-pr.test.sh"
 
+# self_run <interpreter> <harness> <args>… — one run of the harness from inside this section.
+# A self-run never runs section 24, so one that does was handed a case it did not select. It
+# is failed rather than run: under a selector that matches too much, recursing would never end.
+self_run() {
+  if [ -n "${MERGE_PR_TEST_SELF_RUN:-}" ]; then
+    bad "section 24 ran inside a self-run, so the selector ran a case it was not given"
+    rc=""
+    out=""
+    err=""
+    return
+  fi
+  capture env MERGE_PR_TEST_SELF_RUN=1 "$@" </dev/null
+}
+
 begin "--section runs that section's case and none of its neighbours, under every bash"
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
-  capture "$interpreter" "$SELF" --section 1 </dev/null
+  self_run "$interpreter" "$SELF" --section 1
   expect_rc 0
   expect_stdout 'PASS merge-pr.sh parses (bash -n)'
   expect_stdout $'\n1 passed, 0 failed'
@@ -3477,7 +3491,7 @@ case_ctx=""
 end
 
 begin "--section and --case add up, and --case matches mid-title"
-capture bash "$SELF" --section 1 --case 'merges --squash and every step' </dev/null
+self_run bash "$SELF" --section 1 --case 'merges --squash and every step'
 expect_rc 0
 expect_stdout 'PASS merge-pr.sh parses (bash -n)'
 expect_stdout 'PASS a single-issue PR merges --squash and every step reports'
@@ -3485,7 +3499,7 @@ expect_stdout $'\n2 passed, 0 failed'
 end
 
 begin "--case reads a looped case's title as expanded, so it picks one iteration"
-capture bash "$SELF" --case "only conflict is in $TD is" </dev/null
+self_run bash "$SELF" --case "only conflict is in $TD is"
 expect_rc 0
 expect_stdout "PASS a humanAlways PR whose only conflict is in $TD is unioned"
 expect_stdout $'\n1 passed, 0 failed'
@@ -3495,7 +3509,7 @@ end
 
 begin "a selected case still sees the top-level code of the sections it skipped"
 # 12e reads T_OLD and T_NEW, which 12d sets outside any case.
-capture bash "$SELF" --section 12e </dev/null
+self_run bash "$SELF" --section 12e
 expect_rc 0
 expect_stdout 'PASS a six-entry labelled head sets a floor of three for the fresh head'
 expect_stdout $'\n1 passed, 0 failed'
@@ -3504,7 +3518,7 @@ end
 begin "a selector that matches no case exits 2 as a harness that ran no cases"
 while IFS='|' read -r flag value; do
   case_ctx="$flag '$value'"
-  capture bash "$SELF" "$flag" "$value" </dev/null
+  self_run bash "$SELF" "$flag" "$value"
   expect_rc 2
   expect_stdout '0 passed, 0 failed'
   expect_stderr 'harness ran no cases'
@@ -3526,22 +3540,22 @@ expect_usage_error() {
 
 begin "a malformed selector is a usage error, and no case runs"
 case_ctx="unknown flag"
-capture bash "$SELF" --only 1 </dev/null
+self_run bash "$SELF" --only 1
 expect_usage_error
 case_ctx="bare argument"
-capture bash "$SELF" 1 </dev/null
+self_run bash "$SELF" 1
 expect_usage_error
 case_ctx="joined value"
-capture bash "$SELF" --section=1 </dev/null
+self_run bash "$SELF" --section=1
 expect_usage_error
 case_ctx="missing value"
-capture bash "$SELF" --section </dev/null
+self_run bash "$SELF" --section
 expect_usage_error
 case_ctx="empty value"
-capture bash "$SELF" --case '' </dev/null
+self_run bash "$SELF" --case ''
 expect_usage_error
 case_ctx="missing value after a valid selector"
-capture bash "$SELF" --section 1 --case </dev/null
+self_run bash "$SELF" --section 1 --case
 expect_usage_error
 case_ctx=""
 end
@@ -3668,11 +3682,19 @@ begin "a selected run of a harness gate_cases refuses exits 2 and runs no case"
 must mkdir -p "$TMP_ROOT/selfcopy"
 must cp "$SCRIPTS/harness-lib.sh" "$TMP_ROOT/selfcopy/"
 must grep -vxF -- "$CASES_SENTINEL" "$SELF" >"$TMP_ROOT/selfcopy/merge-pr.test.sh"
-capture bash "$TMP_ROOT/selfcopy/merge-pr.test.sh" --section 1 </dev/null
+self_run bash "$TMP_ROOT/selfcopy/merge-pr.test.sh" --section 1
 expect_rc 2
 expect_stderr 'FATAL gate_cases'
 expect_stderr 'no sentinel line'
 expect_not_stdout 'PASS'
+end
+
+begin "a self-run inside a self-run is failed rather than run"
+MERGE_PR_TEST_SELF_RUN=1 self_run bash "$SELF" --section 1 2>/dev/null
+nested_failed="$case_failed"
+case_failed=0
+[ "$nested_failed" = "1" ] || bad "a self-run inside a self-run was not failed"
+[ -z "$out" ] || bad "a self-run inside a self-run ran the harness; got: $out"
 end
 
 finish
