@@ -11,7 +11,8 @@ import {
   type TempCourse,
   vector,
 } from './course-fixture';
-import type { CourseIndex, SearchQuery } from './course-index';
+import type { CourseIndex } from './course-index';
+import type { SearchQuery } from './search-query';
 import { EmbedderIdentity } from './embedder-identity';
 import type { IndexedChunk, IndexedSlide } from './indexed-slide';
 import { sourceIdOf } from './slide-row';

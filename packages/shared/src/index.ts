@@ -9,6 +9,7 @@ export {
   SlideRecord,
   SourceHash,
 } from './slide-record';
+export { BLANK_LINE } from './blank-line';
 export { NonBlankText } from './non-blank-text';
 export { embedText } from './embed-text';
 export {
@@ -31,7 +32,16 @@ export {
   splitChunk,
 } from './split-chunk';
 export { MarksAvailable, StyleExemplar } from './style-exemplar';
-export { TopicTag } from './topic-tag';
+export { TopicOrigin, TopicTag } from './topic-tag';
+export {
+  BrowsedChunk,
+  BrowsedSlide,
+  ChunkTag,
+  EditedTags,
+  LectureSlides,
+  TagEdit,
+  tagOrder,
+} from './lecture-slides';
 export { Unit, UnitKind } from './unit';
 export {
   CourseSummaries,

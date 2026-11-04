@@ -1,11 +1,10 @@
 import Database from 'better-sqlite3';
-import { DiscardableTable, SlideKind } from '@cram/shared';
+import { DiscardableTable, SlideKind, TopicOrigin } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { indexed, indexLectures, openOrFail, slide, tempCourse } from './course-fixture';
 import { unreproducedTables } from './rebuild-course';
 import { classifySchema } from './schema';
 import { SLIDE_COLUMNS, slideRowValues } from './slide-row';
-import { TOPIC_ORIGINS } from './topics';
 
 describe('classifySchema', () => {
   it('treats an unversioned file as blank only when it holds nothing', () => {
@@ -58,7 +57,7 @@ describe('the topics table', () => {
     try {
       const chunkId = db.prepare('select id from chunks').pluck().get();
       const insert = db.prepare('insert into topics (chunk_id, origin, tag) values (?, ?, ?)');
-      for (const origin of TOPIC_ORIGINS) insert.run(chunkId, origin, 'cells');
+      for (const origin of TopicOrigin.options) insert.run(chunkId, origin, 'cells');
       expect(() => insert.run(chunkId, 'model', 'cells')).toThrow(/CHECK constraint/);
     } finally {
       db.close();

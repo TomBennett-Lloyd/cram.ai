@@ -181,9 +181,14 @@ input:not([type='file']) {
   gap: var(--space-4);
 }
 
-.explanation-text,
+.explanation-text p,
 .attributed-note {
   margin: 0;
+}
+
+/* Closer than the column's gap to the note and sources: one answer, several paragraphs (`docs/standards/design.md` rule 4). */
+.explanation-text p + p {
+  margin-block-start: var(--space-2);
 }
 
 .explanation-quote {
@@ -212,7 +217,7 @@ input:not([type='file']) {
   color: var(--color-text-muted);
 }
 
-/* Its box is held at rest, so showing it moves nothing (design.md rule 6; e2e/ask.spec.ts, e2e/layout.spec.ts). */
+/* Its box is held at rest, so showing it moves nothing (`docs/standards/design.md` rule 6; `apps/web/e2e/ask.spec.ts`, `apps/web/e2e/layout.spec.ts`). */
 .contradiction-label {
   visibility: hidden;
 }
@@ -368,7 +373,7 @@ input:not([type='file']) {
 .slide-dialog {
   box-sizing: border-box;
   inline-size: calc(100% - 2 * var(--space-4));
-  /* Wide enough to read the slide's picture; e2e/layout.spec.ts holds that it fits a phone. */
+  /* Wide enough to read the slide's picture; `apps/web/e2e/layout.spec.ts` holds that it fits a phone. */
   max-inline-size: var(--measure-lg);
   max-block-size: calc(100% - 2 * var(--space-8));
   padding: var(--space-6);
@@ -415,7 +420,7 @@ input:not([type='file']) {
   grid-template-rows: minmax(0, 1fr);
   place-items: center;
   box-sizing: border-box;
-  /* Held whatever the picture's shape, or if it fails, so the lines below never move (design.md rule 6). */
+  /* Held whatever the picture's shape, or if it fails, so the lines below never move (`docs/standards/design.md` rule 6). */
   aspect-ratio: 16 / 9;
   min-block-size: 0;
   margin: var(--space-4) 0 0;
@@ -469,4 +474,85 @@ mark,
   text-decoration-color: var(--color-accent);
   text-decoration-thickness: var(--line-md);
   text-underline-offset: auto;
+}
+
+.browsed-slides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browsed-slide,
+.browsed-chunk,
+.tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.browsed-slide h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.browsed-slide-number {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.browsed-slide-derived {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.browsed-chunk-lines {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding-inline-start: var(--space-3);
+  border-width: var(--line-sm);
+  border-style: solid;
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+}
+
+/* The tag pass's tag, unchecked by any verifier, against the student's own (#496). */
+.tag[data-origin='tagger'] {
+  border-style: dashed;
+}
+
+.tag-text {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.tag-remove {
+  font-size: var(--text-base);
+}
+
+.tag-form {
+  display: flex;
+  gap: var(--space-2);
 }

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { chatWireRequest, OutputName } from '../../chat';
 import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
-import type { HttpGeneratorConfig } from '../../role-config';
+import { type HttpGeneratorConfig, LoopbackEndpoint } from '../../role-config';
 import { OpenAiHttpGenerator } from './openai-http-generator';
 
 const SERVED = { status: 'verified' } as const;
@@ -78,7 +78,7 @@ beforeEach(async () => {
   fixture = await startServer();
   config = {
     pin: PROVISIONAL_DEFAULT_PINS.generator,
-    endpoint: `${fixture.origin}/v1/`,
+    endpoint: LoopbackEndpoint.parse(`${fixture.origin}/v1/`),
     servedModel: 'qwen3-4b-q4km',
     timeoutMs: 2000,
     sampling: { temperature: 0, seed: 7 },
@@ -137,7 +137,7 @@ describe('OpenAiHttpGenerator', () => {
       url = incoming.url;
       reply(200, completion('{"text":"a"}'))(incoming, body, response);
     };
-    const endpoint = `${fixture.origin}/v1`;
+    const endpoint = LoopbackEndpoint.parse(`${fixture.origin}/v1`);
     await new OpenAiHttpGenerator({ ...config, endpoint }, SERVED).chat(request);
     expect(url).toBe('/v1/chat/completions');
   });
@@ -297,18 +297,11 @@ describe('OpenAiHttpGenerator', () => {
   it('reports a closed port as a backend failure', async () => {
     const closed = await startServer();
     await stopServer(closed);
-    const endpoint = `${closed.origin}/v1/`;
+    const endpoint = LoopbackEndpoint.parse(`${closed.origin}/v1/`);
     await expect(
       new OpenAiHttpGenerator({ ...config, endpoint }, SERVED).chat(request),
     ).resolves.toMatchObject({
       status: 'backend-failed',
     });
-  });
-
-  it('throws at construction on an endpoint off loopback', () => {
-    expect(
-      () =>
-        new OpenAiHttpGenerator({ ...config, endpoint: 'http://192.168.1.10:11434/v1/' }, SERVED),
-    ).toThrow();
   });
 });

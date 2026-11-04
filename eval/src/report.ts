@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { CitationValidityRow } from './citation-validity';
 import { PromptTokens } from './context-rows';
 import { ContradictionSetRow } from './contradiction-set';
-import { AttributionCounts, DepthRows } from './depth-rows';
+import { AttributionCounts, DeepPairCounts, DepthRows } from './depth-rows';
 import { DerivedCoverageRow } from './derived-text';
 import { LatencySummary } from './latency';
 import { LightSetRow } from './light-rows';
@@ -79,6 +79,7 @@ export const EvalReport = z.strictObject({
   promptTokens: PromptTokens,
   depths: z.strictObject({ light: DepthRows, deep: DepthRows }),
   attribution: AttributionCounts,
+  deepPairs: DeepPairCounts,
   verifierArms: z.strictObject({
     nli: Arm,
     llm: Arm.omit({ contradictionSet: true }),

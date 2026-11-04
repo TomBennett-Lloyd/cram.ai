@@ -26,6 +26,21 @@ describe('attributeSentences', () => {
     ]);
   });
 
+  it('attributes the sentence after a quoted line on its own', () => {
+    const text = 'The slides put it plainly: "Worker bees are male." That surprises people.';
+    const attributed = attributeSentences(
+      text,
+      claimSpans(text),
+      [[comb], [winter]],
+      [cite('l1/1', 'Worker bees are male.')],
+      retrieved,
+    );
+    expect(attributed.map(({ text: sentence, slides }) => [sentence, ids(slides)])).toEqual([
+      ['The slides put it plainly: "Worker bees are male."', ['l1/2', 'l1/1']],
+      ['That surprises people.', ['l5/6']],
+    ]);
+  });
+
   it('names a quoted slide once when the search found it too', () => {
     const text = 'Bees build comb from square cells.';
     const [attributed] = attributeSentences(

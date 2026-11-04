@@ -1,0 +1,52 @@
+import { z } from 'zod';
+import { SourceId } from './citation';
+import { ChunkNo } from './slide-chunk';
+import { LectureId, SlideRecord } from './slide-record';
+import { TopicOrigin, TopicTag } from './topic-tag';
+
+export const ChunkTag = z.strictObject({ tag: TopicTag, origin: TopicOrigin });
+export type ChunkTag = z.infer<typeof ChunkTag>;
+
+/** The order a chunk's tags are listed in, by their text's code units, so it reads the same on every machine. */
+export const tagOrder = (a: ChunkTag, b: ChunkTag): number =>
+  a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0;
+
+const TextHash = z.string().regex(/^[0-9a-f]{64}$/);
+
+export const BrowsedChunk = z.strictObject({
+  chunkNo: ChunkNo,
+  textHash: TextHash,
+  lines: z.array(z.string()),
+  tags: z.array(ChunkTag),
+});
+export type BrowsedChunk = z.infer<typeof BrowsedChunk>;
+
+export const BrowsedSlide = z.strictObject({
+  sourceId: SourceId,
+  record: SlideRecord,
+  chunks: z.array(BrowsedChunk).min(1),
+});
+export type BrowsedSlide = z.infer<typeof BrowsedSlide>;
+
+export const LectureSlides = z.strictObject({
+  lectureId: LectureId,
+  slides: z.array(BrowsedSlide),
+});
+export type LectureSlides = z.infer<typeof LectureSlides>;
+
+/** The whole tag list the student wants one chunk to hold, refused unless the chunk still holds the text (`textHash`, #534) and the list (`base`, #507) it was made against. */
+export const TagEdit = z.strictObject({
+  sourceId: SourceId,
+  chunkNo: ChunkNo,
+  textHash: TextHash,
+  base: z.array(ChunkTag),
+  tags: z.array(TopicTag),
+});
+export type TagEdit = z.infer<typeof TagEdit>;
+
+export const EditedTags = z.strictObject({
+  sourceId: SourceId,
+  chunkNo: ChunkNo,
+  tags: z.array(ChunkTag),
+});
+export type EditedTags = z.infer<typeof EditedTags>;

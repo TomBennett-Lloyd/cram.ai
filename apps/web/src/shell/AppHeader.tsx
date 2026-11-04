@@ -33,6 +33,6 @@ export const AppHeader = ({ route }: { readonly route: Route }) => (
     <a className="app-name" href={hrefOf({ screen: 'courses' })}>
       cram.ai
     </a>
-    {(route.screen === 'ask' || route.screen === 'decks') && <CourseNav route={route} />}
+    {'courseId' in route && <CourseNav route={route} />}
   </header>
 );

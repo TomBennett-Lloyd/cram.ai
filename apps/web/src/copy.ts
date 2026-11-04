@@ -5,6 +5,7 @@ import {
   type DiscardedTable,
   type SlideRecord,
   type StoredLecture,
+  type TopicOrigin,
   type UploadProgress,
   type WithheldSentence,
 } from '@cram/shared';
@@ -19,6 +20,7 @@ export const PENDING = {
   dismissal: 'Dismissing…',
   summary: 'Loading the summary…',
   remake: 'Making the summary…',
+  slides: 'Loading slides…',
 } as const;
 
 export const SUMMARY = 'Summary';
@@ -39,6 +41,22 @@ export const SLIDE_LINES = 'Lines found on this slide';
 export const SLIDE_IMAGE_MISSING = 'The picture of this slide can’t be shown.';
 export const DERIVED_TEXT =
   'This text was read from the slide’s picture. Check it against the image.';
+
+export const LECTURE_NOT_STORED = 'This course holds no such lecture.';
+export const SEE_DECKS = 'See its decks';
+export const NO_SLIDES = 'This lecture has no slides.';
+export const ADD_TAG = 'Add';
+export const NEW_TAG = 'New tag';
+
+export const chunkName = (slideNo: number, chunkNo: number, chunkCount: number): string =>
+  chunkCount === 1
+    ? `slide ${String(slideNo)}`
+    : `slide ${String(slideNo)}, part ${String(chunkNo)}`;
+
+export const tagsLabel = (chunk: string): string => `Tags on ${chunk}`;
+export const addTagLabel = (chunk: string): string => `Add a tag to ${chunk}`;
+export const removeTagLabel = (tag: string, origin: TopicOrigin): string =>
+  origin === 'tagger' ? `Remove the suggested tag ${tag}` : `Remove the tag ${tag}`;
 
 export const MAY_BE_RELEVANT = 'may be relevant';
 export const APPEARS_TO_CONTRADICT = 'appears to contradict';
@@ -97,6 +115,10 @@ const refusalMessage = (refusal: ApiRefusal): string => {
       return 'This course has no decks yet. Add one first.';
     case 'report-changed':
       return 'This course was rebuilt again since that notice was shown. Read it before dismissing it.';
+    case 'chunk-changed':
+      return 'This slide changed since this page loaded, so that edit wasn’t saved. It’s shown as it is now.';
+    case 'tags-changed':
+      return 'These tags changed since this page loaded, so that edit wasn’t saved. They’re shown as they are now.';
     case 'payload-too-large':
       return 'That is too large for the server to accept.';
     case 'unsupported-media-type':
@@ -135,7 +157,7 @@ export const indexedMessage = ({
     ...(imageOnly.length === 0
       ? []
       : [
-          `${slidesThat(imageOnly, 'has no text, so it', 'have no text, so they')} can’t be cited yet.`,
+          `${slidesThat(imageOnly, 'has too little text to read as a slide, so only a title or speaker notes on it', 'have too little text to read as slides, so only titles or speaker notes on them')} can be cited.`,
         ]),
     ...(unembedded.length === 0
       ? []

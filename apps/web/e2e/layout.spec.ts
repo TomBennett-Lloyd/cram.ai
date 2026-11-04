@@ -1,5 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
-import { CONTRADICTED_QUESTION, GROUNDED_QUESTION, stubApi } from './hermetic-api';
+import {
+  CONTRADICTED_QUESTION,
+  GROUNDED_QUESTION,
+  PARAGRAPHS_QUESTION,
+  stubApi,
+} from './hermetic-api';
 
 const NARROWEST = { width: 320, height: 640 };
 
@@ -11,7 +16,7 @@ test.beforeEach(async ({ page }) => {
   await stubApi(page);
 });
 
-for (const path of ['/', '/#/courses/bio/decks']) {
+for (const path of ['/', '/#/courses/bio/decks', '/#/courses/bio/decks/l1']) {
   test(`${path} never scrolls sideways at the narrowest phone width`, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator('main')).toBeVisible();
@@ -30,6 +35,26 @@ test('a long file name wraps inside the decks list', async ({ page }) => {
   await expect(page.locator('.upload')).toHaveCount(1);
   expect(await overflows(page, '.upload')).toBe(false);
   expect(await scrollsSideways(page)).toBe(false);
+});
+
+test('a long tag wraps inside its chip in the slide browser', async ({ page }) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  await expect(page.locator('.tag')).toHaveCount(3);
+  expect(await overflows(page, '.tag')).toBe(false);
+  expect(await scrollsSideways(page)).toBe(false);
+});
+
+test('each tag field and its Add button share one line at the narrowest phone width', async ({
+  page,
+}) => {
+  await page.goto('/#/courses/bio/decks/l1');
+  const forms = page.locator('.tag-form');
+  await expect(forms).toHaveCount(2);
+  for (const form of await forms.all()) {
+    const field = await form.locator('input').boundingBox();
+    const button = await form.locator('button').boundingBox();
+    expect(field?.y).toBe(button?.y);
+  }
 });
 
 test('a portrait slide picture letterboxes inside the 16:9 frame instead of growing it', async ({
@@ -94,6 +119,47 @@ test('a marked answer fits the narrowest phone width, with its label showing', a
   expect([await button.boundingBox(), await next.boundingBox()]).toEqual(atRest);
   expect(await scrollsSideways(page)).toBe(false);
   expect(await overflows(page, '.explanation-text')).toBe(false);
+});
+
+/** The box of every button in the answer's explanation, in document order and page coordinates, so a scroll moves none. */
+const controlBoxes = (page: Page) =>
+  page.locator('.explanation button').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x: x + window.scrollX, y: y + window.scrollY, width, height };
+    }),
+  );
+
+test('an answer in paragraphs fits the narrowest phone width, and its label moves no control on hover or focus', async ({
+  page,
+}, info) => {
+  await page.goto('/#/courses/bio');
+  await page.getByRole('textbox', { name: 'Question' }).fill(PARAGRAPHS_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).click();
+  await expect(page.locator('.explanation-text > p')).toHaveCount(3);
+  const label = page.locator('.contradiction-label');
+  await expect(label).toBeHidden();
+  expect(await scrollsSideways(page)).toBe(false);
+  const atRest = await controlBoxes(page);
+  expect(atRest.length > 3).toBe(true);
+  if (info.project.name === 'desktop') {
+    await page.locator('.contradicted').hover();
+    await expect(label).toBeVisible();
+    expect(await controlBoxes(page)).toEqual(atRest);
+    await page.getByRole('textbox', { name: 'Question' }).hover();
+    await expect(label).toBeHidden();
+  }
+  const button = page.locator('.contradiction-refs .source-ref');
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  for (let presses = 0; presses < 8; presses++) {
+    if (await button.evaluate((node) => node === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(button).toBeFocused();
+  await expect(label).toBeVisible();
+  expect(await controlBoxes(page)).toEqual(atRest);
+  expect(await scrollsSideways(page)).toBe(false);
+  expect(await overflows(page, '.explanation-text > p')).toBe(false);
 });
 
 test('the panel a contradiction number opens names the sentence above the fold, unclipped, at the narrowest width', async ({

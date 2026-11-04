@@ -34,6 +34,13 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Ask' }).getAttribute('aria-current')).toBeNull();
   });
 
+  it('shows the course nav over a lecture’s slides, with no screen marked current', () => {
+    renderAt('#/courses/bio/decks/l1');
+    const nav = screen.getByRole('navigation', { name: 'Course' });
+    expect(nav.textContent).toBe('bioAskDecks');
+    expect(nav.querySelectorAll('[aria-current]')).toHaveLength(0);
+  });
+
   it('follows the hash as it changes', () => {
     renderAt('#/courses/bio');
     expect(screen.getByRole('textbox', { name: 'Question' })).toBeDefined();

@@ -5,12 +5,15 @@ import {
   CourseList,
   CourseSummaries,
   type DeckMediaType,
+  EditedTags,
   IngestStatus,
   type LectureId,
+  LectureSlides,
   RebuildReportDismissed,
   type RebuildReportRevision,
   type SlideRecord,
   SummaryRemake,
+  type TagEdit,
   Upload,
 } from '@cram/shared';
 import type { z } from 'zod';
@@ -114,6 +117,28 @@ export class ApiClient {
         body: JSON.stringify({ lectureId }),
       },
       SummaryRemake,
+    );
+  }
+
+  lectureSlides(courseId: CourseId, lectureId: LectureId): Promise<ApiResult<LectureSlides>> {
+    const query = new URLSearchParams({ lectureId });
+    return this.#call(
+      `/courses/${courseId}/slides?${query.toString()}`,
+      { method: 'GET' },
+      LectureSlides,
+    );
+  }
+
+  /** Sets one chunk's whole tag list unless `TagEdit` refuses it, behind every write the server holds. */
+  editTags(courseId: CourseId, edit: TagEdit): Promise<ApiResult<EditedTags>> {
+    return this.#call(
+      `/courses/${courseId}/tags`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(edit),
+      },
+      EditedTags,
     );
   }
 

@@ -9,11 +9,12 @@ import {
 import type { TimedReply } from '../../generator-timing';
 import type { Generator } from '../../model-gateway';
 import type { GeneratorPin } from '../../pin';
-import { HttpGeneratorConfig, type Sampling } from '../../role-config';
+import type { HttpGeneratorConfig, Sampling } from '../../role-config';
 import type { ServedArtefact } from '../../served-artefact';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
 import { readChatCompletionStream } from './chat-completion-stream';
-import { BODY_EXCERPT_CHARS, describeError } from './http-failure';
+import { describeError } from '../describe-error';
+import { BODY_EXCERPT_CHARS } from './http-failure';
 import { type ServedCheck, showOutcome } from './served-model';
 
 const failed = (reason: string): TimedReply => ({
@@ -35,7 +36,7 @@ export class OpenAiHttpGenerator implements Generator {
     served: ServedArtefact,
     now: () => number = () => performance.now(),
   ) {
-    this.#config = HttpGeneratorConfig.parse(config);
+    this.#config = config;
     this.pin = this.#config.pin;
     this.sampling = this.#config.sampling;
     this.served = served;
@@ -118,7 +119,7 @@ export type GeneratorLoad<T extends Generator = Generator> =
 export const loadOpenAiHttpGenerator = async (
   config: HttpGeneratorConfig,
 ): Promise<GeneratorLoad<OpenAiHttpGenerator>> => {
-  const check = await checkServedModel(HttpGeneratorConfig.parse(config));
+  const check = await checkServedModel(config);
   return check.status === 'mismatch'
     ? { status: 'load-failed', role: 'generator', reason: 'served-mismatch', detail: check.detail }
     : { status: 'loaded', generator: new OpenAiHttpGenerator(config, check) };

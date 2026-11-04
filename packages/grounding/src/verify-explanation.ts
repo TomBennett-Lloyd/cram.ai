@@ -3,7 +3,7 @@ import type { AttributedSentence, SourceId, Verdict, WithheldSentence } from '@c
 import { classifySentenceKinds } from './classify-sentence-kinds';
 import type { ModelFailure } from './model-failure';
 import { type ClaimLabel, claimLabel, type NliThresholds } from './nli-verdict';
-import type { Premise } from './premise';
+import { type Premise, scoredPremises } from './premise';
 import { verifierRequest } from './prompts/verifier-prompt';
 
 export interface DeepDeps {
@@ -103,14 +103,15 @@ const stage1 = (labelled: readonly Labelled[]): Stage1 => {
     : { label: 'contradicted', slide: contradicting.premise.sources[0] };
 };
 
-/** `docs/adr/0009-explanation-answers.md` § Decision (d) as amended: Stage 1 over every premise, then Stage 2 over the neutral sentences. */
+/** `docs/adr/0009-explanation-answers.md` § Decision (d) as amended: Stage 1 over every scored premise, then Stage 2 over the neutral sentences against the premises whole. */
 export const verifyExplanation = async (
   sentences: readonly string[],
   premises: readonly Premise[],
   deps: DeepDeps,
 ): Promise<DeepVerification> => {
+  const scored = scoredPremises(premises);
   const pairs = sentences.flatMap((hypothesis) =>
-    premises.map(({ text }) => ({ premise: text, hypothesis })),
+    scored.map(({ text }) => ({ premise: text, hypothesis })),
   );
   const results = await deps.gateway.verifier.entail({ pairs });
   if (results.length !== pairs.length)
@@ -119,12 +120,12 @@ export const verifyExplanation = async (
     );
   const verdicts: Stage1[] = [];
   for (const index of sentences.keys()) {
-    const from = index * premises.length;
-    const span = [from, from + premises.length] as const;
+    const from = index * scored.length;
+    const span = [from, from + scored.length] as const;
     const sentence = await labelSentence(
       results.slice(...span),
       pairs.slice(...span),
-      premises,
+      scored,
       deps,
     );
     if (sentence.status === 'model-failed') return sentence;
