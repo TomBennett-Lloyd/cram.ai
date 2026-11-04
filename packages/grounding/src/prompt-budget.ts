@@ -1,9 +1,9 @@
 import { type ChatRequest, PROVISIONAL_GENERATOR_CONTEXT_LENGTH } from '@cram/gateway';
 
 /**
- * Tokens kept for the reply (`docs/adr/0009-explanation-answers.md` § Decision (j)): about three
- * times the longest summary reply #422's probe measured (its plan comment, step 3). Its ledger:
- * `.claude/ledgers/prompt-token-budget.ledger`.
+ * Tokens kept for the reply, and the generator's output cap (#578; `docs/adr/0009-explanation-answers.md`
+ * § Decision (j)): about three times the longest summary reply #422's probe measured (its plan
+ * comment, step 3). Its ledger: `.claude/ledgers/prompt-token-budget.ledger`.
  */
 export const REPLY_TOKEN_RESERVE = 2048;
 

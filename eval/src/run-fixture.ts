@@ -110,6 +110,10 @@ export const scriptedReport = async (measuredCommit: string): Promise<EvalReport
     labels: [],
     sentenceKinds: [],
     topicLabels: [],
-    gateway: new ScriptedGateway(() => ({ status: 'backend-failed', reason: 'unused' })),
+    gateway: new ScriptedGateway(() => ({
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'unused',
+    })),
     clock: () => 0,
   });

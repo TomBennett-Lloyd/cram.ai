@@ -70,24 +70,28 @@ export const REPLAYED: ServedArtefact = {
 class FakeGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly maxOutputTokens: number;
   readonly served: ServedArtefact;
   readonly #replies: Replies<GeneratorReply>;
 
   constructor(
     pin: GeneratorPin,
     sampling: Sampling,
+    maxOutputTokens: number,
     served: ServedArtefact,
     replies: Replies<GeneratorReply>,
   ) {
     this.pin = pin;
     this.sampling = sampling;
+    this.maxOutputTokens = maxOutputTokens;
     this.served = served;
     this.#replies = replies;
   }
 
   chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
     return replayed(() => {
-      const sent = { pin: this.pin, sampling: this.sampling, request: chatWireRequest(request) };
+      const { pin, sampling, maxOutputTokens } = this;
+      const sent = { pin, sampling, maxOutputTokens, request: chatWireRequest(request) };
       return chatResult(this.#replies.replay(recordingKey(sent)), request.output.schema);
     });
   }
@@ -157,6 +161,7 @@ export interface FakeGatewayPins {
 export interface FakeGatewaySpec {
   readonly pins: FakeGatewayPins;
   readonly sampling: Sampling;
+  readonly maxOutputTokens: number;
   readonly recordings: readonly Recording[];
   /** What the generator reports; `REPLAYED` when absent. */
   readonly served?: ServedArtefact;
@@ -195,6 +200,7 @@ export class FakeGateway implements ModelGateway {
     this.generator = new FakeGenerator(
       pins.generator,
       spec.sampling,
+      spec.maxOutputTokens,
       spec.served ?? REPLAYED,
       generator,
     );

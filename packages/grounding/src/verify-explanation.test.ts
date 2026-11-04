@@ -209,8 +209,14 @@ describe('verifyExplanation', () => {
         { status: 'content', content: '{"kinds":["fact","fact","fact","fact"]}' },
       ],
       ['a reply that is not JSON', { status: 'content', content: 'interpretation' }],
-      ['a reply cut off at the token limit', { status: 'truncated', content: '{"kinds":["inter' }],
-      ['a backend failure', { status: 'backend-failed', reason: 'connection refused' }],
+      [
+        'a reply cut off at the token limit',
+        { status: 'truncated', content: '{"kinds":["inter', cutOffAt: 'token-limit' },
+      ],
+      [
+        'a backend failure',
+        { status: 'backend-failed', cause: 'request-error', reason: 'connection refused' },
+      ],
     ])('reads %s as every neutral sentence a course claim', async (_, reply) => {
       const kinds = kindsRecording(NEUTRAL_ONES, retrieved, reply);
       await expect(verify([stage1, kinds], false, FIVE)).resolves.toEqual({
@@ -286,7 +292,11 @@ describe('verifyExplanation', () => {
   });
 
   it('reports a failed second opinion as a model failure', async () => {
-    const failed: GeneratorReply = { status: 'backend-failed', reason: 'connection refused' };
+    const failed: GeneratorReply = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    };
     const recordings = [
       judged(SENTENCE, retrieved, NEUTRAL, OVER_LENGTH),
       secondOpinion(comb, failed),

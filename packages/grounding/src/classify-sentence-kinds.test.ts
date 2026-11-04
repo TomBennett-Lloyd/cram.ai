@@ -55,8 +55,18 @@ describe('classifySentenceKinds', () => {
     ['the kinds under another key', { status: 'content', content: '{"kind":["interpretation"]}' }],
     ['null', { status: 'content', content: 'null' }],
     ['not JSON', { status: 'content', content: 'interpretation, interpretation' }],
-    ['cut off', { status: 'truncated', content: '{"kinds":["interpretation","inter' }],
-    ['a backend failure', { status: 'backend-failed', reason: 'connection refused' }],
+    [
+      'cut off',
+      {
+        status: 'truncated',
+        content: '{"kinds":["interpretation","inter',
+        cutOffAt: 'token-limit',
+      },
+    ],
+    [
+      'a backend failure',
+      { status: 'backend-failed', cause: 'request-error', reason: 'connection refused' },
+    ],
   ])('fails closed on a reply that is %s: every sentence a course claim', async (_, reply) => {
     await expect(classify(reply)).resolves.toEqual(['course-claim', 'course-claim']);
   });

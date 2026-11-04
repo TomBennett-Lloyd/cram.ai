@@ -15,3 +15,4 @@ carrier: docs/adr/0003-model-roles-and-backends.md
 carrier: docs/adr/0009-explanation-answers.md
 carrier: packages/grounding/src/prompt-budget.ts
 carrier: packages/grounding/src/prompt-budget.test.ts
+carrier: packages/gateway/src/adapters/openai-http/openai-http.measure.test.ts

@@ -117,7 +117,7 @@ describe('contradictionSetLight', () => {
     const failed: ExplainResult = {
       status: 'model-failed',
       stage: 'generate',
-      failure: { status: 'backend-failed', reason: 'down' },
+      failure: { status: 'backend-failed', cause: 'request-error', reason: 'down' },
       context: EMPTY_CONTEXT,
     };
     expect(contradictionSetLight([light(failed)])).toMatchObject({

@@ -7,7 +7,7 @@ import {
 import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { course, label, question } from './eval-fixture';
-import { LIVE_PINS, LIVE_SAMPLING } from './live-config';
+import { LIVE_MAX_OUTPUT_TOKENS, LIVE_PINS, LIVE_SAMPLING } from './live-config';
 import { RecordingGateway } from './recording-gateway';
 import { replayRun, untimed } from './replay-run';
 import { runEval } from './run-eval';
@@ -38,7 +38,7 @@ const respond = (wire: ChatWireRequest): GeneratorReply => ({
 /** A live run of `COURSE` over the scripted gateway, timed by a clock that moves. */
 const liveRun = async (): Promise<EvalRun> => {
   const recorder = new RecordingGateway({
-    inner: new ScriptedGateway(respond, null, LIVE_SAMPLING),
+    inner: new ScriptedGateway(respond, null, LIVE_SAMPLING, LIVE_MAX_OUTPUT_TOKENS),
   });
   let now = 0;
   const report = await runEval({
@@ -95,6 +95,16 @@ describe('replayRun', () => {
     const recordings = run.recordings.map((recording) =>
       recording.role === 'generator'
         ? { ...recording, sampling: { temperature: 0, seed: 1 } }
+        : recording,
+    );
+    await expect(replay({ ...run, recordings })).rejects.toBeInstanceOf(RecordingMissError);
+  });
+
+  it('misses, rather than replays, a run recorded under another maxOutputTokens', async () => {
+    const run = await liveRun();
+    const recordings = run.recordings.map((recording) =>
+      recording.role === 'generator'
+        ? { ...recording, maxOutputTokens: LIVE_MAX_OUTPUT_TOKENS + 1 }
         : recording,
     );
     await expect(replay({ ...run, recordings })).rejects.toBeInstanceOf(RecordingMissError);

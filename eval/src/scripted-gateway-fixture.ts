@@ -9,11 +9,13 @@ import {
   type EmbedRequest,
   type EntailmentResult,
   type EntailRequest,
+  FakeGateway,
   type GeneratorReply,
   PROVISIONAL_DEFAULT_PINS,
   type Reranker,
   RerankerPin,
   type RerankRequest,
+  type Recording,
   type Sampling,
   type ServedArtefact,
   type Verifier,
@@ -23,6 +25,7 @@ import type { RecordableGateway, RecordableGenerator } from './recording-gateway
 const pins = PROVISIONAL_DEFAULT_PINS;
 
 export const SAMPLING: Sampling = { temperature: 0, seed: 0 };
+export const SCRIPTED_MAX_OUTPUT_TOKENS = 512;
 
 /** A stand-in for a live backend in tests: replies are computed from the request. */
 export type Respond = (wire: ChatWireRequest) => GeneratorReply;
@@ -32,12 +35,14 @@ export const SERVED: ServedArtefact = { status: 'unverified', reason: 'a scripte
 class ScriptedGenerator implements RecordableGenerator {
   readonly pin = pins.generator;
   readonly sampling: Sampling;
+  readonly maxOutputTokens: number;
   readonly served = SERVED;
   readonly #respond: Respond;
 
-  constructor(respond: Respond, sampling: Sampling) {
+  constructor(respond: Respond, sampling: Sampling, maxOutputTokens: number) {
     this.#respond = respond;
     this.sampling = sampling;
+    this.maxOutputTokens = maxOutputTokens;
   }
 
   reply(wire: ChatWireRequest): Promise<GeneratorReply> {
@@ -121,8 +126,22 @@ export class ScriptedGateway implements RecordableGateway {
   readonly embedder = new ScriptedEmbedder();
   readonly reranker: Reranker | null;
 
-  constructor(respond: Respond, reranker: Reranker | null = null, sampling: Sampling = SAMPLING) {
-    this.generator = new ScriptedGenerator(respond, sampling);
+  constructor(
+    respond: Respond,
+    reranker: Reranker | null = null,
+    sampling: Sampling = SAMPLING,
+    maxOutputTokens = SCRIPTED_MAX_OUTPUT_TOKENS,
+  ) {
+    this.generator = new ScriptedGenerator(respond, sampling, maxOutputTokens);
     this.reranker = reranker;
   }
 }
+
+export const scriptedReplay = (recordings: readonly Recording[]): FakeGateway =>
+  new FakeGateway({
+    pins,
+    sampling: SAMPLING,
+    maxOutputTokens: SCRIPTED_MAX_OUTPUT_TOKENS,
+    served: SERVED,
+    recordings,
+  });

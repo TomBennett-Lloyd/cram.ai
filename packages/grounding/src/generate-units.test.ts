@@ -33,7 +33,11 @@ describe('generateUnits', () => {
   });
 
   it('reports a backend failure as a value', async () => {
-    const reply = { status: 'backend-failed', reason: 'connection refused' } as const;
+    const reply = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    } as const;
     const gateway = fakeGateway([generatorRecording(request, reply)]);
     await expect(generateUnits(task, slides, gateway.generator)).resolves.toEqual({
       status: 'model-failed',

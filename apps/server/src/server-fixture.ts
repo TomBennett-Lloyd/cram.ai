@@ -103,6 +103,7 @@ export class GatedEmbedder extends WordEmbedder {
 }
 
 const sampling = { temperature: 0, seed: 0 };
+const maxOutputTokens = 512;
 
 const UNSCRIPTED: ReadonlyMap<string, unknown> = new Map<string, unknown>([
   ['units', { units: [{ text: 'Unscripted.', citations: [] }] }],
@@ -114,12 +115,14 @@ class UnscriptedCalls implements Generator {
   readonly #inner: Generator;
   readonly pin: Generator['pin'];
   readonly sampling: Generator['sampling'];
+  readonly maxOutputTokens: number;
   readonly served: Generator['served'];
 
   constructor(inner: Generator) {
     this.#inner = inner;
     this.pin = inner.pin;
     this.sampling = inner.sampling;
+    this.maxOutputTokens = inner.maxOutputTokens;
     this.served = inner.served;
   }
 
@@ -139,7 +142,12 @@ export const gatewayOf = (
   recordings: readonly Recording[],
   embedder: Embedder = new WordEmbedder(),
 ): ModelGateway => {
-  const fake = new FakeGateway({ pins: PROVISIONAL_DEFAULT_PINS, sampling, recordings });
+  const fake = new FakeGateway({
+    pins: PROVISIONAL_DEFAULT_PINS,
+    sampling,
+    maxOutputTokens,
+    recordings,
+  });
   const generator = new UnscriptedCalls(fake.generator);
   return { generator, verifier: fake.verifier, embedder, reranker: null };
 };
@@ -152,6 +160,7 @@ export const summarised = (
   role: 'generator',
   pin: PROVISIONAL_DEFAULT_PINS.generator,
   sampling,
+  maxOutputTokens,
   request: chatWireRequest(
     generationRequest(
       { kind: 'lecture-summary', lectureTitle, maxUnits: SUMMARY_MAX_UNITS },
@@ -269,6 +278,7 @@ export const explained = (
   role: 'generator',
   pin: PROVISIONAL_DEFAULT_PINS.generator,
   sampling,
+  maxOutputTokens,
   request: chatWireRequest(explanationRequest(question, { raw: retrieved, summaries })),
   reply,
 });

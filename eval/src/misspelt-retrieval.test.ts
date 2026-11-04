@@ -30,7 +30,11 @@ const lectures: readonly IndexedLecture[] = read.course.deck.map((lecture) => {
 
 let retriever: IndexRetriever;
 beforeAll(async () => {
-  const { embedder } = new ScriptedGateway(() => ({ status: 'backend-failed', reason: 'unused' }));
+  const { embedder } = new ScriptedGateway(() => ({
+    status: 'backend-failed',
+    cause: 'request-error',
+    reason: 'unused',
+  }));
   retriever = await IndexRetriever.open({
     courseId: EVAL_COURSE_ID,
     lectures,

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { chatWireRequest, OutputName } from '../../chat';
 import { decodeTokensPerSecond } from '../../generator-timing';
-import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
+import {
+  PROVISIONAL_DEFAULT_PINS,
+  PROVISIONAL_GENERATOR_CONTEXT_LENGTH,
+} from '../../provisional-pins';
 import { HttpGeneratorConfig } from '../../role-config';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
 import { checkServedModel, loadOpenAiHttpGenerator } from './openai-http-generator';
@@ -25,6 +28,8 @@ const config = (): HttpGeneratorConfig =>
     endpoint: env.CRAM_GENERATOR_ENDPOINT,
     servedModel: env.CRAM_GENERATOR_MODEL,
     timeoutMs: CALL_TIMEOUT_MS,
+    // No cap short of the context, so the figures are the model's, not the cap's.
+    maxOutputTokens: PROVISIONAL_GENERATOR_CONTEXT_LENGTH,
     sampling: { temperature: 0, seed: 0 },
   });
 

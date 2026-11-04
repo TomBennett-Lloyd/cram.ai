@@ -10,6 +10,7 @@ const pins = PROVISIONAL_DEFAULT_PINS;
 const rerankerPin = RerankerPin.parse({ ...pins.verifier, role: 'reranker' });
 
 const sampling = { temperature: 0, seed: 0 };
+const maxOutputTokens = 512;
 const Answer = z.object({ text: z.string() });
 const answer = OutputName.parse('answer');
 const ask = (content: string) => ({
@@ -20,12 +21,13 @@ const generatorRecording = (content: string, reply: GeneratorReply): Recording =
   role: 'generator',
   pin: pins.generator,
   sampling,
+  maxOutputTokens,
   request: chatWireRequest(ask(content)),
   reply,
 });
 
 const gateway = (recordings: readonly Recording[]) =>
-  new FakeGateway({ pins, sampling, recordings });
+  new FakeGateway({ pins, sampling, maxOutputTokens, recordings });
 
 const reversedKeys = (value: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(Object.entries(value).reverse());
@@ -33,17 +35,21 @@ const reversedKeys = (value: Record<string, unknown>): Record<string, unknown> =
 describe('FakeGateway generator', () => {
   it('reports the sampling its recordings are keyed under', () => {
     const reseeded = { temperature: 0.5, seed: 3 };
-    expect(
-      new FakeGateway({ pins, sampling: reseeded, recordings: [] }).generator.sampling,
-    ).toEqual(reseeded);
+    const { generator } = new FakeGateway({
+      pins,
+      sampling: reseeded,
+      maxOutputTokens,
+      recordings: [],
+    });
+    expect(generator.sampling).toEqual(reseeded);
   });
 
   it('reports its weights unverified unless the spec says what the recorded run saw', () => {
     expect(gateway([]).generator.served).toBe(REPLAYED);
     const served = { status: 'verified' } as const;
-    expect(new FakeGateway({ pins, sampling, served, recordings: [] }).generator.served).toBe(
-      served,
-    );
+    expect(
+      new FakeGateway({ pins, sampling, maxOutputTokens, served, recordings: [] }).generator.served,
+    ).toBe(served);
   });
 
   it('replays recorded content through the schema', async () => {
@@ -62,18 +68,23 @@ describe('FakeGateway generator', () => {
   });
 
   it('replays a recorded backend failure', async () => {
-    const reply = { status: 'backend-failed', reason: 'connection refused' } as const;
+    const reply = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    } as const;
     const fake = gateway([generatorRecording('q', reply)]);
     await expect(fake.generator.chat(ask('q'))).resolves.toEqual(reply);
   });
 
-  it('replays a truncated reply as invalid output, as the live adapter reports it', async () => {
+  it('replays a truncated reply as cut off, with its content, as the live adapter reports it', async () => {
     const fake = gateway([
-      generatorRecording('q', { status: 'truncated', content: '{"text":"a"}' }),
+      generatorRecording('q', { status: 'truncated', content: '{"text":"a"', cutOffAt: 'timeout' }),
     ]);
-    await expect(fake.generator.chat(ask('q'))).resolves.toMatchObject({
-      status: 'invalid-output',
-      issue: 'cut off at the token limit',
+    await expect(fake.generator.chat(ask('q'))).resolves.toEqual({
+      status: 'cut-off',
+      content: '{"text":"a"',
+      cutOffAt: 'timeout',
     });
   });
 
@@ -82,8 +93,21 @@ describe('FakeGateway generator', () => {
     const fake = new FakeGateway({
       pins,
       sampling: { ...sampling, seed: 1 },
+      maxOutputTokens,
       recordings: [recording],
     });
+    await expect(fake.generator.chat(ask('q'))).rejects.toBeInstanceOf(RecordingMissError);
+  });
+
+  it('rejects with a miss when the recording was made under another maxOutputTokens', async () => {
+    const recording = generatorRecording('q', { status: 'content', content: '{"text":"a"}' });
+    const fake = new FakeGateway({
+      pins,
+      sampling,
+      maxOutputTokens: maxOutputTokens + 1,
+      recordings: [recording],
+    });
+    expect(fake.generator.maxOutputTokens).toBe(maxOutputTokens + 1);
     await expect(fake.generator.chat(ask('q'))).rejects.toBeInstanceOf(RecordingMissError);
   });
 
@@ -108,6 +132,7 @@ describe('FakeGateway generator', () => {
     const fake = new FakeGateway({
       pins: { ...pins, generator: { ...pins.generator, sha256: 'f'.repeat(64) } },
       sampling,
+      maxOutputTokens,
       recordings: [recording],
     });
     await expect(fake.generator.chat(ask('q'))).rejects.toBeInstanceOf(RecordingMissError);
@@ -119,6 +144,7 @@ describe('FakeGateway generator', () => {
       role: 'generator',
       pin: pins.generator,
       sampling,
+      maxOutputTokens,
       reply: { status: 'content', content: '{"text":"a"}' },
       request: {
         ...wire,
@@ -128,6 +154,7 @@ describe('FakeGateway generator', () => {
     const fake = new FakeGateway({
       pins: { ...pins, generator: { ...reversedKeys(pins.generator), ...pins.generator } },
       sampling: { seed: 0, temperature: 0 },
+      maxOutputTokens,
       recordings: [reordered],
     });
     await expect(fake.generator.chat(ask('q'))).resolves.toMatchObject({ status: 'completed' });
@@ -194,6 +221,7 @@ describe('FakeGateway encoders', () => {
     const fake = new FakeGateway({
       pins: { ...pins, reranker: rerankerPin },
       sampling,
+      maxOutputTokens,
       recordings: [
         { role: 'reranker', pin: rerankerPin, request, reply: { results: [...results] } },
       ],
@@ -205,6 +233,7 @@ describe('FakeGateway encoders', () => {
     const fake = new FakeGateway({
       pins: { ...pins, reranker: rerankerPin },
       sampling,
+      maxOutputTokens,
       recordings: [],
     });
     const extra = { truncate: true };

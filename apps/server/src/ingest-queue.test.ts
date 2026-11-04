@@ -114,7 +114,11 @@ describe('IngestQueue’s log', () => {
     const down = {
       ...fake.generator,
       chat: <T>(): Promise<ChatResult<T>> =>
-        Promise.resolve({ status: 'backend-failed', reason: 'connection refused' }),
+        Promise.resolve({
+          status: 'backend-failed',
+          cause: 'request-error',
+          reason: 'connection refused',
+        }),
     };
     const unanswered = new IngestQueue({ files, gateway: { ...fake, generator: down } }, log);
     unanswered.remake(bio, l2);
@@ -132,7 +136,7 @@ describe('IngestQueue’s log', () => {
         operation: 'summarise generate',
         courseId: 'bio',
         lectureKey: 2,
-        outcome: 'backend-failed',
+        outcome: 'backend-failed request-error',
       },
       { operation: 'ingest', courseId: 'bio', lectureKey: 2, outcome: 'Error' },
     ]);

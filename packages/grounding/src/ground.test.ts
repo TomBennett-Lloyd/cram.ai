@@ -213,7 +213,11 @@ describe('ground', () => {
   });
 
   describe('a model failure is reported with its stage, never as not-covered', () => {
-    const failed: GeneratorReply = { status: 'backend-failed', reason: 'connection refused' };
+    const failed: GeneratorReply = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    };
     const cited = { text: 'Workers are male.', citations: [male] };
 
     it('in generation', async () => {

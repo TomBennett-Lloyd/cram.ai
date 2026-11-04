@@ -127,7 +127,7 @@ describe('contradictionSet', () => {
     const failed: ExplainResult = {
       status: 'model-failed',
       stage: 'verify',
-      failure: { status: 'backend-failed', reason: 'down' },
+      failure: { status: 'backend-failed', cause: 'request-error', reason: 'down' },
       context: EMPTY_CONTEXT,
     };
     expect(contradictionSet([asked(failed, slides, covered)])).toMatchObject({

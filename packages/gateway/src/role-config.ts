@@ -18,6 +18,7 @@ export const HttpGeneratorConfig = z.strictObject({
   endpoint: LoopbackEndpoint,
   servedModel: z.string().regex(/\S/),
   timeoutMs: z.number().int().positive(),
+  maxOutputTokens: z.number().int().positive(),
   sampling: Sampling,
 });
 export type HttpGeneratorConfig = z.infer<typeof HttpGeneratorConfig>;

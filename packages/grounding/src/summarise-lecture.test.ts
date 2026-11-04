@@ -109,7 +109,11 @@ describe('summariseLecture', () => {
   });
 
   it('is model-failed, with no summary, when the generator fails', async () => {
-    const failed = { status: 'backend-failed', reason: 'connection refused' } as const;
+    const failed = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    } as const;
     await expect(
       summarise([workers], [generatorRecording(generationRequest(task, [workers]), failed)]),
     ).resolves.toEqual({ status: 'model-failed', stage: 'generate', failure: failed, drafted: 0 });
@@ -220,7 +224,11 @@ describe('summariseLecture', () => {
 
   it('stores nothing when a later part fails, though an earlier one was summarised', async () => {
     const male = 'Workers are male.';
-    const failed = { status: 'backend-failed', reason: 'connection refused' } as const;
+    const failed = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    } as const;
     await expect(
       summarise(
         [workers, drones],
@@ -236,7 +244,11 @@ describe('summariseLecture', () => {
 
   it('counts an earlier part’s withheld units as drafted when a later part fails', async () => {
     const night = 'Workers forage at night.';
-    const failed = { status: 'backend-failed', reason: 'connection refused' } as const;
+    const failed = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    } as const;
     await expect(
       summarise(
         [workers, drones],

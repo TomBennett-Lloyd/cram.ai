@@ -39,7 +39,7 @@ const NEUTRAL: EntailmentResult = {
   status: 'scored',
   scores: { entailment: 0.05, neutral: 0.9, contradiction: 0.05 },
 };
-const FAILED = { status: 'backend-failed', reason: 'connection refused' } as const;
+const FAILED = { status: 'backend-failed', cause: 'request-error', reason: 'down' } as const;
 
 let test: TestServer | undefined;
 afterEach(async () => {
@@ -109,26 +109,21 @@ const remake = async ({ server }: TestServer, body: unknown, contentType = 'appl
   });
 
 /** Fails its first lecture-summary call as a value, then answers as `inner` does. */
-class FailsFirstSummary implements Generator {
-  readonly #inner: Generator;
-  #failed = false;
-  readonly pin: Generator['pin'];
-  readonly sampling: Generator['sampling'];
-  readonly served: Generator['served'];
-
-  constructor(inner: Generator) {
-    this.#inner = inner;
-    this.pin = inner.pin;
-    this.sampling = inner.sampling;
-    this.served = inner.served;
-  }
-
-  chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
-    if (this.#failed || request.output.name !== 'units') return this.#inner.chat(request);
-    this.#failed = true;
-    return Promise.resolve(FAILED);
-  }
-}
+const failsFirstSummary = (inner: Generator): Generator => {
+  let failed = false;
+  const { pin, sampling, maxOutputTokens, served } = inner;
+  return {
+    pin,
+    sampling,
+    maxOutputTokens,
+    served,
+    chat: <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
+      if (failed || request.output.name !== 'units') return inner.chat(request);
+      failed = true;
+      return Promise.resolve(FAILED);
+    },
+  };
+};
 
 describe('the lecture digest at upload', () => {
   it('stores the verified summary, reports the upload summarised, and serves its lines with their slides', async () => {
@@ -196,7 +191,7 @@ describe('the lecture digest at upload', () => {
         operation: 'summarise generate',
         courseId: 'bio',
         lectureKey: 1,
-        outcome: 'backend-failed',
+        outcome: 'backend-failed request-error',
       },
     ]);
   });
@@ -245,7 +240,7 @@ describe('POST /courses/:id/remakes', () => {
   it('makes a missing summary again, reporting it queued, then done', async () => {
     const bytes = await pdfDeck(HIVE);
     const inner = gatewayOf(await hiveSummary(bytes));
-    const server = await started({ ...inner, generator: new FailsFirstSummary(inner.generator) });
+    const server = await started({ ...inner, generator: failsFirstSummary(inner.generator) });
     await upload(server, bytes);
     expect((await status(server)).stored.lectures.map(({ summarised: made }) => made)).toEqual([
       false,

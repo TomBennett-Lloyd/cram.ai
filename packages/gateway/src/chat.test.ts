@@ -29,16 +29,20 @@ describe('chatResult', () => {
     expect(outcome.status === 'invalid-output' && outcome.issue).toMatch(/slide/);
   });
 
-  it('reports a truncated reply as invalid output even when it parses', () => {
-    expect(chatResult({ status: 'truncated', content: '{"text":"x","slide":3}' }, Answer)).toEqual({
-      status: 'invalid-output',
-      content: '{"text":"x","slide":3}',
-      issue: 'cut off at the token limit',
-    });
-  });
+  it.each(['token-limit', 'timeout'] as const)(
+    'reports a reply cut off at the %s as cut off, with its content, even when it parses',
+    (cutOffAt) => {
+      const content = '{"text":"x","slide":3}';
+      expect(chatResult({ status: 'truncated', content, cutOffAt }, Answer)).toEqual({
+        status: 'cut-off',
+        content,
+        cutOffAt,
+      });
+    },
+  );
 
   it('passes a backend failure through', () => {
-    const reply = { status: 'backend-failed', reason: 'down' } as const;
+    const reply = { status: 'backend-failed', cause: 'request-error', reason: 'down' } as const;
     expect(chatResult(reply, Answer)).toEqual(reply);
   });
 });

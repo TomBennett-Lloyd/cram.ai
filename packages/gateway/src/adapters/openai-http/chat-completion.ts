@@ -29,6 +29,7 @@ export const chatCompletionBody = (config: HttpGeneratorConfig, wire: ChatWireRe
   },
   temperature: config.sampling.temperature,
   seed: config.sampling.seed,
+  max_tokens: config.maxOutputTokens,
   reasoning_effort: 'none',
   stream: true,
   stream_options: { include_usage: true },

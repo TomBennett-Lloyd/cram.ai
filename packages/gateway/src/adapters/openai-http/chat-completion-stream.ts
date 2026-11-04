@@ -1,15 +1,22 @@
 import { z } from 'zod';
 import type { GeneratorReply } from '../../chat';
-import type { GeneratorUsage, TimedReply } from '../../generator-timing';
+import type { GeneratorTiming, GeneratorUsage, TimedReply } from '../../generator-timing';
 import { ChatCompletionChunk } from './chat-completion';
 
 const DATA_FIELD = 'data:';
 const DONE = '[DONE]';
 const PAYLOAD_EXCERPT_CHARS = 500;
 
+/** `interrupted` is a body read that rejected, beside what had arrived before it (#578). */
 export type StreamRead =
   | { readonly status: 'read'; readonly timed: TimedReply }
-  | { readonly status: 'protocol-failed'; readonly issue: string };
+  | { readonly status: 'protocol-failed'; readonly issue: string }
+  | {
+      readonly status: 'interrupted';
+      readonly error: unknown;
+      readonly content: string;
+      readonly timing: GeneratorTiming | null;
+    };
 
 type ProtocolFailure = Extract<StreamRead, { status: 'protocol-failed' }>;
 
@@ -64,6 +71,12 @@ class StreamedReply {
     return 'more';
   }
 
+  #timing(): GeneratorTiming | null {
+    return this.#firstTokenMs === null
+      ? null
+      : { firstTokenMs: this.#firstTokenMs, lastTokenMs: this.#lastTokenMs, usage: this.#usage };
+  }
+
   /** `head` is the body's opening text, quoted when no data line came: a server that did not stream. */
   ended(head: string): StreamRead {
     if (!this.#sawData) return protocolFailed(`the body held no event-stream data line: ${head}`);
@@ -72,19 +85,19 @@ class StreamedReply {
     const content = this.#content;
     const reply: GeneratorReply =
       this.#finishReason === 'length'
-        ? { status: 'truncated', content }
+        ? { status: 'truncated', content, cutOffAt: 'token-limit' }
         : { status: 'content', content };
-    const timing =
-      this.#firstTokenMs === null
-        ? null
-        : { firstTokenMs: this.#firstTokenMs, lastTokenMs: this.#lastTokenMs, usage: this.#usage };
-    return { status: 'read', timed: { reply, timing } };
+    return { status: 'read', timed: { reply, timing: this.#timing() } };
+  }
+
+  interrupted(error: unknown): StreamRead {
+    return { status: 'interrupted', error, content: this.#content, timing: this.#timing() };
   }
 }
 
 /**
  * Reads an OpenAI chat-completion event stream to its end; `elapsedMs` is read once per resolved read.
- * Rejects only as the body's own reads reject (an abort, a reset), which the caller classifies.
+ * A read that rejects (an abort, a reset) returns `interrupted` with what had arrived, for the caller to classify.
  */
 export const readChatCompletionStream = async (
   body: ReadableStream<Uint8Array>,
@@ -95,7 +108,13 @@ export const readChatCompletionStream = async (
   let partial = '';
   let head = '';
   for (;;) {
-    const { done, value } = await reader.read();
+    let read: Awaited<ReturnType<typeof reader.read>>;
+    try {
+      read = await reader.read();
+    } catch (error) {
+      return streamed.interrupted(error);
+    }
+    const { done, value } = read;
     const atMs = elapsedMs();
     if (!done) head = (head + value).slice(0, PAYLOAD_EXCERPT_CHARS);
     const lines = done ? [partial] : (partial + value).split('\n');

@@ -1,9 +1,4 @@
-import {
-  FakeGateway,
-  PROVISIONAL_DEFAULT_PINS,
-  type Recording,
-  RecordingMissError,
-} from '@cram/gateway';
+import { PROVISIONAL_DEFAULT_PINS, RecordingMissError } from '@cram/gateway';
 import { PROMPT_TOKEN_BUDGET } from '@cram/grounding';
 import { ATTRIBUTION_K } from '@cram/index';
 import { CourseId } from '@cram/shared';
@@ -12,7 +7,13 @@ import { kindLabel, label, question, topicLabel } from './eval-fixture';
 import { RecordingGateway } from './recording-gateway';
 import { runEval, type EvalRunSpec } from './run-eval';
 import { indexedLecture as lecture, record } from './run-fixture';
-import { type Respond, SAMPLING, ScriptedGateway, SERVED } from './scripted-gateway-fixture';
+import {
+  type Respond,
+  SAMPLING,
+  ScriptedGateway,
+  scriptedReplay,
+  SERVED,
+} from './scripted-gateway-fixture';
 import { credulous, tutor } from './scripted-tutor-fixture';
 
 const COURSE = CourseId.parse('hollowmere');
@@ -103,7 +104,7 @@ const LONG = record({
 /** `credulous`, failing LONG's lecture's summary call, so no short summary line judges what LONG's over-length pair cannot. */
 const unsummarisedLong: Respond = (wire) =>
   wire.output.name === 'units' && (wire.messages.at(-1)?.content ?? '').includes('Propolis')
-    ? { status: 'backend-failed', reason: 'unscripted summary' }
+    ? { status: 'backend-failed', cause: 'request-error', reason: 'unscripted summary' }
     : credulous(wire);
 
 const spec = (
@@ -134,18 +135,10 @@ const recordRun = async (respond: Respond, overrides: Partial<EvalRunSpec> = {})
   return { report, recordings: recorded.recordings };
 };
 
-const replay = (recordings: readonly Recording[]) =>
-  new FakeGateway({
-    pins: PROVISIONAL_DEFAULT_PINS,
-    sampling: SAMPLING,
-    served: SERVED,
-    recordings,
-  });
-
 describe('runEval', () => {
   it('replays its own recordings over FakeGateway to the same report', async () => {
     const live = await recordRun(tutor(false));
-    await expect(runEval(spec(replay(live.recordings)))).resolves.toEqual(live.report);
+    await expect(runEval(spec(scriptedReplay(live.recordings)))).resolves.toEqual(live.report);
   });
 
   it('measures every metric it has inputs for, over the whole pipeline', async () => {
@@ -322,6 +315,6 @@ describe('runEval', () => {
     const { recordings } = await recordRun(tutor(false));
     const lastGenerator = recordings.findLastIndex(({ role }) => role === 'generator');
     const short = recordings.filter((_, index) => index !== lastGenerator);
-    await expect(runEval(spec(replay(short)))).rejects.toBeInstanceOf(RecordingMissError);
+    await expect(runEval(spec(scriptedReplay(short)))).rejects.toBeInstanceOf(RecordingMissError);
   });
 });
