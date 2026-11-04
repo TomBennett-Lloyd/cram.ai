@@ -1,10 +1,10 @@
-import { act, cleanup, fireEvent, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { StoredLectures } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMB, fakeApi, HIVE, type Reply } from '../api/api-fixture';
-import { MAKE_SUMMARY, SUMMARY_ALL_WITHHELD, SUMMARY_REPLACED } from '../copy';
-import { lecture, remakeStatus, renderDecks, settle, storedStatus } from './decks-fixture';
-import { isSummaries, openSummary, statusReads } from './summary-fixture';
+import { MAKE_SUMMARY, SUMMARY_ALL_WITHHELD, SUMMARY_FAILED, SUMMARY_REPLACED } from '../copy';
+import { lecture, remakeStatus, renderDecks, settle, storedStatus, upload } from './decks-fixture';
+import { isRemake, isSummaries, openSummary, statusReads } from './summary-fixture';
 import { POLL_INTERVAL_MS } from './use-ingest-status';
 
 beforeEach(() => {
@@ -100,6 +100,14 @@ describe('the units withheld from a lecture’s summary', () => {
     for (const text of [UNSUPPORTED, PARTIAL, DANGLING])
       expect(lines?.textContent).not.toContain(text);
     expect(sent.filter(isSummaries)).toHaveLength(1);
+    expect(
+      [...details.querySelectorAll(':scope > ul > li')].map(
+        (entry) => entry.querySelectorAll('.slide-card').length,
+      ),
+    ).toEqual([1, 1, 0]);
+    expect(
+      details.querySelectorAll(':scope > ul > li')[2]?.querySelector('ul.citations'),
+    ).toBeNull();
     fireEvent.click(within(details).getAllByRole('button', { name: /Slide 4/ })[1] ?? details);
     expect(document.querySelector('.slide-dialog mark')?.textContent).toBe('Drones are male.');
   });
@@ -116,6 +124,52 @@ describe('the units withheld from a lecture’s summary', () => {
     expect(panel().querySelector('summary')?.textContent).toBe('Withheld (1)');
     await openWithheld();
     expect(within(panel()).getByText(UNSUPPORTED)).toBeDefined();
+  });
+
+  it('announce a pressed re-make that kept nothing as one that could not be made, whatever the stored row says', async () => {
+    const lectures = StoredLectures.parse({
+      state: 'read',
+      lectures: [lecture('l1', 2, [], [], false, 1)],
+      report: { state: 'none' },
+    });
+    const replies = [
+      storedStatus(lectures),
+      remakeStatus(lectures, [{ lectureId: 'l1', progress: { state: 'running' } }]),
+      remakeStatus(lectures, [{ lectureId: 'l1', progress: { state: 'done', summarised: false } }]),
+    ];
+    const { api, sent } = fakeApi((request) =>
+      isRemake(request)
+        ? { status: 202, body: { lectureId: 'l1', progress: { state: 'queued' } } }
+        : (replies[Math.min(statusReads(sent) - 1, 2)] ?? storedStatus(lectures)),
+    );
+    renderDecks(api);
+    await settle();
+    expect(screen.queryByRole('alert')).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: MAKE_SUMMARY }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2);
+    });
+    expect(screen.getByRole('alert').textContent).toBe(SUMMARY_FAILED);
+  });
+
+  it('say an upload this session that kept no line kept none, not that it could not be made', async () => {
+    const lectures = StoredLectures.parse({
+      state: 'read',
+      lectures: [lecture('l1', 2, [], [], false, 1)],
+      report: { state: 'none' },
+    });
+    const indexed = { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [] };
+    const { api } = fakeApi(() =>
+      storedStatus(lectures, upload('l1', { ...indexed, summarised: false })),
+    );
+    renderDecks(api);
+    await settle();
+    expect(document.querySelector('.lecture-summary-state')?.textContent).toBe(
+      `${SUMMARY_ALL_WITHHELD} ${MAKE_SUMMARY}`,
+    );
   });
 
   it('show no panel for a lecture that withheld none', async () => {

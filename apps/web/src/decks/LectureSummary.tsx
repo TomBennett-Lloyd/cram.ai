@@ -52,7 +52,7 @@ const Sources = ({
   readonly onOpen: OnOpen;
 }) => {
   const { cited, missing } = lineSlides(unit, slides);
-  return (
+  return cited.length === 0 && missing === 0 ? null : (
     <ul className="citations" aria-label="Sources">
       {cited.map((entry) => (
         <li key={entry.slide.sourceId}>
@@ -69,9 +69,13 @@ const Sources = ({
   );
 };
 
-type Shown = (digest: LectureDigest, slides: readonly RetrievedSlide[]) => ReactNode;
+type Shown = (
+  digest: LectureDigest,
+  slides: readonly RetrievedSlide[],
+  onOpen: OnOpen,
+) => ReactNode;
 
-const lines: (onOpen: OnOpen) => Shown = (onOpen) => (digest, slides) =>
+const lines: Shown = (digest, slides, onOpen) =>
   digest.units.length === 0 ? null : (
     <ol className="summary-lines">
       {digest.units.map((unit, index) => (
@@ -83,7 +87,7 @@ const lines: (onOpen: OnOpen) => Shown = (onOpen) => (digest, slides) =>
     </ol>
   );
 
-const withheldUnits: (onOpen: OnOpen) => Shown = (onOpen) => (digest, slides) =>
+const withheldUnits: Shown = (digest, slides, onOpen) =>
   digest.withheld.length === 0 ? null : (
     <ul>
       {digest.withheld.map((entry, index) => (
@@ -99,11 +103,13 @@ const DigestBody = ({
   lectureId,
   state,
   onLoad,
+  onOpen,
   shown,
 }: {
   readonly lectureId: LectureId;
   readonly state: SummariesState;
   readonly onLoad: () => void;
+  readonly onOpen: OnOpen;
   readonly shown: Shown;
 }) => {
   switch (state.status) {
@@ -122,7 +128,7 @@ const DigestBody = ({
         return <Failed messages={[storedUnavailableMessage(value.problem)]} />;
       const digest = value.summaries.find((candidate) => candidate.lectureId === lectureId);
       return (
-        (digest === undefined ? null : shown(digest, value.slides)) ?? (
+        (digest === undefined ? null : shown(digest, value.slides, onOpen)) ?? (
           <Empty>{SUMMARY_REPLACED}</Empty>
         )
       );
@@ -149,7 +155,7 @@ export const SummaryDetails = ({
     }}
   >
     <summary>{SUMMARY}</summary>
-    <DigestBody lectureId={lectureId} state={state} onLoad={onLoad} shown={lines(onOpen)} />
+    <DigestBody lectureId={lectureId} state={state} onLoad={onLoad} onOpen={onOpen} shown={lines} />
   </details>
 );
 
@@ -172,14 +178,15 @@ export const SummaryWithheld = ({
         lectureId={lectureId}
         state={state}
         onLoad={onLoad}
-        shown={withheldUnits(onOpen)}
+        onOpen={onOpen}
+        shown={withheldUnits}
       />
     </WithheldDetails>
   );
 
 /**
- * A lecture with no summary and the act that makes one; `tried` is one this session could not make
- * and `withheld` one that kept no line, announced when `pressed`. The button stays during a re-make.
+ * A lecture with no summary and the act that makes one; `tried` is one this session could not make,
+ * announced as that when `pressed`, and `withheld` one that kept no line. The button stays during a re-make.
  */
 export const NoSummary = ({
   busy,
@@ -194,10 +201,16 @@ export const NoSummary = ({
   readonly withheld: boolean;
   readonly onRemake: () => void;
 }) => {
-  const said = withheld ? SUMMARY_ALL_WITHHELD : tried ? SUMMARY_FAILED : NO_SUMMARY;
+  const resting = withheld ? SUMMARY_ALL_WITHHELD : tried ? SUMMARY_FAILED : NO_SUMMARY;
   return (
     <p className="lecture-summary-state" aria-busy={busy}>
-      {busy ? PENDING.remake : tried && pressed ? <span role="alert">{said}</span> : said}{' '}
+      {busy ? (
+        PENDING.remake
+      ) : tried && pressed ? (
+        <span role="alert">{SUMMARY_FAILED}</span>
+      ) : (
+        resting
+      )}{' '}
       <button type="button" aria-disabled={busy} onClick={busy ? undefined : onRemake}>
         {MAKE_SUMMARY}
       </button>

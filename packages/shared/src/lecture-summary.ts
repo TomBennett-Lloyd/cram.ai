@@ -9,7 +9,7 @@ export const SummaryUnit = Unit.extend({ kind: z.literal('lecture-summary') });
 export type SummaryUnit = z.infer<typeof SummaryUnit>;
 
 /**
- * A lecture's stored digest, its units in order (`docs/adr/0009-explanation-answers.md` § Decision (l)).
+ * A lecture's summary as a prompt loads it, its units in order (`docs/adr/0009-explanation-answers.md` § Decision (l)).
  * Never empty: a lecture with no surviving unit has no summary.
  */
 export const LectureSummary = z.strictObject({

@@ -28,7 +28,7 @@ export const SUMMARY = 'Summary';
 export const NO_SUMMARY = 'No summary yet.';
 export const SUMMARY_FAILED = 'The summary couldn’t be made.';
 export const SUMMARY_ALL_WITHHELD =
-  'No line drafted for the summary could be checked against the slides.';
+  'No line drafted for this summary passed the check against its slides.';
 export const MAKE_SUMMARY = 'Make the summary';
 export const SUMMARY_REPLACED = 'This lecture’s summary has changed. Close and reopen it.';
 

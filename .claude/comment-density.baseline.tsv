@@ -55,7 +55,7 @@ apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500
 apps/web/src/decks/DecksScreen.tsx	490
 apps/web/src/decks/LectureName.tsx	476
-apps/web/src/decks/LectureSummary.tsx	357
+apps/web/src/decks/LectureSummary.tsx	334
 apps/web/src/decks/SummaryArea.tsx	285
 apps/web/src/decks/decks-fixture.tsx	281
 apps/web/src/decks/summary-fixture.ts	0
