@@ -13,6 +13,7 @@ const summarised = (units: number, drafted: number): SummaryOutcome => ({
       kind: 'lecture-summary',
     })),
   }),
+  withheld: [],
   drafted,
 });
 
@@ -24,7 +25,12 @@ describe('summaryRows', () => {
       failure: { status: 'backend-failed', reason: 'down' },
       drafted: 4,
     };
-    const none: SummaryOutcome = { status: 'unsummarised', reason: 'no-unit-survived', drafted: 3 };
+    const none: SummaryOutcome = {
+      status: 'unsummarised',
+      reason: 'no-unit-survived',
+      withheld: [],
+      drafted: 3,
+    };
     expect(summaryRows([summarised(2, 5), failed, none, summarised(1, 1)])).toEqual({
       summaryYield: {
         status: 'measured',
@@ -47,6 +53,7 @@ describe('summaryRows', () => {
     const empty: SummaryOutcome = {
       status: 'unsummarised',
       reason: 'nothing-to-summarise',
+      withheld: [],
       drafted: 0,
     };
     expect(summaryRows([empty]).summaryYield).toMatchObject({

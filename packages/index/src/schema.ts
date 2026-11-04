@@ -11,7 +11,7 @@ import { STORED_DECK_TABLES } from './stored-deck';
  * Held in `PRAGMA user_version`; no migration reads an older one (`docs/adr/0004-storage.md` § Decision (d)).
  * It also versions the records `@cram/ingest` stores and the `text_hash` `textHashOf` writes, so a change to either moves it too; carriers: `.claude/ledgers/schema-version.ledger`.
  */
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export type SchemaState = 'blank' | 'current' | 'older' | 'newer' | 'foreign';
 

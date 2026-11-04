@@ -202,9 +202,3 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/server-log.ts` (`LogEntry`, `lectureEntry`); its callers `apps/server/src/ingest-queue.ts`, `apps/server/src/ask-course.ts`, `apps/server/src/server.ts`
 - What: `operation` is a bare string, `courseId` an unbranded string, and `lectureKey` optional on every entry. So the compiler cannot require a key on a lecture-scoped operation. The next lecture job can log without one, and only a test would notice: the gap #470 closed (`docs/standards/typing.md` rules 1 and 4). Suspected root cause: the entry grew one optional field per entity instead of a union keyed by operation kind, which would cross all three callers.
 - Source: PR for #470 (review)
-
-## 2026-11-04 — nothing owns how a branch carrying a tier-2 report takes `main`
-
-- Where: `.claude/skills/run-issue/SKILL.md` step 5 ("The second merger rebases, always"); `docs/adr/0005-evaluation-as-gate.md` § Decision (f)
-- What: (f) names a report by the short SHA of the commit it measured and records the PR number because, under the squash, that commit is reachable only through the PR ref. Step 5's rebase rewrites the measured commit, so the report's name and `measuredCommit` then point at a commit outside the PR's history. Lanes and dispatch briefs follow "merge `main`, never rebase" for eval-report branches, but no file in the tree says so. #216's lane cited (f) for that practice in #547's first draft, and review found that (f) does not say it. Suspected root cause: step 5 was written before tier-2 reports existed, and the practice that came after it was never written down.
-- Source: PR for #216 (review)

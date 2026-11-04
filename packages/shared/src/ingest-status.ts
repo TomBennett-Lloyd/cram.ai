@@ -44,6 +44,7 @@ export const StoredLecture = z.strictObject({
   lectureId: LectureId,
   lectureTitle: NonBlankText,
   ...INDEXED_LECTURE,
+  withheld: z.number().int().nonnegative(),
 });
 export type StoredLecture = z.infer<typeof StoredLecture>;
 
