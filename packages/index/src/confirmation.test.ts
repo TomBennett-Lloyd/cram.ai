@@ -64,7 +64,7 @@ describe('textHashOf', () => {
 
   it('is the hash SCHEMA_VERSION was cut for, since a course file stores it', () => {
     const pin = {
-      schemaVersion: 12,
+      schemaVersion: 13,
       hash: 'f85d9975ae374dcf389fbda4960ab042c0523efdd84b8b8caa5e1d793c8f517e',
     };
     const live = { schemaVersion: SCHEMA_VERSION, hash: hashOf() };
@@ -218,7 +218,7 @@ describe('CourseIndex.lectureSlides and loadSummaries excluding unconfirmed deri
       records.map((record) => indexed(record, AWAY)),
     );
     course.confirmDerived(CONFIRMED, AT);
-    course.setSummary(summary);
+    course.setDigest({ ...summary, withheld: [] });
   });
 
   it('lists every slide of the lecture by default, and leaves the unconfirmed derived one out when asked', () => {

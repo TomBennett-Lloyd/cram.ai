@@ -163,11 +163,51 @@ export interface StubOptions {
   readonly askReplyAfter?: Promise<void>;
   /** The course holds `REBUILD_REPORT` and no upload, instead of one upload in flight (#233). */
   readonly rebuildReport?: boolean;
+  /** The course holds one summarised lecture and no upload, its summary with `WITHHELD_SUMMARY_LINE` withheld (#467). */
+  readonly summaryWithheld?: boolean;
 }
+
+export const WITHHELD_SUMMARY_LINE = 'Drones guard the comb.';
+
+const SUMMARISED_LECTURE = {
+  lectureId: 'l1',
+  lectureTitle: 'Lecture 1: The Hive',
+  slideCount: 2,
+  imageOnly: [],
+  unembedded: [],
+  summarised: true,
+  withheld: 1,
+};
+
+const summaryUnit = (text: string, quotes: readonly (readonly [string, string])[]) => ({
+  text,
+  citations: quotes.map(([sourceId, quote]) => ({ sourceId, quote })),
+  kind: 'lecture-summary',
+});
+
+const SUMMARIES = {
+  state: 'read',
+  summaries: [
+    {
+      lectureId: 'l1',
+      units: [summaryUnit('Worker bees are female.', [['s1', 'Worker bees are female.']])],
+      withheld: [
+        {
+          reason: 'unsupported',
+          unit: summaryUnit(WITHHELD_SUMMARY_LINE, [
+            ['s1', 'Drones are male.'],
+            ['s2', 'Cells are hexagonal.'],
+          ]),
+        },
+      ],
+    },
+  ],
+  slides: [HIVE, COMB],
+};
 
 /** Answers the app's API calls from the fixtures above, holding one upload's ingest in flight once. */
 export const stubApi = async (page: Page, options: StubOptions = {}): Promise<void> => {
-  const { rebuildReport = false } = options;
+  const { rebuildReport = false, summaryWithheld = false } = options;
   let ingestReads = 0;
   let report = rebuildReport ? REBUILD_REPORT : NO_REPORT;
   /** Kept in the spec's process, so a `page.reload()` reads back what the page wrote. */
@@ -186,6 +226,7 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
     return json(route, 200, { sourceId: HIVE.sourceId, chunkNo: 1, tags: hiveTags });
   });
   await page.route('**/courses', (route) => json(route, 200, { courses: ['bio'] }));
+  await page.route('**/courses/*/summaries', (route) => json(route, 200, SUMMARIES));
   await page.route('**/courses/*/slide-image?*', (route) =>
     route.fulfill({ status: 200, contentType: 'image/svg+xml', body: SLIDE_IMAGE }),
   );
@@ -213,11 +254,12 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
         : { state: 'indexed', slideCount: 2, imageOnly: [], unembedded: [], summarised: false };
     return json(route, 200, {
       courseId: 'bio',
-      stored: { state: 'read', lectures: [], report },
+      stored: { state: 'read', lectures: summaryWithheld ? [SUMMARISED_LECTURE] : [], report },
       repair: { state: 'none' },
-      uploads: rebuildReport
-        ? []
-        : [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
+      uploads:
+        rebuildReport || summaryWithheld
+          ? []
+          : [{ uploadId: 'u1', lectureId: 'l1', fileName: LONG_FILE_NAME, progress }],
       remakes: [],
     });
   });
