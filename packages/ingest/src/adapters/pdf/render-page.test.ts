@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
-import http from 'node:http';
-import https from 'node:https';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import type { SlideImage } from '@cram/shared';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildDeck, type FixtureLine } from './deck-fixture';
 import { renderPdfDeck, SLIDE_IMAGE_LONG_EDGE_PX } from './render-page';
 
@@ -24,11 +22,6 @@ const decoded = async ({ content }: SlideImage) => {
   for (let i = 0; i < data.length; i += 4) if ((data[i] ?? 255) < 128) inked++;
   return { width: image.width, height: image.height, inked };
 };
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-});
 
 describe('renderPdfDeck', () => {
   it('renders each page once, as a PNG under its page number, inked where the page has text', async () => {
@@ -75,19 +68,5 @@ describe('renderPdfDeck', () => {
     await renderPdfDeck(bytes);
     expect(bytes.byteLength).toBeGreaterThan(0);
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(digest);
-  });
-
-  it('makes no network request while rendering a deck', async () => {
-    const refuse = vi.fn(() => {
-      throw new Error('network request during rendering');
-    });
-    vi.stubGlobal('fetch', refuse);
-    vi.stubGlobal('XMLHttpRequest', refuse);
-    for (const client of [http, https]) {
-      vi.spyOn(client, 'request').mockImplementation(refuse);
-      vi.spyOn(client, 'get').mockImplementation(refuse);
-    }
-    await renderPdfDeck(await buildDeck({ pages: [{ lines: [line('Kinetics', TITLE)] }] }));
-    expect(refuse).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,7 @@ import { getDocumentProxy } from 'unpdf';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDeck, type FixtureDeck, type FixtureLine } from './deck-fixture';
 import { ingestPdf, type PdfIngestResult } from './ingest-pdf';
+import { renderPdfDeck } from './render-page';
 
 const TITLE = 48;
 const BODY = 28;
@@ -240,7 +241,7 @@ describe('ingestPdf', () => {
     expect(slide?.speakerNotes).toBe('A note');
   });
 
-  it('makes no network request while reading a deck', async () => {
+  it('makes no network request while reading and rendering a deck', async () => {
     const refuse = vi.fn(() => {
       throw new Error('network request during ingest');
     });
@@ -250,7 +251,7 @@ describe('ingestPdf', () => {
       vi.spyOn(client, 'request').mockImplementation(refuse);
       vi.spyOn(client, 'get').mockImplementation(refuse);
     }
-    await ingested({
+    const bytes = await buildDeck({
       pages: [
         {
           lines: [line('Kinetics', TITLE), line('Rates and orders of reaction')],
@@ -258,6 +259,8 @@ describe('ingestPdf', () => {
         },
       ],
     });
+    await ingest(bytes);
+    await renderPdfDeck(bytes);
     expect(refuse).not.toHaveBeenCalled();
   });
 });
