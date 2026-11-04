@@ -24,11 +24,11 @@ shipped_scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # The scripts under test, overridable so the same cases can be run against an older revision as
 # a negative control (testing.md rule 4: a regression case is only worth its line count once it
 # has been seen to fail on the pre-fix code). Same convention as lint-shell.test.sh's
-# LINT_SHELL_GATE, but a directory rather than a file: these four scripts source and exec each
-# other by name, so they can only be swapped as a set.
+# LINT_SHELL_GATE, but a directory rather than a file: these scripts source and exec each other
+# by name, so they can only be swapped as a set.
 #
 #   mkdir /tmp/pre
-#   for s in worktree-lib reap-worktree rebranch-worktree sweep-worktrees; do
+#   for s in worktree-lib reap-worktree rebranch-worktree sweep-worktrees sweep-orphans; do
 #     git show <rev>:.claude/scripts/$s.sh >/tmp/pre/$s.sh
 #   done
 #   chmod +x /tmp/pre/*.sh
@@ -42,7 +42,7 @@ shipped_scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # which is why one recipe can serve both: case 32 is what pins the shipped behaviour, and it
 # builds its own mode-644 copy rather than relying on how the recipe was run.
 #
-# Those four files are the whole of what the directory needs to hold: harness-lib.sh is always
+# Those files are the whole of what the directory needs to hold: harness-lib.sh is always
 # the shipped one, so an extracted revision from before it existed still runs.
 #
 # Unset — how `pnpm test:scripts` runs it — is the shipped set.
@@ -304,8 +304,8 @@ backdate_git_dir() {
 # ==========================================================================================
 # 1. every lifecycle script parses
 # ==========================================================================================
-begin "all four lifecycle scripts parse (bash -n)"
-for script in worktree-lib.sh reap-worktree.sh rebranch-worktree.sh sweep-worktrees.sh; do
+begin "all five lifecycle scripts parse (bash -n)"
+for script in worktree-lib.sh reap-worktree.sh rebranch-worktree.sh sweep-worktrees.sh sweep-orphans.sh; do
   expect_parses "$SCRIPTS/$script"
 done
 end
@@ -730,7 +730,7 @@ add_wt a wt-a
 add_wt b wt-b
 add_wt c wt-c
 must mkdir -p "$ROOT/scripts"
-must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/worktree-lib.sh" "$ROOT/scripts/"
+must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/sweep-orphans.sh" "$SCRIPTS/worktree-lib.sh" "$ROOT/scripts/"
 cat >"$ROOT/scripts/reap-worktree.sh" <<'EOF'
 #!/usr/bin/env bash
 case "$1" in
@@ -845,7 +845,7 @@ advance_origin upstream-work
 expect_stale_fixture
 ahead=$(origin_head) || exit 2
 must mkdir -p "$ROOT/scripts"
-must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/worktree-lib.sh" "$ROOT/scripts/"
+must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/sweep-orphans.sh" "$SCRIPTS/worktree-lib.sh" "$ROOT/scripts/"
 cat >"$ROOT/scripts/reap-worktree.sh" <<'EOF'
 #!/usr/bin/env bash
 printf 'KEPT %s — stub (fetch-knob=%s)\n' "$1" "${WORKTREE_FETCH_MAIN-unset}"
@@ -988,8 +988,8 @@ begin "sweep runs reap through bash, so 644 extracted copies still sweep"
 fixture sweep644
 add_wt feat wt
 must mkdir -p "$ROOT/scripts644"
-must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/reap-worktree.sh" "$SCRIPTS/worktree-lib.sh" \
-  "$ROOT/scripts644/"
+must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/sweep-orphans.sh" "$SCRIPTS/reap-worktree.sh" \
+  "$SCRIPTS/worktree-lib.sh" "$ROOT/scripts644/"
 # cp preserves the source's 755, so the mode this case is about has to be set, not assumed.
 must chmod 644 "$ROOT/scripts644"/*.sh
 # The branch is an unmoved cut of main, so ancestry alone settles it and a failing gh keeps the
@@ -1142,5 +1142,46 @@ expect_out "WOULD-REAP $ROOT/work tree"
 end
 
 # ==========================================================================================
+
+# ==========================================================================================
+# 37. the sweep ends what still names a worktree that is gone, in its own mode
+# ==========================================================================================
+# The orphan grammar is sweep-orphans.test.sh's; this case pins only the pass-through.
+begin "sweep lists an orphan under --dry-run and ends it on a real run"
+fixture orphans
+must mkdir -p "$ROOT/main/.claude/worktrees/live"
+perl -e 'sleep 60' "$ROOT/main/.claude/worktrees/gone/eval" &
+orphan=$!
+bg_pids="$bg_pids $orphan"
+for _ in $(seq 150); do
+  ps -ww -o command= -p "$orphan" | grep -qF "worktrees/gone" && break
+  sleep 0.2
+done
+gh_stub_broken "$ROOT/gh"
+capture -C "$ROOT/main" env WORKTREE_GH_CMD="$ROOT/gh" WORKTREE_MIN_AGE_MINUTES=0 \
+  WORKTREE_ORPHAN_MIN_AGE_MINUTES=0 bash "$SCRIPTS/sweep-worktrees.sh" --dry-run
+expect_rc 0 "$rc"
+expect_out "WOULD-KILL $orphan ("
+kill -0 "$orphan" 2>/dev/null || bad "a dry sweep ended the orphan"
+capture -C "$ROOT/main" env WORKTREE_GH_CMD="$ROOT/gh" WORKTREE_MIN_AGE_MINUTES=0 \
+  WORKTREE_ORPHAN_MIN_AGE_MINUTES=0 bash "$SCRIPTS/sweep-worktrees.sh"
+expect_rc 0 "$rc"
+expect_out "KILLED $orphan"
+kill -0 "$orphan" 2>/dev/null && bad "a real sweep left the orphan running"
+end
+
+# ==========================================================================================
+# 38. an orphan sweep that reaches no verdict fails the sweep
+# ==========================================================================================
+begin "sweep counts a failed orphan sweep as a failure"
+fixture orphanrc
+must mkdir -p "$ROOT/scripts"
+must cp "$SCRIPTS/sweep-worktrees.sh" "$SCRIPTS/reap-worktree.sh" "$SCRIPTS/worktree-lib.sh" "$ROOT/scripts/"
+printf '#!/usr/bin/env bash\nexit 2\n' >"$ROOT/scripts/sweep-orphans.sh"
+gh_stub_broken "$ROOT/gh"
+capture -C "$ROOT/main" env WORKTREE_GH_CMD="$ROOT/gh" bash "$ROOT/scripts/sweep-worktrees.sh" --dry-run
+expect_rc 2 "$rc"
+expect_out "ERROR sweep-orphans.sh exited 2"
+end
 
 finish
