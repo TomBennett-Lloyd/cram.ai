@@ -20,6 +20,8 @@ carrier: .claude/agents/task-orchestrator.md
 carrier: .claude/agents/planner.md
 carrier: .claude/scripts/check-no-network-egress.sh
 carrier: .claude/scripts/fill-verdict.sh
+carrier: .claude/scripts/adr-amendment-check.mjs
+carrier: .claude/scripts/adr-amendment-check.test.sh
 carrier: .github/workflows/ci.yml
 excluded: docs/review-feedback.md
 excluded: docs/friction-log.md
