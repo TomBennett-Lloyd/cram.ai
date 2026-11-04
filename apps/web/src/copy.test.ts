@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CourseUnavailableProblem,
+  type DroppedPointer,
   SlideNo,
   SourceId,
   type Unit,
@@ -12,8 +13,11 @@ import {
   contradictionRefLabel,
   DERIVED_SOURCE,
   discardedMessage,
+  DROPPED_QUOTES_NOTE,
+  droppedQuotesHeading,
   sourceRefLabel,
   storedUnavailableMessage,
+  withheldHeading,
   withheldMessage,
   withheldUnitMessage,
 } from './copy';
@@ -22,20 +26,26 @@ const sourceId = SourceId.parse('s1');
 const text = 'Drones forage.';
 
 describe('withheldMessage', () => {
-  it('gives each reason an explanation withholds for its own sentence', () => {
-    const entries: WithheldSentence[] = [
-      { reason: 'dangling-citation', text, sourceId },
+  it('gives each reason an explanation withholds a sentence for its own sentence', () => {
+    const entries: Exclude<WithheldSentence, DroppedPointer>[] = [
       { reason: 'contradicted', text, sourceId },
       { reason: 'unsupported', text },
       { reason: 'ungrounded', text },
     ];
-    expect(entries.map(({ reason }) => reason).sort()).toEqual(
+    expect([...entries.map(({ reason }) => reason), 'dangling-citation'].sort()).toEqual(
       WithheldSentence.options.map((arm) => arm.shape.reason.value).sort(),
     );
     const sentences = entries.map(withheldMessage);
     expect(new Set(sentences).size).toBe(sentences.length);
-    expect(sentences[0]).toMatch(/^The answer marked this line as a quote/);
-    expect(sentences[1]).toBe('A slide this answer was written from says otherwise.');
+    expect(sentences[0]).toBe('A slide this answer was written from says otherwise.');
+  });
+});
+
+describe('the withheld panels’ headings', () => {
+  it('heads chat’s dropped quote pointers for what they are, and everything withheld as withheld', () => {
+    expect(droppedQuotesHeading(9)).toBe('Quote marks removed (9)');
+    expect(withheldHeading(3)).toBe('Withheld (3)');
+    expect(DROPPED_QUOTES_NOTE).toMatch(/ Taking a mark off removed no words\.$/);
   });
 });
 

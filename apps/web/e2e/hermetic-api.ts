@@ -62,6 +62,9 @@ export const DERIVED_QUESTION = 'Are comb cells hexagonal?';
 /** A quote inside the contradicted sentence, so its underline and the mark's meet. */
 const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };
 
+/** A line of HIVE each answer marks as a quote without repeating it word for word, so its mark is dropped. */
+export const DROPPED_LINE = 'Worker bees are female.';
+
 const SENTENCES = [
   sentence('Drones are male.', ['s1']),
   sentence('Workers are female, and comb cells are hexagonal.', ['s1', 's2']),
@@ -80,7 +83,7 @@ const grounded = (
     sentences,
     sources: ['s1', 's2'],
   },
-  withheld: [{ reason: 'unsupported', text: 'Queens rule the hive.' }],
+  withheld: [{ reason: 'dangling-citation', text: DROPPED_LINE, sourceId: 's1' }],
   slides,
   leftOut: [],
 });

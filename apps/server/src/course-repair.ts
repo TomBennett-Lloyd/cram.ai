@@ -6,10 +6,11 @@ import {
   rebuildCourse,
   type RebuildCourseResult,
   reembedCourse,
+  type RenderDeck,
 } from '@cram/index';
 import type { CourseId } from '@cram/shared';
 import { courseFilePath } from './data-directory';
-import { type IngestDeps, ingestFile } from './ingest-deck';
+import { type IngestDeps, ingestFile, renderFile } from './ingest-deck';
 import { embedSlides } from './slide-embedding';
 
 const parseStored: ParseDeck = async (deck, courseId) => {
@@ -24,6 +25,8 @@ const parseStored: ParseDeck = async (deck, courseId) => {
     ? { status: 'unreadable' }
     : { status: 'parsed', slides: ingested.slides };
 };
+
+const renderStored: RenderDeck = (deck) => renderFile(deck.mediaType, deck.content);
 
 /** Embeds a stored deck's slides the way an upload does, so a rebuild reproduces what it stored (#338). */
 const embedStored =
@@ -46,7 +49,7 @@ export const repairCourse = async (courseId: CourseId, deps: IngestDeps): Promis
     embedder: deps.files.embedder,
   };
   const embed = embedStored(deps);
-  const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed });
+  const rebuilt = await rebuildCourse(spec, { parse: parseStored, embed, render: renderStored });
   if (rebuilt.status === 'deck-unreadable')
     return { outcome: rebuilt.status, lectureKey: rebuilt.lectureKey };
   if (rebuilt.status !== 'embedder-mismatch') {

@@ -3,6 +3,8 @@ import {
   APPEARS_TO_CONTRADICT,
   ATTRIBUTED_NOTE,
   DERIVED_SOURCE,
+  DROPPED_QUOTES_NOTE,
+  droppedQuotesHeading,
   SLIDE_CONTRADICTION,
 } from '../src/copy';
 import {
@@ -10,6 +12,7 @@ import {
   CONTRADICTED_QUESTION,
   CONTRADICTED_SENTENCE,
   DERIVED_QUESTION,
+  DROPPED_LINE,
   GROUNDED_QUESTION,
   NOT_COVERED_QUESTION,
   PARAGRAPHS_QUESTION,
@@ -276,13 +279,18 @@ test('the contradiction number opens the contradicting slide, naming the sentenc
   await expect(button).toBeFocused();
 });
 
-test('what was withheld is folded until opened, with its reason', async ({ page }) => {
+test('the quote marks an answer dropped are folded until opened, each line beside its slide', async ({
+  page,
+}) => {
   await ask(page, GROUNDED_QUESTION);
   const panel = page.locator('details.withheld');
-  await expect(panel.getByText('Queens rule the hive.')).toBeHidden();
+  await expect(panel.locator('summary')).toHaveText(droppedQuotesHeading(1));
+  await expect(panel.getByText(DROPPED_LINE)).toBeHidden();
   await panel.locator('summary').click();
-  await expect(panel.getByText('Queens rule the hive.')).toBeVisible();
-  await expect(panel.getByText('No slide this answer was written from says it.')).toBeVisible();
+  await expect(panel.getByText(DROPPED_QUOTES_NOTE)).toBeVisible();
+  await expect(panel.getByText(DROPPED_LINE)).toBeVisible();
+  await panel.locator('.slide-card').click();
+  await expect(page.getByRole('dialog', { name: 'Lecture 1: The Hive · slide 4' })).toBeVisible();
 });
 
 test('a question the slides do not cover gets the fixed answer and the closest slides', async ({
