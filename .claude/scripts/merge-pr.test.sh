@@ -115,6 +115,7 @@ V_COMMITS=""
 V_BODY=""
 V_BASE_REF=""
 V_URL=""
+V_TITLE=""
 
 reset_view() {
   V_STATE="OPEN"
@@ -127,6 +128,7 @@ reset_view() {
   V_COMMITS="#12: the change"
   V_BODY="What and why. Closes #12"
   V_URL="https://example.test/pull/$PR"
+  V_TITLE="#12: the change"
 }
 
 # json_objects <key> <comma-separated values> -> [{"<key>":"v"},…]
@@ -181,8 +183,27 @@ EOF
   printf ']'
 }
 
+# json_commits <comma-separated headline[|body]> -> the commits array. The body is JSON text, so
+# a case spells a newline in it as \n, as V_BODY does.
+json_commits() {
+  local first=1 spec body
+  printf '['
+  while IFS= read -r spec; do
+    [ -n "$spec" ] || continue
+    body=""
+    case "$spec" in *'|'*) body=${spec#*|} ;; esac
+    [ "$first" = "1" ] || printf ','
+    printf '{"messageHeadline":"%s","messageBody":"%s"}' "${spec%%|*}" "$body"
+    first=0
+  done <<EOF
+$(printf '%s' "$1" | tr ',' '\n')
+EOF
+  printf ']'
+}
+
 pr_json() {
   printf '{"number":%s,"state":"%s","url":"%s",' "$PR" "$V_STATE" "$V_URL"
+  printf '"title":"%s",' "$V_TITLE"
   printf '"baseRefName":"%s",' "$V_BASE_REF"
   printf '"headRefName":"%s","headRefOid":"%s","mergeStateStatus":"%s","body":"%s",' \
     "$HEAD_REF" "$V_OID" "$V_MSST" "$V_BODY"
@@ -194,7 +215,7 @@ pr_json() {
   printf ',"files":'
   json_objects path "$V_FILES"
   printf ',"commits":'
-  json_objects messageHeadline "$V_COMMITS"
+  json_commits "$V_COMMITS"
   printf ',"statusCheckRollup":'
   json_checks "$V_CHECKS"
   printf '}\n'
@@ -317,6 +338,15 @@ case "\$1 \$2" in
         exit 1
       fi
     fi
+    # The squash message, kept for the cases that read what landed on main (#617).
+    shift 2
+    while [ "\$#" -gt 0 ]; do
+      case "\$1" in
+        --subject) printf '%s\n' "\$2" >"\$state/merge.subject" ;;
+        --body-file) cp "\$2" "\$state/merge.body" ;;
+      esac
+      shift
+    done
     : >"\$state/merged"
     exit 0
     ;;
@@ -465,11 +495,14 @@ expect_not_called() {
 }
 
 # A merge is asserted by method, and the positive form requires the pin: every
-# \`gh pr merge\` the subject issues carries --match-head-commit (#408). The
-# negative form matches the method with any arguments after it.
+# \`gh pr merge\` the subject issues carries --match-head-commit (#408), and a squash
+# also its own message (#617), which a rebase never passes. The negative form matches
+# the method with any arguments after it.
 expect_merged() { # expect_merged <squash|rebase> [sha]
-  grep -qxE -- "pr merge $PR --$1 --match-head-commit ${2:-[^ ]+}" "$STATE/calls.log" ||
-    bad "gh was never called as: pr merge $PR --$1 --match-head-commit ${2:-<sha>} (log: $(tr '\n' '|' <"$STATE/calls.log"))"
+  local msg=""
+  [ "$1" = "squash" ] && msg=" --subject .+ --body-file [^ ]+"
+  grep -qxE -- "pr merge $PR --$1 --match-head-commit ${2:-[^ ]+}$msg" "$STATE/calls.log" ||
+    bad "gh was never called as: pr merge $PR --$1 --match-head-commit ${2:-<sha>}${msg:+ --subject … --body-file …} (log: $(tr '\n' '|' <"$STATE/calls.log"))"
 }
 
 expect_not_merged() { # expect_not_merged <squash|rebase>
@@ -3566,6 +3599,267 @@ expect_rc 1
 expect_stderr 'merge — FAILED: no head sha was read with the checks'
 expect_not_merged squash
 end
+
+# ==========================================================================================
+# 25. the squash message is what review read, and a stray closing keyword is refused (#617)
+# ==========================================================================================
+# GitHub builds a squash message from the branch's commits when it is given none, so a claim
+# the PR body corrected reached main (921f670), and so did `fixes: #404` from beddd61's, which
+# closed an issue its retro meant to leave open. The message is now the PR title and the body
+# above its lane report. A keyword for an issue no Closes line names is refused before
+# update-branch, because it closes that issue at merge from the body or from what lands.
+
+# expect_landed <subject> <body> — what the stub's merge arm was handed, byte for byte.
+expect_landed() {
+  local want got
+  got=$(cat "$STATE/merge.subject" 2>/dev/null)
+  [ "$got" = "$1" ] || bad "squash subject: expected '$1', got '$got'"
+  want=$(printf '%s' "$2" | od -c)
+  got=$(od -c <"$STATE/merge.body" 2>/dev/null)
+  [ "$want" = "$got" ] || bad "squash body differs; expected: $(printf '%s' "$2" | tr '\n' '|'), got: $(tr '\n' '|' <"$STATE/merge.body" 2>/dev/null)"
+}
+
+# refused_at_classify <text> — refused before update-branch, naming <text>, and nothing merged.
+refused_at_classify() {
+  expect_rc 1
+  expect_stderr 'classify — FAILED'
+  expect_stderr "$1"
+  [ "$(call_line "pr update-branch")" = "0" ] || bad "update-branch ran before the refusal"
+  expect_not_merged squash
+  expect_not_merged rebase
+}
+
+begin "a squash lands the title and the body above the lane report, with the commits' trailers"
+fixture squash-message
+V_BODY='Closes #12\n\nWhat and why.\n\n- Correction: commit abc says X. That holds for Y only.\n\n## Lane report — issue #12\nSTATUS: DONE'
+V_COMMITS='#12: the change|Every other metric matches both.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\r\n,#12: review fix|co-authored-by: claude <NoReply@anthropic.com>\nco-authored-by:   Other <o@example.test>  '
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged squash
+expect_landed '#12: the change (#490)' 'Closes #12
+
+What and why.
+
+- Correction: commit abc says X. That holds for Y only.
+
+Co-authored-by: Claude <noreply@anthropic.com>
+Co-authored-by: Other <o@example.test>
+'
+end
+
+begin "the body is cut at a TASK REPORT header too, whichever declaration comes first"
+fixture squash-cut-batch
+V_BODY='Closes #12\r\nline two\r\n\r\n## TASK REPORT — batch: anchor #12\r\nmiddle\r\n## Lane report — issue #12\r\nlast'
+write_view default
+write_merged_view
+MERGE_METHOD=squash run_merge
+expect_rc 0
+expect_merged squash
+expect_landed '#12: the change (#490)' 'Closes #12
+line two
+'
+end
+
+begin "...and at a lane report that comes before a TASK REPORT"
+fixture squash-cut-lane-first
+V_BODY='Closes #12\n## Lane report — issue #12\nmiddle\n## TASK REPORT — batch: anchor #12\nlast'
+write_view default
+write_merged_view
+MERGE_METHOD=squash run_merge
+expect_rc 0
+expect_merged squash
+expect_landed '#12: the change (#490)' 'Closes #12
+'
+end
+
+begin "a batch whose body opens with its TASK REPORT, and whose title is blank, merges --rebase"
+# The empty-summary and blank-title refusals are a squash's; PR #449's body opened this way.
+fixture rebase-no-summary
+V_BODY='## TASK REPORT — batch: anchor #21, members #21 #22\nCloses #21\nCloses #22'
+V_TITLE=''
+V_COMMITS='#21: the first,#22: the second'
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged rebase
+end
+
+begin "a body with nothing above its lane report is refused at classify"
+fixture squash-no-summary
+V_BODY=' \n\n## Lane report — issue #12\nCloses #12'
+write_view default
+run_merge
+refused_at_classify 'no summary above its lane report'
+end
+
+begin "a PR whose title is blank is refused at classify"
+fixture squash-no-title
+V_TITLE='  '
+write_view default
+run_merge
+refused_at_classify 'no title to squash under'
+end
+
+begin "a colon-form keyword in the body for an issue no Closes line names is refused at classify"
+fixture stray-body
+V_BODY='What and why. Closes #12\n\nThe owner fixes: #404 later.'
+write_view default
+run_merge
+refused_at_classify '"fixes: #404"'
+end
+
+begin "...and the same body with a Closes line for that issue merges"
+fixture stray-body-named
+V_BODY='What and why. Closes #12. Closes #404.\nThe owner fixes: #404 later.\n## Lane report — issue #12'
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged squash
+end
+
+begin "a stray keyword in the lane report is refused, since GitHub links the whole body"
+fixture stray-report
+V_BODY='What and why. Closes #12\n## Lane report — issue #12\nRetro: fixes: #404'
+write_view default
+run_merge
+refused_at_classify '"fixes: #404"'
+end
+
+begin "a stray keyword in the title is refused, since the title is the squash subject"
+fixture stray-title
+V_TITLE='#12: fixes #404 as well'
+write_view default
+run_merge
+refused_at_classify '"fixes #404"'
+end
+
+begin "a branch commit's stray keyword does not land under a squash, so it merges"
+fixture stray-commit-squash
+V_COMMITS='#12: the change|Their evidence went to the open issues that own the fixes: #404 here.'
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged squash
+grep -q '404' "$STATE/merge.body" && bad "the branch commit's text reached the squash body"
+end
+
+begin "a batch commit body's stray keyword is refused, since a rebase lands it"
+fixture stray-commit-rebase
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS='#21: the first|Also fixes: #404.,#22: the second'
+write_view default
+run_merge
+refused_at_classify '"fixes: #404"'
+end
+
+begin "...as is one in a batch commit's headline, and one in a batch body"
+fixture stray-headline-rebase
+V_BODY="Closes #21 and Closes #22"
+V_COMMITS='#21: the first and closes #404,#22: the second'
+write_view default
+run_merge
+refused_at_classify '"closes #404"'
+fixture stray-body-rebase
+V_BODY="Closes #21 and Closes #22. Resolves GH-404"
+V_COMMITS='#21: the first,#22: the second'
+write_view default
+run_merge
+refused_at_classify '"Resolves GH-404"'
+end
+
+begin "a batch whose commit bodies name only its members, and whose title strays, merges with no message"
+fixture stray-none-rebase
+V_BODY="Closes #21 and Closes #22"
+V_TITLE='batch: fixes #404 in passing'
+V_COMMITS='#21: the first|Fixes: #22 too.,#22: the second'
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged rebase
+[ -e "$STATE/merge.subject" ] && bad "a rebase passed a squash subject"
+end
+
+begin "a body edited to stray after classify is refused at merge, and the message is the merged read's"
+fixture stray-late
+write_view 1
+V_BODY='What and why. Closes #12\nfixes: #404'
+write_view default
+run_merge
+expect_rc 1
+expect_stderr 'merge — FAILED: a closing keyword for an issue no Closes line names'
+expect_stderr 'on head aaa111'
+expect_not_merged squash
+fixture message-late
+write_view 1
+V_BODY='Closes #12\nthe corrected summary'
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_landed '#12: the change (#490)' 'Closes #12
+the corrected summary
+'
+end
+
+# The grammar, row by row: R is refused, P merges. Each row is the body of a batch commit,
+# where the strict Closes reader never looks, so a plain `fixes #404` there is a stray; in a PR
+# body that same text is a Closes line.
+while IFS='|' read -r verdict text; do
+  # Section 24 selects `--case '*'` as a title no case holds, so a row's `*` is spelled out.
+  begin "closing-keyword grammar: $verdict '${text//\*/<star>}'"
+  fixture "grammar-$(printf '%s' "$text" | cksum | cut -d' ' -f1)"
+  V_BODY="Closes #21 and Closes #22"
+  V_COMMITS="#21: the first|$text,#22: the second"
+  write_view default
+  write_merged_view
+  run_merge
+  if [ "$verdict" = R ]; then
+    refused_at_classify 'a closing keyword for an issue no Closes line names'
+  else
+    expect_rc 0
+    expect_merged rebase
+  fi
+  end
+done <<'EOF'
+R|close #404
+R|closes #404
+R|closed #404
+R|fix #404
+R|fixes #404
+R|fixed #404
+R|resolve #404
+R|resolves #404
+R|resolved #404
+R|FIXED #404
+R|Fixes:#404
+R|closes\n#404
+R|**Resolves** #404
+R|_Fixes_ #404
+R|~~fixes~~ #404
+R|resolved `#404`
+R|close owner/repo#404
+R|closes owner/repo#21
+R|closes GH-404
+R|fixes https://github.com/o/r/issues/404
+R|fixes https://github.com/o/r/pull/404
+R|closes #0404
+P|closes #021
+P|prefixes #404
+P|suffix #404
+P|fix-up #404
+P|fixed in #404
+P|the fixes in #404
+P|closest #404
+P|fixesx#404
+P|fixes — #404
+P|Part of #404
+EOF
 
 # ==========================================================================================
 # 18. usage
