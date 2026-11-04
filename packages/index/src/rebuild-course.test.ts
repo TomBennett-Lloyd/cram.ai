@@ -1,12 +1,10 @@
 import Database from 'better-sqlite3';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { type CourseId, LectureId, SlideNo, SlideRecord, type Deck, TopicTag } from '@cram/shared';
+import { type CourseId, LectureId, SlideNo, type Deck, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  COURSE,
   deck,
   EMBEDDER,
-  embedWhole,
   indexed,
   openOrFail,
   slide,
@@ -17,37 +15,10 @@ import {
   firstFact,
 } from './course-fixture';
 import { openCourse } from './open-course';
-import {
-  type ParsedDeck,
-  rebuildCourse,
-  type RebuildCourseResult,
-  type RebuildDeps,
-} from './rebuild-course';
+import { type ParsedDeck, rebuildCourse, type RebuildCourseResult } from './rebuild-course';
 import { SCHEMA_VERSION } from './schema';
+import { deps, embed, encode, moveDeck, OLDER, parse, writeOlderFile } from './rebuild-fixture';
 import { sourceIdOf } from './slide-row';
-
-/**
- * A copy of `STORED_DECK_TABLES` as files have always held it, deliberately not imported:
- * if this test fails after that DDL changed, older files can no longer be rebuilt.
- */
-const FROZEN_DECK_TABLES = `
-  create table decks (
-    lecture_id text primary key,
-    lecture_title text not null,
-    media_type text not null,
-    content blob not null
-  ) strict;
-  create table slide_images (
-    lecture_id text not null references decks (lecture_id),
-    slide_no integer not null,
-    media_type text not null,
-    content blob not null,
-    primary key (lecture_id, slide_no)
-  ) strict;
-`;
-
-const OLDER = SCHEMA_VERSION - 1;
-const encode = (value: string) => new TextEncoder().encode(value);
 
 let temp: TempCourse;
 beforeEach(() => {
@@ -56,68 +27,6 @@ beforeEach(() => {
 afterEach(() => {
   temp.remove();
 });
-
-/** An older course file: the frozen deck tables beside tables this app has never defined. */
-const writeOlderFile = (
-  path: string,
-  options: { readonly courseId?: string; readonly decks?: boolean } = {},
-): void => {
-  const db = new Database(path);
-  db.exec(`
-    create table course (singleton integer primary key, course_id text not null, title text);
-    create table notes (id integer primary key autoincrement, body text not null);
-    create table attempts (id integer primary key);
-    create table "exam ""marks""" (mark integer);
-    insert into "exam ""marks""" values (7);
-  `);
-  db.prepare('insert into course (singleton, course_id, title) values (1, ?, ?)').run(
-    options.courseId ?? COURSE,
-    'Biology',
-  );
-  db.prepare('insert into notes (body) values (?), (?)').run('osmosis notes', 'diffusion notes');
-  if (options.decks ?? true) {
-    db.exec(FROZEN_DECK_TABLES);
-    const insertDeck = db.prepare("insert into decks values (?, ?, 'application/pdf', ?)");
-    insertDeck.run('lecture-1', 'Cells', encode('osmosis|diffusion'));
-    insertDeck.run('lecture-2', 'Tissues', encode('epithelium'));
-    db.prepare("insert into slide_images values ('lecture-1', 2, 'image/png', ?)").run(
-      encode('diffusion diagram'),
-    );
-  }
-  db.pragma(`user_version = ${String(OLDER)}`);
-  db.close();
-};
-
-/** One slide per `|`-separated part of the deck's text. */
-const parse = vi.fn((stored: Deck, courseId: CourseId): Promise<ParsedDeck> =>
-  Promise.resolve({
-    status: 'parsed',
-    slides: new TextDecoder()
-      .decode(stored.content)
-      .split('|')
-      .map((body, index) =>
-        SlideRecord.parse({
-          courseId,
-          lectureId: stored.lectureId,
-          lectureTitle: stored.lectureTitle,
-          slideNo: index + 1,
-          kind: 'content',
-          title: '',
-          body,
-          speakerNotes: '',
-          imageCaptions: [],
-          derived: false,
-          sourceHash: 'hash',
-        }),
-      ),
-  }),
-);
-
-const embed = vi.fn((slides: readonly SlideRecord[]) =>
-  Promise.resolve(slides.map((_, index) => vector(1, index, 0, 0))),
-);
-
-const deps: RebuildDeps = { parse, embed: embedWhole(embed) };
 
 beforeEach(() => {
   parse.mockClear();
@@ -274,8 +183,9 @@ describe('rebuildCourse', () => {
     expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });
   });
 
-  it('names the first stored deck that no longer reads, and leaves the older file untouched', async () => {
+  it('names the first stored deck that no longer reads, by id and key, and leaves the older file untouched', async () => {
     writeOlderFile(temp.spec.path);
+    moveDeck(temp.spec.path, 'lecture-2', 7);
     const before = readFileSync(temp.spec.path);
     const unreadable = vi.fn((stored: Deck, courseId: CourseId): Promise<ParsedDeck> =>
       stored.lectureId === 'lecture-2'
@@ -285,11 +195,28 @@ describe('rebuildCourse', () => {
     expect(await rebuildCourse(temp.spec, { ...deps, parse: unreadable })).toEqual({
       status: 'deck-unreadable',
       lectureId: 'lecture-2',
+      lectureKey: 7,
     });
     expect(unreadable).toHaveBeenCalledTimes(2);
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);
     expect(openCourse(temp.spec)).toEqual({ status: 'older-schema', fileVersion: OLDER });
+  });
+
+  it.each([
+    ['swapped, which a one-pass move collides on', 2, 1],
+    ['sparse', 11, 2],
+  ])('carries each stored lecture’s key across when the keys are %s', async (_, one, two) => {
+    writeOlderFile(temp.spec.path);
+    moveDeck(temp.spec.path, 'lecture-1', 99);
+    moveDeck(temp.spec.path, 'lecture-2', two);
+    moveDeck(temp.spec.path, 'lecture-1', one);
+    const { course } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
+    expect(['lecture-1', 'lecture-2'].map((id) => course.lectureKey(LectureId.parse(id)))).toEqual([
+      one,
+      two,
+    ]);
+    course.close();
   });
 
   it('discards what a killed rebuild left behind', async () => {
