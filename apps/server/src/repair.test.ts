@@ -91,6 +91,7 @@ describe('start-up repair', () => {
             imageOnly: [1],
             unembedded: [],
             summarised: false,
+            withheld: 1,
           },
         ],
         report: { state: 'none' },

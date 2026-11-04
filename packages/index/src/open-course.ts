@@ -44,7 +44,7 @@ export type CourseReader = Pick<
   | 'chunks'
   | 'topics'
   | 'summary'
-  | 'summaries'
+  | 'digests'
   | 'rebuildReport'
   | 'deck'
   | 'slideImage'

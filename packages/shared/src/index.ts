@@ -45,6 +45,7 @@ export {
 export { Unit, UnitKind } from './unit';
 export {
   CourseSummaries,
+  LectureDigest,
   LectureSummary,
   type LoadedSummary,
   SummaryRemakeRequest,

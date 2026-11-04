@@ -33,6 +33,7 @@ const HIVE_STORED = {
       imageOnly: [2],
       unembedded: [],
       summarised: false,
+      withheld: 1,
     },
   ],
   report: { state: 'none' },

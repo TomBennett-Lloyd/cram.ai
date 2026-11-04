@@ -78,6 +78,7 @@ export {
 } from './prompt-budget';
 export {
   SUMMARY_MAX_UNITS,
+  digestOf,
   type SummaryDeps,
   type SummaryLecture,
   type SummaryOutcome,
