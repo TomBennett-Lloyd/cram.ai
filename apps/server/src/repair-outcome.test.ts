@@ -36,10 +36,13 @@ describe('a start-up repair’s outcome', () => {
 
   it('logs a stored deck that no longer reads by that outcome, and leaves the file as it was', async () => {
     const dataDir = await olderDataDir('The Hive', new TextEncoder().encode('not a PDF at all'));
+    const file = new DatabaseSync(courseFilePath(dataDir, BIO));
+    file.prepare('update decks set rowid = 5').run();
+    file.close();
     const before = readFileSync(courseFilePath(dataDir, BIO));
     const server = await restarted(dataDir);
     expect(await repairLog(server)).toEqual([
-      { operation: 'repair', courseId: 'bio', outcome: 'deck-unreadable' },
+      { operation: 'repair', courseId: 'bio', lectureKey: 5, outcome: 'deck-unreadable' },
     ]);
     expect(await repairedStatus(server)).toEqual({
       stored: { state: 'course-unavailable', problem: 'older-schema' },

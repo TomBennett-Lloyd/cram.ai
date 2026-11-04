@@ -100,6 +100,23 @@ describe('CourseIndex.replaceLecture', () => {
     expect(text(course.slideImage(LECTURE_2, SlideNo.parse(1))?.content)).toBe('enzymes image');
   });
 
+  it('keeps each lecture’s key across a replace, and has none for a lecture it does not hold', () => {
+    expect([LECTURE_1, LECTURE_2].map((id) => course.lectureKey(id))).toEqual([2, 1]);
+    course.replaceLecture(
+      deck({ lectureId: 'lecture-2', lectureTitle: 'Lecture 2' }),
+      [],
+      [
+        indexed(
+          slide({ lectureId: 'lecture-2', lectureTitle: 'Lecture 2', body: 'enzymes' }),
+          OTHER,
+        ),
+      ],
+    );
+    course.replaceLecture(deck(), [], lectureOne(['alpha']));
+    expect([LECTURE_1, LECTURE_2].map((id) => course.lectureKey(id))).toEqual([2, 1]);
+    expect(course.lectureKey(LectureId.parse('lecture-3'))).toBeUndefined();
+  });
+
   it('refuses a slide of another lecture, and writes nothing', () => {
     expect(() => {
       course.replaceLecture(

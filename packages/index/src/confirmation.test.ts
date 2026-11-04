@@ -1,4 +1,4 @@
-import { CourseId, LectureId, SourceId, TopicTag } from '@cram/shared';
+import { CourseId, LectureId, LectureSummary, SourceId, TopicTag } from '@cram/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   indexed,
@@ -12,6 +12,8 @@ import {
 } from './course-fixture';
 import { textHashOf } from './confirmation';
 import { CANDIDATES_PER_LIST, type CourseIndex } from './course-index';
+import type { SlideListing } from './list-filter';
+import { loadSummaries } from './loaded-summaries';
 import { SCHEMA_VERSION } from './schema';
 import { sourceIdOf } from './slide-row';
 
@@ -190,6 +192,46 @@ describe('CourseIndex.slides and slidesTagged excluding unconfirmed derived slid
     const exclude = { excludeUnconfirmedDerived: true };
     expect(slideNos(course.slides(exclude))).toEqual([2, 3]);
     expect(slideNos(course.slidesTagged(TopicTag.parse('cells'), exclude))).toEqual([2, 3]);
+  });
+});
+
+describe('CourseIndex.lectureSlides and loadSummaries excluding unconfirmed derived slides', () => {
+  const CONFIRMED = slide({ slideNo: 3, derived: true, body: 'ocr confirmed' });
+  const records = [DERIVED, TYPED, CONFIRMED];
+  const summary = LectureSummary.parse({
+    lectureId: DERIVED.lectureId,
+    units: records.map((record) => ({
+      text: `Summarised: ${record.body}`,
+      citations: [{ sourceId: sourceIdOf(record), quote: record.body }],
+      kind: 'lecture-summary',
+    })),
+  });
+  const lineCites = (): readonly (readonly SourceId[])[] =>
+    loadSummaries(course, course.lectureSlides(DERIVED.lectureId), {
+      excludeUnconfirmedDerived: true,
+    }).flatMap(({ summary: loaded }) =>
+      loaded.units.map(({ citations }) => citations.map(({ sourceId }) => sourceId)),
+    );
+  beforeEach(() => {
+    indexLectures(
+      course,
+      records.map((record) => indexed(record, AWAY)),
+    );
+    course.confirmDerived(CONFIRMED, AT);
+    course.setDigest({ ...summary, withheld: [] });
+  });
+
+  it('lists every slide of the lecture by default, and leaves the unconfirmed derived one out when asked', () => {
+    const slideNos = (listing?: SlideListing) =>
+      course.lectureSlides(DERIVED.lectureId, listing).map(({ record }) => record.slideNo);
+    expect(slideNos()).toEqual([1, 2, 3]);
+    expect(slideNos({ excludeUnconfirmedDerived: true })).toEqual([2, 3]);
+  });
+
+  it('reads confirmation when the summary loads, so a line confirmed after it was made comes back', () => {
+    expect(lineCites()).toEqual([[sourceIdOf(TYPED)], [sourceIdOf(CONFIRMED)]]);
+    course.confirmDerived(DERIVED, LATER);
+    expect(lineCites()).toEqual(records.map((record) => [sourceIdOf(record)]));
   });
 });
 

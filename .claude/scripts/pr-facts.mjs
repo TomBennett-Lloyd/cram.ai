@@ -67,10 +67,14 @@ process.stdin.on('end', () => {
   }
   // Each lane declares itself in the body: a ticket-agent lane by its report header
   // (.claude/agents/ticket-agent.md rule 8), a task-orchestrator batch by its TASK REPORT header
-  // line (.claude/agents/task-orchestrator.md rule 7).
+  // line (.claude/agents/task-orchestrator.md rule 7). A line opening `Part of #<n>` declares that
+  // the PR leaves issue n open, the form a PARTIAL lane's deferred criterion takes
+  // (.claude/agents/ticket-agent.md rule 5); like the headers it is read only at a line's start, so prose that
+  // mentions being part of an issue declares nothing.
   for (const [kind, declRe] of [
     ['lane', /^## Lane report — issue #(\d+)/gm],
     ['batch', /^## TASK REPORT — .*?batch: anchor #(\d+)/gm],
+    ['partof', /^Part of #(\d+)\b/gm],
   ]) {
     const found = new Set();
     while ((m = declRe.exec(body))) found.add(m[1]);

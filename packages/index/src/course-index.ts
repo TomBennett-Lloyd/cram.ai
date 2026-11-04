@@ -3,9 +3,7 @@ import {
   type CourseId,
   type Deck,
   type DiscardedTable,
-  type LectureDigest,
   type LectureId,
-  type LectureSummary,
   type RebuildReportRevision,
   type RetrievedSlide,
   type SlideChunk,
@@ -17,6 +15,7 @@ import {
   type TopicOrigin,
   type TopicTag,
 } from '@cram/shared';
+import type { LectureDigest, LectureSummary } from '@cram/shared';
 import { z } from 'zod';
 import { CHUNK_COLUMNS, chunkFromRow, chunkRowValues, ftsValues } from './chunk-row';
 import {
@@ -37,7 +36,7 @@ import {
 } from './indexed-slide';
 import { dropSummary, readDigests, readSummary, writeDigest } from './lecture-summaries';
 import { listed, listFilters, type SlideListing } from './list-filter';
-import { vectorList, wordList } from './ranked-lists';
+import { firstPerSlide, vectorList, wordList } from './ranked-lists';
 import { fuseByReciprocalRank } from './reciprocal-rank';
 import type { SearchQuery } from './search-query';
 import { dismissRebuildReport, rebuildReportOf, recordRebuildReport } from './rebuild-report';
@@ -64,7 +63,9 @@ import {
 } from './slide-row';
 import {
   deleteDeck,
+  type LectureKey,
   readDeck,
+  readLectureKey,
   readSlideImage,
   requireDistinctSlideImages,
   writeDeck,
@@ -87,12 +88,6 @@ export type RemoveLectureResult =
 
 const RowId = z.number().int();
 const RowIds = z.array(RowId);
-
-/** Each slide once, at its best chunk's rank (`docs/adr/0008-slide-chunking.md` § Decision (f)). */
-const firstPerSlide = (
-  chunkIds: readonly number[],
-  slideOf: (chunkId: number) => number,
-): readonly number[] => [...new Set(chunkIds.map(slideOf))];
 
 const INSERT_SLIDE = `insert into slides (${SLIDE_COLUMNS}) values (${SLIDE_COLUMNS.replace(/\w+/g, '?')}) returning id`;
 const INSERT_CHUNK = `insert into chunks (${CHUNK_COLUMNS}) values (${CHUNK_COLUMNS.replace(/\w+/g, '?')}) returning id`;
@@ -203,10 +198,11 @@ export class CourseIndex {
     );
   }
 
-  lectureSlides(lectureId: LectureId): readonly RetrievedSlide[] {
-    return this.#storedSlides('where lecture_id = ? order by slide_no', lectureId).map(
-      ({ sourceId, record }) => ({ sourceId, record }),
-    );
+  lectureSlides(lectureId: LectureId, listing: SlideListing = {}): readonly RetrievedSlide[] {
+    return this.#storedSlides(
+      `where lecture_id = ? ${listed(listing)} order by slide_no`,
+      lectureId,
+    ).map(({ sourceId, record }) => ({ sourceId, record }));
   }
 
   setDigest(digest: LectureDigest): void {
@@ -329,6 +325,10 @@ export class CourseIndex {
 
   lectures(): readonly StoredLecture[] {
     return storedLectures(this.#db);
+  }
+
+  lectureKey(lectureId: LectureId): LectureKey | undefined {
+    return readLectureKey(this.#db, lectureId);
   }
 
   /** What a rebuild discarded that the student has not dismissed (#233). */
