@@ -2,7 +2,7 @@
 owner: .claude/scripts/merge-pr.sh
 claim: a merge lands only the head whose checks were read — gh pr merge carries --match-head-commit <that sha>, by script and by hand (#408)
 cite: .claude/scripts/merge-pr.sh § merge
-sweep: match-head-commit|merge-pr\.sh § merge\b
+sweep: merge-pr\.sh § merge\b|match-head-commit|(?i:head (?:whose|those) checks)
 carrier: .claude/scripts/merge-pr.test.sh
 carrier: .claude/skills/review-loop/SKILL.md
 carrier: .claude/skills/run-issue/SKILL.md
