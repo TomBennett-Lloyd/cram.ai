@@ -1,6 +1,7 @@
 import {
   PROVISIONAL_NLI_THRESHOLDS,
   PROVISIONAL_VERIFIER_STRATEGY,
+  digestOf,
   summariseLecture,
   type SummaryOutcome,
 } from '@cram/grounding';
@@ -30,7 +31,7 @@ export const summariseStored = async (
       strategy: PROVISIONAL_VERIFIER_STRATEGY,
       thresholds: PROVISIONAL_NLI_THRESHOLDS,
     });
-    if (outcome.status === 'summarised') course.setSummary(outcome.summary);
+    if (outcome.status !== 'model-failed') course.setDigest(digestOf(lectureId, outcome));
     return outcome;
   } finally {
     course.close();

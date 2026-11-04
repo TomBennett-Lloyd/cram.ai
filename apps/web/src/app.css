@@ -141,7 +141,7 @@ input:not([type='file']) {
 .citations,
 .sources,
 .summary-lines,
-.withheld ul {
+.withheld > ul {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -353,7 +353,7 @@ input:not([type='file']) {
   font-size: var(--text-sm);
 }
 
-.withheld ul {
+.withheld > ul {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
