@@ -34,7 +34,7 @@ export const listFilters = (exclusions: ListExclusions): ListFilters => {
   };
 };
 
-/** A listing exam generation can draw its target slides from (`docs/plan.md` §3.5). */
+/** A listing exam generation draws its target slides (`docs/plan.md` §3.5) and its summary lines (`docs/standards/grounding.md` rule 10) from. */
 export interface SlideListing {
   readonly excludeUnconfirmedDerived?: boolean;
 }

@@ -63,6 +63,31 @@ export const requireDistinctSlideImages = (
   }
 };
 
+/** A stored lecture's key in the server log: its `decks` rowid, which the upsert in `writeDeck` keeps and `carryLectureKeys` carries across a rebuild (#470). */
+export const LectureKey = z.number().int().positive().brand<'LectureKey'>();
+export type LectureKey = z.infer<typeof LectureKey>;
+
+export const readLectureKey = (db: Database, lectureId: LectureId): LectureKey | undefined => {
+  const key: unknown = db
+    .prepare('select rowid from decks where lecture_id = ?')
+    .pluck()
+    .get(lectureId);
+  return key === undefined ? undefined : LectureKey.parse(key);
+};
+
+const LectureKeyRow = z.object({ lecture_id: z.string(), rowid: z.number().int() });
+
+export const carryLectureKeys = (from: Database, to: Database): void => {
+  const keys = z
+    .array(LectureKeyRow)
+    .parse(from.prepare('select lecture_id, rowid from decks').all());
+  const move = to.prepare('update decks set rowid = ? where lecture_id = ?');
+  to.transaction(() => {
+    for (const { lecture_id, rowid } of keys) move.run(-rowid, lecture_id);
+    to.prepare('update decks set rowid = -rowid').run();
+  })();
+};
+
 /** Replaces the lecture's deck and every one of its slide images, in one transaction. */
 export const writeDeck = (db: Database, deck: Deck, images: readonly SlideImage[]): void => {
   const insertImage = db.prepare(

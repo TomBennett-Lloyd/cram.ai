@@ -14,7 +14,10 @@ import {
 } from './open-course';
 import { readRebuildReport, REBUILD_REPORT_TABLE_NAME } from './rebuild-report';
 import {
+  carryLectureKeys,
+  type LectureKey,
   readDeck,
+  readLectureKey,
   readSlideImages,
   STORED_DECK_TABLE_NAMES,
   storedLectureIds,
@@ -35,7 +38,11 @@ export interface RebuildDeps {
 export type RebuildCourseResult =
   | Exclude<OpenCourseResult, { status: 'older-schema' }>
   | { readonly status: 'no-stored-decks'; readonly fileVersion: number }
-  | { readonly status: 'deck-unreadable'; readonly lectureId: LectureId }
+  | {
+      readonly status: 'deck-unreadable';
+      readonly lectureId: LectureId;
+      readonly lectureKey: LectureKey;
+    }
   | {
       readonly status: 'rebuilt';
       readonly course: CourseIndex;
@@ -96,8 +103,7 @@ const hasTable = (db: Database.Database, name: string): boolean =>
     .get(name) === 1;
 
 type Written =
-  | { readonly status: 'written' }
-  | { readonly status: 'deck-unreadable'; readonly lectureId: LectureId };
+  { readonly status: 'written' } | Extract<RebuildCourseResult, { status: 'deck-unreadable' }>;
 
 const writeRebuilt = async (
   old: Database.Database,
@@ -112,10 +118,13 @@ const writeRebuilt = async (
   try {
     for (const lectureId of storedLectureIds(old)) {
       const deck = readDeck(old, lectureId);
-      if (deck === undefined) throw new Error(`rebuildCourse: deck ${lectureId} vanished mid-read`);
+      const lectureKey = readLectureKey(old, lectureId);
+      if (deck === undefined || lectureKey === undefined)
+        throw new Error(`rebuildCourse: deck ${lectureId} vanished mid-read`);
       try {
         const parsed = await deps.parse(deck, spec.courseId);
-        if (parsed.status === 'unreadable') return { status: 'deck-unreadable', lectureId };
+        if (parsed.status === 'unreadable')
+          return { status: 'deck-unreadable', lectureId, lectureKey };
         const slides = await embedSlides('rebuildCourse', parsed.slides, deps.embed);
         course.replaceLecture(deck, readSlideImages(old, lectureId), slides);
       } catch (error) {
@@ -157,6 +166,12 @@ export const rebuildCourse = async (
     if (written.status === 'deck-unreadable') {
       rmSync(rebuilt, { force: true });
       return written;
+    }
+    const target = new Database(rebuilt, { fileMustExist: true });
+    try {
+      carryLectureKeys(old, target);
+    } finally {
+      target.close();
     }
   } catch (error) {
     rmSync(rebuilt, { force: true });

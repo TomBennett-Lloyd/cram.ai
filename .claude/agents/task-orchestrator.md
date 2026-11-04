@@ -141,7 +141,10 @@ your issue's comments; the top-level never posts them for you.
    status comment names the path so the top-level can run it as its own ticket-agent lane. **Curated history is a standing invariant**: exactly
    one commit per member, `#<m>: <summary>`, from that member's first completed chunk;
    every later edit for the member folds in via `git commit --fixup <member-sha>` +
-   `git -c sequence.editor=: rebase -i --autosquash main` (or `--amend` when it is HEAD).
+   `git -c sequence.editor=: rebase -i --autosquash "$(git merge-base HEAD origin/main)"`
+   (or `--amend` when it is HEAD): the fold replays onto the base it is given, and the
+   merge-base is the branch's current base, so the fold moves nothing — only the
+   "curate onto latest main" bounce below moves it (#457).
    You are the only git-writer, so rewriting is safe; force-push only your own branch,
    never after the merge chain has started. A member not fully verified by review time
    ships NOTHING: drop its commit in curation (no revert commits — nothing of it reaches

@@ -45,6 +45,7 @@ export {
 export { Unit, UnitKind } from './unit';
 export {
   CourseSummaries,
+  LectureDigest,
   LectureSummary,
   type LoadedSummary,
   SummaryRemakeRequest,
@@ -52,6 +53,7 @@ export {
 } from './lecture-summary';
 export { AttributedSentence, Explanation, ExplanationSurface } from './explanation';
 export { PartialPolicy, Verdict, VerificationDepth, WithheldReason } from './verification';
+export { VERIFICATION_DEPTH } from './verification-depth';
 export { WithheldSentence, WithheldUnit } from './withheld';
 export { ApiRefusal } from './api-refusal';
 export { AskReply, AskRequest } from './ask';
