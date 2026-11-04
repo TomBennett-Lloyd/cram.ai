@@ -11,15 +11,16 @@ const LANE_REPORT = /^## Lane report — issue #(\d+)/m;
 const BATCH_REPORT = /^## TASK REPORT — .*?batch: anchor #(\d+)/m;
 
 // A closing keyword and the reference after it. Wider than GitHub's grammar on purpose (the
-// colon, markdown marks around the keyword, any qualified reference), because a false refusal
-// costs a body edit and a miss closes an issue: `fixes: #404` in beddd61's message closed #404
-// (#617). Letters and digits bound the keyword, not `\b`, so `_Fixes_` is read too.
+// `R` rows of merge-pr.test.sh section 25), because a false refusal costs a body edit and a
+// miss closes an issue: `fixes: #404` in beddd61's message closed #404 (#617). Letters and
+// digits bound the keyword, not `\b`, so `_Fixes_` is read too.
 const CLOSING_REF =
   /(?<![a-z0-9])(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)(?![a-z0-9])[\s:*_~`]*(https?:\/\/\S*?\/(?:issues|pull)\/\d+|GH-\d+|[\w./-]*#\d+)/gi;
 
 // The squash message is what review read, never the branch's commit messages (#617): the PR
 // title, and the body above its first lane declaration, which is where a lane corrects a claim.
 // Co-authored-by trailers are the one thing taken from the commits, as GitHub's default does.
+// Where its shape is restated: .claude/ledgers/squash-message.ledger.
 function squashMessage(pr) {
   const title = String(pr.title || '').trim();
   if (!title) return { ok: false, reason: 'the PR has no title to squash under' };
@@ -104,7 +105,7 @@ process.stdin.on('end', () => {
   }
   for (const e of latest.values()) put('check', e.name, e.status, e.conclusion);
 
-  // The closing keywords GitHub itself honours, read from the body rather than from
+  // The strict closing-keyword form, read from the body rather than from
   // closingIssuesReferences: the body is what the author wrote and a reviewer read, and the
   // squash-vs-rebase decision has to turn on the text a human would count.
   const body = pr.body || '';

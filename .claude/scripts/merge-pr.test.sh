@@ -3674,6 +3674,19 @@ expect_landed '#12: the change (#490)' 'Closes #12
 '
 end
 
+begin "a batch whose body opens with its TASK REPORT, and whose title is blank, merges --rebase"
+# The empty-summary and blank-title refusals are a squash's; PR #449's body opened this way.
+fixture rebase-no-summary
+V_BODY='## TASK REPORT — batch: anchor #21, members #21 #22\nCloses #21\nCloses #22'
+V_TITLE=''
+V_COMMITS='#21: the first,#22: the second'
+write_view default
+write_merged_view
+run_merge
+expect_rc 0
+expect_merged rebase
+end
+
 begin "a body with nothing above its lane report is refused at classify"
 fixture squash-no-summary
 V_BODY=' \n\n## Lane report — issue #12\nCloses #12'
