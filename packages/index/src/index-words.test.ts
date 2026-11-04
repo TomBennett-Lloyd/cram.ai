@@ -1,3 +1,4 @@
+import { SWEEP_TEST_TIMEOUT_MS } from '@cram/shared/sweep-test-timeout';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -158,7 +159,7 @@ describe('IndexTokenizer.words', () => {
     expect(disagreements(INDEX_WORDS, hostileStrings(600))).toEqual([]);
   });
 
-  it('treats every BMP code point as slides_fts does', () => {
+  it('treats every BMP code point as slides_fts does', { timeout: SWEEP_TEST_TIMEOUT_MS }, () => {
     expect(disagreements(new IndexTokenizer(), [everyBmpCodePoint()])).toEqual([]);
   });
 

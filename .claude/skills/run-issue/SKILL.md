@@ -56,6 +56,15 @@ the section before you dispatch.
    admit it with step 2's overlap note naming the first as the lane its tier-2 run waits
    for (`.claude/agents/ticket-agent.md` rule 6): six lanes re-recorded or lost a run
    without this (#486). `conserve` budget mode: one lane.
+   **Load gate** (owner, 2026-11-04, #483): immediately before every dispatch, in either
+   lane, read `sysctl -n vm.loadavg` and `sysctl -n hw.ncpu`; while the middle figure, the
+   5-minute load average, is above three times the core count, hold the lane. A held lane
+   keeps its in-flight row, marked `held: load <x>`, and goes out once a later read shows the
+   figure at or under that line; re-read at every report and merge. The hold lifts on the
+   measurement alone: it is not a sequencing decision and never a reason to batch. While anything is
+   held, `bash .claude/scripts/sweep-worktrees.sh --dry-run` lists as `WOULD-KILL` the
+   orphans `.claude/scripts/sweep-orphans.sh`'s header defines, which a real sweep ends. The
+   evidence, lanes' verify runs red on load timeouts, is #483's.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
    mode and the overlap note — nothing else; it reads the issue and the files.
    The overlap note asserts only what a command printed: each overlapping lane's issue or
@@ -168,7 +177,8 @@ the section before you dispatch.
    (`docs/standards/evidence.md`) — go in the in-flight table rows, never into issues.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
    `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
-   poll, a merge taken only from `CLEAN`, and then, only once the PR reports `MERGED`, the
+   poll, a merge taken only from `CLEAN` and pinned with `--match-head-commit` to the
+   head whose checks it read, and then, only once the PR reports `MERGED`, the
    label removal, the `Closes`-issue check and the worktree reap. It is idempotent and
    re-runnable from any state, so the repair for a chain that dies mid-poll is to run it
    again; a failure names the step the next run resumes from. It never fills a **Verdict** —
@@ -184,9 +194,14 @@ the section before you dispatch.
    the PR waits as it is, and `bash .claude/scripts/merge-pr.sh <pr>` unions the conflict at
    merge in its update-branch step, or refuses, naming why (#297). Any other path, or that
    refusal → a `REBASE —` bounce to the
-   warm agent, which rebases per its rule 8 and re-reports. The second merger rebases,
-   always; merges serialise, in step 4's **Merge order**. The bounce carries pasted command
-   output and citations, and no figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
+   warm agent, which rebases per its rule 8 and re-reports. On a branch whose diff against
+   `origin/main` adds or updates a file under `eval/reports/` — the second of two
+   eval-bearing PRs in step 4's **Merge order** among them — the bounce reads
+   `REBASE — merge origin/main (ADR 0005 (f))`, and the lane merges rather than rebases,
+   under the same rule 8, so the commit its report measured stays in the PR's history. The
+   second merger takes `main` in one of these two forms, always; merges serialise, in step
+   4's **Merge order**. The bounce carries pasted command output and citations, and no
+   figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
    (a) `git log --oneline "$base"..origin/main`, what merged since the branch was cut;
    (b) `git diff "$base" origin/main -- <file>` for each file both sides touched, that set
    printed by
@@ -205,10 +220,12 @@ the section before you dispatch.
    arrives after the report takes this step's arms above unchanged — logs alone wait for
    `merge-pr.sh`'s union, any other path is the `REBASE —` bounce — because the lane
    pushes nothing unprompted after `DONE` (`.claude/agents/ticket-agent.md` rule 5).
-   A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase and
-   pushes nothing more, which makes the worktree yours: finish the rebase there — git only,
-   under every rule `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify,
-   force-push the branch, then run any fill the PR still owes per step 4 (#205).
+   A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase, or
+   mid-merge on an eval-report branch, and pushes nothing more, which makes the worktree
+   yours: finish that rebase or merge there — git only, under every rule
+   `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify, push the branch
+   (forced after a rebase, plain after a merge), then run any fill the PR still owes per
+   step 4 (#205).
 6. **Release**: PR merged, issue closed, no bounce open → the `## Lane report` in the PR body
    is the retro's first-hand input; run `/retro`; remove the row. A wedged agent (no report,
    no branch movement) gets the worktree and the issue inspected FIRST, then `TaskStop`, then
@@ -230,12 +247,13 @@ the section before you dispatch.
    RELEASE. No fixed concurrency cap — **maximize safe parallelism** (owner, 2026-08-09,
    clarified 2026-08-10): isolation quality is the gate — admit every candidate whose
    footprint is cleanly isolated from (or trivially rebasable against) everything in
-   flight; entangled candidates hold, or batch. Never hold work back merely to conserve
-   your own context: each set costs you only reports and a table row by design, and
-   delegation is itself the fix for context pressure. Context health is a sanity backstop
-   only — if in-flight sets are somehow costing more than that (bounce chatter, bloated
-   reports), fix the contract breach; don't slow admission. Conserve budget mode is the
-   one hard cap: 1 concurrent set. Each candidate's acceptance is read per the
+   flight; entangled candidates hold, or batch. The ticket-agent lane's step 1 load gate
+   holds every dispatch while the machine's load reads over its line (#483). Never hold
+   work back merely to conserve your own context: each set costs you only reports and a
+   table row by design, and delegation is itself the fix for context pressure. Context
+   health is a sanity backstop only — if in-flight sets are somehow costing more than that
+   (bounce chatter, bloated reports), fix the contract breach; don't slow admission.
+   Conserve budget mode is the one fixed cap: 1 concurrent set. Each candidate's acceptance is read per the
    ticket-agent lane's step 1 before step 2's composition test, so the `adr` label that test keys on is
    on the issue, and any split the read produces is itself a candidate or a dependency
    outside the batch, by then.

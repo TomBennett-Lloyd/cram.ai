@@ -117,31 +117,11 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: four modules each declare a schema for an integer row id read back from SQLite. The intent is the same in each (`docs/standards/structure.md` rule 7). #369 added a copy instead of sharing one. Suspected root cause: no shared row-reading module in `@cram/index`.
 - Source: PR for #369 (review)
 
-## 2026-11-02 — `docs/adr/README.md` § Amendments has no form for an owner-decided rule change
-
-- Where: `docs/adr/README.md` § Amendments; `docs/adr/0009-explanation-answers.md` § Amendments (the 2026-11-02 entry); `docs/adr/0003-model-roles-and-backends.md` § Amendments (the 2026-10-20 pin-shape entry)
-- What: § Amendments says "an amendment never touches reasoning … wrong reasoning is superseded", and it covers moved or wrong values. 0009's (d)/(g) rule changed by the owner's decision (entailment outweighs contradiction) and went in as an amendment, by the owner's instruction relayed for #420. 0003's pin-shape entry is a second owner-decided change written in amendment form. Suspected root cause: the README names two cases (a moved value, wrong reasoning) and not a third: a decision narrowed by the owner, with the rest of the reasoning standing. It should name that case, or route it to supersession.
-- Source: PR for #420 (review)
-
-## 2026-11-02 — the sentence-kind rows measure one sentence per judge call; production batches
-
-- Where: `eval/src/run-eval.ts` (`judgeKinds`); `packages/grounding/src/verify-explanation.ts`
-- What: the eval judges each labelled sentence alone, against its hand-picked premises. Production sends every neutral sentence of an answer in one call, against the whole retrieved set. So `sentenceKindPrecision` and `sentenceKindRecall` say nothing about batching or positional alignment, which is where the length and order risk lives. Also, a fail-closed judge reply becomes `course-claim` with no count in the report, so a partly failing judge shows only as moved rows. Suspected root cause: 0009 (o) names the sample rows but not the call shape they stand for.
-- Source: PR #450 (review)
-
 ## 2026-11-02 — the decks screen's "pressed" set never clears
 
 - Where: `apps/web/src/decks/DecksScreen.tsx` (`askedFor`, passed to `NoSummary` as `pressed`)
 - What: once a reader has pressed "Make the summary" for a lecture, every later failed summary for that lecture is announced as an alert, including one an upload or a rebuild's re-make made without a press. Suspected root cause: the press is held as a session-long set rather than tied to the one re-make it asked for.
 - Source: PR #456 for #422 (confirmation review)
-
-## 2026-11-02 — the comment-density ratchet penalises merging a duplicate
-
-- Where: `packages/grounding/src/prompt-budget.ts` (`requestTokens`); `packages/grounding/src/summarise-lecture.ts` (`promptTokens`, and the block cost in `summaryParts`); `packages/grounding/src/assemble-context.ts` (`blockTokens`); `.claude/scripts/check-comment-density.sh`
-- What: a request's token estimate and a block's cost are each written twice with the same intent (`docs/standards/structure.md` rule 7). Routing `summarise-lecture.ts` through `requestTokens` deletes code lines, which raises that file's comment ratio over its banked row, and the gate never lets a row rise, so the merge was left out of #423. Suspected root cause: the ratchet measures a ratio, so removing code reads as adding comments.
-- Source: PR #495 for #423 (review)
-- Update 2026-11-03 (#490): a second instance. Deleting `describeError`'s copy from `packages/gateway/src/adapters/onnx/encoder-artefact.ts` took its ratio from 740 to 750 (6 comment / 80 non-blank lines) with no comment added; the PR re-wrapped the manifest check's docblock onto two lines, same words, to land under the row.
-- Update 2026-11-03 (#465): a third instance. Moving a constant out of a package removed one name from a multi-line import list in `eval/src/ask-depths.ts`, and merging its new import into the existing type import from the same module took the file from 170 to 172. The PR kept the two imports as separate statements.
 
 ## 2026-11-02 — ADR 0009 says "retrieved" for two sets the code now reads as the assembled slides
 
@@ -155,35 +135,11 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: the indexed state reports `unembedded` and `summarised`, but a chunk the tag pass left untagged reaches only the server log. The pass also runs one generator call per chunk under the ingest job's state with no state of its own (`docs/standards/error-handling.md` rule 5). Suspected root cause: `UploadProgress` gained a field per pass (#422) instead of a shape that new passes join.
 - Source: PR #494 (review)
 
-## 2026-11-03 — the eval copies each ingest pass's read, call and write loop
-
-- Where: `eval/src/index-retriever.ts` (`tag`, `summarise`), `apps/server/src/fact-tagging.ts` (`tagStored`), `apps/server/src/lecture-digest.ts` (`summariseStored`)
-- What: each ingest-time pass is written twice, once over the server's course file and once over the eval's in-memory index (`docs/standards/structure.md` rule 7). #426 moved the fact read into `lectureFacts`, but the write loop is still copied. Suspected root cause: no package depends on both `@cram/grounding` and `@cram/index`, so there is nowhere to hold a pass that does both.
-- Source: PR #494 (review)
-
-## 2026-11-03 — the eval report's metric set has no single owner
-
-- Where: `eval/src/report.ts` (`EvalReport.metrics`), `eval/src/tag-recall.ts`; `docs/adr/0005-evaluation-as-gate.md` (d), `docs/adr/0006-image-only-slides.md` (h), `docs/adr/0009-explanation-answers.md` (o), `docs/adr/0010-misspelt-golden-variants.md` (d)
-- What: every row before `tagRecall` was defined in an ADR; `tagRecall` is defined only by its module's docblock and #426. Suspected root cause: no rule says where a new baseline row's definition lives.
-- Source: PR #494 (review)
-
 ## 2026-11-03 — TopicTag admits a tag of invisible characters
 
 - Where: `packages/shared/src/topic-tag.ts` (`TopicTag`)
 - What: the regex treats `\u200b` as non-blank, so a tag with no visible text parses and could be stored and shown in #428's editor. #426's hostile corpus kept one. Suspected root cause: the schema's blank test is JavaScript's `\s`, not a visible-character test.
 - Source: PR #494 (review)
-
-## 2026-11-03 — spelling correction's letters-only test is a JS regex over SQLite-folded terms
-
-- Where: `packages/index/src/spelling-correction.ts` (`LETTERS`), `packages/index/src/index-words.ts` (`IndexTokenizer`)
-- What: `LETTERS` decides which index terms may be corrected by JS's Unicode properties, while the terms come from SQLite's older Unicode table. So a code point that SQLite counts as a word character and that this Node's ICU calls unassigned makes its word uncorrectable. The error only ever leaves a word as typed. Suspected root cause: #489 moved the word boundaries onto FTS5 but left this classification on JS.
-- Source: PR for #489 (review)
-
-## 2026-11-03 — `INDEX_WORDS` is a process-wide SQLite connection reached by import, not injected
-
-- Where: `packages/index/src/index-words.ts` (`INDEX_WORDS`), imported by `packages/index/src/fts-query.ts`, `packages/index/src/topics.ts`, `packages/index/src/spelling-correction.ts`
-- What: `correctSpelling` and `namedTags` now reach a `:memory:` connection that is never closed. Before, `correctSpelling` reached SQLite only through its injected `Lexicon`. It is a cache of a deterministic function of the linked SQLite, so behaviour is unaffected, but `docs/standards/architecture.md` rule 3 prefers the adapter at the edge. Suspected root cause: the word model is needed by pure callers with no course connection, such as `eval/src/tag-recall.ts`.
-- Source: PR for #489 (review)
 
 ## 2026-11-03 — check-comment-density's `--since` gives one message for four different git failures
 
@@ -202,9 +158,3 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/server-log.ts` (`LogEntry`, `lectureEntry`); its callers `apps/server/src/ingest-queue.ts`, `apps/server/src/ask-course.ts`, `apps/server/src/server.ts`
 - What: `operation` is a bare string, `courseId` an unbranded string, and `lectureKey` optional on every entry. So the compiler cannot require a key on a lecture-scoped operation. The next lecture job can log without one, and only a test would notice: the gap #470 closed (`docs/standards/typing.md` rules 1 and 4). Suspected root cause: the entry grew one optional field per entity instead of a union keyed by operation kind, which would cross all three callers.
 - Source: PR for #470 (review)
-
-## 2026-11-04 — nothing owns how a branch carrying a tier-2 report takes `main`
-
-- Where: `.claude/skills/run-issue/SKILL.md` step 5 ("The second merger rebases, always"); `docs/adr/0005-evaluation-as-gate.md` § Decision (f)
-- What: (f) names a report by the short SHA of the commit it measured and records the PR number because, under the squash, that commit is reachable only through the PR ref. Step 5's rebase rewrites the measured commit, so the report's name and `measuredCommit` then point at a commit outside the PR's history. Lanes and dispatch briefs follow "merge `main`, never rebase" for eval-report branches, but no file in the tree says so. #216's lane cited (f) for that practice in #547's first draft, and review found that (f) does not say it. Suspected root cause: step 5 was written before tier-2 reports existed, and the practice that came after it was never written down.
-- Source: PR for #216 (review)

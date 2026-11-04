@@ -1,4 +1,5 @@
 import { CourseId, LectureId } from '@cram/shared';
+import { SWEEP_TEST_TIMEOUT_MS } from '@cram/shared/sweep-test-timeout';
 import { normalizeUnicode } from 'unpdf/pdfjs';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -11,8 +12,13 @@ const EVERY_CHARACTER = Array.from({ length: 0x110000 }, (_, codePoint) => codeP
   .filter((codePoint) => codePoint < 0xd800 || codePoint > 0xdfff)
   .map((codePoint) => String.fromCodePoint(codePoint));
 
+// Built once: a schema built per call is most of a whole-table sweep's time (#588).
+const PdfjsText = z.string();
+
 const pdfjsFolds = (character: string): boolean =>
-  z.string().parse(normalizeUnicode(character)) !== character;
+  PdfjsText.parse(normalizeUnicode(character)) !== character;
+
+const SWEEP = { timeout: SWEEP_TEST_TIMEOUT_MS };
 
 /** The Letterlike Symbols filling the Mathematical Alphanumeric Symbols block's holes. */
 const HOLE_FILLERS = 'ℂℊℋℌℍℎℐℑℒℕℙℚℛℜℝℤℨℬℭℯℰℱℳℴ';
@@ -45,17 +51,21 @@ describe('storedText', () => {
     expect(storedText(HOLE_FILLERS)).toBe('CgHHHhIILNPQRRRZZBCeEFMo');
   });
 
-  it("reads every character pdf.js's normalizeUnicode folds in its NFKC form, ﬅ as st (#256)", () => {
-    expect(
-      storedText('5 \u00B5m, \uFB01ne \uFB02ow, \uFB05\uFB05 \uFB06, 10 k\u2126,\u00A0a\u2009b'),
-    ).toBe('5 \u03BCm, fine flow, stst st, 10 k\u03A9, a b');
-    const unfolded = EVERY_CHARACTER.filter(pdfjsFolds).filter(
-      (character) => storedText(character) !== character.normalize('NFKC'),
-    );
-    expect(unfolded).toEqual([]);
-  });
+  it(
+    "reads every character pdf.js's normalizeUnicode folds in its NFKC form, ﬅ as st (#256)",
+    SWEEP,
+    () => {
+      expect(
+        storedText('5 \u00B5m, \uFB01ne \uFB02ow, \uFB05\uFB05 \uFB06, 10 k\u2126,\u00A0a\u2009b'),
+      ).toBe('5 \u03BCm, fine flow, stst st, 10 k\u03A9, a b');
+      const unfolded = EVERY_CHARACTER.filter(pdfjsFolds).filter(
+        (character) => storedText(character) !== character.normalize('NFKC'),
+      );
+      expect(unfolded).toEqual([]);
+    },
+  );
 
-  it('leaves every other compatibility character as written', () => {
+  it('leaves every other compatibility character as written', SWEEP, () => {
     expect(storedText('ℓⅆ…²′∬')).toBe('ℓⅆ…²′∬');
     const folded = EVERY_CHARACTER.filter(
       (character) => storedText(character) !== character.normalize('NFC'),
