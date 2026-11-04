@@ -525,8 +525,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-04 — issue #487 — host-conventions-section
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to accept one new line in `CLAUDE.md` § Standards index: "Writing an inline edit, a wait on a process, a multi-step git chain, or a heredoc'd body? → `docs/standards/evidence.md` § Host conventions". That section is new, and it holds seven host conventions, each citing its friction entry. It also asks the owner to accept placing those conventions as a section of `evidence.md` rather than in a new `docs/standards/shell.md`. The owner approved the workflow change on 2026-11-04 ("approve the rest of the workflow changes"), and the index line is the `humanAlways` part of it.
 - **Why**: seven friction entries (PRs #289, #313, #329, #443, #449 twice, #450) each named one slip in hand-written shell on this macOS host, and no text in the repo stated the host's conventions (#487). Two of the seven are already owned by `evidence.md` members 14 and 15, and a third sits beside sanctioned form 8. In a separate doc those three would be cross-document pointers, which the index's "one hop only" forbids, or restatements, which `docs/standards/architecture.md` rule 9 forbids. Inside `evidence.md` they are pointers within the same page.
 - **How applied**: `docs/standards/evidence.md` gains `## Host conventions` and a widened **Trigger**; `CLAUDE.md` gains the one index line. Each behaviour claim was run on this machine first (pgrep's ancestor exclusion, perl's double encoding, BSD grep's bound, `git merge -F -`), and the runs are pasted in the plan comment and the PR body. The plan and the restatement sweep are at https://github.com/TomBennett-Lloyd/cram.ai/issues/487#issuecomment-6630864175.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-04 — "approve 565"
