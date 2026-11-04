@@ -82,7 +82,11 @@ export const tutor =
         return content({ tags: [passage.split('\n')[0]?.toLowerCase() ?? ''] });
       }
       default:
-        return { status: 'backend-failed', reason: `unscripted output ${wire.output.name}` };
+        return {
+          status: 'backend-failed',
+          cause: 'request-error',
+          reason: `unscripted output ${wire.output.name}`,
+        };
     }
   };
 

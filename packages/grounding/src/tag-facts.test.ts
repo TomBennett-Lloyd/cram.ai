@@ -87,11 +87,23 @@ describe('tagFacts', () => {
     ['the tags under another key', { status: 'content', content: '{"topics":["a"]}' }],
     ['a topic that is not a string', { status: 'content', content: '{"tags":[1]}' }],
     ['not JSON', { status: 'content', content: 'swarming, bloom count' }],
-    ['cut off', { status: 'truncated', content: '{"tags":["swar' }],
   ])('leaves a fact whose reply is %s untagged and goes on to the next', async (_, reply) => {
     const gateway = fakeGateway([replying(swarm, reply), topics(stilling, ['the stilling'])]);
     await expect(tagFacts([swarm, stilling], gateway)).resolves.toEqual([
       { ...ref(swarm), status: 'untagged', reason: 'invalid-output' },
+      { ...ref(stilling), status: 'tagged', tags: ['the stilling'] },
+    ]);
+  });
+
+  it('leaves a fact whose reply is cut off untagged as cut off, and goes on to the next', async () => {
+    const cut = {
+      status: 'truncated',
+      content: '{"tags":["swar',
+      cutOffAt: 'token-limit',
+    } as const;
+    const gateway = fakeGateway([replying(swarm, cut), topics(stilling, ['the stilling'])]);
+    await expect(tagFacts([swarm, stilling], gateway)).resolves.toEqual([
+      { ...ref(swarm), status: 'untagged', reason: 'cut-off' },
       { ...ref(stilling), status: 'tagged', tags: ['the stilling'] },
     ]);
   });
@@ -111,7 +123,11 @@ describe('tagFacts', () => {
     const calls: string[] = [];
     const gateway = fakeGateway([
       topics(swarm, ['swarming']),
-      replying(stilling, { status: 'backend-failed', reason: 'connection refused' }),
+      replying(stilling, {
+        status: 'backend-failed',
+        cause: 'request-error',
+        reason: 'connection refused',
+      }),
     ]);
     const counting = {
       chat: <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
@@ -151,7 +167,9 @@ describe('tagFacts', () => {
       (n, { content }) => n + estimateTokens(content),
       0,
     );
-    const gateway = fakeGateway([replying(swarm, { status: 'backend-failed', reason: 'down' })]);
+    const gateway = fakeGateway([
+      replying(swarm, { status: 'backend-failed', cause: 'request-error', reason: 'down' }),
+    ]);
     await expect(
       tagFacts([swarm, long], { generator: gateway.generator, budget: cost }),
     ).resolves.toEqual([

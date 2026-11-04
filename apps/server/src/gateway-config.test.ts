@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type GeneratorPin, PROVISIONAL_DEFAULT_PINS } from '@cram/gateway';
+import { REPLY_TOKEN_RESERVE } from '@cram/grounding';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   developerDefaults,
@@ -53,6 +54,10 @@ describe('developerDefaults', () => {
     expect(config.verifier.directory).toBe('/m/cross-encoder/nli-deberta-v3-base');
     expect(config.embedder.directory).toBe('/m/BAAI/bge-small-en-v1.5');
     expect(config.reranker).toBeUndefined();
+  });
+
+  it('caps a reply at the tokens the prompt budget keeps for it', () => {
+    expect(developerDefaults(host()).generator.maxOutputTokens).toBe(REPLY_TOKEN_RESERVE);
   });
 });
 

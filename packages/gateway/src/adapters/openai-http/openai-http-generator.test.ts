@@ -1,15 +1,23 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { chatWireRequest, OutputName } from '../../chat';
-import { PROVISIONAL_DEFAULT_PINS } from '../../provisional-pins';
+import { chatWireRequest } from '../../chat';
 import { type HttpGeneratorConfig, LoopbackEndpoint } from '../../role-config';
+import {
+  Answer,
+  capped,
+  chunk,
+  completion,
+  generatorConfig,
+  type Handler,
+  reply,
+  request,
+  SERVED,
+  sse,
+  stalled,
+} from './openai-http-fixture';
 import { OpenAiHttpGenerator } from './openai-http-generator';
-
-const SERVED = { status: 'verified' } as const;
-
-type Handler = (request: IncomingMessage, body: string, response: ServerResponse) => void;
 
 interface FixtureServer {
   readonly server: Server;
@@ -36,39 +44,9 @@ const stopServer = async ({ server }: FixtureServer): Promise<void> => {
   await new Promise((resolve) => server.close(resolve));
 };
 
-const reply =
-  (status: number, body: string, contentType = 'text/event-stream'): Handler =>
-  (_request, _body, response) => {
-    response.writeHead(status, { 'content-type': contentType }).end(body);
-  };
-
-const sse = (chunks: readonly object[]): string =>
-  [...chunks.map((chunk) => JSON.stringify(chunk)), '[DONE]'].map((d) => `data: ${d}\n\n`).join('');
-
-const chunk = (content: string | null, finishReason: string | null = null) => ({
-  id: 'chatcmpl-fixture',
-  object: 'chat.completion.chunk',
-  choices: [{ index: 0, delta: { content }, finish_reason: finishReason }],
-});
-
-const USAGE = { choices: [], usage: { prompt_tokens: 21, completion_tokens: 6 } };
-
-/** A streamed completion: `content` in one delta, then the finish and a usage chunk. */
-const completion = (content: string, finishReason = 'stop') =>
-  sse([chunk(content), chunk(null, finishReason), USAGE]);
-
 /** Holds this thread, so the client cannot read what the server has sent until `ms` has passed. */
 const blockEventLoop = (ms: number): void => {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-};
-
-const Answer = z.object({ text: z.string() });
-const request = {
-  messages: [
-    { role: 'system', content: 'Report what the cited slide says.' },
-    { role: 'user', content: 'What does slide 2 say?' },
-  ] as const,
-  output: { name: OutputName.parse('answer'), schema: Answer },
 };
 
 let fixture: FixtureServer;
@@ -76,13 +54,7 @@ let config: HttpGeneratorConfig;
 
 beforeEach(async () => {
   fixture = await startServer();
-  config = {
-    pin: PROVISIONAL_DEFAULT_PINS.generator,
-    endpoint: LoopbackEndpoint.parse(`${fixture.origin}/v1/`),
-    servedModel: 'qwen3-4b-q4km',
-    timeoutMs: 2000,
-    sampling: { temperature: 0, seed: 7 },
-  };
+  config = generatorConfig(fixture.origin);
 });
 
 afterEach(async () => {
@@ -113,6 +85,7 @@ describe('OpenAiHttpGenerator', () => {
       },
       temperature: 0,
       seed: 7,
+      max_tokens: 512,
       reasoning_effort: 'none',
       stream: true,
       stream_options: { include_usage: true },
@@ -150,19 +123,6 @@ describe('OpenAiHttpGenerator', () => {
     });
   });
 
-  it('reports output cut off at the token limit as invalid output, even when it parses', async () => {
-    fixture.handler = reply(200, completion('{"text":"a"}', 'length'));
-    const generator = new OpenAiHttpGenerator(config, SERVED);
-    await expect(generator.reply(chatWireRequest(request))).resolves.toEqual({
-      status: 'truncated',
-      content: '{"text":"a"}',
-    });
-    await expect(generator.chat(request)).resolves.toMatchObject({
-      status: 'invalid-output',
-      issue: 'cut off at the token limit',
-    });
-  });
-
   it('carries the server error body in the failure reason', async () => {
     fixture.handler = reply(
       404,
@@ -170,12 +130,14 @@ describe('OpenAiHttpGenerator', () => {
       'application/json',
     );
     const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
+    expect(result).toMatchObject({ status: 'backend-failed', cause: 'http-status' });
     expect(result.status === 'backend-failed' && result.reason).toMatch(/HTTP 404: .*not found/);
   });
 
   it('carries the protocol issue in the failure reason', async () => {
     fixture.handler = reply(200, sse([{ choices: 'none' }]));
     const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
+    expect(result).toMatchObject({ status: 'backend-failed', cause: 'protocol' });
     expect(result.status === 'backend-failed' && result.reason).toMatch(
       /POST .*: not a chat completion chunk: .*choices/s,
     );
@@ -243,21 +205,28 @@ describe('OpenAiHttpGenerator', () => {
   it('reports a success with no body as a backend failure', async () => {
     fixture.handler = reply(204, '');
     const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
+    expect(result).toMatchObject({ status: 'backend-failed', cause: 'protocol' });
     expect(result.status === 'backend-failed' && result.reason).toMatch(/no response body/);
   });
 
-  it.each<[string, Handler]>([
-    ['an HTTP error, even with a completion body', reply(500, completion('{"text":"a"}'))],
-    ['a body that is not an event stream', reply(200, 'not json')],
-    ['a chunk that is not JSON', reply(200, 'data: not json\n\n')],
+  it.each<[string, Handler, string]>([
+    [
+      'an HTTP error, even with a completion body',
+      reply(500, completion('{"text":"a"}')),
+      'http-status',
+    ],
+    ['a body that is not an event stream', reply(200, 'not json'), 'protocol'],
+    ['a chunk that is not JSON', reply(200, 'data: not json\n\n'), 'protocol'],
     [
       'a whole JSON completion in place of a stream',
       reply(200, '{"choices":[]}', 'application/json'),
+      'protocol',
     ],
-  ])('reports %s as a backend failure', async (_name, handler) => {
+  ])('reports %s as a backend failure', async (_name, handler, cause) => {
     fixture.handler = handler;
     await expect(new OpenAiHttpGenerator(config, SERVED).chat(request)).resolves.toMatchObject({
       status: 'backend-failed',
+      cause,
     });
   });
 
@@ -271,27 +240,8 @@ describe('OpenAiHttpGenerator', () => {
     };
     await expect(new OpenAiHttpGenerator(config, SERVED).chat(request)).resolves.toMatchObject({
       status: 'backend-failed',
+      cause: 'request-error',
     });
-  });
-
-  it('reports a server that does not answer within timeoutMs as a backend failure', async () => {
-    fixture.handler = () => undefined;
-    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED).chat(
-      request,
-    );
-    expect(result).toMatchObject({ status: 'backend-failed' });
-    expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
-  });
-
-  it('bounds the streamed body by timeoutMs too', async () => {
-    fixture.handler = (_incoming, _body, response) => {
-      response.writeHead(200, { 'content-type': 'text/event-stream' });
-      response.write(`data: ${JSON.stringify(chunk('{"text":'))}\n\n`);
-    };
-    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED).chat(
-      request,
-    );
-    expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
   });
 
   it('reports a closed port as a backend failure', async () => {
@@ -302,6 +252,76 @@ describe('OpenAiHttpGenerator', () => {
       new OpenAiHttpGenerator({ ...config, endpoint }, SERVED).chat(request),
     ).resolves.toMatchObject({
       status: 'backend-failed',
+      cause: 'request-error',
     });
+  });
+  it('reports output cut off at the token limit as cut off, with its content, even when it parses', async () => {
+    fixture.handler = reply(200, completion('{"text":"a"}', 'length'));
+    const generator = new OpenAiHttpGenerator(config, SERVED);
+    await expect(generator.reply(chatWireRequest(request))).resolves.toEqual({
+      status: 'truncated',
+      content: '{"text":"a"}',
+      cutOffAt: 'token-limit',
+    });
+    await expect(generator.chat(request)).resolves.toEqual({
+      status: 'cut-off',
+      content: '{"text":"a"}',
+      cutOffAt: 'token-limit',
+    });
+  });
+
+  it('stops a reply at maxOutputTokens: a stream past the cap is cut off with its content, never a failure', async () => {
+    const tokens = ['{"text":"', 'a', ' b', ' c', ' d', '"}'];
+    fixture.handler = capped(tokens);
+    const capAt3 = new OpenAiHttpGenerator({ ...config, maxOutputTokens: 3 }, SERVED);
+    const cut = { status: 'cut-off', content: '{"text":"a b', cutOffAt: 'token-limit' };
+    await expect(capAt3.chat(request)).resolves.toEqual(cut);
+    const whole = await new OpenAiHttpGenerator(config, SERVED).chat(request);
+    expect(whole).toEqual({ status: 'completed', value: { text: 'a b c d' } });
+  });
+
+  it('reports a server that does not answer within timeoutMs as a backend failure', async () => {
+    fixture.handler = () => undefined;
+    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED).chat(
+      request,
+    );
+    expect(result).toMatchObject({ status: 'backend-failed', cause: 'timeout' });
+    expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
+  });
+
+  it('bounds the streamed body by timeoutMs too, keeping the N tokens that arrived, cut off', async () => {
+    const tokens = ['{"text":', '"a', ' b'];
+    fixture.handler = stalled(tokens);
+    const generator = new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED);
+    const timed = await generator.timedReply(chatWireRequest(request));
+    expect(timed.reply).toEqual({
+      status: 'truncated',
+      content: tokens.join(''),
+      cutOffAt: 'timeout',
+    });
+    expect(timed.timing).not.toBeNull();
+    await expect(generator.chat(request)).resolves.toEqual({
+      status: 'cut-off',
+      content: tokens.join(''),
+      cutOffAt: 'timeout',
+    });
+  });
+
+  it('reports a stream that times out before any content as a timeout failure', async () => {
+    fixture.handler = stalled(['']);
+    const result = await new OpenAiHttpGenerator({ ...config, timeoutMs: 50 }, SERVED).chat(
+      request,
+    );
+    expect(result).toMatchObject({ status: 'backend-failed', cause: 'timeout' });
+    expect(result.status === 'backend-failed' && result.reason).toMatch(/TimeoutError/);
+  });
+
+  it('drops the content of a stream the server resets, as a request error, not a cut-off', async () => {
+    fixture.handler = (incoming, body, response) => {
+      stalled(['{"text":"a'])(incoming, body, response);
+      setTimeout(() => response.destroy(), 20);
+    };
+    const result = await new OpenAiHttpGenerator(config, SERVED).chat(request);
+    expect(result).toMatchObject({ status: 'backend-failed', cause: 'request-error' });
   });
 });

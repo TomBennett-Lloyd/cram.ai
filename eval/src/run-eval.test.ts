@@ -103,7 +103,7 @@ const LONG = record({
 /** `credulous`, failing LONG's lecture's summary call, so no short summary line judges what LONG's over-length pair cannot. */
 const unsummarisedLong: Respond = (wire) =>
   wire.output.name === 'units' && (wire.messages.at(-1)?.content ?? '').includes('Propolis')
-    ? { status: 'backend-failed', reason: 'unscripted summary' }
+    ? { status: 'backend-failed', cause: 'request-error', reason: 'unscripted summary' }
     : credulous(wire);
 
 const spec = (

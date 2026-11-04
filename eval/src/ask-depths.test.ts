@@ -24,7 +24,11 @@ const CONTRADICTED: EntailmentResult = {
 /** A gateway whose verifier contradicts every pair whose premise is the expected slide, recording each call. */
 const gatewayOf = () => {
   const calls: EntailRequest[] = [];
-  const inner = new ScriptedGateway(() => ({ status: 'backend-failed', reason: 'unscripted' }));
+  const inner = new ScriptedGateway(() => ({
+    status: 'backend-failed',
+    cause: 'request-error',
+    reason: 'unscripted',
+  }));
   const neutral: EntailmentResult = {
     status: 'scored',
     scores: { entailment: 0, neutral: 1, contradiction: 0 },

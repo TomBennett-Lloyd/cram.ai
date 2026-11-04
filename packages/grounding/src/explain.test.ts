@@ -168,7 +168,11 @@ describe('explain at the light depth', () => {
   });
 
   it('reports a generator failure at the generate stage', async () => {
-    const failure: GeneratorReply = { status: 'backend-failed', reason: 'connection refused' };
+    const failure: GeneratorReply = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    };
     const { search } = scriptedSearch({});
     await expect(
       run([generatorRecording(explanationRequest(QUESTION, contextOf()), failure)], {
@@ -199,7 +203,11 @@ const capturing = () => {
   const { generator, verifier } = fakeGateway([]);
   const chat = <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
     sent.push(request);
-    return Promise.resolve({ status: 'backend-failed', reason: 'captured' });
+    return Promise.resolve({
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'captured',
+    });
   };
   return { sent, gateway: { verifier, generator: { ...generator, chat } } };
 };

@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { z } from 'zod';
 import { type ModelPin, PROVISIONAL_DEFAULT_PINS, GatewayConfig, Sampling } from '@cram/gateway';
+import { REPLY_TOKEN_RESERVE } from '@cram/grounding';
 import { MachineClass } from './report';
 
 /** The backend's deterministic settings (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)). */
@@ -40,6 +41,7 @@ export const liveConfig = (env: Readonly<Record<string, string | undefined>>): L
       endpoint: CRAM_GENERATOR_ENDPOINT,
       servedModel: CRAM_GENERATOR_MODEL,
       timeoutMs: GENERATOR_TIMEOUT_MS,
+      maxOutputTokens: REPLY_TOKEN_RESERVE,
       sampling: LIVE_SAMPLING,
     },
     verifier: { pin: LIVE_PINS.verifier, directory: snapshot(CRAM_MODELS_DIR, LIVE_PINS.verifier) },

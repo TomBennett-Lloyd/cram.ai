@@ -13,6 +13,7 @@ export {
   OpenAiHttpGenerator,
 } from './adapters/openai-http/openai-http-generator';
 export {
+  BackendFailureCause,
   type ChatMessage,
   type ChatOutputSpec,
   type ChatRequest,
@@ -20,6 +21,7 @@ export {
   chatResult,
   ChatWireRequest,
   chatWireRequest,
+  CutOffAt,
   GeneratorReply,
   OutputName,
 } from './chat';

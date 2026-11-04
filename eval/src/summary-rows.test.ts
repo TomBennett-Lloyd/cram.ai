@@ -22,7 +22,7 @@ describe('summaryRows', () => {
     const failed: SummaryOutcome = {
       status: 'model-failed',
       stage: 'generate',
-      failure: { status: 'backend-failed', reason: 'down' },
+      failure: { status: 'backend-failed', cause: 'request-error', reason: 'down' },
       drafted: 4,
     };
     const none: SummaryOutcome = {

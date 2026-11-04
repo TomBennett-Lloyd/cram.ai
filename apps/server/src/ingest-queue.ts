@@ -21,7 +21,13 @@ import { repairCourse, type RepairOutcome } from './course-repair';
 import { type IngestDeps, ingestDeck, type IngestJob } from './ingest-deck';
 import { tagStored, taggingLogOutcome } from './fact-tagging';
 import { type DigestOutcome, summariseStored } from './lecture-digest';
-import { errorName, lectureEntry, type LogEntry, type ServerLog } from './server-log';
+import {
+  errorName,
+  lectureEntry,
+  type LogEntry,
+  modelFailureOutcome,
+  type ServerLog,
+} from './server-log';
 import { editStoredTags, type TagEditOutcome } from './slide-topics';
 
 const REPAIR_STATE: Readonly<Record<RepairOutcome, 'done' | 'failed'>> = {
@@ -101,7 +107,14 @@ export class IngestQueue {
   ): Promise<DigestOutcome> {
     const outcome = await summariseStored(courseId, lectureId, this.#deps);
     if (outcome.status === 'model-failed')
-      this.#log(lectureEntry(`summarise ${outcome.stage}`, courseId, key, outcome.failure.status));
+      this.#log(
+        lectureEntry(
+          `summarise ${outcome.stage}`,
+          courseId,
+          key,
+          modelFailureOutcome(outcome.failure),
+        ),
+      );
     return outcome;
   }
 

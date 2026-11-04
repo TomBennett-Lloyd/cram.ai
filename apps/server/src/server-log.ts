@@ -1,3 +1,4 @@
+import type { ModelFailure } from '@cram/grounding';
 import type { LectureKey } from '@cram/index';
 import type { CourseId } from '@cram/shared';
 
@@ -13,6 +14,17 @@ export type ServerLog = (entry: LogEntry) => void;
 
 export const errorName = (error: unknown): string =>
   error instanceof Error ? error.name : typeof error;
+
+export const modelFailureOutcome = (failure: ModelFailure): string => {
+  switch (failure.status) {
+    case 'backend-failed':
+      return `${failure.status} ${failure.cause}`;
+    case 'cut-off':
+      return `${failure.status} ${failure.cutOffAt}`;
+    case 'invalid-output':
+      return failure.status;
+  }
+};
 
 export const lectureEntry = (
   operation: string,

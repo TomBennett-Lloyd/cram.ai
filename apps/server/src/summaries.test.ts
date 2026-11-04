@@ -39,7 +39,7 @@ const NEUTRAL: EntailmentResult = {
   status: 'scored',
   scores: { entailment: 0.05, neutral: 0.9, contradiction: 0.05 },
 };
-const FAILED = { status: 'backend-failed', reason: 'connection refused' } as const;
+const FAILED = { status: 'backend-failed', cause: 'request-error', reason: 'down' } as const;
 
 let test: TestServer | undefined;
 afterEach(async () => {
@@ -196,7 +196,7 @@ describe('the lecture digest at upload', () => {
         operation: 'summarise generate',
         courseId: 'bio',
         lectureKey: 1,
-        outcome: 'backend-failed',
+        outcome: 'backend-failed request-error',
       },
     ]);
   });

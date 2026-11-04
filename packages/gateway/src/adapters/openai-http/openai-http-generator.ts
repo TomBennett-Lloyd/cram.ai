@@ -1,4 +1,5 @@
 import {
+  type BackendFailureCause,
   type ChatRequest,
   type ChatResult,
   chatResult,
@@ -12,15 +13,32 @@ import type { GeneratorPin } from '../../pin';
 import type { HttpGeneratorConfig, Sampling } from '../../role-config';
 import type { ServedArtefact } from '../../served-artefact';
 import { chatCompletionBody, chatCompletionsUrl } from './chat-completion';
-import { readChatCompletionStream } from './chat-completion-stream';
+import { readChatCompletionStream, type StreamRead } from './chat-completion-stream';
 import { describeError } from '../describe-error';
 import { BODY_EXCERPT_CHARS } from './http-failure';
 import { type ServedCheck, showOutcome } from './served-model';
 
-const failed = (reason: string): TimedReply => ({
-  reply: { status: 'backend-failed', reason },
+const failed = (cause: BackendFailureCause, reason: string): TimedReply => ({
+  reply: { status: 'backend-failed', cause, reason },
   timing: null,
 });
+
+/** A timeout after content arrived keeps that content, cut off (#578); `timedOut` is the call's own signal. */
+const streamedReply = (read: StreamRead, at: string, timedOut: boolean): TimedReply => {
+  switch (read.status) {
+    case 'read':
+      return read.timed;
+    case 'protocol-failed':
+      return failed('protocol', `${at}: ${read.issue}`);
+    case 'interrupted':
+      if (timedOut && read.content !== '')
+        return {
+          reply: { status: 'truncated', content: read.content, cutOffAt: 'timeout' },
+          timing: read.timing,
+        };
+      return failed(timedOut ? 'timeout' : 'request-error', `${at}: ${describeError(read.error)}`);
+  }
+};
 
 /** The generator over an OpenAI-compatible server (`docs/adr/0003-model-roles-and-backends.md` § Decision (c)). */
 export class OpenAiHttpGenerator implements Generator {
@@ -47,23 +65,24 @@ export class OpenAiHttpGenerator implements Generator {
   async timedReply(wire: ChatWireRequest): Promise<TimedReply> {
     const at = `POST ${this.#url.href}`;
     const startedAt = this.#now();
+    const signal = AbortSignal.timeout(this.#config.timeoutMs);
     try {
       const response = await fetch(this.#url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(chatCompletionBody(this.#config, wire)),
         redirect: 'error',
-        signal: AbortSignal.timeout(this.#config.timeoutMs),
+        signal,
       });
       if (!response.ok) {
         const excerpt = (await response.text()).slice(0, BODY_EXCERPT_CHARS);
-        return failed(`${at}: HTTP ${String(response.status)}: ${excerpt}`);
+        return failed('http-status', `${at}: HTTP ${String(response.status)}: ${excerpt}`);
       }
-      if (response.body === null) return failed(`${at}: no response body`);
+      if (response.body === null) return failed('protocol', `${at}: no response body`);
       const read = await readChatCompletionStream(response.body, () => this.#now() - startedAt);
-      return read.status === 'read' ? read.timed : failed(`${at}: ${read.issue}`);
+      return streamedReply(read, at, signal.aborted);
     } catch (error) {
-      return failed(`${at}: ${describeError(error)}`);
+      return failed(signal.aborted ? 'timeout' : 'request-error', `${at}: ${describeError(error)}`);
     }
   }
 

@@ -1,3 +1,4 @@
+import { REPLY_TOKEN_RESERVE } from '@cram/grounding';
 import { describe, expect, it } from 'vitest';
 import { LIVE_PINS, LIVE_SAMPLING, liveConfig, RunEnvironment } from './live-config';
 
@@ -20,6 +21,7 @@ describe('liveConfig', () => {
       pin: LIVE_PINS.generator,
       endpoint: ENV.CRAM_GENERATOR_ENDPOINT,
       servedModel: ENV.CRAM_GENERATOR_MODEL,
+      maxOutputTokens: REPLY_TOKEN_RESERVE,
       sampling: LIVE_SAMPLING,
     });
     expect(config.verifier).toEqual({

@@ -93,7 +93,7 @@ describe('verifyStatement, llm', () => {
   });
 
   it('reports a backend failure as a value', async () => {
-    const reply = { status: 'backend-failed', reason: 'timeout' } as const;
+    const reply = { status: 'backend-failed', cause: 'request-error', reason: 'timeout' } as const;
     await expect(
       verify('llm', [generatorRecording(verifierRequest(input), reply)]),
     ).resolves.toEqual({ status: 'model-failed', failure: reply });

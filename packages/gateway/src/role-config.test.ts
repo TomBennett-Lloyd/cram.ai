@@ -8,6 +8,7 @@ const config = {
     endpoint: 'http://127.0.0.1:11434/v1/',
     servedModel: 'qwen3-4b-q4km',
     timeoutMs: 1000,
+    maxOutputTokens: 512,
     sampling: { temperature: 0, seed: 0 },
   },
   verifier: { pin: PROVISIONAL_DEFAULT_PINS.verifier, directory: '/models/verifier' },

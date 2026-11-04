@@ -141,6 +141,7 @@ beforeEach(async () => {
     endpoint: LoopbackEndpoint.parse(`${fixture.origin}/v1/`),
     servedModel: 'qwen3-4b-q4_k_m-7485fe6f11af',
     timeoutMs: 2000,
+    maxOutputTokens: 512,
     sampling: { temperature: 0, seed: 0 },
   };
 });

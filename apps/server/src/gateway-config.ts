@@ -6,6 +6,7 @@ import {
   LoopbackEndpoint,
   PROVISIONAL_DEFAULT_PINS,
 } from '@cram/gateway';
+import { REPLY_TOKEN_RESERVE } from '@cram/grounding';
 import { z } from 'zod';
 import type { DataDirectoryHost } from './data-directory';
 
@@ -46,6 +47,7 @@ export const developerDefaults = (host: DataDirectoryHost): GatewayConfig => {
       endpoint: DEVELOPER_ENDPOINT,
       servedModel: servedModelName(generator),
       timeoutMs: GENERATOR_TIMEOUT_MS,
+      maxOutputTokens: REPLY_TOKEN_RESERVE,
       sampling: DETERMINISTIC_SAMPLING,
     },
     verifier: { pin: verifier, directory: join(models, verifier.artefact.repository) },

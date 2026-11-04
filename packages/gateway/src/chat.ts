@@ -40,18 +40,33 @@ export const chatWireRequest = <T>(request: ChatRequest<T>): ChatWireRequest =>
     },
   });
 
+export const CutOffAt = z.enum(['token-limit', 'timeout']);
+export type CutOffAt = z.infer<typeof CutOffAt>;
+
+export const BackendFailureCause = z.enum(['timeout', 'http-status', 'protocol', 'request-error']);
+export type BackendFailureCause = z.infer<typeof BackendFailureCause>;
+
 /** A generator backend's reply before parsing; what a recording stores. */
 export const GeneratorReply = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('content'), content: z.string() }),
-  z.strictObject({ status: z.literal('truncated'), content: z.string() }),
-  z.strictObject({ status: z.literal('backend-failed'), reason: z.string() }),
+  z.strictObject({ status: z.literal('truncated'), content: z.string(), cutOffAt: CutOffAt }),
+  z.strictObject({
+    status: z.literal('backend-failed'),
+    cause: BackendFailureCause,
+    reason: z.string(),
+  }),
 ]);
 export type GeneratorReply = z.infer<typeof GeneratorReply>;
 
 export type ChatResult<T> =
   | { readonly status: 'completed'; readonly value: T }
   | { readonly status: 'invalid-output'; readonly content: string; readonly issue: string }
-  | { readonly status: 'backend-failed'; readonly reason: string };
+  | { readonly status: 'cut-off'; readonly content: string; readonly cutOffAt: CutOffAt }
+  | {
+      readonly status: 'backend-failed';
+      readonly cause: BackendFailureCause;
+      readonly reason: string;
+    };
 
 const parsedContent = <T>(content: string, schema: z.ZodType<T>): ChatResult<T> => {
   let json: unknown;
@@ -73,11 +88,7 @@ export const chatResult = <T>(reply: GeneratorReply, schema: z.ZodType<T>): Chat
     case 'content':
       return parsedContent(reply.content, schema);
     case 'truncated':
-      return {
-        status: 'invalid-output',
-        content: reply.content,
-        issue: 'cut off at the token limit',
-      };
+      return { status: 'cut-off', content: reply.content, cutOffAt: reply.cutOffAt };
     case 'backend-failed':
       return reply;
   }

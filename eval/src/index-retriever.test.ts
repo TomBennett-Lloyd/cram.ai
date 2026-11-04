@@ -19,7 +19,11 @@ const SLIDES = [
   record({ slideNo: 3, body: 'Foragers see red best.' }),
 ];
 
-const { embedder } = new ScriptedGateway(() => ({ status: 'backend-failed', reason: 'unused' }));
+const { embedder } = new ScriptedGateway(() => ({
+  status: 'backend-failed',
+  cause: 'request-error',
+  reason: 'unused',
+}));
 
 const spec = (overrides: Partial<IndexRetrieverSpec> = {}): IndexRetrieverSpec => ({
   courseId: CourseId.parse('hollowmere'),

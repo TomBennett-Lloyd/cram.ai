@@ -62,18 +62,23 @@ describe('FakeGateway generator', () => {
   });
 
   it('replays a recorded backend failure', async () => {
-    const reply = { status: 'backend-failed', reason: 'connection refused' } as const;
+    const reply = {
+      status: 'backend-failed',
+      cause: 'request-error',
+      reason: 'connection refused',
+    } as const;
     const fake = gateway([generatorRecording('q', reply)]);
     await expect(fake.generator.chat(ask('q'))).resolves.toEqual(reply);
   });
 
-  it('replays a truncated reply as invalid output, as the live adapter reports it', async () => {
+  it('replays a truncated reply as cut off, with its content, as the live adapter reports it', async () => {
     const fake = gateway([
-      generatorRecording('q', { status: 'truncated', content: '{"text":"a"}' }),
+      generatorRecording('q', { status: 'truncated', content: '{"text":"a"', cutOffAt: 'timeout' }),
     ]);
-    await expect(fake.generator.chat(ask('q'))).resolves.toMatchObject({
-      status: 'invalid-output',
-      issue: 'cut off at the token limit',
+    await expect(fake.generator.chat(ask('q'))).resolves.toEqual({
+      status: 'cut-off',
+      content: '{"text":"a"',
+      cutOffAt: 'timeout',
     });
   });
 
