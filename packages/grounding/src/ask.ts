@@ -1,3 +1,4 @@
+import { VERIFICATION_DEPTH } from '@cram/shared';
 import {
   type ExplainDepth,
   type ExplainDeps,
@@ -5,7 +6,6 @@ import {
   type ExplainSources,
   explain,
 } from './explain';
-import { VERIFICATION_DEPTH } from './verification-depth';
 
 type AskDepth = Extract<ExplainDepth, { readonly depth: (typeof VERIFICATION_DEPTH)['ask'] }>;
 

@@ -43,7 +43,6 @@ apps/web/src/ask/SlideDialog.tsx	576
 apps/web/src/ask/SlideFigure.tsx	416
 apps/web/src/ask/SourcesList.tsx	227
 apps/web/src/ask/WithheldPanel.tsx	2000
-apps/web/src/ask/ask-depth.ts	3333
 apps/web/src/ask/cited-slide.ts	952
 apps/web/src/ask/explanation-marks-fixture.ts	666
 apps/web/src/ask/explanation-marks.ts	378
@@ -173,7 +172,6 @@ packages/grounding/src/resolve-quotes.ts	1764
 packages/grounding/src/slide-text.ts	1111
 packages/grounding/src/summarise-lecture.ts	309
 packages/grounding/src/tag-facts.ts	135
-packages/grounding/src/verification-depth.ts	1666
 packages/grounding/src/verifier-input.ts	1666
 packages/grounding/src/verify-explanation.ts	62
 packages/grounding/src/verify.ts	327
@@ -245,6 +243,7 @@ packages/shared/src/split-chunk.ts	617
 packages/shared/src/style-exemplar.ts	2173
 packages/shared/src/topic-tag.ts	1111
 packages/shared/src/unit.ts	2666
+packages/shared/src/verification-depth.ts	1428
 packages/shared/src/verification.ts	1250
 packages/shared/src/withheld.ts	689
 packages/ui/src/index.ts	0
