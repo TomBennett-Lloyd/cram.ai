@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CourseUnavailableProblem,
+  type DroppedPointer,
   SlideNo,
   SourceId,
   type Unit,
@@ -12,7 +13,6 @@ import {
   contradictionRefLabel,
   discardedMessage,
   DROPPED_QUOTES_NOTE,
-  type DroppedPointer,
   droppedQuotesHeading,
   sourceRefLabel,
   storedUnavailableMessage,
@@ -44,7 +44,7 @@ describe('the withheld panels’ headings', () => {
   it('heads chat’s dropped quote pointers for what they are, and everything withheld as withheld', () => {
     expect(droppedQuotesHeading(9)).toBe('Quote marks removed (9)');
     expect(withheldHeading(3)).toBe('Withheld (3)');
-    expect(DROPPED_QUOTES_NOTE).toMatch(/^Every sentence is still in the answer\./);
+    expect(DROPPED_QUOTES_NOTE).toMatch(/ Taking a mark off removed no words\.$/);
   });
 });
 

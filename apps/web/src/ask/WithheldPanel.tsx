@@ -1,7 +1,6 @@
-import type { RetrievedSlide, WithheldSentence } from '@cram/shared';
+import type { DroppedPointer, RetrievedSlide, WithheldSentence } from '@cram/shared';
 import {
   DROPPED_QUOTES_NOTE,
-  type DroppedPointer,
   droppedQuotesHeading,
   SOURCE_MISSING,
   withheldHeading,

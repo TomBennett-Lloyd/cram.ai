@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
 /**
- * The folded panel that is the one place withheld text, or a dropped quote pointer's line, appears,
- * never styled as the answer (`docs/standards/grounding.md` rule 7); `onOpen` runs each time it is opened.
+ * The folded panel that is the one place withheld text appears, never styled as the answer
+ * (`docs/standards/grounding.md` rule 7); `onOpen` runs each time it is opened.
  */
 export const WithheldDetails = ({
   heading,

@@ -19,6 +19,7 @@ import {
   ATTRIBUTED_NOTE,
   contradictionRefLabel,
   DROPPED_QUOTES_NOTE,
+  droppedQuotesHeading,
   LEFT_OUT,
   MODEL_FAILED,
   NOT_COVERED,
@@ -29,6 +30,7 @@ import {
   SOURCE_MISSING,
   sourceRefLabel,
   SOURCES,
+  withheldHeading,
 } from '../copy';
 import { AskScreen } from './AskScreen';
 
@@ -139,12 +141,14 @@ describe('AskScreen', () => {
     await askWith({ status: 200, body: { ...GROUNDED, withheld: [...DROPPED, comb] } });
     const panels = [...answer().querySelectorAll('details')];
     expect(panels.map((panel) => panel.querySelector('summary')?.textContent)).toEqual([
-      'Quote marks removed (2)',
+      droppedQuotesHeading(2),
     ]);
     const [panel] = panels;
     if (panel === undefined) throw new Error('no panel');
     expect(panel.open).toBe(false);
-    expect(panel.querySelector('.withheld-reason')?.textContent).toBe(DROPPED_QUOTES_NOTE);
+    expect([...panel.querySelectorAll('.withheld-reason')].map((note) => note.textContent)).toEqual(
+      [DROPPED_QUOTES_NOTE],
+    );
     const entries = [...panel.querySelectorAll(':scope > ul > li')];
     expect(entries.map((entry) => entry.querySelector('.withheld-text')?.textContent)).toEqual([
       'Worker bees are female.',
@@ -172,9 +176,9 @@ describe('AskScreen', () => {
     const [dropped, cut] = answer().querySelectorAll('details');
     const texts = (panel: Element | undefined) =>
       [...(panel?.querySelectorAll('.withheld-text') ?? [])].map((line) => line.textContent);
-    expect(dropped?.querySelector('summary')?.textContent).toBe('Quote marks removed (1)');
+    expect(dropped?.querySelector('summary')?.textContent).toBe(droppedQuotesHeading(1));
     expect(texts(dropped)).toEqual(['Worker bees are female.']);
-    expect(cut?.querySelector('summary')?.textContent).toBe('Withheld (3)');
+    expect(cut?.querySelector('summary')?.textContent).toBe(withheldHeading(3));
     expect(texts(cut)).toEqual(['Drones forage.', 'Queens rule the hive.', 'Bees sleep.']);
     expect(cut?.textContent).toContain('No slide this answer was written from says it.');
     expect(answer().querySelector('.explanation')?.textContent).not.toContain('Queens');

@@ -3,6 +3,7 @@ import {
   type CourseUnavailableProblem,
   DiscardableTable,
   type DiscardedTable,
+  type DroppedPointer,
   type SlideRecord,
   type StoredLecture,
   type TopicOrigin,
@@ -248,9 +249,7 @@ export const withheldHeading = (count: number): string => `Withheld (${String(co
 export const droppedQuotesHeading = (count: number): string =>
   `Quote marks removed (${String(count)})`;
 export const DROPPED_QUOTES_NOTE =
-  'Every sentence is still in the answer. It marked these slide lines as quotes, but doesn’t repeat them word for word, or the slide has no such line, so the marks were taken off.';
-
-export type DroppedPointer = Extract<WithheldSentence, { reason: 'dangling-citation' }>;
+  'The answer marked these as quotes, but doesn’t repeat them word for word, or names a line its slide doesn’t have, so the marks were taken off. Taking a mark off removed no words.';
 
 export const withheldMessage = (withheld: Exclude<WithheldSentence, DroppedPointer>): string => {
   switch (withheld.reason) {
