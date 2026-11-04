@@ -3662,6 +3662,18 @@ line two
 '
 end
 
+begin "...and at a lane report that comes before a TASK REPORT"
+fixture squash-cut-lane-first
+V_BODY='Closes #12\n## Lane report — issue #12\nmiddle\n## TASK REPORT — batch: anchor #12\nlast'
+write_view default
+write_merged_view
+MERGE_METHOD=squash run_merge
+expect_rc 0
+expect_merged squash
+expect_landed '#12: the change (#490)' 'Closes #12
+'
+end
+
 begin "a body with nothing above its lane report is refused at classify"
 fixture squash-no-summary
 V_BODY=' \n\n## Lane report — issue #12\nCloses #12'

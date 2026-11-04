@@ -37,9 +37,9 @@ function squashMessage(pr) {
     };
   const trailers = new Map();
   for (const c of pr.commits || [])
-    for (const t of String((c && c.messageBody) || '')
-      .replace(/\r/g, '')
-      .matchAll(/^co-authored-by:[ \t]*(\S.*?)[ \t]*$/gim))
+    for (const t of String((c && c.messageBody) || '').matchAll(
+      /^co-authored-by:[ \t]*(\S.*?)[ \t]*$/gim,
+    ))
       if (!trailers.has(t[1].toLowerCase()))
         trailers.set(t[1].toLowerCase(), `Co-authored-by: ${t[1]}`);
   const tail = trailers.size ? `\n\n${[...trailers.values()].join('\n')}` : '';
@@ -122,7 +122,7 @@ process.stdin.on('end', () => {
   const strays = (text) => {
     const found = new Set();
     for (const r of text.matchAll(CLOSING_REF)) {
-      const bare = /^#(\d+)$/.exec(r[1]);
+      const bare = /^#(\d+)/.exec(r[1]);
       if (!(bare && named.has(Number(bare[1])))) found.add(r[0]);
     }
     return found;
