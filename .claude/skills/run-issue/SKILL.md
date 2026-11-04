@@ -48,7 +48,14 @@ the section before you dispatch.
    read missed is a retro signal naming this step (owner decision 2026-11-02, #433).
    A single lane never holds for another lane's plan — overlap is
    priced as rebase cost, and only entangled same-file SOURCE overlap is batched or
-   sequenced, here, at dispatch. `conserve` budget mode: one lane.
+   sequenced, here, at dispatch. Two **eval-bearing** lanes overlap there too, on
+   `eval/recordings/` and `eval/reports/`, which neither issue names because the run
+   generates them. A lane is eval-bearing when its predicted footprint meets a trigger path
+   of `docs/adr/0005-evaluation-as-gate.md` § Decision (g), or holds anything else that owes
+   a `pnpm eval` run under `eval/README.md`'s tier-1 paragraph. Sequence the second, or
+   admit it with step 2's overlap note naming the first as the lane its tier-2 run waits
+   for (`.claude/agents/ticket-agent.md` rule 6): six lanes re-recorded or lost a run
+   without this (#486). `conserve` budget mode: one lane.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
    mode and the overlap note — nothing else; it reads the issue and the files.
    The overlap note asserts only what a command printed: each overlapping lane's issue or
@@ -155,7 +162,12 @@ the section before you dispatch.
    to the one ready longest; the heads counted include a curated batch whose checks are
    still running on its new head, so a ready PR whose landing would cost that batch
    another round waits for that one CI run — the one wait this order prices. A curated
-   batch is priced by (2), not special-cased (owner direction 2026-11-02, #413). The
+   batch is priced by (2), not special-cased (owner direction 2026-11-02, #413). Two
+   ready eval-bearing PRs (step 1) overlap whatever the read prints, since each committed
+   run stands for its whole tree (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)):
+   the one whose tier-2 run is committed goes first, and the other takes one step 5
+   `REBASE —` bounce to re-record after it lands, even when it reads only `BEHIND`, because
+   `gh pr update-branch` cannot re-record. No run in progress is overtaken (#486). The
    order and the read it rests on — commands, output and exit codes, written from the captured run
    (`docs/standards/evidence.md`) — go in the in-flight table rows, never into issues.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
@@ -176,9 +188,14 @@ the section before you dispatch.
    the PR waits as it is, and `bash .claude/scripts/merge-pr.sh <pr>` unions the conflict at
    merge in its update-branch step, or refuses, naming why (#297). Any other path, or that
    refusal → a `REBASE —` bounce to the
-   warm agent, which rebases per its rule 8 and re-reports. The second merger rebases,
-   always; merges serialise, in step 4's **Merge order**. The bounce carries pasted command
-   output and citations, and no figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
+   warm agent, which rebases per its rule 8 and re-reports. On a branch whose diff against
+   `origin/main` adds or updates a file under `eval/reports/` — the second of two
+   eval-bearing PRs in step 4's **Merge order** among them — the bounce reads
+   `REBASE — merge origin/main (ADR 0005 (f))`, and the lane merges rather than rebases,
+   under the same rule 8, so the commit its report measured stays in the PR's history. The
+   second merger takes `main` in one of these two forms, always; merges serialise, in step
+   4's **Merge order**. The bounce carries pasted command output and citations, and no
+   figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:
    (a) `git log --oneline "$base"..origin/main`, what merged since the branch was cut;
    (b) `git diff "$base" origin/main -- <file>` for each file both sides touched, that set
    printed by
@@ -197,10 +214,12 @@ the section before you dispatch.
    arrives after the report takes this step's arms above unchanged — logs alone wait for
    `merge-pr.sh`'s union, any other path is the `REBASE —` bounce — because the lane
    pushes nothing unprompted after `DONE` (`.claude/agents/ticket-agent.md` rule 5).
-   A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase and
-   pushes nothing more, which makes the worktree yours: finish the rebase there — git only,
-   under every rule `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify,
-   force-push the branch, then run any fill the PR still owes per step 4 (#205).
+   A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase, or
+   mid-merge on an eval-report branch, and pushes nothing more, which makes the worktree
+   yours: finish that rebase or merge there — git only, under every rule
+   `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify, push the branch
+   (forced after a rebase, plain after a merge), then run any fill the PR still owes per
+   step 4 (#205).
 6. **Release**: PR merged, issue closed, no bounce open → the `## Lane report` in the PR body
    is the retro's first-hand input; run `/retro`; remove the row. A wedged agent (no report,
    no branch movement) gets the worktree and the issue inspected FIRST, then `TaskStop`, then

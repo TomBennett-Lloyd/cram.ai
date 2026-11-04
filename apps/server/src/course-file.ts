@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
+  type CourseReader,
   type EmbedderIdentity,
+  type LectureKey,
   openCourse,
   openCourseReadOnly,
   type OpenCourseResult,
@@ -61,39 +63,68 @@ export const openToRead = (files: CourseFiles, courseId: CourseId): ReadCourseRe
     embedder: files.embedder,
   });
 
-const NO_LECTURES: StoredLectures = { state: 'read', lectures: [], report: { state: 'none' } };
+interface ReadOutcomes<T> {
+  readonly empty: T;
+  readonly unavailable: (problem: CourseUnavailableProblem) => T;
+}
 
-/** What the course file holds; a course with no file yet, or a blank one, holds no lectures. */
-export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLectures => {
-  if (!courseExists(files, courseId)) return NO_LECTURES;
+/** A course with no file yet, or a blank one, is `empty`. */
+const readCourseFile = <T>(
+  files: CourseFiles,
+  courseId: CourseId,
+  outcomes: ReadOutcomes<T>,
+  read: (course: CourseReader) => T,
+): T => {
+  if (!courseExists(files, courseId)) return outcomes.empty;
   const opened = openToRead(files, courseId);
-  if (opened.status === 'blank') return NO_LECTURES;
-  if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
+  if (opened.status === 'blank') return outcomes.empty;
+  if (opened.status !== 'open') return outcomes.unavailable(opened.status);
   try {
-    const { course } = opened;
-    return {
-      state: 'read',
-      lectures: [...course.lectures()],
-      report: course.rebuildReport(),
-    };
+    return read(opened.course);
   } finally {
     opened.course.close();
   }
 };
 
+const NO_LECTURES: StoredLectures = { state: 'read', lectures: [], report: { state: 'none' } };
+
+export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLectures =>
+  readCourseFile<StoredLectures>(
+    files,
+    courseId,
+    { empty: NO_LECTURES, unavailable: (problem) => ({ state: 'course-unavailable', problem }) },
+    (course) => ({
+      state: 'read',
+      lectures: [...course.lectures()],
+      report: course.rebuildReport(),
+    }),
+  );
+
+/** The key a log line names the lecture by; none for a lecture or course file the server cannot read. */
+export const lectureKeyOf = (
+  files: CourseFiles,
+  courseId: CourseId,
+  lectureId: LectureId,
+): LectureKey | undefined =>
+  readCourseFile(files, courseId, { empty: undefined, unavailable: () => undefined }, (course) =>
+    course.lectureKey(lectureId),
+  );
+
 const NO_SUMMARIES: CourseSummaries = { state: 'read', summaries: [], slides: [] };
 
-/** Every stored summary, with each slide its lines cite; the caller has checked `courseExists`. */
+/** Every stored digest, with each slide its lines and withheld units cite; the caller has checked `courseExists`. */
 export const storedSummaries = (files: CourseFiles, courseId: CourseId): CourseSummaries => {
   const opened = openToRead(files, courseId);
   if (opened.status === 'blank') return NO_SUMMARIES;
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   const { course } = opened;
   try {
-    const summaries = course.summaries();
+    const summaries = course.digests();
     const cited = new Set(
-      summaries.flatMap(({ units }) =>
-        units.flatMap(({ citations }) => citations.map(({ sourceId }) => sourceId)),
+      summaries.flatMap(({ units, withheld }) =>
+        [...units, ...withheld.map(({ unit }) => unit)].flatMap(({ citations }) =>
+          citations.map(({ sourceId }) => sourceId),
+        ),
       ),
     );
     const slides = summaries.flatMap(({ lectureId }) =>

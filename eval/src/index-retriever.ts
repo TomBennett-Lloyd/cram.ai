@@ -1,5 +1,6 @@
 import type { Embedder } from '@cram/gateway';
 import {
+  digestOf,
   type FactTagging,
   lectureFacts,
   summariseLecture,
@@ -131,7 +132,8 @@ export class IndexRetriever {
         this.#course.lectureSlides(lecture.lectureId),
         deps,
       );
-      if (outcome.status === 'summarised') this.#course.setSummary(outcome.summary);
+      if (outcome.status !== 'model-failed')
+        this.#course.setDigest(digestOf(lecture.lectureId, outcome));
       outcomes.push(outcome);
     }
     return outcomes;
