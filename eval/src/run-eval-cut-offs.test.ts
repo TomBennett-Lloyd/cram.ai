@@ -2,7 +2,11 @@ import { CourseId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { runEval } from './run-eval';
 import { indexedLecture, record } from './run-fixture';
-import { type Respond, ScriptedGateway } from './scripted-gateway-fixture';
+import {
+  type Respond,
+  SCRIPTED_MAX_OUTPUT_TOKENS,
+  ScriptedGateway,
+} from './scripted-gateway-fixture';
 import { credulous } from './scripted-tutor-fixture';
 
 const run = (respond: Respond) =>
@@ -27,7 +31,7 @@ describe('runEval', () => {
         ? { status: 'truncated', content: '{"units":[', cutOffAt: 'timeout' }
         : credulous(wire);
     await expect(run(cutSummaries)).resolves.toMatchObject({
-      generatorCutOffs: { tokenLimit: 0, timeout: 2 },
+      generatorCutOffs: { maxOutputTokens: SCRIPTED_MAX_OUTPUT_TOKENS, tokenLimit: 0, timeout: 2 },
     });
     await expect(run(credulous)).resolves.toMatchObject({
       generatorCutOffs: { tokenLimit: 0, timeout: 0 },

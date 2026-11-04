@@ -82,6 +82,7 @@ describe('POST /courses/:id/ask, attribution', () => {
         generator: {
           pin: base.generator.pin,
           sampling: base.generator.sampling,
+          maxOutputTokens: base.generator.maxOutputTokens,
           served: base.generator.served,
           chat: (request) =>
             Promise.resolve(chatResult(explanationReply(sentence), request.output.schema)),

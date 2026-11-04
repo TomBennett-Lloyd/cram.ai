@@ -15,6 +15,7 @@ import {
   RERANKER_PIN,
   SAMPLING,
   ScriptedGateway,
+  SCRIPTED_MAX_OUTPUT_TOKENS,
 } from './scripted-gateway-fixture';
 
 const Answer = z.strictObject({ text: z.string() });
@@ -36,6 +37,7 @@ const replayOf = (gateway: RecordingGateway): FakeGateway => {
   return new FakeGateway({
     pins: PROVISIONAL_DEFAULT_PINS,
     sampling: SAMPLING,
+    maxOutputTokens: SCRIPTED_MAX_OUTPUT_TOKENS,
     recordings: result.recordings,
   });
 };
@@ -75,6 +77,15 @@ describe('RecordingGateway', () => {
     );
   });
 
+  it('records the maxOutputTokens its inner generator reports', async () => {
+    const recorder = new RecordingGateway({ inner: echo() });
+    expect(recorder.generator.maxOutputTokens).toBe(SCRIPTED_MAX_OUTPUT_TOKENS);
+    await recorder.generator.chat(ask('hi'));
+    const result = recorder.recordings();
+    if (result.status !== 'recorded') throw new Error('expected recordings');
+    expect(result.recordings).toMatchObject([{ maxOutputTokens: SCRIPTED_MAX_OUTPUT_TOKENS }]);
+  });
+
   it('keys a generator call by the sampling its inner generator reports', async () => {
     const reseeded = { ...SAMPLING, seed: 7 };
     const recorder = new RecordingGateway({ inner: echo(reseeded) });
@@ -83,7 +94,12 @@ describe('RecordingGateway', () => {
     const result = recorder.recordings();
     if (result.status !== 'recorded') throw new Error('expected recordings');
     const replayAt = (sampling: Sampling) =>
-      new FakeGateway({ pins: PROVISIONAL_DEFAULT_PINS, sampling, recordings: result.recordings });
+      new FakeGateway({
+        pins: PROVISIONAL_DEFAULT_PINS,
+        sampling,
+        maxOutputTokens: SCRIPTED_MAX_OUTPUT_TOKENS,
+        recordings: result.recordings,
+      });
     await expect(replayAt(reseeded).generator.chat(ask('hi'))).resolves.toMatchObject({
       status: 'completed',
     });
@@ -186,6 +202,7 @@ describe('RecordingGateway', () => {
     const replay = new FakeGateway({
       pins: { ...PROVISIONAL_DEFAULT_PINS, reranker: RERANKER_PIN },
       sampling: SAMPLING,
+      maxOutputTokens: SCRIPTED_MAX_OUTPUT_TOKENS,
       recordings: result.recordings,
     });
     await expect(replay.reranker?.rerank(request)).resolves.toEqual([

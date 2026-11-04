@@ -66,6 +66,7 @@ const timedCall = <T>(timing: Timing, role: Role, call: () => Promise<T>): Promi
 class TimedGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly maxOutputTokens: number;
   readonly served: ServedArtefact;
   readonly #inner: Generator;
   readonly #timing: Timing;
@@ -73,6 +74,7 @@ class TimedGenerator implements Generator {
   constructor(inner: Generator, timing: Timing) {
     this.pin = inner.pin;
     this.sampling = inner.sampling;
+    this.maxOutputTokens = inner.maxOutputTokens;
     this.served = inner.served;
     this.#inner = inner;
     this.#timing = timing;

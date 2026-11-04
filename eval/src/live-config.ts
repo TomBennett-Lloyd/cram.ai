@@ -7,6 +7,8 @@ import { MachineClass } from './report';
 /** The backend's deterministic settings (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)). */
 export const LIVE_SAMPLING: Sampling = Sampling.parse({ temperature: 0, seed: 0 });
 
+export const LIVE_MAX_OUTPUT_TOKENS = REPLY_TOKEN_RESERVE;
+
 /** One generator call's bound; a CPU-only machine takes minutes over a long prompt (#3). */
 const GENERATOR_TIMEOUT_MS = 600_000;
 
@@ -41,7 +43,7 @@ export const liveConfig = (env: Readonly<Record<string, string | undefined>>): L
       endpoint: CRAM_GENERATOR_ENDPOINT,
       servedModel: CRAM_GENERATOR_MODEL,
       timeoutMs: GENERATOR_TIMEOUT_MS,
-      maxOutputTokens: REPLY_TOKEN_RESERVE,
+      maxOutputTokens: LIVE_MAX_OUTPUT_TOKENS,
       sampling: LIVE_SAMPLING,
     },
     verifier: { pin: LIVE_PINS.verifier, directory: snapshot(CRAM_MODELS_DIR, LIVE_PINS.verifier) },

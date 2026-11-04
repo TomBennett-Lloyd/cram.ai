@@ -53,7 +53,7 @@ const promptTokens = (fact: TagFact): number =>
     0,
   );
 
-/** One call per fact (#426); a backend failure ends the pass, so a backend that is down costs one call. */
+/** One call per fact (#426); a backend failure or a timeout ends the pass, so a backend that is down or stalled costs one call (#578). */
 export const tagFacts = async (
   facts: readonly TagFact[],
   deps: TagDeps,
@@ -70,7 +70,9 @@ export const tagFacts = async (
     else if (down) outcomes.push({ ...ref, status: 'untagged', reason: 'backend-failed' });
     else {
       const reply = await deps.generator.chat(tagRequest(fact.lectureTitle, passage));
-      down = reply.status === 'backend-failed';
+      down =
+        reply.status === 'backend-failed' ||
+        (reply.status === 'cut-off' && reply.cutOffAt === 'timeout');
       outcomes.push(
         reply.status === 'completed'
           ? { ...ref, status: 'tagged', tags: tagsOf(reply.value.tags) }

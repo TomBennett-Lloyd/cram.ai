@@ -95,18 +95,24 @@ describe('tagFacts', () => {
     ]);
   });
 
-  it('leaves a fact whose reply is cut off untagged as cut off, and goes on to the next', async () => {
-    const cut = {
-      status: 'truncated',
-      content: '{"tags":["swar',
-      cutOffAt: 'token-limit',
-    } as const;
-    const gateway = fakeGateway([replying(swarm, cut), topics(stilling, ['the stilling'])]);
-    await expect(tagFacts([swarm, stilling], gateway)).resolves.toEqual([
-      { ...ref(swarm), status: 'untagged', reason: 'cut-off' },
-      { ...ref(stilling), status: 'tagged', tags: ['the stilling'] },
-    ]);
-  });
+  it.each([
+    ['token limit', 'token-limit', { status: 'tagged', tags: ['the stilling'] }],
+    [
+      'timeout, ending the pass as a backend failure does',
+      'timeout',
+      { status: 'untagged', reason: 'backend-failed' },
+    ],
+  ] as const)(
+    'leaves a fact whose reply is cut off at the %s untagged',
+    async (_, cutOffAt, next) => {
+      const cut = { status: 'truncated', content: '{"tags":["swar', cutOffAt } as const;
+      const gateway = fakeGateway([replying(swarm, cut), topics(stilling, ['the stilling'])]);
+      await expect(tagFacts([swarm, stilling], gateway)).resolves.toEqual([
+        { ...ref(swarm), status: 'untagged', reason: 'cut-off' },
+        { ...ref(stilling), ...next },
+      ]);
+    },
+  );
 
   it('accepts the bounds themselves: TAGS_PER_FACT topics, each TAG_MAX_CHARS characters', async () => {
     const six = Array.from(

@@ -14,12 +14,13 @@ import { Sampling } from './role-config';
 
 const oneReplyPerInput = (replies: number, inputs: number): boolean => replies === inputs;
 
-/** One backend call and its reply, keyed by pin, request and, for the generator, sampling. */
+/** One backend call and its reply, keyed by pin, request and, for the generator, sampling and `maxOutputTokens`. */
 export const Recording = z.discriminatedUnion('role', [
   z.strictObject({
     role: z.literal('generator'),
     pin: GeneratorPin,
     sampling: Sampling,
+    maxOutputTokens: z.number().int().positive(),
     request: ChatWireRequest,
     reply: GeneratorReply,
   }),
@@ -61,8 +62,9 @@ export interface RecordedCall {
   readonly pin: ModelPin;
   readonly request: unknown;
   readonly sampling?: Sampling;
+  readonly maxOutputTokens?: number;
 }
 
 /** The one key a recording is stored and replayed by: everything but the reply, in key-order-free JSON. */
-export const recordingKey = ({ pin, request, sampling }: RecordedCall): string =>
-  canonicalJson({ pin, request, sampling });
+export const recordingKey = ({ pin, request, sampling, maxOutputTokens }: RecordedCall): string =>
+  canonicalJson({ pin, request, sampling, maxOutputTokens });

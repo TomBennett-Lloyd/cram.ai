@@ -101,6 +101,7 @@ describe('OpenAiHttpGenerator', () => {
     const generator = new OpenAiHttpGenerator(config, SERVED);
     await generator.chat(request);
     expect(generator.sampling).toEqual(config.sampling);
+    expect(generator.maxOutputTokens).toBe(config.maxOutputTokens);
     expect(sent).toMatchObject(generator.sampling);
   });
 
@@ -271,8 +272,7 @@ describe('OpenAiHttpGenerator', () => {
   });
 
   it('stops a reply at maxOutputTokens: a stream past the cap is cut off with its content, never a failure', async () => {
-    const tokens = ['{"text":"', 'a', ' b', ' c', ' d', '"}'];
-    fixture.handler = capped(tokens);
+    fixture.handler = capped(['{"text":"', 'a', ' b', ' c', ' d', '"}']);
     const capAt3 = new OpenAiHttpGenerator({ ...config, maxOutputTokens: 3 }, SERVED);
     const cut = { status: 'cut-off', content: '{"text":"a b', cutOffAt: 'token-limit' };
     await expect(capAt3.chat(request)).resolves.toEqual(cut);

@@ -99,6 +99,6 @@ export const EvalReport = z.strictObject({
     generatorTimeToFirstToken: NotMeasurable,
     generatorTokensPerSecond: NotMeasurable,
   }),
-  generatorCutOffs: GeneratorCutOffs,
+  generatorCutOffs: GeneratorCutOffs.extend({ maxOutputTokens: z.number().int().positive() }),
 });
 export type EvalReport = z.infer<typeof EvalReport>;

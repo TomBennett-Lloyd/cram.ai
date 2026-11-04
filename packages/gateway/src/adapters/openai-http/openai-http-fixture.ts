@@ -28,7 +28,7 @@ export const USAGE = { choices: [], usage: { prompt_tokens: 21, completion_token
 export const completion = (content: string, finishReason = 'stop') =>
   sse([chunk(content), chunk(null, finishReason), USAGE]);
 
-/** Streams `tokens` one per chunk until the request's `max_tokens`, as a capped server does, then finishes `length`. */
+/** Streams `tokens` one per chunk until the request's `max_tokens`, as a capped server does. */
 export const capped =
   (tokens: readonly string[]): Handler =>
   (_request, body, response) => {

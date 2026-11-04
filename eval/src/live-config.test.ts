@@ -1,6 +1,12 @@
 import { REPLY_TOKEN_RESERVE } from '@cram/grounding';
 import { describe, expect, it } from 'vitest';
-import { LIVE_PINS, LIVE_SAMPLING, liveConfig, RunEnvironment } from './live-config';
+import {
+  LIVE_MAX_OUTPUT_TOKENS,
+  LIVE_PINS,
+  LIVE_SAMPLING,
+  liveConfig,
+  RunEnvironment,
+} from './live-config';
 
 const ENV = {
   CRAM_GENERATOR_ENDPOINT: 'http://127.0.0.1:8080/v1/',
@@ -21,7 +27,7 @@ describe('liveConfig', () => {
       pin: LIVE_PINS.generator,
       endpoint: ENV.CRAM_GENERATOR_ENDPOINT,
       servedModel: ENV.CRAM_GENERATOR_MODEL,
-      maxOutputTokens: REPLY_TOKEN_RESERVE,
+      maxOutputTokens: LIVE_MAX_OUTPUT_TOKENS,
       sampling: LIVE_SAMPLING,
     });
     expect(config.verifier).toEqual({
@@ -33,6 +39,10 @@ describe('liveConfig', () => {
       directory: '/models/BAAI/bge-small-en-v1.5',
     });
     expect(config.reranker).toBeUndefined();
+  });
+
+  it('caps a reply at the tokens the prompt budget keeps for it', () => {
+    expect(LIVE_MAX_OUTPUT_TOKENS).toBe(REPLY_TOKEN_RESERVE);
   });
 
   it('samples at temperature 0 with a fixed seed', () => {

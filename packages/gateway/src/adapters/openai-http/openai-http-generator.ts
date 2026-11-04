@@ -44,6 +44,7 @@ const streamedReply = (read: StreamRead, at: string, timedOut: boolean): TimedRe
 export class OpenAiHttpGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly maxOutputTokens: number;
   readonly served: ServedArtefact;
   readonly #config: HttpGeneratorConfig;
   readonly #url: URL;
@@ -57,6 +58,7 @@ export class OpenAiHttpGenerator implements Generator {
     this.#config = config;
     this.pin = this.#config.pin;
     this.sampling = this.#config.sampling;
+    this.maxOutputTokens = this.#config.maxOutputTokens;
     this.served = served;
     this.#url = chatCompletionsUrl(this.#config.endpoint);
     this.#now = now;
