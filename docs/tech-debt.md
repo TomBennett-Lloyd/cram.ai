@@ -109,7 +109,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 ## 2026-10-21 — the slide panel's 16:9 frame letterboxes a portrait page
 
 - Where: `.slide-figure` in `apps/web/src/app.css`; `SlideImage` in `packages/shared/src/deck.ts`
-- What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/ingest-pdf.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
+- What: the panel holds the picture's box at 16:9 before it loads (`docs/standards/design.md` rule 6). Ingest also renders portrait pages (the portrait case in `packages/ingest/src/adapters/pdf/render-page.test.ts`), and a portrait page shows as a narrow strip, against #368's "at readable size". A box that both holds still and fits the page needs the image's dimensions, and neither `SlideImage` nor the route carries them yet.
 - Source: #368 review cycle 1
 
 ## 2026-11-02 — the row-id zod schema is declared once per module
@@ -159,6 +159,12 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/server-log.ts` (`LogEntry`, `lectureEntry`); its callers `apps/server/src/ingest-queue.ts`, `apps/server/src/ask-course.ts`, `apps/server/src/server.ts`
 - What: `operation` is a bare string, `courseId` an unbranded string, and `lectureKey` optional on every entry. So the compiler cannot require a key on a lecture-scoped operation. The next lecture job can log without one, and only a test would notice: the gap #470 closed (`docs/standards/typing.md` rules 1 and 4). Suspected root cause: the entry grew one optional field per entity instead of a union keyed by operation kind, which would cross all three callers.
 - Source: PR for #470 (review)
+
+## 2026-11-04 — panel headings are asserted as literals in tests that could cite their owner
+
+- Where: `apps/web/src/decks/DecksSummaryWithheld.test.tsx:80,124`, `apps/web/e2e/decks-summary.spec.ts:13` (`'Withheld (n)'`); owner `apps/web/src/copy.ts` (`withheldHeading`, `droppedQuotesHeading`)
+- What: since #579 moved the withheld panels' headings into `copy.ts`, the summary-surface tests still restate the `Withheld (` literal, while `ask.spec.ts` and `AskScreen.test.tsx` cite the owner and `copy.test.ts` pins the literal once. A second asserting site is a carrier under `docs/standards/architecture.md` rule 9 and has no ledger. Suspected root cause: no repo rule says whether a UI-copy literal asserted in a test gets a ledger or cites `copy.ts`, so each lane picks one.
+- Source: PR for #579 (review)
 
 ## 2026-11-04 — a hostile corpus's grammar is drawn from the fields the code reads, not each field's domain
 

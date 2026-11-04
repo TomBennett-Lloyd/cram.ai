@@ -20,7 +20,6 @@ export interface PdfPageText {
   readonly height: number;
 }
 
-/** pdf.js's own Unicode fold off, so `storedText`'s is the only one (#256). */
 export const pageTextOf = async (pdf: PdfDocument, pageNo: number): Promise<PdfPageText> => {
   const page = await pdf.getPage(pageNo);
   const { items } = await page.getTextContent({ disableNormalization: true });

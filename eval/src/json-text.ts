@@ -1,13 +1,18 @@
 import { z } from 'zod';
 
 export type JsonTextParse<T> =
-  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly message: string };
+  | { readonly ok: true; readonly value: T }
+  | {
+      readonly ok: false;
+      readonly message: string;
+      readonly issues: readonly z.core.$ZodIssue[];
+    };
 
 const parseJson = (text: string): JsonTextParse<unknown> => {
   try {
     return { ok: true, value: JSON.parse(text) };
   } catch (error) {
-    if (error instanceof SyntaxError) return { ok: false, message: error.message };
+    if (error instanceof SyntaxError) return { ok: false, message: error.message, issues: [] };
     throw error;
   }
 };
@@ -18,10 +23,10 @@ export const parseJsonText = <S extends z.ZodType>(
 ): JsonTextParse<z.infer<S>> => {
   const json = parseJson(text);
   if (!json.ok) return json;
-  const result = schema.safeParse(json.value);
+  const result = schema.safeParse(json.value, { reportInput: true });
   return result.success
     ? { ok: true, value: result.data }
-    : { ok: false, message: z.prettifyError(result.error) };
+    : { ok: false, message: z.prettifyError(result.error), issues: result.error.issues };
 };
 
 export type JsonLinesParse<T> =

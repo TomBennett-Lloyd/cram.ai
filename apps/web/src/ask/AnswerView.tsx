@@ -99,7 +99,7 @@ export const AnswerView = ({
             onOpen={onOpen}
           />
           <LeftOut leftOut={reply.leftOut} slides={reply.slides} onOpen={onOpen} />
-          <WithheldPanel withheld={reply.withheld} />
+          <WithheldPanel withheld={reply.withheld} slides={reply.slides} onOpen={onOpen} />
         </>
       );
     case 'not-covered':
@@ -111,7 +111,7 @@ export const AnswerView = ({
             onOpen={onOpen}
           />
           <LeftOut leftOut={reply.leftOut} slides={reply.slides} onOpen={onOpen} />
-          <WithheldPanel withheld={reply.withheld} />
+          <WithheldPanel withheld={reply.withheld} slides={reply.slides} onOpen={onOpen} />
         </>
       );
   }

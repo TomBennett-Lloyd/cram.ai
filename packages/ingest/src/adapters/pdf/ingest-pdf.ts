@@ -1,11 +1,10 @@
-import { SlideNo, type SlideImage } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { z } from 'zod';
 import { slidesFromPages } from '../../deck';
 import type { PageText } from '../../page-text';
 import { sourceHashOf, type DeckFile, type IngestResult } from '../deck-file';
 import { layOutPages, pageTextOf, type PdfPageText } from './page-layout';
-import { renderSlideImage, type PdfDocument } from './render-page';
+import type { PdfDocument } from './render-page';
 
 const Annotation = z.object({
   subtype: z.string().nullable(),
@@ -40,14 +39,8 @@ export type PdfUnreadableReason = ReturnType<typeof reasonOf>;
 
 export type PdfIngestResult = IngestResult<PdfUnreadableReason>;
 
-interface ReadDeck {
-  readonly pages: readonly PageText[];
-  readonly images: readonly SlideImage[];
-}
-
-const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
+const read = async (pdf: PdfDocument): Promise<readonly PageText[]> => {
   const texts: (PdfPageText & { readonly notes: string })[] = [];
-  const images: SlideImage[] = [];
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
     const annotations = z.array(Annotation).parse(await page.getAnnotations());
@@ -56,24 +49,22 @@ const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
       .map((annotation) => annotation.contentsObj?.str ?? '')
       .join('\n');
     texts.push({ ...(await pageTextOf(pdf, pageNo)), notes });
-    images.push(await renderSlideImage(pdf, SlideNo.parse(pageNo)));
   }
-  const pages = layOutPages(texts).map(({ page, lines, footer }): PageText => ({
+  return layOutPages(texts).map(({ page, lines, footer }): PageText => ({
     lines,
     footer: footer.map((line) => line.text),
     notes: page.notes,
   }));
-  return { pages, images };
 };
 
-/** A PDF deck as one slide and one rendered image per page. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */
+/** A PDF deck as one slide per page, read with pdf.js's own Unicode fold off so `storedText`'s is the only one (#256); `renderPdfDeck` renders its images. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */
 export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
   const sourceHash = sourceHashOf(deck.bytes);
-  let deckRead: ReadDeck;
+  let pages: readonly PageText[];
   try {
     const pdf = await getDocumentProxy(new Uint8Array(deck.bytes), { verbosity: 0 });
     try {
-      deckRead = await read(pdf);
+      pages = await read(pdf);
     } finally {
       await pdf.loadingTask.destroy();
     }
@@ -90,7 +81,6 @@ export const ingestPdf = async (deck: DeckFile): Promise<PdfIngestResult> => {
   }
   return {
     status: 'ingested',
-    slides: slidesFromPages(deckRead.pages, { ...deck, sourceHash }),
-    images: deckRead.images,
+    slides: slidesFromPages(pages, { ...deck, sourceHash }),
   };
 };

@@ -29,6 +29,8 @@
 # real entry does. This refusal is that gap, and it is the one step here that is
 # a gate rather than a convenience. The fill itself is
 # .claude/scripts/fill-verdict.sh, run on the branch once the owner has decided.
+# A filled entry that takes an ADR-amendment arm is held to that arm's check in the
+# same step (.claude/workflow.json → merge.amendmentRule, #560).
 #
 # What merges is the head whose checks were read, and for a --rebase batch the
 # head whose commits passed the curated-history check — owner decision
@@ -689,7 +691,56 @@ feedback_state() { # -> 0 entry present and filled; 1 refuse (reason on stdout);
     printf 'the entry Category or Verdict still reads the literal "pending — filled at merge". A verdict is a human-approved decision and this script will never write one: fill BOTH on the branch, push, then re-run\n'
     return 1
   fi
-  return 0
+  amendment_state "$diff" "$added"
+}
+
+# merge.amendmentRule in .claude/workflow.json: a filled entry that takes an amendment arm
+# clears only when that arm's check passes (#560).
+# adr-amendment-check.mjs owns the tests; this function only fetches what they read. The arm
+# is chosen by the Category, and for 'approved-at-plan' by the footprint as well, because that
+# category also records approvedAtPlanRule's PROCEED, whose plan is not pasted line by line.
+amendment_state() { # amendment_state <diff> <added lines> -> as feedback_state
+  local diff="$1" added="$2" cats check="$script_dir/adr-amendment-check.mjs" spool reason rc
+  local hits=() cite id issue comment
+  cats=$(printf '%s\n' "$added" | sed -n 's/^- \*\*Category\*\*: *\([^ (]*\).*/\1/p')
+  read -r -a hits <<<"$human_hits"
+  spool=$(mktemp "${TMPDIR:-/tmp}/merge-pr.XXXXXX") || return 2
+  printf '%s\n' "$diff" >"$spool"
+  if printf '%s\n' "$cats" | grep -qx 'path-move-amendment'; then
+    reason=$(node "$check" path-move "$spool" ${hits[@]+"${hits[@]}"} 2>&1)
+    rc=$?
+  elif printf '%s\n' "$cats" | grep -qx 'approved-at-plan' &&
+    { reason=$(node "$check" footprint "$spool" ${hits[@]+"${hits[@]}"} 2>&1); rc=$?; [ "$rc" -ne 1 ]; }; then
+    [ "$rc" -eq 2 ] && { rm -f "$spool"; printf 'merge.amendmentRule: %s\n' "$reason"; return 2; }
+    cite=$(node "$check" cite "$pr_url" "$(printf '%s\n' "$added" | grep -E '^- \*\*Verdict\*\*:')" ${pr_closes[@]+"${pr_closes[@]}"} 2>&1)
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+      read -r id issue <<<"$cite"
+      comment=$(gh_call api "repos/{owner}/{repo}/issues/comments/$id" 2>&1)
+      rc=$?
+      if [ "$rc" -ne 0 ]; then
+        reason="gh api for plan comment $id exited $rc: $comment"
+        rc=2
+      else
+        printf '%s' "$comment" >"$spool.comment"
+        reason=$(node "$check" plan-named "$spool" "$spool.comment" "$issue" ${hits[@]+"${hits[@]}"} 2>&1)
+        rc=$?
+      fi
+    else
+      reason=$cite
+    fi
+  else
+    rm -f "$spool"
+    return 0
+  fi
+  rm -f "$spool" "$spool.comment"
+  [ "$rc" -eq 0 ] && return 0
+  if [ "$rc" -eq 2 ]; then
+    printf 'merge.amendmentRule: %s\n' "$reason"
+    return 2
+  fi
+  printf 'merge.amendmentRule refuses this filled entry: %s. The PR takes humanAlwaysRule'"'"'s path instead, its entry back in the pre-label form\n' "$reason"
+  return 1
 }
 
 if [ "$is_human" = "0" ]; then

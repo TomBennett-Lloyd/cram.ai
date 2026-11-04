@@ -1,7 +1,7 @@
 import { UNTITLED_LECTURE } from '@cram/ingest';
 import { CourseId, LectureId } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
-import { lectureDeck } from './ingest-deck';
+import { lectureDeck, renderFile } from './ingest-deck';
 
 describe('lectureDeck', () => {
   it('titles a deck with no slides as untitled rather than refuse to store it', () => {
@@ -13,5 +13,12 @@ describe('lectureDeck', () => {
       bytes: new Uint8Array([1]),
     } as const;
     expect(lectureDeck(job, []).lectureTitle).toBe(UNTITLED_LECTURE);
+  });
+});
+
+describe('renderFile', () => {
+  it('renders no image for a PPTX deck, and never reads it as a PDF', async () => {
+    const pptx = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    expect(await renderFile(pptx, new Uint8Array([0x50, 0x4b]))).toEqual([]);
   });
 });
