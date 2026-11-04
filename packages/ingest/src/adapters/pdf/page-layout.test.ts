@@ -1,12 +1,9 @@
-import { getDocumentProxy } from 'unpdf';
 import { describe, expect, it } from 'vitest';
-import { buildDeck, CALL_OUT_SLIDE } from './deck-fixture';
 import {
   COLUMN_GAP_EMS,
   FOOTER_BAND,
   layOutPages,
   linesOf,
-  pageTextOf,
   type PdfPageText,
   type PdfTextItem,
 } from './page-layout';
@@ -131,6 +128,44 @@ describe('linesOf', () => {
     expect(footer('3', 100 + band, 100)).toEqual(['© Course, Year.3', 'Next']);
   });
 
+  it('gives a rotated item no box and no geometric break, keeping its size', () => {
+    const turned = (str: string, y: number): PdfTextItem => ({
+      str,
+      transform: [0, 18, -18, 0, 300, y],
+      width: str.length * 9,
+      hasEOL: false,
+    });
+    const items = [turned('• The ', 100), turned('rate law ', 154), turned('depends', 235)];
+    expect(linesOf({ items, bottom: 0, height: HEIGHT }, 1)).toEqual([
+      { text: '• The rate law depends', size: 18 },
+    ]);
+    const flipped: PdfTextItem = {
+      ...item({ str: 'Upside', x: 40, y: 20 }),
+      transform: [-18, 0, 0, -18, 40, 20],
+    };
+    expect(
+      linesOf(
+        { items: [flipped, item({ str: '1', x: 900, y: 20 })], bottom: 0, height: HEIGHT },
+        1,
+      ),
+    ).toEqual([{ text: 'Upside', size: 18 }]);
+    const sheared = (transform: PdfTextItem['transform']): string[] =>
+      linesOf(
+        {
+          items: [
+            { ...item({ str: 'Slanted', x: 40, y: 300 }), transform },
+            item({ str: 'far', x: 40, y: 100 }),
+          ],
+          bottom: 0,
+          height: HEIGHT,
+        },
+        1,
+      ).map((line) => line.text);
+    expect(sheared([18, 5, 0, 18, 40, 300])).toEqual(['Slantedfar']);
+    expect(sheared([18, 0, 5, 18, 40, 300])).toEqual(['Slantedfar']);
+    expect(sheared([18, 0, 0, 18, 40, 300])).toEqual(['Slanted', 'far']);
+  });
+
   it('boxes a line from its leftmost to its rightmost glyph, on its first baseline, sized by its largest', () => {
     expect(
       linesOf(
@@ -183,20 +218,20 @@ describe('layOutPages', () => {
   });
 
   it('never reads a line in the upper half as a footer, however often it recurs', () => {
-    const at = (y: number): Drawn => ({ str: 'Worked example', x: 40, y, size: 28 });
+    const at = (y: number): Drawn => ({ str: 'Course code', x: 40, y, size: 10 });
     const footers = (y: number): string[][] =>
-      laidOut([[at(y)], [at(y)], [at(y)]]).map(({ footer }) => footer);
-    expect(footers(HEIGHT / 2 - 0.01)).toEqual([
-      ['Worked example'],
-      ['Worked example'],
-      ['Worked example'],
-    ]);
+      laidOut([1, 2, 3].map((n) => [body(n), at(y)])).map(({ footer }) => footer);
+    expect(footers(HEIGHT / 2 - 0.01)).toEqual([['Course code'], ['Course code'], ['Course code']]);
     expect(footers(HEIGHT / 2)).toEqual([[], [], []]);
   });
 
   it('keys a recurring line on its collapsed text, its rounded left edge and its rounded baseline', () => {
     const footers = (moved: Drawn): string[][] =>
-      laidOut([[FOOTER], [FOOTER], [moved]]).map(({ footer }) => footer);
+      laidOut([
+        [body(1), FOOTER],
+        [body(2), FOOTER],
+        [body(3), moved],
+      ]).map(({ footer }) => footer);
     expect(footers({ ...FOOTER, str: '© Example  College ', x: 300.4, y: 80.4 })).toEqual([
       ['© Example College'],
       ['© Example College'],
@@ -205,6 +240,41 @@ describe('layOutPages', () => {
     expect(footers({ ...FOOTER, str: '© Example Colleges' })[2]).toEqual([]);
     expect(footers({ ...FOOTER, x: 301 })[2]).toEqual([]);
     expect(footers({ ...FOOTER, y: 81 })[2]).toEqual([]);
+  });
+
+  it("keeps a repeated line at or above the deck's body size, so a build's earlier step stays", () => {
+    const step: Drawn = { str: '• Step one forms the intermediate', x: 40, y: 200 };
+    const next: Drawn = { str: '• Step two consumes it', x: 40, y: 170 };
+    expect(
+      laidOut([
+        [body(1), step],
+        [body(2), step, next],
+      ]),
+    ).toEqual([
+      { lines: ['Body of slide 1', '• Step one forms the intermediate'], footer: [] },
+      {
+        lines: ['Body of slide 2', '• Step one forms the intermediate', '• Step two consumes it'],
+        footer: [],
+      },
+    ]);
+    const atBody: Drawn = { ...FOOTER, size: 18 };
+    expect(
+      laidOut([
+        [body(1), atBody],
+        [body(2), atBody],
+      ]).map(({ footer }) => footer),
+    ).toEqual([[], []]);
+  });
+
+  it('measures the body size over every line when every line recurs, blank lines aside', () => {
+    const same: Drawn[] = [
+      { ...body(1), str: 'A body line longer than its footer' },
+      { ...FOOTER, hasEOL: true },
+    ];
+    expect(laidOut([same, same]).map(({ footer }) => footer)).toEqual([
+      ['© Example College'],
+      ['© Example College'],
+    ]);
   });
 
   it("reads a one-page deck's bottom band as its footer, and only a one-page deck's", () => {
@@ -225,45 +295,20 @@ describe('layOutPages', () => {
   it('measures the bottom band and the lower half from the bottom of the view box', () => {
     const footers = (pages: readonly PdfPageText[]): string[][] =>
       layOutPages(pages).map(({ footer }) => footer.map((line) => line.text));
-    const raised = (y: number): PdfPageText => page([{ ...FOOTER, y: 100 + y }], 100);
+    const raised = (y: number, n = 1): PdfPageText =>
+      page(
+        [
+          { ...body(n), y: 500 },
+          { ...FOOTER, y: 100 + y },
+        ],
+        100,
+      );
     expect(footers([raised(FOOTER_BAND * HEIGHT - 0.01)])).toEqual([['© Example College']]);
     expect(footers([raised(FOOTER_BAND * HEIGHT)])).toEqual([[]]);
-    const half = raised(HEIGHT / 2 - 0.01);
-    expect(footers([half, half])).toEqual([['© Example College'], ['© Example College']]);
-  });
-});
-
-const pdfjsPages = async (bytes: Uint8Array): Promise<PdfPageText[]> => {
-  const pdf = await getDocumentProxy(bytes, { verbosity: 0 });
-  try {
-    return await Promise.all(
-      Array.from({ length: pdf.numPages }, (_, index) => pageTextOf(pdf, index + 1)),
-    );
-  } finally {
-    await pdf.loadingTask.destroy();
-  }
-};
-
-describe('layOutPages over what pdf.js reads', () => {
-  it("partitions out the issue's footer, drops its page number and gives each call-out and label its own line (#567)", async () => {
-    const [laid] = layOutPages(
-      await pdfjsPages(await buildDeck({ pages: [{ lines: CALL_OUT_SLIDE }] })),
-    );
-    expect(laid?.footer.map((line) => line.text)).toEqual([
-      '© Example College: Course, Year. AB / CD.',
-    ]);
-    expect(laid?.lines.map((line) => line.text.trim()).filter((text) => text !== '')).toEqual([
-      'Lecture title',
-      'term = short definition',
-      'Heading:',
-      '• First bullet.',
-      '• Second bullet, wrapped',
-      'onto a second line.',
-      '• Example: a sentence the tutor should be able to quote.',
-      'in a call-out box',
-      'Key:',
-      'label',
-      "Pronounced 'x'",
+    const half = HEIGHT / 2 - 0.01;
+    expect(footers([raised(half, 1), raised(half, 2)])).toEqual([
+      ['© Example College'],
+      ['© Example College'],
     ]);
   });
 });

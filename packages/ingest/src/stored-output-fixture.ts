@@ -212,7 +212,14 @@ const PDF = await buildPdf({
 
 const LAYOUT_PDFS = await Promise.all(
   [1, 3].map((pages) =>
-    buildPdf({ pages: Array.from({ length: pages }, () => ({ lines: CALL_OUT_SLIDE })) }),
+    buildPdf({
+      pages: Array.from({ length: pages }, (_, index) => ({
+        lines: [
+          ...CALL_OUT_SLIDE,
+          { text: `Page ${String(index + 1)} of the layout deck`, size: 18, at: [40, 260] },
+        ],
+      })),
+    }),
   ),
 );
 

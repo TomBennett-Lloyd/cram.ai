@@ -159,3 +159,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `apps/server/src/server-log.ts` (`LogEntry`, `lectureEntry`); its callers `apps/server/src/ingest-queue.ts`, `apps/server/src/ask-course.ts`, `apps/server/src/server.ts`
 - What: `operation` is a bare string, `courseId` an unbranded string, and `lectureKey` optional on every entry. So the compiler cannot require a key on a lecture-scoped operation. The next lecture job can log without one, and only a test would notice: the gap #470 closed (`docs/standards/typing.md` rules 1 and 4). Suspected root cause: the entry grew one optional field per entity instead of a union keyed by operation kind, which would cross all three callers.
 - Source: PR for #470 (review)
+
+## 2026-11-04 — a hostile corpus's grammar is drawn from the fields the code reads, not each field's domain
+
+- Where: `.claude/agents/ticket-agent.md` rule 4 (list (a), the input grammar); the #567 lane's differential corpus
+- What: #567's corpus varied pdf.js `transform`'s translation and scale but not its rotation, and varied deck size but not content repeated across pages. Both hid a regression the differential then reported as zero head-regressions: a rotated page's lines broke at every item, and a build's repeated step was read as a footer. Review found both. Suspected root cause: list (a) is enumerated from the fields the guard reads, so a field's components the code ignores, and any cross-unit repetition an aggregating rule reads, never become constructs.
+- Source: PR for #567 (review cycle 1)
+
+## 2026-11-04 — the repeated-footer rule drops a small lower-half line a deck repeats on most pages
+
+- Where: `repeatedFooter` in `packages/ingest/src/adapters/pdf/page-layout.ts`
+- What: a line that recurs at one position on more than half a PDF deck's pages, in the lower half and smaller than the rest of the deck's text, is read as a footer and kept out of the body. A build's small "Source: …" line repeated on most pages is read that way too, so it reaches neither the body nor retrieval. A step repeated at body size stays. Suspected root cause: position, repetition and size are all the text layer tells a footer by.
+- Source: PR for #567 (review cycle 1)

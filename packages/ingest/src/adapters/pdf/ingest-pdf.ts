@@ -58,8 +58,9 @@ const read = async (pdf: PdfDocument): Promise<ReadDeck> => {
     texts.push({ ...(await pageTextOf(pdf, pageNo)), notes });
     images.push(await renderSlideImage(pdf, SlideNo.parse(pageNo)));
   }
-  const pages = layOutPages(texts).map(({ page, lines }): PageText => ({
+  const pages = layOutPages(texts).map(({ page, lines, footer }): PageText => ({
     lines,
+    footer: footer.map((line) => line.text),
     notes: page.notes,
   }));
   return { pages, images };

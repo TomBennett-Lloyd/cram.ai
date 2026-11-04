@@ -57,7 +57,7 @@ export interface FixtureDeck {
   readonly brokenPageTree?: 'kid-not-a-reference' | 'kids-not-an-array' | 'circular';
 }
 
-/** The issue's synthetic slide (#567), its footer and labels drawn through form XObjects as pdf.js met them. */
+/** The issue's synthetic slide (#567), its footer and labels drawn through form XObjects. */
 export const CALL_OUT_SLIDE: readonly FixtureLine[] = [
   { text: 'Lecture title', size: 28, at: [300, 490] },
   { text: 'term = short definition', size: 12, at: [680, 500] },

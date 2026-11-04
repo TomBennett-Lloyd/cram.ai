@@ -7,11 +7,11 @@ export const THIN_TEXT_LAYER_WORDS = 5;
 export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', '–', '➢', '➤'] as const;
 
 /** Titles that mark a references page (#9), which `CourseIndex.search` leaves out by default (#78). */
-/** A line this many ems below a bullet's last line, or nearer, can be its wrapped continuation: a wrap at double spacing still is (slide-text.test.ts). */
-export const CONTINUATION_EMS = 2.5;
-
 export const REFERENCES_TITLE =
   /^(references|reference list|bibliography|further readings?|reading lists?|works cited)\b/i;
+
+/** A line this many ems below a bullet's last line, or nearer, can be its wrapped continuation: a wrap at double spacing still is (slide-text.test.ts). */
+export const CONTINUATION_EMS = 2.5;
 
 export interface SlideText {
   readonly kind: SlideKind;
@@ -65,7 +65,7 @@ const isTitleCandidate = (line: TextLine): boolean =>
   !DIGITS_ONLY.test(line.text) && markerOf(line.text) === undefined;
 
 /** The size carrying the most characters; a tie goes to the smaller size, body text being smaller. */
-const modalSize = (lines: readonly TextLine[]): number => {
+export const modalSize = (lines: readonly TextLine[]): number => {
   const chars = new Map<number, number>();
   for (const line of lines) chars.set(line.size, (chars.get(line.size) ?? 0) + line.text.length);
   let modal = 0;
@@ -155,7 +155,10 @@ export const slideText = (page: PageText, slideNo: SlideNo): SlideText => {
     page.markedTitle === undefined
       ? inferTitle(lines)
       : { title: collapse(page.markedTitle), bodyLines: lines };
-  const words = bodyLines.reduce((count, line) => count + wordCount(line.text), wordCount(title));
+  const words = [...bodyLines.map((line) => line.text), ...(page.footer ?? [])].reduce(
+    (count, text) => count + wordCount(text),
+    wordCount(title),
+  );
   if (words < THIN_TEXT_LAYER_WORDS) return { kind: 'image-only', title, body: '' };
   return {
     kind: REFERENCES_TITLE.test(title) ? 'references' : 'content',

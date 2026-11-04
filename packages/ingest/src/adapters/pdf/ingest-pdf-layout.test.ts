@@ -1,8 +1,10 @@
 import { resolveCitations, SlideLineNo, slideLines } from '@cram/grounding';
 import { CourseId, LectureId, SourceId } from '@cram/shared';
+import { getDocumentProxy } from 'unpdf';
 import { describe, expect, it } from 'vitest';
 import { buildDeck, CALL_OUT_SLIDE, type FixtureDeck, type FixturePage } from './deck-fixture';
 import { ingestPdf } from './ingest-pdf';
+import { layOutPages, pageTextOf, type PdfPageText } from './page-layout';
 
 const TITLE = 48;
 const BODY = 28;
@@ -80,6 +82,39 @@ describe('ingestPdf on a slide laid out by position (#567)', () => {
     ]);
   });
 
+  it('keeps a page holding only the footer as content, its footer still counted as text layer (#567)', async () => {
+    const footer: FixturePage['lines'][number] = {
+      text: '© Example College: Course name, Year 2026.',
+      size: FOOTER,
+      at: [300, 80],
+      form: true,
+    };
+    const slides = await ingested({
+      pages: [
+        {
+          lines: [
+            { text: 'Rates', size: TITLE },
+            { text: '• Rates has a body line', size: BODY },
+            footer,
+          ],
+        },
+        {
+          lines: [
+            { text: 'Orders', size: TITLE },
+            { text: '• Orders has a body line', size: BODY },
+            footer,
+          ],
+        },
+        { lines: [footer] },
+      ],
+    });
+    expect(slides.map(({ kind, title, body }) => [kind, title, body])).toEqual([
+      ['content', 'Rates', '• Rates has a body line'],
+      ['content', 'Orders', '• Orders has a body line'],
+      ['content', '', ''],
+    ]);
+  });
+
   it('reads a large title over a small-font body as two lines (#356)', async () => {
     const [slide] = await ingested({
       pages: [
@@ -98,5 +133,40 @@ describe('ingestPdf on a slide laid out by position (#567)', () => {
         body: 'In the first month the keeper walks the hives\nand counts the frames in each',
       }),
     );
+  });
+});
+
+const pdfjsPages = async (bytes: Uint8Array): Promise<PdfPageText[]> => {
+  const pdf = await getDocumentProxy(bytes, { verbosity: 0 });
+  try {
+    return await Promise.all(
+      Array.from({ length: pdf.numPages }, (_, index) => pageTextOf(pdf, index + 1)),
+    );
+  } finally {
+    await pdf.loadingTask.destroy();
+  }
+};
+
+describe('layOutPages over what pdf.js reads', () => {
+  it("partitions out the issue's footer, drops its page number and gives each call-out and label its own line (#567)", async () => {
+    const [laid] = layOutPages(
+      await pdfjsPages(await buildDeck({ pages: [{ lines: CALL_OUT_SLIDE }] })),
+    );
+    expect(laid?.footer.map((line) => line.text)).toEqual([
+      '© Example College: Course, Year. AB / CD.',
+    ]);
+    expect(laid?.lines.map((line) => line.text.trim()).filter((text) => text !== '')).toEqual([
+      'Lecture title',
+      'term = short definition',
+      'Heading:',
+      '• First bullet.',
+      '• Second bullet, wrapped',
+      'onto a second line.',
+      '• Example: a sentence the tutor should be able to quote.',
+      'in a call-out box',
+      'Key:',
+      'label',
+      "Pronounced 'x'",
+    ]);
   });
 });

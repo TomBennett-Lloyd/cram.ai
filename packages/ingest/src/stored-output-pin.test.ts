@@ -11,7 +11,7 @@ import { storedOutputCorpus as corpus } from './stored-output-fixture';
  */
 const PIN = {
   schemaVersion: 14,
-  digest: '8e2dd32dfd9c730555038938b448ff9ada9379c5fe87df1a3c983983a17b3d9f',
+  digest: '091677e26c8873faa5689d7ea86696eb664c1196f9ff9d8983d0ddaed5ded62b',
 };
 
 const sha256 = (data: string | Uint8Array): string =>

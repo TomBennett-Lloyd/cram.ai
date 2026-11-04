@@ -259,6 +259,12 @@ describe('slideText kind', () => {
     );
   });
 
+  it("counts a footer's words toward the text layer, as only page numbers are stripped before the test (#567)", () => {
+    const thin = { ...page(line('Diagram', TITLE)), footer: ['© Example College: Course, Year.'] };
+    expect(slideText(thin, 2)).toEqual({ kind: 'content', title: 'Diagram', body: '' });
+    expect(slideText({ ...thin, footer: [] }, 2).kind).toBe('image-only');
+  });
+
   it('counts words, not bullet markers', () => {
     expect(slideText(page(line('• one'), line('• two'), line('• six')), 1).kind).toBe('image-only');
   });

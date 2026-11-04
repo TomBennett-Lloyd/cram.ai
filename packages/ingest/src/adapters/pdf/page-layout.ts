@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { LineBox, TextLine } from '../../page-text';
+import { modalSize } from '../../slide-text';
 import { logicalOrder } from './logical-order';
 import type { PdfDocument } from './render-page';
 
@@ -49,19 +50,28 @@ interface Placed extends LineBox {
 const glyphSize = (transform: PdfTextItem['transform']): number =>
   Math.round(Math.hypot(transform[2], transform[3]) * 100) / 100;
 
-const placedOf = (item: PdfTextItem): Placed => ({
-  left: item.transform[4],
-  right: item.transform[4] + item.width,
-  baseline: item.transform[5],
-  size: glyphSize(item.transform),
-});
+/** Only an upright item has a left, a right and a baseline these rules can read; a rotated one keeps `hasEOL`'s lines (#567). */
+const placedOf = ({ transform, width }: PdfTextItem): Placed | undefined =>
+  transform[0] > 0 && transform[1] === 0 && transform[2] === 0
+    ? {
+        left: transform[4],
+        right: transform[4] + width,
+        baseline: transform[5],
+        size: glyphSize(transform),
+      }
+    : undefined;
 
 const inFooterBand = (baseline: number, page: PdfPageText): boolean =>
   baseline - page.bottom < FOOTER_BAND * page.height;
 
-const isPageNumber = (item: PdfTextItem, pageNo: number, page: PdfPageText): boolean => {
+const isPageNumber = (
+  item: PdfTextItem,
+  placed: Placed,
+  pageNo: number,
+  page: PdfPageText,
+): boolean => {
   const text = item.str.trim();
-  return DIGITS_ONLY.test(text) && Number(text) === pageNo && inFooterBand(item.transform[5], page);
+  return DIGITS_ONLY.test(text) && Number(text) === pageNo && inFooterBand(placed.baseline, page);
 };
 
 /** pdf.js joins what its content stream orders next, a form XObject's text included (#567); a sub- or superscript moves the baseline by less than its glyph. */
@@ -86,8 +96,9 @@ export const linesOf = (page: PdfPageText, pageNo: number): TextLine[] => {
     box = undefined;
   };
   for (const item of page.items) {
-    const placed = item.str.trim() === '' ? undefined : placedOf(item);
-    if (isPageNumber(item, pageNo, page)) {
+    const blank = item.str.trim() === '';
+    const placed = blank ? undefined : placedOf(item);
+    if (placed !== undefined && isPageNumber(item, placed, pageNo, page)) {
       if (item.hasEOL) end();
       continue;
     }
@@ -99,8 +110,8 @@ export const linesOf = (page: PdfPageText, pageNo: number): TextLine[] => {
     )
       end();
     text += logicalOrder(item.str);
+    if (!blank) size = Math.max(size, glyphSize(item.transform));
     if (placed !== undefined) {
-      size = Math.max(size, placed.size);
       box =
         box === undefined
           ? { left: placed.left, right: placed.right, baseline: placed.baseline }
@@ -137,16 +148,18 @@ const repeatedFooter = (
     );
     for (const key of keys) pagesWith.set(key, (pagesWith.get(key) ?? 0) + 1);
   }
-  return (line, page) =>
-    line.box !== undefined &&
-    inLowerHalf(line.box, page) &&
-    (pagesWith.get(positionKey(line, line.box)) ?? 0) > pages.length / 2;
+  const recurs = (line: TextLine): line is TextLine & { box: LineBox } =>
+    line.box !== undefined && (pagesWith.get(positionKey(line, line.box)) ?? 0) > pages.length / 2;
+  const all = pages.flatMap(([, lines]) => lines.filter((line) => line.text.trim() !== ''));
+  const rest = all.filter((line) => !recurs(line));
+  const bodySize = modalSize(rest.length > 0 ? rest : all);
+  return (line, page) => recurs(line) && line.size < bodySize && inLowerHalf(line.box, page);
 };
 
 const bandFooter: FooterTest = (line, page) =>
   line.box !== undefined && inFooterBand(line.box.baseline, page);
 
-/** Every page's lines, less its footer: lower-half lines repeated on most pages, or a one-page deck's bottom band (#567). */
+/** Every page's lines, less its footer: lines repeated low on most pages and smaller than the rest of the deck's text (all of it, when every line recurs), so a build's repeated step stays, or a one-page deck's bottom band (#567). */
 export const layOutPages = <P extends PdfPageText>(pages: readonly P[]): LaidOutPage<P>[] => {
   const lined = pages.map((page, index) => [page, linesOf(page, index + 1)] as const);
   const isFooter = pages.length === 1 ? bandFooter : repeatedFooter(lined);
