@@ -8,6 +8,7 @@ import {
 import type { AssembledContext } from './assemble-context';
 import { type ExplainDepth, explain } from './explain';
 import {
+  bySlide,
   fakeGateway,
   generatorReplies,
   pairsOf,
@@ -67,7 +68,7 @@ export const scored = (
   hypothesis: string,
   slides: readonly RetrievedSlide[],
   ...results: EntailmentResult[]
-) => ({ pairs: pairsOf(hypothesis, slides), results });
+) => ({ pairs: pairsOf(hypothesis, slides), results: bySlide(slides, results) });
 export const verified = (...calls: ReturnType<typeof scored>[]): Recording =>
   verifierRecording(
     calls.flatMap(({ pairs }) => pairs),

@@ -2,6 +2,7 @@ import type { BrowsedChunk, BrowsedSlide, CourseId, LectureId } from '@cram/shar
 import { useState } from 'react';
 import { useApi } from '../api/api-context';
 import type { ApiClient } from '../api/api-client';
+import type { ApiFailure } from '../api/api-result';
 import {
   chunkName,
   DERIVED_SOURCE,
@@ -23,15 +24,25 @@ const ChunkView = ({
   courseId,
   slide,
   chunk,
+  onEdit,
+  onSlideChanged,
 }: {
   readonly api: ApiClient;
   readonly courseId: CourseId;
   readonly slide: BrowsedSlide;
   readonly chunk: BrowsedChunk;
+  readonly onEdit: () => void;
+  readonly onSlideChanged: (slide: BrowsedSlide, failure: ApiFailure) => void;
 }) => {
   const { sourceId, record, chunks } = slide;
-  const { chunkNo } = chunk;
-  const { tags, failure, edit } = useChunkTags(api, courseId, { sourceId, chunkNo }, chunk.tags);
+  const { chunkNo, textHash } = chunk;
+  const { tags, failure, edit } = useChunkTags(
+    api,
+    courseId,
+    { sourceId, chunkNo, textHash },
+    chunk.tags,
+    onSlideChanged,
+  );
   return (
     <div className="browsed-chunk">
       {chunk.lines.length === 0 ? (
@@ -43,7 +54,10 @@ const ChunkView = ({
         name={chunkName(record.slideNo, chunkNo, chunks.length)}
         tags={tags}
         failure={failure}
-        onEdit={edit}
+        onEdit={(next) => {
+          onEdit();
+          edit(next);
+        }}
       />
     </div>
   );
@@ -52,23 +66,41 @@ const ChunkView = ({
 const SlideView = ({
   api,
   courseId,
-  slide,
+  slide: read,
 }: {
   readonly api: ApiClient;
   readonly courseId: CourseId;
   readonly slide: BrowsedSlide;
-}) => (
-  <li className="browsed-slide">
-    <h2>
-      <span className="browsed-slide-number">Slide {slide.record.slideNo}</span>{' '}
-      {slide.record.title}
-    </h2>
-    {slide.record.derived && <p className="browsed-slide-derived">{DERIVED_SOURCE}</p>}
-    {slide.chunks.map((chunk) => (
-      <ChunkView key={chunk.chunkNo} api={api} courseId={courseId} slide={slide} chunk={chunk} />
-    ))}
-  </li>
-);
+}) => {
+  const [slide, setSlide] = useState(read);
+  const [failure, setFailure] = useState<ApiFailure | undefined>(undefined);
+  return (
+    <li className="browsed-slide">
+      <h2>
+        <span className="browsed-slide-number">Slide {slide.record.slideNo}</span>{' '}
+        {slide.record.title}
+      </h2>
+      {slide.record.derived && <p className="browsed-slide-derived">{DERIVED_SOURCE}</p>}
+      {failure !== undefined && <Failed messages={[failureMessage(failure)]} />}
+      {slide.chunks.map((chunk) => (
+        <ChunkView
+          key={JSON.stringify([chunk.chunkNo, chunk.textHash, chunk.tags])}
+          api={api}
+          courseId={courseId}
+          slide={slide}
+          chunk={chunk}
+          onEdit={() => {
+            setFailure(undefined);
+          }}
+          onSlideChanged={(stored, refused) => {
+            setSlide(stored);
+            setFailure(refused);
+          }}
+        />
+      ))}
+    </li>
+  );
+};
 
 /** A lecture's slides with each chunk's topic tags, which the student edits (#428). */
 export const SlidesScreen = ({

@@ -1,6 +1,9 @@
-const QUOTE_RUN = `["'“”‘’]*`;
+import { BLANK_LINE } from '@cram/shared';
+
+const UAX29_CONTINUE_MARKS = String.raw`\u055D\u060D\u066B\u066C\uFE10\uFE11\uFE13\uFE14`;
+const MARK_RUN = String.raw`(?:(?![\p{Pd}\p{Term}\p{Cased}${UAX29_CONTINUE_MARKS}])[\p{P}\p{S}])*`;
 const CLAIM_BOUNDARY = new RegExp(
-  String.raw`(?<=[.!?]${QUOTE_RUN})\s+(?=${QUOTE_RUN}[\p{Lu}\p{N}])|(?<=;)\s+`,
+  String.raw`(?=\s)(?<=[.!?]${MARK_RUN})\s+(?=${MARK_RUN}[\p{Lu}\p{N}])|(?<=;)\s+|${BLANK_LINE.source}`,
   'u',
 );
 

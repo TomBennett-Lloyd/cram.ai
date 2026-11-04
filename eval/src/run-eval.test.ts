@@ -93,12 +93,12 @@ const steppingClock = () => {
   return () => (now += 1);
 };
 
-/** A slide whose whole text is over the scripted cross-encoder's length. */
+/** A slide whose whole text, and the one line its body is, are over the scripted cross-encoder's length. */
 const LONG = record({
   lectureId: 'l3',
   slideNo: 1,
   title: 'Propolis',
-  body: `Propolis is gathered from poplar buds.\n${'It seals every gap in the hive. '.repeat(8)}`,
+  body: `Propolis is gathered from poplar buds. ${'It seals every gap in the hive. '.repeat(8)}`,
 });
 /** `credulous`, failing LONG's lecture's summary call, so no short summary line judges what LONG's over-length pair cannot. */
 const unsummarisedLong: Respond = (wire) =>
@@ -176,7 +176,8 @@ describe('runEval', () => {
       budget: PROMPT_TOKEN_BUDGET,
       estimate: { status: 'measured', samples: 3 },
     });
-    expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 6, overLengthPairs: 0 });
+    expect(report.attribution).toEqual({ answers: 2, sentences: 2, pairs: 18, overLengthPairs: 0 });
+    expect(report.deepPairs).toEqual({ answers: 2, pairs: 24, maxPairs: 12, overLengthPairs: 0 });
     expect(report.pins).toEqual({ ...PROVISIONAL_DEFAULT_PINS, reranker: null });
     expect(report.servedGenerator).toEqual(SERVED);
     expect(report.verifierArms).toMatchObject({
@@ -255,7 +256,10 @@ describe('runEval', () => {
     expect(nliThenLlm.contradictionSet).toMatchObject({ ratio: { numerator: 4, denominator: 4 } });
     expect(report.metrics.contradictionSet).toEqual(nliThenLlm.contradictionSet);
     expect(report.attribution.overLengthPairs).toBeGreaterThan(0);
-    expect(report.attribution.pairs).toBeLessThan(4 * report.attribution.sentences);
+    // Each sentence against its own candidates only: a fixture slide is scored whole, by its title and by its one body line.
+    expect(report.attribution.pairs).toBeLessThanOrEqual(
+      3 * ATTRIBUTION_K * report.attribution.sentences,
+    );
     expect(nli.accuracy.precision).not.toEqual(nliThenLlm.accuracy.precision);
     expect(report.metrics.verifierPrecision).toEqual(nliThenLlm.accuracy.precision);
   });

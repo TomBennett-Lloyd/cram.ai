@@ -10,6 +10,8 @@ export {
 export {
   AttributionCounts,
   attributionCounts,
+  DeepPairCounts,
+  deepPairCounts,
   DepthRows,
   explanationEntailed,
   explanationWithheld,

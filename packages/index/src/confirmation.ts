@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Database } from 'better-sqlite3';
-import { type SlideRecord, slideFields, type SourceId } from '@cram/shared';
+import { type QuotableFields, type SlideRecord, slideFields, type SourceId } from '@cram/shared';
 import { z } from 'zod';
 
 /** Confirmations of derived text; its ledger: `.claude/ledgers/confirmations-table.ledger`. */
@@ -12,9 +12,9 @@ export const CONFIRMATION_TABLE = `
   ) strict;
 `;
 
-export const textHashOf = (record: SlideRecord): string =>
+export const textHashOf = (fields: QuotableFields): string =>
   createHash('sha256')
-    .update(JSON.stringify(slideFields(record)))
+    .update(JSON.stringify(slideFields(fields)))
     .digest('hex');
 
 /** A `slides` row whose derived text has no confirmation. */

@@ -21,7 +21,8 @@ import {
 import {
   explanationRequest,
   generationRequest,
-  slideText,
+  scoredPremises,
+  slidePremise,
   SUMMARY_MAX_UNITS,
 } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
@@ -282,7 +283,10 @@ export const marked = (
   result: EntailmentResult,
 ): Recording => {
   const pairs = sentences.flatMap(({ text, slides }) =>
-    slides.map((slide) => ({ premise: slideText(slide.record), hypothesis: text })),
+    scoredPremises(slides.map(slidePremise)).map(({ text: premise }) => ({
+      premise,
+      hypothesis: text,
+    })),
   );
   return {
     role: 'verifier',

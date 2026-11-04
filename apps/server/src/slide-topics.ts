@@ -1,5 +1,7 @@
-import type { TagRow } from '@cram/index';
+import { type CourseReader, sourceIdOf, type TagRow, textHashOf } from '@cram/index';
 import {
+  type BrowsedChunk,
+  type BrowsedSlide,
   type ChunkNo,
   chunkLines,
   type ChunkTag,
@@ -8,6 +10,7 @@ import {
   type EditedTags,
   type LectureId,
   type LectureSlides,
+  type SourceId,
   type TagEdit,
   tagOrder,
 } from '@cram/shared';
@@ -27,7 +30,17 @@ export type StoredLectureSlides =
   | { readonly status: 'no-such-course' | 'no-such-lecture' }
   | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
-/** The lecture's slides, each chunk with its lines and tags (#428). */
+const browsedChunks = (course: CourseReader, sourceId: SourceId): BrowsedChunk[] => {
+  const rows = course.topics(sourceId);
+  return course.chunks(sourceId).map((chunk) => ({
+    chunkNo: chunk.chunkNo,
+    textHash: textHashOf(chunk),
+    lines: chunkLines(chunk).map(({ text }) => text),
+    tags: chunkTags(rows, chunk.chunkNo),
+  }));
+};
+
+/** The lecture's slides, each chunk with its text's hash, lines and tags (#428). */
 export const storedLectureSlides = (
   files: CourseFiles,
   courseId: CourseId,
@@ -41,15 +54,11 @@ export const storedLectureSlides = (
   try {
     if (!course.lectures().some((lecture) => lecture.lectureId === lectureId))
       return { status: 'no-such-lecture' };
-    const slides = course.lectureSlides(lectureId).map(({ sourceId, record }) => {
-      const rows = course.topics(sourceId);
-      const chunks = course.chunks(sourceId).map((chunk) => ({
-        chunkNo: chunk.chunkNo,
-        lines: chunkLines(chunk).map(({ text }) => text),
-        tags: chunkTags(rows, chunk.chunkNo),
-      }));
-      return { sourceId, record, chunks };
-    });
+    const slides = course.lectureSlides(lectureId).map(({ sourceId, record }) => ({
+      sourceId,
+      record,
+      chunks: browsedChunks(course, sourceId),
+    }));
     return { status: 'found', slides: { lectureId, slides } };
   } finally {
     course.close();
@@ -59,19 +68,46 @@ export const storedLectureSlides = (
 export type TagEditOutcome =
   | { readonly status: 'edited'; readonly edited: EditedTags }
   | { readonly status: 'no-such-course' | 'no-such-fact' }
+  | { readonly status: 'chunk-changed'; readonly slide: BrowsedSlide }
+  | { readonly status: 'tags-changed'; readonly tags: ChunkTag[] }
   | { readonly status: 'course-unavailable'; readonly problem: CourseUnavailableProblem };
 
-/** Writes the chunk's whole tag list (`CourseIndex.editTopics`); the caller is `IngestQueue`, the file's one writer. */
+const sameTags = (base: readonly ChunkTag[], served: readonly ChunkTag[]): boolean => {
+  const sorted = [...base].sort(tagOrder);
+  return (
+    sorted.length === served.length &&
+    sorted.every(({ tag, origin }, index) => {
+      const other = served[index];
+      return other?.tag === tag && other.origin === origin;
+    })
+  );
+};
+
+const chunkChanged = (course: CourseReader, sourceId: SourceId): TagEditOutcome => {
+  const record = course.slides().find((slide) => sourceIdOf(slide) === sourceId);
+  if (record === undefined) return { status: 'no-such-fact' };
+  return {
+    status: 'chunk-changed',
+    slide: { sourceId, record, chunks: browsedChunks(course, sourceId) },
+  };
+};
+
+/** Writes the chunk's whole tag list (`CourseIndex.editTopics`) unless `TagEdit` refuses it, checking text before list; the caller is `IngestQueue`, the file's one writer. */
 export const editStoredTags = (
   files: CourseFiles,
   courseId: CourseId,
-  { sourceId, chunkNo, tags }: TagEdit,
+  { sourceId, chunkNo, textHash, base, tags }: TagEdit,
 ): TagEditOutcome => {
   if (!courseExists(files, courseId)) return { status: 'no-such-course' };
   const opened = openForWrite(files, courseId);
   if (opened.status !== 'open') return { status: 'course-unavailable', problem: opened.status };
   const { course } = opened;
   try {
+    const chunk = course.chunks(sourceId).find((each) => each.chunkNo === chunkNo);
+    if (chunk === undefined || textHashOf(chunk) !== textHash)
+      return chunkChanged(course, sourceId);
+    const held = chunkTags(course.topics(sourceId), chunkNo);
+    if (!sameTags(base, held)) return { status: 'tags-changed', tags: held };
     const set = course.editTopics({ sourceId, chunkNo }, tags);
     if (set.status === 'no-such-fact') return set;
     const stored = chunkTags(course.topics(sourceId), chunkNo);

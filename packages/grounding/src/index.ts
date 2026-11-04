@@ -34,7 +34,7 @@ export {
   type NliThresholds,
   PROVISIONAL_NLI_THRESHOLDS,
 } from './nli-verdict';
-export { contextPremises, type Premise, slidePremise } from './premise';
+export { contextPremises, type Premise, scoredPremises, slidePremise } from './premise';
 export {
   GeneratedUnits,
   type GenerationTask,

@@ -115,6 +115,10 @@ const refusalMessage = (refusal: ApiRefusal): string => {
       return 'This course has no decks yet. Add one first.';
     case 'report-changed':
       return 'This course was rebuilt again since that notice was shown. Read it before dismissing it.';
+    case 'chunk-changed':
+      return 'This slide changed since this page loaded, so that edit wasn’t saved. It’s shown as it is now.';
+    case 'tags-changed':
+      return 'These tags changed since this page loaded, so that edit wasn’t saved. They’re shown as they are now.';
     case 'payload-too-large':
       return 'That is too large for the server to accept.';
     case 'unsupported-media-type':

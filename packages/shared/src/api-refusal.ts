@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { CourseUnavailableProblem } from './ingest-status';
+import { BrowsedSlide, ChunkTag } from './lecture-slides';
 import { NonBlankText } from './non-blank-text';
 
-/** Why the server refused a request; `report-changed` is a dismissal of a rebuild report other than the file's (#299). */
+/** Why the server refused a request; `report-changed` (#299), `chunk-changed` (#534) and `tags-changed` (#507) refuse a write made against state the file no longer holds. */
 export const ApiRefusal = z.union([
   z.strictObject({
     status: z.enum([
@@ -18,6 +19,8 @@ export const ApiRefusal = z.union([
   }),
   z.strictObject({ status: z.literal('bad-request'), issue: NonBlankText }),
   z.strictObject({ status: z.literal('course-unavailable'), problem: CourseUnavailableProblem }),
+  z.strictObject({ status: z.literal('chunk-changed'), slide: BrowsedSlide }),
+  z.strictObject({ status: z.literal('tags-changed'), tags: z.array(ChunkTag) }),
   z.strictObject({
     status: z.literal('question-over-length'),
     maxInputTokens: z.number().int().positive(),

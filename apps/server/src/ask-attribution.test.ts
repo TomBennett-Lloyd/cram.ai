@@ -102,7 +102,9 @@ describe('POST /courses/:id/ask, attribution', () => {
       });
       await settledStatus(test.server.port, 'bio');
       const reply = await askBio(test);
-      expect(sent.map(({ pairs }) => pairs.length)).toEqual([ATTRIBUTION_K]);
+      const wholeSlides = ({ pairs }: EntailRequest) =>
+        pairs.filter(({ premise }) => premise.includes('\n')).length;
+      expect(sent.map(wholeSlides)).toEqual([ATTRIBUTION_K]);
       expect(reply.json).toMatchObject({ status: 'grounded' });
       const named = (reply.json as { slides: RetrievedSlide[] }).slides.map(
         ({ sourceId }) => sourceId,

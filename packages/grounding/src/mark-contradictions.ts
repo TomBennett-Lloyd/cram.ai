@@ -2,7 +2,7 @@ import type { Verifier } from '@cram/gateway';
 import type { AttributedSentence, SourceId } from '@cram/shared';
 import type { SentenceSlides } from './attribute-sentences';
 import { claimLabel, type NliThresholds } from './nli-verdict';
-import { type Premise, slidePremise } from './premise';
+import { type Premise, scoredPremises, slidePremise } from './premise';
 
 export interface SentencePremises {
   readonly text: string;
@@ -15,7 +15,11 @@ export const contradictingSources = async (
   entail: Verifier['entail'],
   thresholds: NliThresholds,
 ): Promise<readonly (readonly SourceId[])[]> => {
-  const pairs = sentences.flatMap(({ text, premises }) =>
+  const scored = sentences.map(({ text, premises }) => ({
+    text,
+    premises: scoredPremises(premises),
+  }));
+  const pairs = scored.flatMap(({ text, premises }) =>
     premises.map((premise) => ({ premise: premise.text, hypothesis: text })),
   );
   const results = pairs.length === 0 ? [] : await entail({ pairs });
@@ -24,13 +28,13 @@ export const contradictingSources = async (
       `verifier returned ${String(results.length)} results for ${String(pairs.length)} pairs`,
     );
   let next = 0;
-  return sentences.map(({ premises }) => {
-    const scored = premises.flatMap(({ sources: [named] }) => {
+  return scored.map(({ premises }) => {
+    const judged = premises.flatMap(({ sources: [named] }) => {
       const result = results[next++];
       return result?.status === 'scored' ? [{ sourceId: named, scores: result.scores }] : [];
     });
-    if (scored.some(({ scores }) => scores.entailment >= thresholds.entailedAt)) return [];
-    const contradicting = scored
+    if (judged.some(({ scores }) => scores.entailment >= thresholds.entailedAt)) return [];
+    const contradicting = judged
       .filter(({ scores }) => claimLabel(scores, thresholds) === 'contradicted')
       .toSorted((a, b) => b.scores.contradiction - a.scores.contradiction)
       .map(({ sourceId }) => sourceId);

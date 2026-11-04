@@ -21,6 +21,7 @@ import {
   hiveSummary,
 } from './explain-fixture';
 import {
+  bySlide,
   CONTRADICTED,
   ENTAILED,
   kindsRecording,
@@ -200,7 +201,7 @@ describe('explain at the deep depth', () => {
     const againstAll = (sentence: string, ...results: Parameters<typeof verifierRecording>[1]) =>
       verifierRecording(
         [...pairsOf(sentence, retrieved), { premise: DRONES_UNIT, hypothesis: sentence }],
-        results,
+        [...bySlide(retrieved, results.slice(0, -1)), ...results.slice(-1)],
       );
 
     it('keeps a sentence only a summary unit entails, crediting the slide that unit cites', async () => {
@@ -253,7 +254,7 @@ describe('explain at the deep depth', () => {
               { premise: DRONES_UNIT, hypothesis: DRONES },
               { premise: QUEEN_UNIT, hypothesis: DRONES },
             ],
-            [NEUTRAL, NEUTRAL, ENTAILED, NEUTRAL],
+            [...bySlide(retrieved, [NEUTRAL, NEUTRAL]), ENTAILED, NEUTRAL],
           ),
         ],
         deep(),
@@ -274,7 +275,12 @@ describe('explain at the deep depth', () => {
               ...pairsOf(SQUARE, retrieved),
               { premise: DRONES_UNIT, hypothesis: SQUARE },
             ],
-            [NEUTRAL, NEUTRAL, CONTRADICTED, NEUTRAL, ENTAILED, NEUTRAL],
+            [
+              ...bySlide(retrieved, [NEUTRAL, NEUTRAL]),
+              CONTRADICTED,
+              ...bySlide(retrieved, [NEUTRAL, ENTAILED]),
+              NEUTRAL,
+            ],
           ),
         ],
         deep(),

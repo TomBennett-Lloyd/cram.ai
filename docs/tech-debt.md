@@ -184,3 +184,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `packages/index/src/index-words.ts` (`INDEX_WORDS`), imported by `packages/index/src/fts-query.ts`, `packages/index/src/topics.ts`, `packages/index/src/spelling-correction.ts`
 - What: `correctSpelling` and `namedTags` now reach a `:memory:` connection that is never closed. Before, `correctSpelling` reached SQLite only through its injected `Lexicon`. It is a cache of a deterministic function of the linked SQLite, so behaviour is unaffected, but `docs/standards/architecture.md` rule 3 prefers the adapter at the edge. Suspected root cause: the word model is needed by pure callers with no course connection, such as `eval/src/tag-recall.ts`.
 - Source: PR for #489 (review)
+
+## 2026-11-03 — check-comment-density's `--since` gives one message for four different git failures
+
+- Where: `.claude/scripts/check-comment-density.sh` (the change-set section, its `merge-base` call)
+- What: the `merge-base` call throws away git's stderr. A misspelt ref, a ref that was never fetched, a ROOT that is not a git repo and two histories with no common ancestor all print the same "no merge-base with HEAD", so the reader cannot tell which one happened (`docs/standards/error-handling.md` rules 1 and 4). Suspected root cause: the refusal was written for the one case a fixture exercises, an unknown ref, and git's own message was never passed through.
+- Source: PR #536 (review)
