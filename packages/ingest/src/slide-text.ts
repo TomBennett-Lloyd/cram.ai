@@ -1,5 +1,5 @@
 import type { SlideKind, SlideNo } from '@cram/shared';
-import type { PageText, TextLine } from './page-text';
+import type { LineBox, PageText, TextLine } from './page-text';
 
 /** A page with fewer words than this outside its page number has a thin text layer (#9). */
 export const THIN_TEXT_LAYER_WORDS = 5;
@@ -9,6 +9,9 @@ export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', 
 /** Titles that mark a references page (#9), which `CourseIndex.search` leaves out by default (#78). */
 export const REFERENCES_TITLE =
   /^(references|reference list|bibliography|further readings?|reading lists?|works cited)\b/i;
+
+/** A line this many ems below a bullet's last line, or nearer, can be its wrapped continuation: a wrap at double spacing still is (slide-text.test.ts). */
+export const CONTINUATION_EMS = 2.5;
 
 export interface SlideText {
   readonly kind: SlideKind;
@@ -28,6 +31,18 @@ const markerOf = (text: string): string | undefined =>
 const isPageNumber = (line: TextLine, slideNo: SlideNo): boolean =>
   DIGITS_ONLY.test(line.text) && Number(line.text) === slideNo;
 
+const joinedBox = (marker: TextLine, next: TextLine): { box?: LineBox } => {
+  if (next.box === undefined) return {};
+  if (marker.box === undefined) return { box: next.box };
+  return {
+    box: {
+      left: Math.min(marker.box.left, next.box.left),
+      right: Math.max(marker.box.right, next.box.right),
+      baseline: next.box.baseline,
+    },
+  };
+};
+
 /** A line that is only a bullet marker takes the line after it; a trailing one is dropped. */
 const joinBulletMarkers = (lines: readonly TextLine[]): TextLine[] => {
   const joined: TextLine[] = [];
@@ -39,7 +54,8 @@ const joinBulletMarkers = (lines: readonly TextLine[]): TextLine[] => {
       continue;
     }
     const next = lines[i + 1];
-    if (next !== undefined) joined.push({ text: `${line.text} ${next.text}`, size: next.size });
+    if (next !== undefined)
+      joined.push({ text: `${line.text} ${next.text}`, size: next.size, ...joinedBox(line, next) });
     i++;
   }
   return joined;
@@ -49,7 +65,7 @@ const isTitleCandidate = (line: TextLine): boolean =>
   !DIGITS_ONLY.test(line.text) && markerOf(line.text) === undefined;
 
 /** The size carrying the most characters; a tie goes to the smaller size, body text being smaller. */
-const modalSize = (lines: readonly TextLine[]): number => {
+export const modalSize = (lines: readonly TextLine[]): number => {
   const chars = new Map<number, number>();
   for (const line of lines) chars.set(line.size, (chars.get(line.size) ?? 0) + line.text.length);
   let modal = 0;
@@ -76,21 +92,37 @@ const titleRange = (lines: readonly TextLine[]): readonly [number, number] => {
   return first !== undefined && isTitleCandidate(first) ? [0, 1] : [0, 0];
 };
 
-/** One bullet or plain line per `\n`: an unmarked line after a bullet is its wrapped continuation. */
+type Fit = 'continues' | 'beside' | 'stops';
+
+const fitOf = (last: TextLine, line: TextLine): Fit => {
+  if (last.box === undefined || line.box === undefined) return 'continues';
+  if (line.box.left > last.box.right || line.box.right < last.box.left) return 'beside';
+  const drop = last.box.baseline - line.box.baseline;
+  return drop > 0 && drop <= CONTINUATION_EMS * Math.max(last.size, line.size)
+    ? 'continues'
+    : 'stops';
+};
+
+/** One bullet or plain line per `\n`: a line `fitOf` continues joins the open bullet, one beside it stands alone and leaves it open. */
 const bodyOf = (lines: readonly TextLine[]): string => {
   const blocks: string[] = [];
-  let bullet: string | undefined;
-  for (const { text } of lines) {
-    if (markerOf(text) !== undefined) {
-      if (bullet !== undefined) blocks.push(bullet);
-      bullet = text;
-    } else if (bullet !== undefined) {
-      bullet += ` ${text}`;
+  let bullet: { text: string; last: TextLine } | undefined;
+  for (const line of lines) {
+    const fit = bullet === undefined ? 'stops' : fitOf(bullet.last, line);
+    if (markerOf(line.text) !== undefined) {
+      if (bullet !== undefined) blocks.push(bullet.text);
+      bullet = { text: line.text, last: line };
+    } else if (bullet !== undefined && fit === 'continues') {
+      bullet = { text: `${bullet.text} ${line.text}`, last: line };
+    } else if (fit === 'beside') {
+      blocks.push(line.text);
     } else {
-      blocks.push(text);
+      if (bullet !== undefined) blocks.push(bullet.text);
+      bullet = undefined;
+      blocks.push(line.text);
     }
   }
-  if (bullet !== undefined) blocks.push(bullet);
+  if (bullet !== undefined) blocks.push(bullet.text);
   return blocks.join('\n');
 };
 
@@ -116,14 +148,17 @@ const wordCount = (text: string): number => text.match(WORD)?.length ?? 0;
 export const slideText = (page: PageText, slideNo: SlideNo): SlideText => {
   const lines = joinBulletMarkers(
     page.lines
-      .map((line) => ({ text: collapse(line.text), size: line.size }))
+      .map((line) => ({ ...line, text: collapse(line.text) }))
       .filter((line) => line.text !== '' && !isPageNumber(line, slideNo)),
   );
   const { title, bodyLines } =
     page.markedTitle === undefined
       ? inferTitle(lines)
       : { title: collapse(page.markedTitle), bodyLines: lines };
-  const words = bodyLines.reduce((count, line) => count + wordCount(line.text), wordCount(title));
+  const words = [...bodyLines.map((line) => line.text), ...(page.footer ?? [])].reduce(
+    (count, text) => count + wordCount(text),
+    wordCount(title),
+  );
   if (words < THIN_TEXT_LAYER_WORDS) return { kind: 'image-only', title, body: '' };
   return {
     kind: REFERENCES_TITLE.test(title) ? 'references' : 'content',

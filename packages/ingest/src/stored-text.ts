@@ -18,5 +18,6 @@ export const storedText = (text: string): string =>
 export const storedPage = (page: PageText): PageText => ({
   ...(page.markedTitle === undefined ? {} : { markedTitle: storedText(page.markedTitle) }),
   lines: page.lines.map((line) => ({ ...line, text: storedText(line.text) })),
+  ...(page.footer === undefined ? {} : { footer: page.footer.map(storedText) }),
   notes: storedText(page.notes),
 });

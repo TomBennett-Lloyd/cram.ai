@@ -1,0 +1,11 @@
+# Where the squash message's shape is restated (docs/standards/architecture.md rule 9; #617).
+owner: .claude/scripts/pr-facts.mjs
+claim: a squash lands the PR title plus (#<pr>), the body above its first lane declaration, and the commits' Co-authored-by trailers, never the branch's commit messages (#617)
+cite: .claude/scripts/pr-facts.mjs § squashMessage
+sweep: squash-?message|squashMessage|squashes every branch under its PR title
+carrier: .claude/agents/ticket-agent.md
+carrier: .claude/scripts/merge-pr.sh
+carrier: .claude/scripts/merge-pr.test.sh
+carrier: .claude/scripts/sweep-report.sh
+carrier: .claude/skills/review-loop/SKILL.md
+carrier: .claude/skills/run-issue/SKILL.md
