@@ -17,7 +17,16 @@ import {
 import { openCourse } from './open-course';
 import { type ParsedDeck, rebuildCourse, type RebuildCourseResult } from './rebuild-course';
 import { SCHEMA_VERSION } from './schema';
-import { deps, embed, encode, moveDeck, OLDER, parse, writeOlderFile } from './rebuild-fixture';
+import {
+  deps,
+  embed,
+  encode,
+  moveDeck,
+  OLDER,
+  parse,
+  render,
+  writeOlderFile,
+} from './rebuild-fixture';
 import { sourceIdOf } from './slide-row';
 
 let temp: TempCourse;
@@ -31,6 +40,7 @@ afterEach(() => {
 beforeEach(() => {
   parse.mockClear();
   embed.mockClear();
+  render.mockClear();
 });
 
 const rebuiltOrFail = (result: RebuildCourseResult) => {
@@ -42,7 +52,7 @@ const rebuiltOrFail = (result: RebuildCourseResult) => {
 const filesInDir = (): readonly string[] => readdirSync(temp.dir).sort();
 
 describe('rebuildCourse', () => {
-  it('rebuilds an older file from its stored decks, carrying every deck and image across', async () => {
+  it('rebuilds an older file from its stored decks, carrying every deck and stored image across', async () => {
     writeOlderFile(temp.spec.path);
     const { course } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
     expect(course.slides().map((s) => `${s.lectureTitle}: ${s.body}`)).toEqual([
@@ -56,10 +66,27 @@ describe('rebuildCourse', () => {
     const lecture1 = LectureId.parse('lecture-1');
     expect(text(course.deck(lecture1)?.content)).toBe('osmosis|diffusion');
     expect(text(course.slideImage(lecture1, SlideNo.parse(2))?.content)).toBe('diffusion diagram');
+    expect(course.slideImage(lecture1, SlideNo.parse(1))).toBeUndefined();
     expect(course.deck(LectureId.parse('lecture-2'))?.lectureTitle).toBe('Tissues');
+    expect(render.mock.calls.map(([stored]) => stored.lectureId)).not.toContain('lecture-1');
     course.close();
     openOrFail(temp.spec).close();
     expect(filesInDir()).toEqual(['course-a.sqlite']);
+  });
+
+  it('renders the images of a lecture stored with none, as before #107, and only that lecture (#359)', async () => {
+    writeOlderFile(temp.spec.path);
+    const { course } = rebuiltOrFail(await rebuildCourse(temp.spec, deps));
+    const lecture2 = LectureId.parse('lecture-2');
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(render.mock.calls[0]?.[0]).toMatchObject({
+      lectureId: lecture2,
+      lectureTitle: 'Tissues',
+    });
+    expect(text(course.slideImage(lecture2, SlideNo.parse(1))?.content)).toBe(
+      'rendered epithelium',
+    );
+    course.close();
   });
 
   it('names each older table it did not carry over that held rows', async () => {
@@ -136,6 +163,7 @@ describe('rebuildCourse', () => {
       fileVersion: SCHEMA_VERSION + 1,
     });
     expect(parse).not.toHaveBeenCalled();
+    expect(render).not.toHaveBeenCalled();
   });
 
   it.each(['course-b', 'Bio', 'course_b'])(
@@ -160,7 +188,7 @@ describe('rebuildCourse', () => {
     expect(filesInDir()).toEqual(['course-a.sqlite']);
   });
 
-  it('leaves the older file untouched, and nothing beside it, when parsing or embedding fails', async () => {
+  it('leaves the older file untouched, and nothing beside it, when parsing, embedding or rendering fails', async () => {
     writeOlderFile(temp.spec.path);
     const before = readFileSync(temp.spec.path);
     await expect(
@@ -177,6 +205,12 @@ describe('rebuildCourse', () => {
     ).rejects.toMatchObject({
       message: 'rebuildCourse: lecture lecture-1 did not rebuild',
       cause: new Error('rebuildCourse: embed returned 0 indexed slides for 2 slides'),
+    });
+    await expect(
+      rebuildCourse(temp.spec, { ...deps, render: () => Promise.reject(new Error('no canvas')) }),
+    ).rejects.toMatchObject({
+      message: 'rebuildCourse: lecture lecture-2 did not rebuild',
+      cause: new Error('no canvas'),
     });
     expect(readFileSync(temp.spec.path).equals(before)).toBe(true);
     expect(filesInDir()).toEqual(['course-a.sqlite']);
