@@ -161,15 +161,22 @@ describe('AskScreen', () => {
     expect(dialog.querySelectorAll('mark')).toHaveLength(0);
   });
 
-  it('keeps a reason that withholds a sentence under Withheld, with that reason, apart from the dropped quote marks', async () => {
-    await askWith({ status: 200, body: { ...GROUNDED, withheld: [...WITHHELD, ...DROPPED] } });
+  it('keeps every reason that withholds a sentence under Withheld, with that reason, apart from the dropped quote marks', async () => {
+    const withheld = [
+      { reason: 'contradicted', text: 'Drones forage.', sourceId: HIVE.sourceId },
+      ...WITHHELD,
+      { reason: 'ungrounded', text: 'Bees sleep.' },
+      ...DROPPED,
+    ];
+    await askWith({ status: 200, body: { ...GROUNDED, withheld } });
     const [dropped, cut] = answer().querySelectorAll('details');
+    const texts = (panel: Element | undefined) =>
+      [...(panel?.querySelectorAll('.withheld-text') ?? [])].map((line) => line.textContent);
     expect(dropped?.querySelector('summary')?.textContent).toBe('Quote marks removed (1)');
-    expect(dropped?.textContent).not.toContain('Queens');
-    expect(cut?.querySelector('summary')?.textContent).toBe('Withheld (1)');
-    expect(cut?.textContent).toContain('Queens rule the hive.');
+    expect(texts(dropped)).toEqual(['Worker bees are female.']);
+    expect(cut?.querySelector('summary')?.textContent).toBe('Withheld (3)');
+    expect(texts(cut)).toEqual(['Drones forage.', 'Queens rule the hive.', 'Bees sleep.']);
     expect(cut?.textContent).toContain('No slide this answer was written from says it.');
-    expect(cut?.textContent).not.toContain('Worker bees');
     expect(answer().querySelector('.explanation')?.textContent).not.toContain('Queens');
   });
 
