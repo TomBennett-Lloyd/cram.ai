@@ -141,6 +141,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - What: a request's token estimate and a block's cost are each written twice with the same intent (`docs/standards/structure.md` rule 7). Routing `summarise-lecture.ts` through `requestTokens` deletes code lines, which raises that file's comment ratio over its banked row, and the gate never lets a row rise, so the merge was left out of #423. Suspected root cause: the ratchet measures a ratio, so removing code reads as adding comments.
 - Source: PR #495 for #423 (review)
 - Update 2026-11-03 (#490): a second instance. Deleting `describeError`'s copy from `packages/gateway/src/adapters/onnx/encoder-artefact.ts` took its ratio from 740 to 750 (6 comment / 80 non-blank lines) with no comment added; the PR re-wrapped the manifest check's docblock onto two lines, same words, to land under the row.
+- Update 2026-11-03 (#465): a third instance. Moving a constant out of a package removed one name from a multi-line import list in `eval/src/ask-depths.ts`, and merging its new import into the existing type import from the same module took the file from 170 to 172. The PR kept the two imports as separate statements.
 
 ## 2026-11-02 — ADR 0009 says "retrieved" for two sets the code now reads as the assembled slides
 
@@ -189,3 +190,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/check-comment-density.sh` (the change-set section, its `merge-base` call)
 - What: the `merge-base` call throws away git's stderr. A misspelt ref, a ref that was never fetched, a ROOT that is not a git repo and two histories with no common ancestor all print the same "no merge-base with HEAD", so the reader cannot tell which one happened (`docs/standards/error-handling.md` rules 1 and 4). Suspected root cause: the refusal was written for the one case a fixture exercises, an unknown ref, and git's own message was never passed through.
 - Source: PR #536 (review)
+
+## 2026-11-03 — a Part of lane's log-union commit carries no `#<n>:` subject prefix
+
+- Where: `.claude/scripts/merge-pr.sh` (the union step's `subject=` and the comment above it)
+- What: the union commit's `#<n>:` prefix comes only from `pr_closes[0]`. A lane report whose issue a `Part of` line names now reaches that step without `--method`, with no Closes line, so its union commit lands on the branch unprefixed; the squash flattens it, so `main` is unaffected. The comment's "a PR merged under an explicit --method may have no Closes line" no longer covers every such PR. Fix direction: fall back to `pr_lanes[0]` when `pr_closes` is empty, and true the comment.
+- Source: PR #504 (review)
