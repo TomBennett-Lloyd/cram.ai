@@ -13,6 +13,11 @@ export const DepthRows = z.strictObject({
 });
 export type DepthRows = z.infer<typeof DepthRows>;
 
+export interface PairTally {
+  pairs: number;
+  overLength: number;
+}
+
 /** What attribution and the mark cost per chat answer (#366's A14). */
 export const AttributionCounts = z.strictObject({
   answers: Count,
@@ -21,6 +26,14 @@ export const AttributionCounts = z.strictObject({
   overLengthPairs: Count,
 });
 export type AttributionCounts = z.infer<typeof AttributionCounts>;
+
+export const DeepPairCounts = z.strictObject({
+  answers: Count,
+  pairs: Count,
+  maxPairs: Count,
+  overLengthPairs: Count,
+});
+export type DeepPairCounts = z.infer<typeof DeepPairCounts>;
 
 const withheldSentences = ({ result }: AskedQuestion): number =>
   result.status === 'model-failed'
@@ -59,13 +72,20 @@ export const quotedShare = (asked: readonly AskedQuestion[]): BaselineRow => {
 
 export const attributionCounts = (
   asked: readonly AskedQuestion[],
-  overLengthPairs: number,
-): AttributionCounts => {
-  const sentences = asked.flatMap(({ result }) => shownSentences(result));
+  sent: PairTally,
+): AttributionCounts => ({
+  answers: asked.filter(({ result }) => result.status === 'grounded').length,
+  sentences: asked.flatMap(({ result }) => shownSentences(result)).length,
+  pairs: sent.pairs,
+  overLengthPairs: sent.overLength,
+});
+
+export const deepPairCounts = (sent: readonly PairTally[]): DeepPairCounts => {
+  const answered = sent.filter(({ pairs }) => pairs > 0);
   return {
-    answers: asked.filter(({ result }) => result.status === 'grounded').length,
-    sentences: sentences.length,
-    pairs: sentences.reduce((sum, { slides }) => sum + slides.length, 0),
-    overLengthPairs,
+    answers: answered.length,
+    pairs: answered.reduce((sum, { pairs }) => sum + pairs, 0),
+    maxPairs: Math.max(0, ...answered.map(({ pairs }) => pairs)),
+    overLengthPairs: answered.reduce((sum, { overLength }) => sum + overLength, 0),
   };
 };

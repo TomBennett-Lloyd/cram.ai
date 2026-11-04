@@ -15,6 +15,7 @@ import { contextOverflow, promptTokens, sourceCoverage } from './context-rows';
 import { contradictionSet } from './contradiction-set';
 import {
   attributionCounts,
+  deepPairCounts,
   explanationEntailed,
   explanationWithheld,
   quotedShare,
@@ -189,12 +190,12 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   };
   const withSet = (strategy: VerifierStrategy) => ({
     ...arm(strategy),
-    contradictionSet: contradictionSet(pick(deep, strategy)),
+    contradictionSet: contradictionSet(pick(deep, strategy).asked),
   });
   const nli = withSet('nli');
   const llm = arm('llm');
   const nliThenLlm = withSet('nli-then-llm');
-  const headline = pick(deep, PROVISIONAL_VERIFIER_STRATEGY);
+  const { asked: headline, sent: headlineSent } = pick(deep, PROVISIONAL_VERIFIER_STRATEGY);
   const headlineAccuracy = arm(PROVISIONAL_VERIFIER_STRATEGY).accuracy;
   const perCall = (role: 'generator' | 'verifier' | 'embedder' | 'reranker') =>
     latencySummary(gateway.durations(role), `no ${role} call was made`);
@@ -250,7 +251,8 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
         quotedShare: quotedShare(headline),
       },
     },
-    attribution: attributionCounts(light.asked, light.overLengthPairs),
+    attribution: attributionCounts(light.asked, light.sent),
+    deepPairs: deepPairCounts(headlineSent),
     verifierArms: { nli, llm, nliThenLlm, ...verifierArmDecisions({ nli, llm, nliThenLlm }) },
     latency: {
       ask: latencySummary([...light.durationsMs], 'no golden question was asked'),

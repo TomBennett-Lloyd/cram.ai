@@ -39,7 +39,7 @@ const mark = (
 ) => markContradictions(sentences, entail, PROVISIONAL_NLI_THRESHOLDS);
 
 describe('markContradictions', () => {
-  it('sends every sentence × its own slides, whole-slide premises, in one call', async () => {
+  it('sends every sentence × its own single-line slides, one pair each, in one call', async () => {
     const verifier = scripted(NEUTRAL, NEUTRAL, NEUTRAL);
     const sentences = [
       { text: 'Workers are female.', slides: [hive, comb] },
@@ -53,6 +53,22 @@ describe('markContradictions', () => {
           ...pairsOf('Bees hibernate.', [winter]),
         ],
       },
+    ]);
+  });
+
+  it('scores a sentence against a slide whole, then each of its lines, and a line that entails it clears the mark', async () => {
+    const workers = slide('l1/3', 'Worker bees are male.\nWorkers forage.', {
+      title: 'The workers',
+    });
+    const verifier = scripted(contradiction(0.99), NEUTRAL, entailment(entailedAt), NEUTRAL);
+    await expect(
+      mark([{ text: 'Workers are male.', slides: [workers] }], verifier.entail),
+    ).resolves.toEqual([{ text: 'Workers are male.', slides: ['l1/3'], contradicts: [] }]);
+    expect(verifier.calls[0]?.pairs.map(({ premise }) => premise)).toEqual([
+      'The workers\nWorker bees are male.\nWorkers forage.',
+      'The workers',
+      'Worker bees are male.',
+      'Workers forage.',
     ]);
   });
 
@@ -145,6 +161,7 @@ describe('markContradictions', () => {
 describe('contradictingSources', () => {
   const premise = (text: string, first: string, ...rest: string[]): Premise => ({
     text,
+    lines: [text],
     sources: [SourceId.parse(first), ...rest.map((id) => SourceId.parse(id))],
   });
   const sentence = 'Drones are female.';

@@ -4,6 +4,7 @@ import type { WithheldSentence } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import {
   attributionCounts,
+  deepPairCounts,
   explanationEntailed,
   explanationWithheld,
   quotedShare,
@@ -61,12 +62,33 @@ describe('quotedShare', () => {
 });
 
 describe('attributionCounts', () => {
-  it('counts answers, sentences and pairs from the explanations, and takes the over-length pairs it is given', () => {
+  it('counts answers and sentences from the explanations, and takes the pairs the verifier was sent', () => {
     expect(
       attributionCounts(
         [asked(grounded([square, busy, unattributed], [slide])), asked(NOT_COVERED)],
-        4,
+        { pairs: 7, overLength: 4 },
       ),
-    ).toEqual({ answers: 1, sentences: 3, pairs: 2, overLengthPairs: 4 });
+    ).toEqual({ answers: 1, sentences: 3, pairs: 7, overLengthPairs: 4 });
+  });
+});
+
+describe('deepPairCounts', () => {
+  it('counts each answer that sent any pair, the pairs, the most one answer sent, and the over-length ones', () => {
+    expect(
+      deepPairCounts([
+        { pairs: 12, overLength: 1 },
+        { pairs: 0, overLength: 0 },
+        { pairs: 30, overLength: 2 },
+      ]),
+    ).toEqual({ answers: 2, pairs: 42, maxPairs: 30, overLengthPairs: 3 });
+  });
+
+  it('is zero throughout when no answer sent a pair', () => {
+    expect(deepPairCounts([{ pairs: 0, overLength: 0 }])).toEqual({
+      answers: 0,
+      pairs: 0,
+      maxPairs: 0,
+      overLengthPairs: 0,
+    });
   });
 });
