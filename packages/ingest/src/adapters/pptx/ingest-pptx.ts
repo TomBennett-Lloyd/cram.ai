@@ -72,7 +72,6 @@ const presentationPartOf = (parts: Parts): string => {
   return main.target;
 };
 
-/** One page per `p:sldId`, in the presentation's order (ingest-pptx.test.ts). */
 const pagesOf = (parts: Parts): PageText[] => {
   const presentationPart = presentationPartOf(parts);
   const presentation = readXml(parts, presentationPart);
@@ -120,6 +119,5 @@ export const ingestPptx = (deck: DeckFile): PptxIngestResult => {
   return {
     status: 'ingested',
     slides: slidesFromPages(pages, { ...deck, sourceHash: sourceHashOf(deck.bytes) }),
-    images: [],
   };
 };

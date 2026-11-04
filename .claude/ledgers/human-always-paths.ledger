@@ -6,7 +6,7 @@
 # path"), so a member change leaves them true; they move only if the key is renamed.
 # Inside the owner, merge.humanAlwaysRule gives one reason per member and moves with it.
 owner: .claude/workflow.json
-claim: the paths whose PRs wait for the owner's review before merging, whatever their file type
+claim: the paths whose PRs wait for the owner's review before merging, whatever their file type, unless merge.approvedAtPlanRule or merge.amendmentRule exempts the PR
 cite: humanAlways
 sweep: \bhumanAlways|\.claude/ledgers/human-always-paths\.ledger
 carrier: CLAUDE.md
@@ -20,6 +20,9 @@ carrier: .claude/agents/task-orchestrator.md
 carrier: .claude/agents/planner.md
 carrier: .claude/scripts/check-no-network-egress.sh
 carrier: .claude/scripts/fill-verdict.sh
+carrier: .claude/scripts/adr-amendment-check.mjs
+carrier: .claude/scripts/adr-amendment-check.test.sh
+carrier: docs/adr/README.md
 carrier: .github/workflows/ci.yml
 excluded: docs/review-feedback.md
 excluded: docs/friction-log.md

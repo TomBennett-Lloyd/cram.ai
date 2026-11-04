@@ -37,4 +37,15 @@ describe('parseJsonText', () => {
   it('returns the parsed value', () => {
     expect(parseJsonText('{"n":3}', Item)).toEqual({ ok: true, value: { n: 3 } });
   });
+
+  it('carries each schema issue with its input', () => {
+    expect(parseJsonText('{"n":"three"}', Item)).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_type', path: ['n'], input: 'three' }],
+    });
+  });
+
+  it('carries no issues for text that is not JSON', () => {
+    expect(parseJsonText('{n:3}', Item)).toMatchObject({ ok: false, issues: [] });
+  });
 });
