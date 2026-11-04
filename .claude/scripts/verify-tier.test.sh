@@ -595,6 +595,7 @@ it('a', () => {});"
   write_in src/trailing.test.ts "it('a', () => {}); // docs/tier-fixture-guide.md"
   write_in src/colon.test.ts "// tier-fixture-guide.md, section a:2: b
 it('a', () => {});"
+  must printf "// tier-fixture-guide.md\r\nit('a', () => {});\r\n" >"$WT/src/crlf.test.ts"
   write_in src/block.test.ts "/**
  * The guide (tier-fixture-guide.md) is cited, never read.
  */
@@ -657,9 +658,9 @@ fi
 
 # Fail closed: a comment the check cannot reprint keeps its hit. A parse error in each
 # language; a heredoc left open, which `bash -n` passes and the wrapped reprint does not; an
-# extension with no reprint; a path whose `:1:` makes the hit line name another file (the
-# fixture's src/app.ts, which holds no pattern); and a stray `}` that would close the wrapper
-# early, whose command must not run.
+# extension with no reprint; a test path that holds another test's path and `:1:`, whose
+# live hit must not be read as that test's comment; and a stray `}` that would close the
+# wrapper early, whose command must not run.
 if begin_with_typescript "a comment hit the check cannot reprint stays a hit, and nothing in it runs"; then
   must fixture comment_unprintable
   write_in src/broken.test.ts "// tier-fixture-guide.md
@@ -669,7 +670,8 @@ if then'
   write_in tools/open.test.sh '# tier-fixture-guide.md
 cat <<EOF'
   write_in src/notes.test.txt '// tier-fixture-guide.md'
-  write_in 'src/app.ts:1:name.test.ts' '// tier-fixture-guide.md'
+  write_in src/cite.test.ts '// tier-fixture-guide.md'
+  write_in 'src/cite.test.ts:1:name.test.ts' "const p = 'tier-fixture-guide.md';"
   write_in tools/escape.test.sh "# tier-fixture-guide.md
 }
 touch '$ROOT/escaped'
@@ -684,24 +686,45 @@ f() {
   expect_stdout "guard: tools/broken.test.sh:1:"
   expect_stdout "guard: tools/open.test.sh:1:"
   expect_stdout "guard: src/notes.test.txt:1:"
-  expect_stdout "guard: src/app.ts:1:name.test.ts:1:"
+  expect_stdout "guard: src/cite.test.ts:1:name.test.ts:1:"
+  expect_not_stdout "guard: src/cite.test.ts:1://"
   expect_stdout "guard: tools/escape.test.sh:1:"
   [ ! -e "$ROOT/escaped" ] || bad "the reprint ran a command from tools/escape.test.sh"
   end
 fi
 
-# A file grep calls binary has no line to show is a comment: BSD grep prints a hit with no line
-# number, GNU grep prints nothing on stdout but still exits 0. Either way the tier is full.
-if begin_with_typescript "a comment hit in a file grep calls binary stays a hit"; then
+# A live hit after a NUL byte and holding one, beside another test's comment-only hit: grep must
+# report the line rather than call the file binary, or the comment would be the only hit left
+# to drop.
+if begin_with_typescript "a live hit in a file grep would call binary stays a hit"; then
   must fixture comment_binary
-  must printf '// tier-fixture-guide.md\n\000\n' >"$WT/src/binary.test.ts"
+  must printf "\000\nconst p = 'tier-fixture-guide.md'; /* \000 */\n" >"$WT/src/binary.test.ts"
+  write_in src/cite.test.ts '// tier-fixture-guide.md'
   seed_origin 'test: a binary test file'
   write_in docs/tier-fixture-guide.md '# Guide, revised'
   run_tier
   expect_rc 0 "$rc"
   expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+  expect_stdout "guard: src/binary.test.ts:2:"
+  expect_not_stdout "guard: src/cite.test.ts"
   end
 fi
+
+# A node that fails stands in for any failure of the comment check: every hit is kept, and
+# printed as path:line:text, not as grep's --null output.
+begin "when the comment check cannot run, a comment hit stays a hit"
+must fixture comment_no_node
+must mkdir -p "$ROOT/bin"
+must printf '#!/bin/sh\nexit 1\n' >"$ROOT/bin/node"
+must chmod +x "$ROOT/bin/node"
+write_in tools/line.test.sh '# tier-fixture-guide.md'
+seed_origin 'test: cite the guide'
+write_in docs/tier-fixture-guide.md '# Guide, revised'
+capture env PATH="$ROOT/bin:$PATH" bash "$TIER" --dry-run "$WT"
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s); a test file references a markdown path in this change set"
+expect_stdout "guard: tools/line.test.sh:1:# tier-fixture-guide.md"
+end
 
 # With no typescript reachable the .ts comment keeps its hit, and the .sh comment, which bash
 # reprints, is still dropped. The classifier copy sits outside any repository, as in the
