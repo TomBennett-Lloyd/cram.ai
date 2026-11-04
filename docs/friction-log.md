@@ -320,3 +320,18 @@ Entry format:
 
 - Phase: process
 - Observed: the #532 lane's Friction line: "#532 carries no owner-approval comment, unlike #462/#486/#460/#523 dispatched the same day; the lane proceeded on an assumption it had to reconstruct from sibling issues". The merge owner posted the owner's 2026-11-04 words on #486, #462 and #523 (12:11Z to 12:33Z) and a dispatch note on #458 (12:35Z). None of the four lanes it dispatched at about 14:05Z (#532, #476, #461, #484) got one, and the lane prompt was the only place the approval was relayed. Only #532's lane said so. #461's report says the dispatcher relayed the approval, and the reports for #476 and #484 do not mention it. `.claude/skills/run-issue/SKILL.md` step 3's approval relay covers `adr` issues and owner questions. Nothing states where a dispatch records the owner's approval for a workflow issue that edits an agent or skill file. One dispatch wave so far.
+
+## 2026-11-04 — PR #548 (a file at its cap, priced at verify)
+
+- Phase: planning
+- Observed: the #470 lane's Friction line: "max-lines (course-index.ts, rebuild-course.test.ts) and the comment-density ratchet forced two structure moves. A one-method addition to a file at its cap costs an extraction, which the plan could have priced up front by counting the file." Eslint's `max-lines` count for `packages/index/src/course-index.ts` was 298 at `61314c1`, 299 at this PR's squash `c8ab4af`, and 300 at both #558's `b77e444` and #569's `647c3a1`, so three lanes in a row grew a file sitting at the cap and none of their plan comments named its count. #569's lane held it at 300 with a separate type import and filed #574 for the split. #404's proposal (a) is the planner arm for this, in the owner's file, so the counts went there (https://github.com/TomBennett-Lloyd/cram.ai/issues/404#issuecomment-6634195737), not to a new issue. The lane's other cost, a re-plan on the owner's REVISE of what a log line may name, was the plan stopping as designed.
+
+## 2026-11-04 — PR #563 (push before the rc)
+
+- Phase: process
+- Observed: the #216 lane's Friction line: "I pushed the rebased head before reading the backgrounded verify's exit code. That run was red, on a load timeout." No PR existed yet, and the re-run it took was the one #349 sanctions, so it cost nothing this time. This is the third lane on the push order that #483's proposal 3 names, after PR #449 and PR #445, so the instance went there (https://github.com/TomBennett-Lloyd/cram.ai/issues/483#issuecomment-6634196866). The plan held. Review's five FIX-NOW findings were all claim accuracy in the plan comment, the PR body, #547 and a #438 comment, and every one was fixed by deleting the claim.
+
+## 2026-11-04 — PR #569 (a red leg hides the legs after it)
+
+- Phase: process
+- Observed: the #467 lane's Friction line: "Every red stopped at `pnpm test`, so `check:ledgers` never ran locally and the reviewer was the first to see it red." `pnpm verify:full` is one `&&` chain with `pnpm test` ahead of `check:ledgers`, so a load-timeout red in the tests says nothing about the eleven legs after it. The lane's first commit message then said every leg was green except the timeouts, and its PR body corrects that: "`check:ledgers` was red there until 685e3e1." The wasted-work line is "about 8 full verify runs (roughly 25 min each at load 50–77)". The timeouts are #588's; the hidden legs are not named in #483, so the instance went there as a new shape (https://github.com/TomBennett-Lloyd/cram.ai/issues/483#issuecomment-6634196866). One lane so far on a claim made over legs that never ran.
