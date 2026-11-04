@@ -1,7 +1,11 @@
-import type { AskReply, RetrievedSlide, SourceId } from '@cram/shared';
+import {
+  type AskReply,
+  type RetrievedSlide,
+  type SourceId,
+  VERIFICATION_DEPTH,
+} from '@cram/shared';
 import { CLOSEST_SLIDES, LEFT_OUT, MODEL_FAILED, NOT_COVERED, SEARCHED_FOR } from '../copy';
 import { Failed } from '../shell/async-states';
-import { ASK_DEPTH } from './ask-depth';
 import type { CitedSlide } from './cited-slide';
 import { ExplanationView } from './ExplanationView';
 import { SlideCard } from './SlideCard';
@@ -91,7 +95,7 @@ export const AnswerView = ({
           <ExplanationView
             explanation={reply.explanation}
             slides={reply.slides}
-            depth={ASK_DEPTH}
+            depth={VERIFICATION_DEPTH.ask}
             onOpen={onOpen}
           />
           <LeftOut leftOut={reply.leftOut} slides={reply.slides} onOpen={onOpen} />
