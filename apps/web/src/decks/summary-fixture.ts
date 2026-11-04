@@ -25,6 +25,7 @@ export const SUMMARIES: Reply = {
             kind: 'lecture-summary',
           },
         ],
+        withheld: [],
       },
     ],
     slides: [HIVE],

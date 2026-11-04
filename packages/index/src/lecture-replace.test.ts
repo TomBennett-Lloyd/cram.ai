@@ -205,6 +205,7 @@ describe('CourseIndex.lectures', () => {
         imageOnly: [],
         unembedded: [],
         summarised: false,
+        withheld: 0,
       },
       {
         lectureId: 'lecture-1',
@@ -213,6 +214,7 @@ describe('CourseIndex.lectures', () => {
         imageOnly: [2, 10],
         unembedded: [],
         summarised: false,
+        withheld: 0,
       },
       {
         lectureId: 'lecture-2',
@@ -221,6 +223,7 @@ describe('CourseIndex.lectures', () => {
         imageOnly: [],
         unembedded: [],
         summarised: false,
+        withheld: 0,
       },
     ]);
   });

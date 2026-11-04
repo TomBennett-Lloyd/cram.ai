@@ -24,9 +24,9 @@ import type { CitedSlide } from '../ask/cited-slide';
 import { SlideDialog } from '../ask/SlideDialog';
 import { type Dismissible, Empty, Failed, Pending } from '../shell/async-states';
 import { LectureName } from './LectureName';
-import { NoSummary, SummaryDetails } from './LectureSummary';
-import { remaking, repairing, useIngestStatus } from './use-ingest-status';
-import { type SummariesState, useSummaries } from './use-summaries';
+import { type SummaryActs, SummaryArea } from './SummaryArea';
+import { repairing, useIngestStatus } from './use-ingest-status';
+import { useSummaries } from './use-summaries';
 
 /** Where dismissing the rebuild report has got to; a refused or failed call is reported in the alert. */
 type Dismissal =
@@ -69,7 +69,6 @@ const unlistedLectures = (
   return lectures.filter(({ lectureId }) => !indexed.has(lectureId));
 };
 
-/** Why the course file's lectures are missing, once no repair is still under way. */
 const storedMessages = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): readonly string[] => {
   if (stored.state === 'read' || repairing(repair)) return [];
   const { problem } = stored;
@@ -83,16 +82,6 @@ const awaitingRepair = ({ stored, repair }: Omit<IngestStatus, 'courseId'>): boo
 
 type Ingest = Omit<IngestStatus, 'courseId'>;
 
-/** What the decks screen does for a lecture's summary: read the lines, open a slide, make one again. */
-interface SummaryActs {
-  readonly summaries: SummariesState;
-  readonly loadSummaries: () => void;
-  readonly onOpen: (cited: CitedSlide) => void;
-  readonly requested: ReadonlySet<LectureId>;
-  readonly pressed: ReadonlySet<LectureId>;
-  readonly onRemake: (lectureId: LectureId) => void;
-}
-
 /** Changes whenever a stored summary may have, so lines read before it are read again at the next open (`useSummaries`). */
 const summaryStamp = ({ stored, uploads, remakes }: Ingest): string =>
   JSON.stringify([
@@ -102,47 +91,6 @@ const summaryStamp = ({ stored, uploads, remakes }: Ingest): string =>
     uploads.map(({ uploadId, progress }) => [uploadId, progress.state]),
     remakes.map(({ lectureId, progress }) => [lectureId, progress.state]),
   ]);
-
-/** The lecture's summary lines, or why it has none; a lecture the file does not list has neither. */
-const SummaryArea = ({
-  lectureId,
-  ingest,
-  acts,
-}: {
-  readonly lectureId: LectureId;
-  readonly ingest: Ingest;
-  readonly acts: SummaryActs;
-}) => {
-  const { stored, uploads, remakes } = ingest;
-  const lecture =
-    stored.state === 'read'
-      ? stored.lectures.find((each) => each.lectureId === lectureId)
-      : undefined;
-  if (lecture === undefined) return null;
-  if (lecture.summarised)
-    return (
-      <SummaryDetails
-        lectureId={lectureId}
-        state={acts.summaries}
-        onLoad={acts.loadSummaries}
-        onOpen={acts.onOpen}
-      />
-    );
-  const remake = remakes.find((each) => each.lectureId === lectureId)?.progress;
-  const tried =
-    remake !== undefined ||
-    uploads.some((upload) => upload.lectureId === lectureId && upload.progress.state === 'indexed');
-  return (
-    <NoSummary
-      busy={acts.requested.has(lectureId) || (remake !== undefined && remaking(remake))}
-      tried={tried}
-      pressed={acts.pressed.has(lectureId)}
-      onRemake={() => {
-        acts.onRemake(lectureId);
-      }}
-    />
-  );
-};
 
 interface DeckListProps {
   readonly courseId: CourseId;

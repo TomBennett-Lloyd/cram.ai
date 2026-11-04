@@ -83,17 +83,19 @@ export const storedLectures = (files: CourseFiles, courseId: CourseId): StoredLe
 
 const NO_SUMMARIES: CourseSummaries = { state: 'read', summaries: [], slides: [] };
 
-/** Every stored summary, with each slide its lines cite; the caller has checked `courseExists`. */
+/** Every stored digest, with each slide its lines and withheld units cite; the caller has checked `courseExists`. */
 export const storedSummaries = (files: CourseFiles, courseId: CourseId): CourseSummaries => {
   const opened = openToRead(files, courseId);
   if (opened.status === 'blank') return NO_SUMMARIES;
   if (opened.status !== 'open') return { state: 'course-unavailable', problem: opened.status };
   const { course } = opened;
   try {
-    const summaries = course.summaries();
+    const summaries = course.digests();
     const cited = new Set(
-      summaries.flatMap(({ units }) =>
-        units.flatMap(({ citations }) => citations.map(({ sourceId }) => sourceId)),
+      summaries.flatMap(({ units, withheld }) =>
+        [...units, ...withheld.map(({ unit }) => unit)].flatMap(({ citations }) =>
+          citations.map(({ sourceId }) => sourceId),
+        ),
       ),
     );
     const slides = summaries.flatMap(({ lectureId }) =>

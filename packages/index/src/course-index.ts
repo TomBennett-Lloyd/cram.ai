@@ -3,6 +3,7 @@ import {
   type CourseId,
   type Deck,
   type DiscardedTable,
+  type LectureDigest,
   type LectureId,
   type LectureSummary,
   type RebuildReportRevision,
@@ -34,7 +35,7 @@ import {
   requireDimension,
   requireSlideChunks,
 } from './indexed-slide';
-import { dropSummary, readSummaries, readSummary, writeSummary } from './lecture-summaries';
+import { dropSummary, readDigests, readSummary, writeDigest } from './lecture-summaries';
 import { listed, listFilters, type SlideListing } from './list-filter';
 import { vectorList, wordList } from './ranked-lists';
 import { fuseByReciprocalRank } from './reciprocal-rank';
@@ -208,16 +209,16 @@ export class CourseIndex {
     );
   }
 
-  setSummary(summary: LectureSummary): void {
-    writeSummary(this.#db, summary, this.lectureSlides(summary.lectureId));
+  setDigest(digest: LectureDigest): void {
+    writeDigest(this.#db, digest, this.lectureSlides(digest.lectureId));
   }
 
   summary(lectureId: LectureId): LectureSummary | undefined {
     return readSummary(this.#db, lectureId);
   }
 
-  summaries(): readonly LectureSummary[] {
-    return readSummaries(this.#db);
+  digests(): readonly LectureDigest[] {
+    return readDigests(this.#db);
   }
 
   chunks(sourceId: SourceId): readonly SlideChunk[] {
