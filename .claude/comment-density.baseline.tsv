@@ -5,8 +5,8 @@
 #     bash .claude/scripts/check-comment-density.sh --ratchet
 apps/server/src/ask-course.ts	66
 apps/server/src/compose-server.ts	330
-apps/server/src/course-file.ts	571
-apps/server/src/course-repair.ts	384
+apps/server/src/course-file.ts	542
+apps/server/src/course-repair.ts	363
 apps/server/src/data-directory.ts	652
 apps/server/src/dev-proxy.ts	967
 apps/server/src/dev.ts	232
@@ -16,14 +16,14 @@ apps/server/src/handlers.ts	96
 apps/server/src/http-body.ts	188
 apps/server/src/index.ts	0
 apps/server/src/ingest-deck.ts	517
-apps/server/src/ingest-queue.ts	507
+apps/server/src/ingest-queue.ts	469
 apps/server/src/lecture-digest.ts	277
 apps/server/src/loopback.ts	1666
 apps/server/src/repair-fixture.ts	500
 apps/server/src/route-request.ts	217
 apps/server/src/routes.ts	227
 apps/server/src/server-fixture.ts	264
-apps/server/src/server-log.ts	1111
+apps/server/src/server-log.ts	476
 apps/server/src/server.ts	347
 apps/server/src/slide-browser-fixture.ts	384
 apps/server/src/slide-embedding.ts	454
@@ -43,7 +43,6 @@ apps/web/src/ask/SlideDialog.tsx	576
 apps/web/src/ask/SlideFigure.tsx	416
 apps/web/src/ask/SourcesList.tsx	227
 apps/web/src/ask/WithheldPanel.tsx	2000
-apps/web/src/ask/ask-depth.ts	3333
 apps/web/src/ask/cited-slide.ts	952
 apps/web/src/ask/explanation-marks-fixture.ts	666
 apps/web/src/ask/explanation-marks.ts	378
@@ -173,7 +172,6 @@ packages/grounding/src/resolve-quotes.ts	1764
 packages/grounding/src/slide-text.ts	1111
 packages/grounding/src/summarise-lecture.ts	309
 packages/grounding/src/tag-facts.ts	135
-packages/grounding/src/verification-depth.ts	1666
 packages/grounding/src/verifier-input.ts	1666
 packages/grounding/src/verify-explanation.ts	62
 packages/grounding/src/verify.ts	327
@@ -181,7 +179,7 @@ packages/index/src/chunk-row.ts	555
 packages/index/src/common-words.ts	444
 packages/index/src/confirmation.ts	606
 packages/index/src/course-fixture.ts	194
-packages/index/src/course-index.ts	599
+packages/index/src/course-index.ts	567
 packages/index/src/course-lexicon.ts	306
 packages/index/src/edit-distance.ts	909
 packages/index/src/embed-chunks.ts	588
@@ -193,16 +191,17 @@ packages/index/src/indexed-slide.ts	246
 packages/index/src/lecture-summaries.ts	425
 packages/index/src/list-filter.ts	1621
 packages/index/src/loaded-summaries.ts	555
-packages/index/src/open-course.ts	735
-packages/index/src/ranked-lists.ts	277
-packages/index/src/rebuild-course.ts	731
+packages/index/src/open-course.ts	731
+packages/index/src/ranked-lists.ts	250
+packages/index/src/rebuild-course.ts	670
+packages/index/src/rebuild-fixture.ts	454
 packages/index/src/rebuild-report.ts	740
 packages/index/src/reciprocal-rank.ts	740
 packages/index/src/schema.ts	568
 packages/index/src/search-query.ts	2500
 packages/index/src/slide-row.ts	322
 packages/index/src/spelling-correction.ts	508
-packages/index/src/stored-deck.ts	683
+packages/index/src/stored-deck.ts	652
 packages/index/src/stored-lectures.ts	1363
 packages/index/src/topics.ts	437
 packages/ingest/src/adapters/deck-file.ts	645
@@ -244,6 +243,7 @@ packages/shared/src/split-chunk.ts	617
 packages/shared/src/style-exemplar.ts	2173
 packages/shared/src/topic-tag.ts	1111
 packages/shared/src/unit.ts	2666
+packages/shared/src/verification-depth.ts	1428
 packages/shared/src/verification.ts	1250
 packages/shared/src/withheld.ts	689
 packages/ui/src/index.ts	0
