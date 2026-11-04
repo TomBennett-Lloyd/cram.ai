@@ -48,7 +48,14 @@ the section before you dispatch.
    read missed is a retro signal naming this step (owner decision 2026-11-02, #433).
    A single lane never holds for another lane's plan — overlap is
    priced as rebase cost, and only entangled same-file SOURCE overlap is batched or
-   sequenced, here, at dispatch. `conserve` budget mode: one lane.
+   sequenced, here, at dispatch. Two **eval-bearing** lanes overlap there too, on
+   `eval/recordings/` and `eval/reports/`, which neither issue names because the run
+   generates them. A lane is eval-bearing when its predicted footprint meets a trigger path
+   of `docs/adr/0005-evaluation-as-gate.md` § Decision (g), or holds anything else that owes
+   a `pnpm eval` run under `eval/README.md`'s tier-1 paragraph. Sequence the second, or
+   admit it with step 2's overlap note naming the first as the lane its tier-2 run waits
+   for (`.claude/agents/ticket-agent.md` rule 6): six lanes re-recorded or lost a run
+   without this (#486). `conserve` budget mode: one lane.
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
    mode and the overlap note — nothing else; it reads the issue and the files.
    The overlap note asserts only what a command printed: each overlapping lane's issue or
@@ -151,7 +158,12 @@ the section before you dispatch.
    to the one ready longest; the heads counted include a curated batch whose checks are
    still running on its new head, so a ready PR whose landing would cost that batch
    another round waits for that one CI run — the one wait this order prices. A curated
-   batch is priced by (2), not special-cased (owner direction 2026-11-02, #413). The
+   batch is priced by (2), not special-cased (owner direction 2026-11-02, #413). Two
+   ready eval-bearing PRs (step 1) overlap whatever the read prints, since each committed
+   run stands for its whole tree (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)):
+   the one whose tier-2 run is committed goes first, and the other takes one step 5
+   `REBASE —` bounce to re-record after it lands, even when it reads only `BEHIND`, because
+   `gh pr update-branch` cannot re-record. No run in progress is overtaken (#486). The
    order and the read it rests on — commands, output and exit codes, written from the captured run
    (`docs/standards/evidence.md`) — go in the in-flight table rows, never into issues.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
