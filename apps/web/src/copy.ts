@@ -68,18 +68,20 @@ export const ATTRIBUTED_NOTE =
   'Written from your slides. Each sentence is checked only for whether a slide appears to contradict it; the slides listed below are where to look.';
 export const DERIVED_SOURCE = 'Text read from the picture';
 
-type SlideName = Pick<SlideRecord, 'slideNo' | 'lectureTitle'>;
+type SlideName = Pick<SlideRecord, 'slideNo' | 'lectureTitle' | 'derived'>;
+
+const slideName = ({ slideNo, lectureTitle, derived }: SlideName): string => {
+  const name = `${lectureTitle}, slide ${String(slideNo)}`;
+  return derived ? `${name}. ${DERIVED_SOURCE}` : name;
+};
 
 export const SLIDE_CONTRADICTION = `This sentence of the answer ${APPEARS_TO_CONTRADICT} this slide:`;
 
-export const contradictionRefLabel = (
-  number: number,
-  { slideNo, lectureTitle }: SlideName,
-): string =>
-  `Source ${String(number)}: ${APPEARS_TO_CONTRADICT} ${lectureTitle}, slide ${String(slideNo)}`;
+export const contradictionRefLabel = (number: number, slide: SlideName): string =>
+  `Source ${String(number)}: ${APPEARS_TO_CONTRADICT} ${slideName(slide)}`;
 
-export const sourceRefLabel = (number: number, { slideNo, lectureTitle }: SlideName): string =>
-  `Source ${String(number)}: ${lectureTitle}, slide ${String(slideNo)}`;
+export const sourceRefLabel = (number: number, slide: SlideName): string =>
+  `Source ${String(number)}: ${slideName(slide)}`;
 
 export const slideImageAlt = ({
   slideNo,

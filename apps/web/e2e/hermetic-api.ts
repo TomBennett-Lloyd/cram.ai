@@ -57,6 +57,8 @@ export const CONTRADICTED_SENTENCE =
   'Drones forage for nectar in the comb, whose cells are hexagonal.';
 /** Its answer is in paragraphs, the last `CONTRADICTED_SENTENCE` (#466). */
 export const PARAGRAPHS_QUESTION = 'How is the hive organised?';
+/** Its answer quotes COMB, here read from its picture, beside a quote from typed HIVE (#464). */
+export const DERIVED_QUESTION = 'Are comb cells hexagonal?';
 /** A quote inside the contradicted sentence, so its underline and the mark's meet. */
 const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };
 
@@ -69,6 +71,7 @@ const grounded = (
   sentences: readonly ReturnType<typeof sentence>[],
   quotes: readonly { readonly sourceId: string; readonly quote: string }[] = [],
   between = ' ',
+  slides: readonly ReturnType<typeof slide>[] = [HIVE, COMB],
 ) => ({
   status: 'grounded',
   explanation: {
@@ -78,7 +81,7 @@ const grounded = (
     sources: ['s1', 's2'],
   },
   withheld: [{ reason: 'unsupported', text: 'Queens rule the hive.' }],
-  slides: [HIVE, COMB],
+  slides,
   leftOut: [],
 });
 
@@ -100,6 +103,11 @@ const askReply = (question: string) => {
         [QUOTE_IN_MARK],
         '\n\n',
       );
+    case DERIVED_QUESTION:
+      return grounded(SENTENCES, [{ sourceId: 's2', quote: 'comb cells are hexagonal' }], ' ', [
+        HIVE,
+        { ...COMB, record: { ...COMB.record, derived: true } },
+      ]);
     default:
       return grounded(SENTENCES);
   }
