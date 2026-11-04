@@ -42,7 +42,7 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 | ADR 0006's carrier ledger names the old home of the quotable field list                          | #298         |
 | ADR 0005 cites `citation.ts` for a minting split it no longer states                             | #298         |
 | ledger sweeps with only literal arms cannot see a paraphrase                                     | #298         |
-| a failed repair's log names the outcome, not the lecture or the cause                            | #398         |
+| a failed repair's log names the outcome, not the cause                                           | #398         |
 | a course file's `course` table with no row throws instead of being refused                       | #398         |
 | three copies of the read-only course-file sequence in apps/server                                | #398         |
 | which slides get a vector is decided twice, once by the server and once by eval                  | #399         |
@@ -196,3 +196,9 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `.claude/scripts/merge-pr.sh` (the union step's `subject=` and the comment above it)
 - What: the union commit's `#<n>:` prefix comes only from `pr_closes[0]`. A lane report whose issue a `Part of` line names now reaches that step without `--method`, with no Closes line, so its union commit lands on the branch unprefixed; the squash flattens it, so `main` is unaffected. The comment's "a PR merged under an explicit --method may have no Closes line" no longer covers every such PR. Fix direction: fall back to `pr_lanes[0]` when `pr_closes` is empty, and true the comment.
 - Source: PR #504 (review)
+
+## 2026-11-04 — `LogEntry` is one shape for every operation, so a lecture job can drop its key
+
+- Where: `apps/server/src/server-log.ts` (`LogEntry`, `lectureEntry`); its callers `apps/server/src/ingest-queue.ts`, `apps/server/src/ask-course.ts`, `apps/server/src/server.ts`
+- What: `operation` is a bare string, `courseId` an unbranded string, and `lectureKey` optional on every entry. So the compiler cannot require a key on a lecture-scoped operation. The next lecture job can log without one, and only a test would notice: the gap #470 closed (`docs/standards/typing.md` rules 1 and 4). Suspected root cause: the entry grew one optional field per entity instead of a union keyed by operation kind, which would cross all three callers.
+- Source: PR for #470 (review)
