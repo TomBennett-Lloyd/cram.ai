@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CourseUnavailableProblem, SlideNo, SourceId, WithheldSentence } from '@cram/shared';
+import {
+  CourseUnavailableProblem,
+  SlideNo,
+  SourceId,
+  type Unit,
+  WithheldSentence,
+  WithheldUnit,
+} from '@cram/shared';
 import {
   APPEARS_TO_CONTRADICT,
   contradictionRefLabel,
@@ -7,6 +14,7 @@ import {
   sourceRefLabel,
   storedUnavailableMessage,
   withheldMessage,
+  withheldUnitMessage,
 } from './copy';
 
 const sourceId = SourceId.parse('s1');
@@ -27,6 +35,25 @@ describe('withheldMessage', () => {
     expect(new Set(sentences).size).toBe(sentences.length);
     expect(sentences[0]).toMatch(/^The answer marked this line as a quote/);
     expect(sentences[1]).toBe('A slide this answer was written from says otherwise.');
+  });
+});
+
+describe('withheldUnitMessage', () => {
+  it('gives each reason a summary line is withheld for its own sentence, and names what a partial one’s policy did', () => {
+    const unit: Unit = { text, citations: [], kind: 'lecture-summary' };
+    const entries: WithheldUnit[] = [
+      { reason: 'dangling-citation', unit },
+      { reason: 'unsupported', unit },
+      { reason: 'partial', policy: 'drop', unit },
+      { reason: 'partial', policy: 'rewrite-once', unit },
+    ];
+    expect([...new Set(entries.map(({ reason }) => reason))].sort()).toEqual(
+      WithheldUnit.options.map((arm) => arm.shape.reason.value).sort(),
+    );
+    const sentences = entries.map(withheldUnitMessage);
+    expect(new Set(sentences).size).toBe(sentences.length);
+    expect(sentences[2]).toMatch(/so it was left out\.$/);
+    expect(sentences[3]).toMatch(/a rewrite didn’t fix that\.$/);
   });
 });
 
