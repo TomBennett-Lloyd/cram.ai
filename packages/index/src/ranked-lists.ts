@@ -37,3 +37,8 @@ export const vectorList = (
       .pluck()
       .all(embedding, depth),
   );
+
+export const firstPerSlide = (
+  chunkIds: readonly number[],
+  slideOf: (chunkId: number) => number,
+): readonly number[] => [...new Set(chunkIds.map(slideOf))];

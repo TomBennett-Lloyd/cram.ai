@@ -52,6 +52,7 @@ describe('IngestStatus', () => {
     imageOnly: [2],
     unembedded: [],
     summarised: false,
+    withheld: 0,
   };
 
   it('carries the course file’s lectures beside the uploads, and refuses a status without them', () => {
@@ -81,6 +82,9 @@ describe('IngestStatus', () => {
     expect(read({ unembedded: [0] })).toBe(false);
     expect(read({ lectureTitle: ' ' })).toBe(false);
     expect(read({ summarised: undefined })).toBe(false);
+    expect(read({ withheld: undefined })).toBe(false);
+    expect(read({ withheld: -1 })).toBe(false);
+    expect(read({ withheld: 0.5 })).toBe(false);
   });
 });
 

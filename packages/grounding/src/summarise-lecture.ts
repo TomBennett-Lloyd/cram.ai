@@ -1,4 +1,11 @@
-import { LectureSummary, type LectureId, type RetrievedSlide, SlideKind } from '@cram/shared';
+import {
+  type LectureDigest,
+  type LectureId,
+  LectureSummary,
+  type RetrievedSlide,
+  SlideKind,
+  type WithheldUnit,
+} from '@cram/shared';
 import { ground, type GroundingStage } from './ground';
 import type { ModelFailure } from './model-failure';
 import { estimateTokens, PROMPT_TOKEN_BUDGET } from './prompt-budget';
@@ -22,10 +29,16 @@ export interface SummaryDeps extends VerifyDeps {
 export type UnsummarisedReason = 'nothing-to-summarise' | 'slide-over-budget' | 'no-unit-survived';
 
 export type SummaryOutcome =
-  | { readonly status: 'summarised'; readonly summary: LectureSummary; readonly drafted: number }
+  | {
+      readonly status: 'summarised';
+      readonly summary: LectureSummary;
+      readonly withheld: readonly WithheldUnit[];
+      readonly drafted: number;
+    }
   | {
       readonly status: 'unsummarised';
       readonly reason: UnsummarisedReason;
+      readonly withheld: readonly WithheldUnit[];
       readonly drafted: number;
     }
   | {
@@ -82,25 +95,35 @@ export const summariseLecture = async (
   };
   const source = slides.filter(summarisable);
   if (source.length === 0)
-    return { status: 'unsummarised', reason: 'nothing-to-summarise', drafted: 0 };
+    return { status: 'unsummarised', reason: 'nothing-to-summarise', withheld: [], drafted: 0 };
   const parts = summaryParts(task, source, deps.budget ?? PROMPT_TOKEN_BUDGET);
   if (parts === undefined)
-    return { status: 'unsummarised', reason: 'slide-over-budget', drafted: 0 };
+    return { status: 'unsummarised', reason: 'slide-over-budget', withheld: [], drafted: 0 };
   const units = [];
-  let drafted = 0;
+  const withheld: WithheldUnit[] = [];
   for (const part of parts) {
     const result = await ground(task, part, { ...deps, partialPolicy: 'drop' });
-    if (result.status === 'model-failed') return { ...result, drafted };
-    drafted += result.withheld.length;
-    if (result.status === 'grounded') {
-      drafted += result.shown.length;
-      units.push(...result.shown);
-    }
+    if (result.status === 'model-failed')
+      return { ...result, drafted: units.length + withheld.length };
+    withheld.push(...result.withheld);
+    if (result.status === 'grounded') units.push(...result.shown);
   }
-  if (units.length === 0) return { status: 'unsummarised', reason: 'no-unit-survived', drafted };
+  const drafted = units.length + withheld.length;
+  if (units.length === 0)
+    return { status: 'unsummarised', reason: 'no-unit-survived', withheld, drafted };
   return {
     status: 'summarised',
     summary: LectureSummary.parse({ lectureId: lecture.lectureId, units }),
+    withheld,
     drafted,
   };
 };
+
+export const digestOf = (
+  lectureId: LectureId,
+  outcome: Exclude<SummaryOutcome, { status: 'model-failed' }>,
+): LectureDigest => ({
+  lectureId,
+  units: outcome.status === 'summarised' ? outcome.summary.units : [],
+  withheld: [...outcome.withheld],
+});

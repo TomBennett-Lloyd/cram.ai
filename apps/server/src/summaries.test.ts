@@ -35,6 +35,10 @@ const ENTAILED: EntailmentResult = {
   status: 'scored',
   scores: { entailment: 0.9, neutral: 0.05, contradiction: 0.05 },
 };
+const NEUTRAL: EntailmentResult = {
+  status: 'scored',
+  scores: { entailment: 0.05, neutral: 0.9, contradiction: 0.05 },
+};
 const FAILED = { status: 'backend-failed', reason: 'connection refused' } as const;
 
 let test: TestServer | undefined;
@@ -63,7 +67,10 @@ const summarisable = (slides: readonly RetrievedSlide[]) =>
   );
 
 /** The hive deck's summary call answered with one unit citing its body line, and that unit's verdict. */
-const hiveSummary = async (bytes: Uint8Array): Promise<readonly Recording[]> => {
+const hiveSummary = async (
+  bytes: Uint8Array,
+  verdict: EntailmentResult = ENTAILED,
+): Promise<readonly Recording[]> => {
   const slides = summarisable(await retrievedFrom(bytes, 'bio', 'l1', 'hive.pdf'));
   const [first] = slides;
   if (first === undefined) throw new Error('hive deck has no slide');
@@ -78,14 +85,14 @@ const hiveSummary = async (bytes: Uint8Array): Promise<readonly Recording[]> => 
       role: 'verifier',
       pin: PROVISIONAL_DEFAULT_PINS.verifier,
       request: { pairs: splitClaims(MALE).map((hypothesis) => ({ premise: quote, hypothesis })) },
-      reply: { results: [ENTAILED] },
+      reply: { results: [verdict] },
     },
   ];
 };
 
 const status = async ({ server }: TestServer) =>
   (await settledStatus(server.port, 'bio')).json as {
-    stored: { lectures: { summarised: boolean }[] };
+    stored: { lectures: { summarised: boolean; withheld: number }[] };
     uploads: { progress: { state: string; summarised?: boolean } }[];
     remakes: unknown[];
   };
@@ -143,6 +150,38 @@ describe('the lecture digest at upload', () => {
     expect(server.logs).toEqual([]);
   });
 
+  it('stores a lecture whose every unit was withheld as no summary, and serves the withheld unit with its slide', async () => {
+    const bytes = await pdfDeck(HIVE);
+    const server = await started(gatewayOf(await hiveSummary(bytes, NEUTRAL)));
+    await upload(server, bytes);
+    const settled = await status(server);
+    expect(settled.uploads.map(({ progress }) => progress.summarised)).toEqual([false]);
+    expect(
+      settled.stored.lectures.map(({ summarised: made, withheld }) => [made, withheld]),
+    ).toEqual([[false, 1]]);
+    const parsed = CourseSummaries.parse((await summaries(server)).json);
+    if (parsed.state !== 'read') throw new Error('summaries unread');
+    const [slide] = await retrievedFrom(bytes, 'bio', 'l1', 'hive.pdf');
+    if (slide === undefined) throw new Error('hive deck has no slide');
+    expect(parsed.summaries).toEqual([
+      {
+        lectureId: 'l1',
+        units: [],
+        withheld: [
+          {
+            reason: 'unsupported',
+            unit: {
+              text: MALE,
+              citations: [{ sourceId: slide.sourceId, quote: slideLines(slide.record)[1] }],
+              kind: 'lecture-summary',
+            },
+          },
+        ],
+      },
+    ]);
+    expect(parsed.slides).toEqual([slide]);
+  });
+
   it('stores nothing and reports the upload unsummarised when the model fails, logging the failure', async () => {
     const bytes = await pdfDeck(HIVE);
     const slides = summarisable(await retrievedFrom(bytes, 'bio', 'l1', 'hive.pdf'));
@@ -153,7 +192,12 @@ describe('the lecture digest at upload', () => {
     expect(settled.stored.lectures.map(({ summarised: made }) => made)).toEqual([false]);
     expect((await summaries(server)).json).toEqual({ state: 'read', summaries: [], slides: [] });
     expect(server.logs).toEqual([
-      { operation: 'summarise generate', courseId: 'bio', outcome: 'backend-failed' },
+      {
+        operation: 'summarise generate',
+        courseId: 'bio',
+        lectureKey: 1,
+        outcome: 'backend-failed',
+      },
     ]);
   });
 
@@ -169,12 +213,12 @@ describe('the lecture digest at upload', () => {
       { state: 'indexed', slideCount: 2, imageOnly: [2], unembedded: [], summarised: false },
     ]);
     expect(server.logs).toEqual([
-      { operation: 'tag', courseId: 'bio', outcome: 'TypeError' },
-      { operation: 'summarise', courseId: 'bio', outcome: 'TypeError' },
+      { operation: 'tag', courseId: 'bio', lectureKey: 1, outcome: 'TypeError' },
+      { operation: 'summarise', courseId: 'bio', lectureKey: 1, outcome: 'TypeError' },
     ]);
   });
 
-  it('drops the old summary when the lecture is uploaded again', async () => {
+  it('replaces the old summary with the new run’s digest when the lecture is uploaded again', async () => {
     const bytes = await pdfDeck(HIVE);
     const server = await started(gatewayOf(await hiveSummary(bytes)));
     await upload(server, bytes);
@@ -182,7 +226,18 @@ describe('the lecture digest at upload', () => {
     await upload(server, await pdfDeck([['The Hive', 'Drones never forage.']]));
     const settled = await status(server);
     expect(settled.uploads.map(({ progress }) => progress.summarised)).toEqual([true, false]);
-    expect((await summaries(server)).json).toEqual({ state: 'read', summaries: [], slides: [] });
+    const unscripted = { text: 'Unscripted.', citations: [], kind: 'lecture-summary' };
+    expect((await summaries(server)).json).toEqual({
+      state: 'read',
+      summaries: [
+        {
+          lectureId: 'l1',
+          units: [],
+          withheld: [{ reason: 'dangling-citation', unit: unscripted }],
+        },
+      ],
+      slides: [],
+    });
   });
 });
 

@@ -1,55 +1,76 @@
 import type { Database } from 'better-sqlite3';
-import { LectureSummary, type LectureId, type RetrievedSlide } from '@cram/shared';
+import { LectureDigest, type LectureId, LectureSummary, type RetrievedSlide } from '@cram/shared';
 import { z } from 'zod';
 
 export const LECTURE_SUMMARY_TABLE_NAME = 'lecture_summaries';
 
-/** One row per summarised lecture, its units as JSON (`docs/adr/0009-explanation-answers.md` § Decision (l)); no row is no summary. */
+/** One row per lecture whose last completed summary run kept or withheld a unit (`docs/adr/0009-explanation-answers.md` § Decision (l); #467). */
 export const LECTURE_SUMMARY_TABLE = `
   create table ${LECTURE_SUMMARY_TABLE_NAME} (
     lecture_id text primary key references decks (lecture_id),
-    units text not null
+    units text not null,
+    withheld text not null
   ) strict;
 `;
 
-const SummaryRow = z.object({ lecture_id: z.string(), units: z.string() });
+export const SUMMARISED_LECTURES = `select lecture_id from ${LECTURE_SUMMARY_TABLE_NAME} where json_array_length(units) > 0`;
 
-const summaryOf = (row: unknown): LectureSummary => {
-  const { lecture_id, units } = SummaryRow.parse(row);
-  const parsed: unknown = JSON.parse(units);
-  return LectureSummary.parse({ lectureId: lecture_id, units: parsed });
-};
+const DigestRow = z.object({ lecture_id: z.string(), units: z.string(), withheld: z.string() });
 
-/** `slides` is the lecture's; a summary citing any other slide is a caller bug and throws. */
-export const writeSummary = (
-  db: Database,
-  { lectureId, units }: LectureSummary,
-  slides: readonly RetrievedSlide[],
-): void => {
-  const own = new Set(slides.map(({ sourceId }) => sourceId));
-  for (const { sourceId } of units.flatMap(({ citations }) => citations)) {
-    if (!own.has(sourceId))
-      throw new Error(`setSummary: ${sourceId} is not a slide of ${lectureId}`);
-  }
-  db.prepare(
-    `insert into ${LECTURE_SUMMARY_TABLE_NAME} (lecture_id, units) values (?, ?)
-       on conflict (lecture_id) do update set units = excluded.units`,
-  ).run(lectureId, JSON.stringify(units));
+const digestOf = (row: unknown): LectureDigest => {
+  const { lecture_id, units, withheld } = DigestRow.parse(row);
+  const parsedUnits: unknown = JSON.parse(units);
+  const parsedWithheld: unknown = JSON.parse(withheld);
+  return LectureDigest.parse({
+    lectureId: lecture_id,
+    units: parsedUnits,
+    withheld: parsedWithheld,
+  });
 };
 
 export const dropSummary = (db: Database, lectureId: LectureId): void => {
   db.prepare(`delete from ${LECTURE_SUMMARY_TABLE_NAME} where lecture_id = ?`).run(lectureId);
 };
 
-export const readSummary = (db: Database, lectureId: LectureId): LectureSummary | undefined => {
-  const row: unknown = db
-    .prepare(`select lecture_id, units from ${LECTURE_SUMMARY_TABLE_NAME} where lecture_id = ?`)
-    .get(lectureId);
-  return row === undefined ? undefined : summaryOf(row);
+/** `slides` is the lecture's; a unit citing any other slide is a caller bug and throws. An empty digest leaves no row. */
+export const writeDigest = (
+  db: Database,
+  { lectureId, units, withheld }: LectureDigest,
+  slides: readonly RetrievedSlide[],
+): void => {
+  const own = new Set(slides.map(({ sourceId }) => sourceId));
+  const cited = [...units, ...withheld.map(({ unit }) => unit)].flatMap(
+    ({ citations }) => citations,
+  );
+  for (const { sourceId } of cited) {
+    if (!own.has(sourceId))
+      throw new Error(`setDigest: ${sourceId} is not a slide of ${lectureId}`);
+  }
+  if (units.length === 0 && withheld.length === 0) {
+    dropSummary(db, lectureId);
+    return;
+  }
+  db.prepare(
+    `insert into ${LECTURE_SUMMARY_TABLE_NAME} (lecture_id, units, withheld) values (?, ?, ?)
+       on conflict (lecture_id) do update set units = excluded.units, withheld = excluded.withheld`,
+  ).run(lectureId, JSON.stringify(units), JSON.stringify(withheld));
 };
 
-export const readSummaries = (db: Database): readonly LectureSummary[] =>
+export const readSummary = (db: Database, lectureId: LectureId): LectureSummary | undefined => {
+  const row: unknown = db
+    .prepare(
+      `select lecture_id, units, withheld from ${LECTURE_SUMMARY_TABLE_NAME} where lecture_id = ?`,
+    )
+    .get(lectureId);
+  if (row === undefined) return undefined;
+  const { units } = digestOf(row);
+  return units.length === 0 ? undefined : LectureSummary.parse({ lectureId, units });
+};
+
+export const readDigests = (db: Database): readonly LectureDigest[] =>
   db
-    .prepare(`select lecture_id, units from ${LECTURE_SUMMARY_TABLE_NAME} order by lecture_id`)
+    .prepare(
+      `select lecture_id, units, withheld from ${LECTURE_SUMMARY_TABLE_NAME} order by lecture_id`,
+    )
     .all()
-    .map(summaryOf);
+    .map(digestOf);
