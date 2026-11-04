@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CourseId } from '@cram/shared';
+import { SWEEP_TEST_TIMEOUT_MS } from '@cram/shared/sweep-test-timeout';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lecture, slide } from './eval-fixture';
 import { ingestedCourse } from './ingested-course';
@@ -23,29 +24,33 @@ afterAll(async () => {
 });
 
 describe('ingestedCourse', () => {
-  it('holds each lecture as its stored PDF beside the records ingest made of it', async () => {
-    const deck = [
-      lecture('l1', [slide({ body: [BODY] })]),
-      lecture('l2', [
-        slide({ title: 'Drones', body: [BODY] }),
-        slide({ slideNo: 2, imageOnly: true }),
-      ]),
-    ];
-    const lectures = await ingestedCourse(deck, COURSE, dir);
-    expect(lectures.map(({ deck: stored }) => [stored.lectureId, stored.mediaType])).toEqual([
-      ['l1', 'application/pdf'],
-      ['l2', 'application/pdf'],
-    ]);
-    expect(
-      lectures.map(({ slides }) =>
-        slides.map(({ courseId, slideNo, kind }) => [courseId, slideNo, kind]),
-      ),
-    ).toEqual([
-      [['hollowmere', 1, 'content']],
-      [
-        ['hollowmere', 1, 'content'],
-        ['hollowmere', 2, 'image-only'],
-      ],
-    ]);
-  });
+  it(
+    'holds each lecture as its stored PDF beside the records ingest made of it',
+    { timeout: SWEEP_TEST_TIMEOUT_MS },
+    async () => {
+      const deck = [
+        lecture('l1', [slide({ body: [BODY] })]),
+        lecture('l2', [
+          slide({ title: 'Drones', body: [BODY] }),
+          slide({ slideNo: 2, imageOnly: true }),
+        ]),
+      ];
+      const lectures = await ingestedCourse(deck, COURSE, dir);
+      expect(lectures.map(({ deck: stored }) => [stored.lectureId, stored.mediaType])).toEqual([
+        ['l1', 'application/pdf'],
+        ['l2', 'application/pdf'],
+      ]);
+      expect(
+        lectures.map(({ slides }) =>
+          slides.map(({ courseId, slideNo, kind }) => [courseId, slideNo, kind]),
+        ),
+      ).toEqual([
+        [['hollowmere', 1, 'content']],
+        [
+          ['hollowmere', 1, 'content'],
+          ['hollowmere', 2, 'image-only'],
+        ],
+      ]);
+    },
+  );
 });

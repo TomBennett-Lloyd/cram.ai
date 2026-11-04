@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { SCHEMA_VERSION } from '@cram/index';
+import { SWEEP_TEST_TIMEOUT_MS } from '@cram/shared/sweep-test-timeout';
 import { describe, expect, it } from 'vitest';
 import { storedOutputCorpus as corpus } from './stored-output-fixture';
 
@@ -16,11 +17,9 @@ const PIN = {
 const sha256 = (data: string | Uint8Array): string =>
   createHash('sha256').update(data).digest('hex');
 
-// Reading the corpus renders every one of its PDF pages (#107), which takes seconds; no run is near this.
-const SLOW = { timeout: 60_000 };
-
 describe('the records @cram/ingest stores', () => {
-  it('are the ones SCHEMA_VERSION was cut for', SLOW, async () => {
+  // Reading the corpus renders every one of its PDF pages (#107).
+  it('are the ones SCHEMA_VERSION was cut for', { timeout: SWEEP_TEST_TIMEOUT_MS }, async () => {
     const records = (await corpus()).flatMap(([bytes, slides]) =>
       slides.map((slide) => ({ ...slide, sourceHash: slide.sourceHash === sha256(bytes) })),
     );
