@@ -534,7 +534,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-04 — issue #560 — adr-amendments-plan-named-or-path-move
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the owner's direction, 2026-11-04 (chat, quoted in #560): "and yeah letting an ADR amendment that the plan named verbatim merge on green plus review seems like a good idea, i've seen that a lot of ADR ammendments are just tidying up a bit of prose rather than changing anything fundamental too". The PR asks the owner to decide the exact text that carries it:
   - accept `merge.amendmentRule` in `.claude/workflow.json` as written, with the trued-up last sentences of `humanAlwaysRule` and `approvedAtPlanRule`;
   - accept arm (a): a plan comment naming the amendment means it carries each changed block whole and in diff order, as diff lines or, for a pure addition, as its own paragraph or fenced block, and the merge owner reads the edit history for "before the first ADR edit";
@@ -543,4 +543,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
   - accept the new category `path-move-amendment`, neutral under the graduation rule, and the `CLAUDE.md` § Workflow and `docs/adr/README.md` § Amendments sentences.
 - **Why**: `.claude/workflow.json`, `CLAUDE.md` and `docs/adr/**` are `humanAlways`, and this changes which `humanAlways` PRs reach the owner at all, so the wording is the owner's to approve. A gate never passes through the gate it defines.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-04 — "approve 606"
