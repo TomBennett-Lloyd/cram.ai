@@ -27,8 +27,15 @@
 # BEHIND head — is a defect nobody can take back, which is why every refusal case
 # asserts the absence of `pr merge` in calls.log rather than only the exit code.
 #
-# Usage: bash .claude/scripts/merge-pr.test.sh  (or `pnpm test:scripts`)
-# Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke.
+# Usage: bash .claude/scripts/merge-pr.test.sh [--section <n>]... [--case <text>]...
+#        (or `pnpm test:scripts`, which passes no selector and so runs every case)
+#   --section <n>  the cases under the `# <n>. …` banner; <n> is matched whole (12b, 10e-ii)
+#   --case <text>  the cases whose title, as expanded at run time, contains <text> as a fixed,
+#                  case-sensitive string
+# A case runs when any selector matches it. A selected run ends on the same
+# `N passed, M failed` line, and one that matches nothing exits 2 as a harness that ran no
+# cases (#434).
+# Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke or a usage error.
 set -uo pipefail
 
 SCRIPTS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
@@ -36,6 +43,32 @@ SUBJECT="$SCRIPTS/merge-pr.sh"
 
 # shellcheck source=./harness-lib.sh
 . "$SCRIPTS/harness-lib.sh"
+
+SELECTING=0
+SELECT_SECTIONS=()
+SELECT_TITLES=()
+usage_error() {
+  printf 'usage: bash .claude/scripts/merge-pr.test.sh [--section <n>]... [--case <text>]...\n' >&2
+  exit 2
+}
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --section | --case)
+      if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        usage_error
+      fi
+      if [ "$1" = "--section" ]; then
+        SELECT_SECTIONS+=("$2")
+      else
+        SELECT_TITLES+=("$2")
+      fi
+      SELECTING=1
+      shift 2
+      ;;
+    *) usage_error ;;
+  esac
+done
+
 harness_init_tmp
 
 PR=490
@@ -772,6 +805,96 @@ expect_union_refused() {
   expect_no_merge_in_progress
   [ ! -f "$STATE/prettier.log" ] || bad "prettier ran on a resolution that was refused"
 }
+
+# --- the case selector ------------------------------------------------------------------------
+#
+# The cases are top-level code, not functions, and the code between them is shared state:
+# 12d's top level sets T_OLD for 12e–12h, and sections 21 and 22 define helpers and loops
+# there. So a selected run does not delete what it skips. It sources a copy of everything
+# below CASES_SENTINEL in which each begin…end is wrapped in `if case_selected …; then … fi`,
+# and every other line runs as written (section 24 asserts both).
+
+CASES_SENTINEL='# --- the cases: gate_cases copies everything below this line ---'
+
+case_selected() { # case_selected <section> <title> — any --section or --case names this case
+  local want
+  for want in ${SELECT_SECTIONS[@]+"${SELECT_SECTIONS[@]}"}; do
+    [ "$want" = "$1" ] && return 0
+  done
+  for want in ${SELECT_TITLES[@]+"${SELECT_TITLES[@]}"}; do
+    case "$2" in
+      *"$want"*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# gate_cases <harness file> -> its case region on stdout, each case gated on case_selected.
+# The lines above the sentinel come out blank, so an error in the copy names the source line.
+# A heredoc line reading `begin …` or exactly `end` would be taken for a case boundary; each
+# shape this cannot read as cases exits 2.
+gate_cases() {
+  awk -v sentinel="$CASES_SENTINEL" '
+    function die(msg) {
+      printf "FATAL gate_cases: %s line %d: %s\n", FILENAME, NR, msg > "/dev/stderr"
+      failed = 1
+      exit 2
+    }
+    !started {
+      if ($0 == sentinel) started = 1
+      print ""
+      next
+    }
+    {
+      if (opened) {
+        if (!match($0, /^# [0-9]+[a-z]*(-[ivx]+)?\. /)) die("a banner rule with no section number under it")
+        section = substr($0, 3, RLENGTH - 4)
+      }
+      opened = 0
+      if ($0 ~ /^# =+$/) {
+        in_banner = !in_banner
+        opened = in_banner
+      }
+      if ($0 != "") last = $0
+    }
+    /^[ \t]*begin / {
+      if (section == "") die("a case before any numbered banner")
+      if (open) die("a begin inside the case opened at line " open)
+      open = NR
+      open_indent = $0
+      sub(/[^ \t].*$/, "", open_indent)
+      title = $0
+      sub(/^[ \t]*begin /, "", title)
+      print open_indent "if case_selected \047" section "\047 " title "; then begin " title
+      next
+    }
+    /^[ \t]*end$/ {
+      if (!open) die("an end with no open case")
+      indent = $0
+      sub(/end$/, "", indent)
+      if (indent != open_indent) die("an end indented differently from the begin at line " open)
+      open = 0
+      print $0 "; fi"
+      next
+    }
+    { print }
+    END {
+      if (failed) exit 2
+      if (!started) die("no sentinel line: " sentinel)
+      if (open) die("the case opened at line " open " never ends")
+      if (last != "finish") die("the region does not end on finish")
+    }
+  ' "$1"
+}
+
+if [ "$SELECTING" = "1" ]; then
+  gate_cases "${BASH_SOURCE[0]}" >"$TMP_ROOT/gated.sh" || exit 2
+  # shellcheck source=/dev/null
+  . "$TMP_ROOT/gated.sh"
+  exit
+fi
+
+# --- the cases: gate_cases copies everything below this line ---
 
 # ==========================================================================================
 # 1. the script parses
@@ -3330,6 +3453,248 @@ for knob in MERGE_PR_UPDATE_RETRIES MERGE_PR_CONFIRM_RETRIES MERGE_PR_READ_RETRI
 done
 case_ctx=""
 [ -s "$STATE/calls.log" ] && bad "gh was called for a run refused at its knobs"
+end
+
+# ==========================================================================================
+# 24. the case selector runs what it names and nothing beside it (#434)
+# ==========================================================================================
+# The harness runs itself, and the count line is the verdict: $'\n1 passed' is not a
+# substring of '11 passed'. self_run gives each child /dev/null on stdin, so none reads a loop's here-doc.
+# The synthetic regions are built with printf, never a here-doc: in a selected run this
+# section is itself gated, and a here-doc line reading `begin …` would be a case boundary.
+SELF="$SCRIPTS/merge-pr.test.sh"
+
+# self_run <interpreter> <harness> <args>… — one run of the harness from inside this section.
+# A self-run never runs section 24, so one that does was handed a case it did not select. It
+# is failed rather than run: under a selector that matches too much, recursing would never end.
+self_run() {
+  if [ -n "${MERGE_PR_TEST_SELF_RUN:-}" ]; then
+    bad "section 24 ran inside a self-run, so the selector ran a case it was not given"
+    rc=""
+    out=""
+    err=""
+    return
+  fi
+  capture env MERGE_PR_TEST_SELF_RUN=1 "$@" </dev/null
+}
+
+begin "--section runs that section's case and none of its neighbours, under every bash"
+for interpreter in $BASHES; do
+  case_ctx="$interpreter"
+  self_run "$interpreter" "$SELF" --section 1
+  expect_rc 0
+  expect_stdout 'PASS merge-pr.sh parses (bash -n)'
+  expect_stdout $'\n1 passed, 0 failed'
+  expect_not_stdout 'PASS a single-issue PR'
+done
+case_ctx=""
+end
+
+begin "--section and --case add up, and --case matches mid-title"
+self_run bash "$SELF" --section 1 --case 'merges --squash and every step'
+expect_rc 0
+expect_stdout 'PASS merge-pr.sh parses (bash -n)'
+expect_stdout 'PASS a single-issue PR merges --squash and every step reports'
+expect_stdout $'\n2 passed, 0 failed'
+end
+
+begin "--case reads a looped case's title as expanded, so it picks one iteration"
+self_run bash "$SELF" --case "only conflict is in $TD is"
+expect_rc 0
+expect_stdout "PASS a humanAlways PR whose only conflict is in $TD is unioned"
+expect_stdout $'\n1 passed, 0 failed'
+expect_not_stdout "conflict is in $RF is"
+expect_not_stdout "conflict is in $FL is"
+end
+
+begin "a selected case still sees the top-level code of the sections it skipped"
+# 12e reads T_OLD and T_NEW, which 12d sets outside any case.
+self_run bash "$SELF" --section 12e
+expect_rc 0
+expect_stdout 'PASS a six-entry labelled head sets a floor of three for the fresh head'
+expect_stdout $'\n1 passed, 0 failed'
+end
+
+begin "a selector that matches no case exits 2 as a harness that ran no cases"
+while IFS='|' read -r flag value; do
+  case_ctx="$flag '$value'"
+  self_run bash "$SELF" "$flag" "$value"
+  expect_rc 2
+  expect_stdout '0 passed, 0 failed'
+  expect_stderr 'harness ran no cases'
+done <<'EOF'
+--section|99
+--section|12B
+--section| 1
+--case|MERGE-PR.SH PARSES
+--case|*
+EOF
+case_ctx=""
+end
+
+expect_usage_error() {
+  expect_rc 2
+  expect_stderr 'usage: bash .claude/scripts/merge-pr.test.sh [--section <n>]... [--case <text>]...'
+  expect_not_stdout 'passed'
+}
+
+begin "a malformed selector is a usage error, and no case runs"
+case_ctx="unknown flag"
+self_run bash "$SELF" --only 1
+expect_usage_error
+case_ctx="bare argument"
+self_run bash "$SELF" 1
+expect_usage_error
+case_ctx="joined value"
+self_run bash "$SELF" --section=1
+expect_usage_error
+case_ctx="missing value"
+self_run bash "$SELF" --section
+expect_usage_error
+case_ctx="empty value"
+self_run bash "$SELF" --case ''
+expect_usage_error
+case_ctx="missing value after a valid selector"
+self_run bash "$SELF" --section 1 --case
+expect_usage_error
+case_ctx=""
+end
+
+begin "gate_cases wraps each case in its selector and copies every other line"
+must printf '%s\n' \
+  'preamble=1' \
+  "$CASES_SENTINEL" \
+  'shared=1' \
+  '# == a heading, not a rule ==' \
+  '# ====' \
+  '# 1. a plain number' \
+  '# ====' \
+  'begin "one"' \
+  'begin_note=1' \
+  'endpoint=1' \
+  'end' \
+  '' \
+  '# ====' \
+  '# 12b. a lettered number, with prose under it' \
+  '#   and its title wrapped onto a second line' \
+  '# ====' \
+  '# 9. a numbered line that no rule precedes is prose' \
+  'for v in a b; do' \
+  "  begin \"two \$v\"" \
+  '  end' \
+  $'\tbegin "tab $v"' \
+  $'\tend' \
+  'done' \
+  '# 7. a numbered line that only a following rule touches is prose' \
+  '# ====' \
+  '# 10e-ii. a roman suffix' \
+  '# ====' \
+  "begin 'three'" \
+  'end' \
+  'finish' >"$TMP_ROOT/gate-in.sh"
+expected=$(printf '%s\n' \
+  '' \
+  '' \
+  'shared=1' \
+  '# == a heading, not a rule ==' \
+  '# ====' \
+  '# 1. a plain number' \
+  '# ====' \
+  "if case_selected '1' \"one\"; then begin \"one\"" \
+  'begin_note=1' \
+  'endpoint=1' \
+  'end; fi' \
+  '' \
+  '# ====' \
+  '# 12b. a lettered number, with prose under it' \
+  '#   and its title wrapped onto a second line' \
+  '# ====' \
+  '# 9. a numbered line that no rule precedes is prose' \
+  'for v in a b; do' \
+  "  if case_selected '12b' \"two \$v\"; then begin \"two \$v\"" \
+  '  end; fi' \
+  $'\tif case_selected \'12b\' "tab $v"; then begin "tab $v"' \
+  $'\tend; fi' \
+  'done' \
+  '# 7. a numbered line that only a following rule touches is prose' \
+  '# ====' \
+  '# 10e-ii. a roman suffix' \
+  '# ====' \
+  "if case_selected '10e-ii' 'three'; then begin 'three'" \
+  'end; fi' \
+  'finish')
+capture gate_cases "$TMP_ROOT/gate-in.sh"
+expect_rc 0
+[ "$out" = "$expected" ] || bad "the gated region differs; got:"$'\n'"$out"
+must printf '%s\n' "$out" >"$TMP_ROOT/gate-out.sh"
+expect_parses "$TMP_ROOT/gate-out.sh"
+case_ctx="blank lines after finish"
+must printf '\n\n' >>"$TMP_ROOT/gate-in.sh"
+capture gate_cases "$TMP_ROOT/gate-in.sh"
+expect_rc 0
+case_ctx=""
+end
+
+# gate_refuses <stderr fragment> <line>… — gate_cases exits 2 on the region those lines make.
+gate_refuses() {
+  local fragment="$1"
+  shift
+  must printf '%s\n' "$@" >"$TMP_ROOT/gate-bad.sh"
+  capture gate_cases "$TMP_ROOT/gate-bad.sh"
+  expect_rc 2
+  expect_stderr "FATAL gate_cases: $TMP_ROOT/gate-bad.sh line"
+  expect_stderr "$fragment"
+  [ "$(printf '%s\n' "$err" | grep -c FATAL)" = "1" ] || bad "expected one FATAL line; got: $err"
+}
+
+begin "gate_cases exits 2 on every region it cannot read as cases"
+case_ctx="no sentinel"
+gate_refuses 'no sentinel line' '# ====' '# 1. x' '# ====' 'begin "a"' 'end' 'finish'
+case_ctx="a case before any banner"
+gate_refuses 'line 2: a case before any numbered banner' "$CASES_SENTINEL" 'begin "a"' 'end' 'finish'
+case_ctx="a case under a numbered line no rule precedes"
+gate_refuses 'line 3: a case before any numbered banner' "$CASES_SENTINEL" '# 1. x' 'begin "a"' 'end' 'finish'
+case_ctx="a banner rule with no number under it"
+gate_refuses 'line 3: a banner rule with no section number under it' \
+  "$CASES_SENTINEL" '# ====' 'x=1' '# ====' 'begin "a"' 'end' 'finish'
+case_ctx="nested begin"
+gate_refuses 'line 6: a begin inside the case opened at line 5' \
+  "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' 'begin "a"' 'begin "b"' 'end' 'end' 'finish'
+case_ctx="stray end"
+gate_refuses 'line 5: an end with no open case' "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' 'end' 'finish'
+case_ctx="end indented apart from its begin"
+gate_refuses 'line 6: an end indented differently from the begin at line 5' \
+  "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' '  begin "a"' 'end' 'finish'
+case_ctx="case open at the end"
+gate_refuses 'the case opened at line 5 never ends' \
+  "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' 'begin "a"' 'finish'
+case_ctx="no finish"
+gate_refuses 'the region does not end on finish' \
+  "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' 'begin "a"' 'end'
+case_ctx="code after finish"
+gate_refuses 'the region does not end on finish' \
+  "$CASES_SENTINEL" '# ====' '# 1. x' '# ====' 'begin "a"' 'end' 'finish' 'x=1'
+case_ctx=""
+end
+
+begin "a selected run of a harness gate_cases refuses exits 2 and runs no case"
+# Without the refusal the copy is all blank lines, and sourcing it would exit 0.
+must mkdir -p "$TMP_ROOT/selfcopy"
+must cp "$SCRIPTS/harness-lib.sh" "$TMP_ROOT/selfcopy/"
+must grep -vxF -- "$CASES_SENTINEL" "$SELF" >"$TMP_ROOT/selfcopy/merge-pr.test.sh"
+self_run bash "$TMP_ROOT/selfcopy/merge-pr.test.sh" --section 1
+expect_rc 2
+expect_stderr 'FATAL gate_cases'
+expect_stderr 'no sentinel line'
+expect_not_stdout 'PASS'
+end
+
+begin "a self-run inside a self-run is failed rather than run"
+MERGE_PR_TEST_SELF_RUN=1 self_run bash "$SELF" --section 1 2>/dev/null
+nested_failed="$case_failed"
+case_failed=0
+[ "$nested_failed" = "1" ] || bad "a self-run inside a self-run was not failed"
+[ -z "$out" ] || bad "a self-run inside a self-run ran the harness; got: $out"
 end
 
 finish

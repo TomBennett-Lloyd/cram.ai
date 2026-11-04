@@ -47,6 +47,7 @@ export const lecture = (
   imageOnly: number[],
   unembedded: number[] = [],
   summarised = false,
+  withheld = 0,
 ): StoredLecture =>
   StoredLecture.parse({
     lectureId,
@@ -55,6 +56,7 @@ export const lecture = (
     imageOnly,
     unembedded,
     summarised,
+    withheld,
   });
 
 export const rows = () =>

@@ -39,8 +39,12 @@ describe('the committed tier-2 run', () => {
     RENDER_AND_REPLAY_BOUND_MS,
   );
 
-  // The contradiction set's assertion joins this one when #216 is fixed and the run re-recorded.
   it('holds citation validity at its bar', () => {
     expect(passed(run.report.metrics.citationValidity)).toBe(true);
+  });
+
+  // `CLAUDE.md` § Hard constraints, "The slides win"; `metrics.contradictionSet` is the deep run's.
+  it('holds the contradiction set at its bar', () => {
+    expect(passed(run.report.metrics.contradictionSet)).toBe(true);
   });
 });
