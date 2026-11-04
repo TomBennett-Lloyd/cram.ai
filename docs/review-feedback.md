@@ -532,6 +532,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **How applied**: `docs/standards/evidence.md` gains `## Host conventions` and a widened **Trigger**; `CLAUDE.md` gains the one index line. Each behaviour claim was run on this machine first (pgrep's ancestor exclusion, perl's double encoding, BSD grep's bound, `git merge -F -`), and the runs are pasted in the plan comment and the PR body. The plan and the restatement sweep are at https://github.com/TomBennett-Lloyd/cram.ai/issues/487#issuecomment-6630864175.
 - **Verdict**: approved 2026-11-04 — "approve 565"
 
+## 2026-11-04 — issue #592 — gh-issue-writes-allowed
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to accept three allow rules in the committed `.claude/settings.json`, beside the three already there: `Bash(gh issue close:*)`, `Bash(gh issue create:*)` and `Bash(gh issue edit:*)`. The owner added the same three lines to their `.claude/settings.local.json` on 2026-11-04 and asked for the committed copy to match ("can you add them to the committed copy too").
+- **Why**: on 2026-11-04 the auto-mode classifier refused a lane's cross-reference comments on #481, #540 and #543 and the merge owner's `gh issue close 562`, and each refusal went to the owner's plate as a paste. An allow rule in settings is what the refusal text itself names as the remedy. The existing `gh issue comment` rule only matches a command that begins with it, so the writes also have to run as their own command rather than inside a `cd … &&` chain; that half is a host convention for `docs/standards/evidence.md`, not a settings change.
+- **How applied**: three lines appended to `permissions.allow` in `.claude/settings.json`; nothing else in the file moves.
+- **Verdict**: approved 2026-11-04 — "approve 596"
+
 ## 2026-11-04 — issue #560 — adr-amendments-plan-named-or-path-move
 
 - **Category**: approved-no-changes

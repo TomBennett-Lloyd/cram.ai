@@ -14,7 +14,8 @@ import stylelint from 'stylelint';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
-// Type-aware linting makes the first ESLint run slow; no case here is near it.
+// Type-aware linting makes the first ESLint run slow. The bound is `SWEEP_TEST_TIMEOUT_MS`'s, restated because
+// @cram/ui depends on no @cram package (`.claude/ledgers/sweep-test-timeout.ledger`).
 const SLOW = { timeout: 60_000 };
 
 const readProbe = (name: string): string => readFileSync(new URL(name, import.meta.url), 'utf8');

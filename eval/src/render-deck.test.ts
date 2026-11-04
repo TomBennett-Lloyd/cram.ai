@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { ingestPdf } from '@cram/ingest';
 import { CourseId, type SlideRecord } from '@cram/shared';
+import { SWEEP_TEST_TIMEOUT_MS } from '@cram/shared/sweep-test-timeout';
 import { PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, PDFStream } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { DeckLecture } from './deck';
@@ -50,7 +51,7 @@ beforeAll(async () => {
       return { lecture: source, bytes, slides: result.slides };
     }),
   );
-});
+}, SWEEP_TEST_TIMEOUT_MS);
 
 afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
