@@ -11,7 +11,6 @@ const Annotation = z.object({
   contentsObj: z.object({ str: z.string() }).optional(),
 });
 
-/** The pdf.js exceptions returned as values, not bugs (docs/standards/error-handling.md rule 1). */
 const PdfjsException = z.object({
   name: z.enum(['InvalidPDFException', 'PasswordException', 'UnknownErrorException']),
   message: z.string(),
@@ -50,11 +49,7 @@ const read = async (pdf: PdfDocument): Promise<readonly PageText[]> => {
       .join('\n');
     texts.push({ ...(await pageTextOf(pdf, pageNo)), notes });
   }
-  return layOutPages(texts).map(({ page, lines, footer }): PageText => ({
-    lines,
-    footer: footer.map((line) => line.text),
-    notes: page.notes,
-  }));
+  return layOutPages(texts).map(({ page, lines }): PageText => ({ lines, notes: page.notes }));
 };
 
 /** A PDF deck as one slide per page, read with pdf.js's own Unicode fold off so `storedText`'s is the only one (#256); `renderPdfDeck` renders its images. pdf.js gets a plain copy of the bytes, since it detaches them and refuses a `Buffer`, and never a URL (ingest-pdf.test.ts). */

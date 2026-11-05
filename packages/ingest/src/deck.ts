@@ -1,6 +1,6 @@
 import { SlideNo, SlideRecord, type CourseId, type LectureId, type SourceHash } from '@cram/shared';
-import type { PageText } from './page-text';
-import { slideText } from './slide-text';
+import type { PageText, TextLine } from './page-text';
+import { pageLines, slideText } from './slide-text';
 import { storedPage, storedText } from './stored-text';
 
 export interface DeckSource {
@@ -13,6 +13,23 @@ export interface DeckSource {
 
 export const UNTITLED_LECTURE = 'Untitled lecture';
 
+export const BOILERPLATE_MIN_PAGES = 3;
+
+interface ReadPage {
+  readonly lines: readonly TextLine[];
+  readonly title: string;
+}
+
+const boilerplateOf = (pages: readonly ReadPage[]): ReadonlySet<string> => {
+  const texted = pages.filter(({ lines, title }) => lines.length > 0 || title !== '');
+  if (texted.length < BOILERPLATE_MIN_PAGES || new Set(texted.map(({ title }) => title)).size < 2)
+    return new Set();
+  const [first, ...rest] = texted.map(
+    ({ lines, title }) => new Set([title, ...lines.map(({ text }) => text)]),
+  );
+  return new Set([...(first ?? [])].filter((text) => rest.every((texts) => texts.has(text))));
+};
+
 const fileStem = (fileName: string): string =>
   (fileName.split(/[\\/]/).pop() ?? '')
     .replace(/\.[^.]*$/, '')
@@ -24,11 +41,22 @@ export const slidesFromPages = (
   pages: readonly PageText[],
   source: DeckSource,
 ): readonly SlideRecord[] => {
-  const read = pages.map((page, index) => {
+  const stored = pages.map((raw, index) => {
     const slideNo = SlideNo.parse(index + 1);
-    const stored = storedPage(page);
-    return { page: stored, slideNo, text: slideText(stored, slideNo) };
+    const page = storedPage(raw);
+    return {
+      page,
+      slideNo,
+      lines: pageLines(page, slideNo),
+      title: slideText(page, slideNo).title,
+    };
   });
+  const boilerplate = boilerplateOf(stored);
+  const read = stored.map(({ page, slideNo }) => ({
+    page,
+    slideNo,
+    text: slideText(page, slideNo, boilerplate),
+  }));
   const lectureTitle =
     [read[0]?.text.title, storedText(source.storedTitle ?? fileStem(source.fileName))].find(
       (title) => title !== undefined && title !== '',
