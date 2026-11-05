@@ -77,9 +77,24 @@ hook_require_tools() {
 # in a script somebody runs from a terminal to see what it does blocks forever
 # with no prompt, which reads as a hang in the hook rather than as a missing
 # argument.
+#
+# THE READ IS BOUNDED, because a hook that waits on stdin forever is a leaked process, not a
+# slow one: with stdin closed at launch, the pipe `$(read_hook_event)` makes can land on fd 0
+# and a bare `cat` then waits on its own pipe for ever, orphaned once its caller is gone
+# (#629: two pre-compact-snapshot.sh processes found 11 hours old). `read -t` gives up after
+# HOOK_EVENT_TIMEOUT_S seconds (a test seam, like HOOK_NODE_CMD) and returns 124, which every
+# caller already treats as "the event was unreadable". The event is read to EOF, which ends the
+# read with status 1 and the whole event in $data. A timeout cannot be told from that by status:
+# bash 4+ returns above 128 but bash 3.2, which is /bin/bash on macOS, returns 1 too. So a read
+# that took the whole bound is the timeout. `SECONDS` counts whole seconds, so tests use a bound
+# of 2 or more: an immediate EOF cannot straddle that many boundaries.
+: "${HOOK_EVENT_TIMEOUT_S:=5}"
 read_hook_event() {
   [ -t 0 ] && return 0
-  cat
+  local data start=$SECONDS
+  IFS= read -r -d '' -t "$HOOK_EVENT_TIMEOUT_S" data
+  [ "$((SECONDS - start))" -ge "$HOOK_EVENT_TIMEOUT_S" ] && return 124
+  printf '%s' "$data"
 }
 
 # hook_event_field <event-json> <dotted-key> -> the string at that key, or empty.

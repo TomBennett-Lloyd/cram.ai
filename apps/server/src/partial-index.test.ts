@@ -82,7 +82,7 @@ describe('an upload with slides longer than the embedder takes', () => {
     await upload(
       server,
       ['References', 'Reference list', 'Further reading', 'Bibliography', 'Referenced work'].map(
-        (title) => [title, LONG],
+        (title) => [title, `${title}: ${LONG}`],
       ),
     );
     const { uploads } = await settled(server);

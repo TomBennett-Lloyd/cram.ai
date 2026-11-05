@@ -211,7 +211,7 @@ packages/index/src/stored-lectures.ts	1250
 packages/index/src/topics.ts	437
 packages/ingest/src/adapters/deck-file.ts	500
 packages/ingest/src/adapters/pdf/deck-fixture.ts	733
-packages/ingest/src/adapters/pdf/ingest-pdf.ts	649
+packages/ingest/src/adapters/pdf/ingest-pdf.ts	555
 packages/ingest/src/adapters/pdf/logical-order.ts	1029
 packages/ingest/src/adapters/pdf/page-layout.ts	402
 packages/ingest/src/adapters/pdf/render-page.ts	1111
@@ -220,13 +220,13 @@ packages/ingest/src/adapters/pptx/ingest-pptx.ts	625
 packages/ingest/src/adapters/pptx/omml.ts	751
 packages/ingest/src/adapters/pptx/ooxml.ts	530
 packages/ingest/src/adapters/pptx/slide-xml.ts	681
-packages/ingest/src/deck.ts	212
+packages/ingest/src/deck.ts	142
 packages/ingest/src/index.ts	0
-packages/ingest/src/page-text.ts	1578
-packages/ingest/src/slide-text.ts	612
+packages/ingest/src/page-text.ts	1176
+packages/ingest/src/slide-text.ts	592
 packages/ingest/src/stored-output-equations.ts	340
-packages/ingest/src/stored-output-fixture.ts	164
-packages/ingest/src/stored-text.ts	1111
+packages/ingest/src/stored-output-fixture.ts	157
+packages/ingest/src/stored-text.ts	625
 packages/shared/src/api-refusal.ts	357
 packages/shared/src/ask.ts	1562
 packages/shared/src/blank-line.ts	5000

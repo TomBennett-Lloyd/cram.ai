@@ -1,7 +1,7 @@
 import type { SlideKind, SlideNo } from '@cram/shared';
 import type { LineBox, PageText, TextLine } from './page-text';
 
-/** A page with fewer words than this outside its page number has a thin text layer (#9). */
+/** A page with fewer words than this outside its page number and boilerplate has a thin text layer (#9; `docs/adr/0006-image-only-slides.md` § Decision (a)). */
 export const THIN_TEXT_LAYER_WORDS = 5;
 
 export const BULLET_MARKERS = ['•', '◦', '▪', '‣', '○', '■', '□', '–', '➢', '➤'] as const;
@@ -144,21 +144,28 @@ const inferTitle = (lines: readonly TextLine[]): TitledLines => {
 
 const wordCount = (text: string): number => text.match(WORD)?.length ?? 0;
 
-/** A page's title, body and kind: the title the format marks, else the one its text layer implies (#9). */
-export const slideText = (page: PageText, slideNo: SlideNo): SlideText => {
-  const lines = joinBulletMarkers(
+export const pageLines = (page: PageText, slideNo: SlideNo): TextLine[] =>
+  joinBulletMarkers(
     page.lines
       .map((line) => ({ ...line, text: collapse(line.text) }))
       .filter((line) => line.text !== '' && !isPageNumber(line, slideNo)),
   );
-  const { title, bodyLines } =
+
+const NO_BOILERPLATE: ReadonlySet<string> = new Set();
+
+/** A page's title, body and kind: the title the format marks, else the one its text layer implies (#9); a `boilerplate` line leaves the body, never the title (#641). */
+export const slideText = (
+  page: PageText,
+  slideNo: SlideNo,
+  boilerplate = NO_BOILERPLATE,
+): SlideText => {
+  const lines = pageLines(page, slideNo);
+  const { title, bodyLines: titled } =
     page.markedTitle === undefined
       ? inferTitle(lines)
       : { title: collapse(page.markedTitle), bodyLines: lines };
-  const words = [...bodyLines.map((line) => line.text), ...(page.footer ?? [])].reduce(
-    (count, text) => count + wordCount(text),
-    wordCount(title),
-  );
+  const bodyLines = titled.filter((line) => !boilerplate.has(line.text));
+  const words = bodyLines.reduce((count, line) => count + wordCount(line.text), wordCount(title));
   if (words < THIN_TEXT_LAYER_WORDS) return { kind: 'image-only', title, body: '' };
   return {
     kind: REFERENCES_TITLE.test(title) ? 'references' : 'content',
