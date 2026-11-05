@@ -411,6 +411,8 @@ park_stranded "rel$W/live"
 glued=$PARKED
 park_stranded "rel$W/live $W/live/eval"
 glued_then_real=$PARKED
+park_stranded "$W/ $W/live/eval"
+bare_then_real=$PARKED
 capture -C "$ROOT/main" env WORKTREE_ORPHAN_MIN_AGE_MINUTES=0 WORKTREE_STRANDED_MIN_AGE_MINUTES=0 \
   bash "$SUBJECT" --dry-run
 expect_rc 0
@@ -422,10 +424,11 @@ expect_unlisted "$sibling_dir"
 expect_unlisted "$bare_root"
 expect_unlisted "$glued"
 expect_out "WOULD-KILL $glued_then_real (0m, ppid 1 under live $W/live)"
+expect_out "WOULD-KILL $bare_then_real (0m, ppid 1 under live $W/live)"
 expect_out "WOULD-KILL $plus_name (0m, ppid 1 under live $W/a+b)"
 expect_out "WOULD-KILL $gone_too (0m, names $W/gone-also)"
 expect_not_out "WOULD-KILL $gone_too (0m, ppid 1"
-expect_out "orphans: would kill 5"
+expect_out "orphans: would kill 6"
 alive "$by_argv" || bad "a dry run ended the stranded argv holder"
 alive "$by_cwd" || bad "a dry run ended the stranded cwd holder"
 end
