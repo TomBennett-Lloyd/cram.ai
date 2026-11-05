@@ -743,8 +743,8 @@ expect_stdout "guard: src/line.test.ts:1:"
 expect_not_stdout "guard: tools/line.test.sh"
 end
 
-# FIXTURE-ONLY HARNESSES (#471). exempt_fixture <name> -> a fixture whose base holds both
-# FIXTURE_ONLY_HARNESSES members, each naming markdown paths as fixture text the way the real
+# FIXTURE-ONLY HARNESSES (#471). exempt_fixture <name> -> a fixture whose base holds every
+# FIXTURE_ONLY_HARNESSES member, each naming markdown paths as fixture text the way the real
 # ones name the project instructions and the append-only logs, merge-pr.test.sh with its one
 # sanctioned climb, and the three markdown files they name. The names are tier-fixture-* for
 # the reason fixture() gives, and because this harness naming the real files would make it a
@@ -753,6 +753,7 @@ exempt_fixture() {
   must fixture "$1"
   write_in .claude/scripts/merge-pr.test.sh "V_FILES='tier-fixture-instructions.md docs/tier-fixture-feedback.md docs/tier-fixture-friction.md'; cat \"\$SCRIPTS/../workflow.json\""
   write_in .claude/scripts/fill-verdict.test.sh 'LOG=docs/tier-fixture-feedback.md'
+  write_in .claude/scripts/adr-amendment-check.test.sh "run footprint \"\$DIFF\" tier-fixture-instructions.md"
   write_in tier-fixture-instructions.md '# Project'
   write_in docs/tier-fixture-feedback.md '# Review feedback'
   write_in docs/tier-fixture-friction.md '# Friction log'
@@ -801,6 +802,7 @@ exempt_fixture exempt_lookalike
 write_in tools/.claude/scripts/merge-pr.test.sh 'LOG=docs/tier-fixture-feedback.md'
 write_in .claude/scripts/merge-pr.test.sh.orig 'LOG=docs/tier-fixture-feedback.md'
 write_in fill-verdict.test.sh 'LOG=docs/tier-fixture-feedback.md'
+write_in .claude/scripts/adr-amendment-check.test.sh.bak 'LOG=docs/tier-fixture-feedback.md'
 seed_origin 'test: look-alike harnesses'
 must printf '\n## an entry\n' >>"$WT/docs/tier-fixture-feedback.md"
 run_tier
@@ -809,6 +811,7 @@ expect_stdout "verify tier: full"
 expect_stdout "guard: tools/.claude/scripts/merge-pr.test.sh:1:"
 expect_stdout "guard: .claude/scripts/merge-pr.test.sh.orig:1:"
 expect_stdout "guard: fill-verdict.test.sh:1:"
+expect_stdout "guard: .claude/scripts/adr-amendment-check.test.sh.bak:1:"
 end
 
 # The soundness argument is checked, not trusted: a member whose source shows another way out
@@ -854,21 +857,25 @@ expect_stdout "verify tier: docs — 1 file(s)"
 expect_not_stdout "guard: "
 end
 
-# The shipped members, not stand-ins: the real merge-pr.test.sh and fill-verdict.test.sh,
-# copied in, must pass the climb check as they stand, so an edit that adds a climb to either
-# goes red here rather than silently costing the exemption. Each names one of the changed
-# files as fixture text (merge-pr.test.sh's V_FILES, fill-verdict.test.sh's fixture ADR), and
-# neither basename exists in this repository.
+# The shipped members, not stand-ins: the real merge-pr.test.sh, fill-verdict.test.sh and
+# adr-amendment-check.test.sh, copied in, must pass the climb check as they stand, so an
+# edit that adds a climb goes red here rather than silently costing the exemption. Each
+# names one of the changed files as fixture text (merge-pr.test.sh's V_FILES,
+# fill-verdict.test.sh's fixture ADR, adr-amendment-check.test.sh's ADR fixture path), and
+# none of those names exists in this repository. Its line naming the project
+# instructions is the real hit #471 closed; this file does not name them itself, for
+# the reason exempt_fixture gives.
 begin "the real fixture-only harnesses, naming the changed markdown, leave the docs tier"
 must fixture exempt_real
 must mkdir -p "$WT/.claude/scripts"
-must cp "$SCRIPTS/merge-pr.test.sh" "$SCRIPTS/fill-verdict.test.sh" "$WT/.claude/scripts/"
+must cp "$SCRIPTS/merge-pr.test.sh" "$SCRIPTS/fill-verdict.test.sh" "$SCRIPTS/adr-amendment-check.test.sh" "$WT/.claude/scripts/"
 seed_origin 'chore: the real fixture-only harnesses'
 write_in docs/notes.md '# Notes'
 write_in docs/adr/0001-old.md '# 0001 — Old'
+write_in docs/adr/0009-thing.md '# 0009 — Thing'
 run_tier
 expect_rc 0 "$rc"
-expect_stdout "verify tier: docs — 2 file(s)"
+expect_stdout "verify tier: docs — 3 file(s)"
 expect_not_stdout "guard: "
 end
 
