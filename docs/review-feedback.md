@@ -571,11 +571,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-04 — issue #629 — compaction-hooks-registered
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the owner's ask, 2026-11-04 (chat, quoted in #629): "add the PreCompact hook to settings.json and we could lower the limit to something smaller if we have a decent preCompact hook hopefully?" The PR asks the owner to decide:
   - accept two registrations in `.claude/settings.json`, which grants every session a hook: `PreCompact` (all triggers) running `.claude/hooks/pre-compact-snapshot.sh`, and a `SessionStart` entry with matcher `compact` running `.claude/hooks/post-compact-reinject.sh`. Both exit 0 on every path, call no network command and carry no file content;
   - accept that the snapshot is kept in the git directory (`git rev-parse --git-path`), not in a gitignored file inside the work tree as the issue proposed;
   - accept `autoCompactWindow: 200000` in `.claude/agents/ticket-agent.md`'s frontmatter ("yeah 200k seems good after the test", 2026-11-05), added once a live run showed both hooks fire when a subagent compacts. The run also showed a compaction triggers at about three quarters of the window (see the PR body), so 200000 compacts a lane at roughly 150k tokens.
 - **Why**: `.claude/settings.json` is `humanAlways`: it grants every session hooks, and only the owner widens it (`merge.humanAlwaysRule`, #440). A hook that runs on every compaction of every session on this machine is the kind of grant that rule is for.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-05 — "nice feel free to merge the compaction stuff when you're happy with it"
