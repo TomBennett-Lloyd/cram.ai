@@ -591,7 +591,81 @@ expect_rc 0 "$rc"
 expect_stdout "Your context was just compacted"
 end
 
+# --- the stdin read is bounded -----------------------------------------------------
+#
+# Two pre-compact-snapshot.sh processes were found 11 hours old, blocked on a stdin pipe whose
+# writer never closed. A hook that waits on stdin forever is a leaked process, so these cases hold
+# stdin open and assert the hook gives up. The hook runs under run_bounded: a node supervisor that
+# puts it in its own process group, SIGKILLs the group at the limit (a regression is a red case,
+# never a hung suite), and, when the hook exits on its own, fails the case if the group still
+# holds a process — a test must not leave one running.
+run_bounded() { # run_bounded <limit-seconds> <cmd...> -> rc 124 at the limit, 125 on a survivor
+  local limit="$1"
+  shift
+  capture node -e '
+    const { spawn } = require("child_process");
+    const [limit, ...cmd] = process.argv.slice(1);
+    let timedOut = false;
+    const c = spawn(cmd[0], cmd.slice(1), { stdio: "inherit", detached: true });
+    const alive = () => { try { process.kill(-c.pid, 0); return true; } catch (e) { return false; } };
+    const t = setTimeout(() => { timedOut = true; try { process.kill(-c.pid, "SIGKILL"); } catch (e) {} }, Number(limit) * 1000);
+    c.on("exit", (code) => {
+      clearTimeout(t);
+      const leftover = !timedOut && alive();
+      try { process.kill(-c.pid, "SIGKILL"); } catch (e) {}
+      process.exit(timedOut ? 124 : leftover ? 125 : (code === null ? 1 : code));
+    });' "$limit" "$@"
+}
+
+FIFO="$TMP_ROOT/held-open.fifo"
+must mkfifo "$FIFO"
+for pair in "PRE:pre-compact-snapshot.sh" "POST:post-compact-reinject.sh"; do
+  begin "${pair%%:*}: a stdin held open with no data is given up on within the bound, exit 0, nothing left running"
+  exec 9<>"$FIFO"
+  run_bounded 15 env HOOK_EVENT_TIMEOUT_S=2 bash "$HOOKS/${pair##*:}" <"$FIFO"
+  exec 9>&-
+  expect_rc 0 "$rc"
+  expect_stderr "held open for 2s"
+  end
+done
+
+begin "the default bound is under 9 seconds"
+exec 9<>"$FIFO"
+run_bounded 9 bash "$PRE_HOOK" <"$FIFO"
+exec 9>&-
+expect_rc 0 "$rc"
+expect_stderr "held open for"
+end
+
+begin "POST: a stdin held open, run from the lane's worktree, re-injects the recomputed state"
+exec 9<>"$FIFO"
+cd "$RE_WT" || exit 2
+run_bounded 15 env HOOK_EVENT_TIMEOUT_S=2 bash "$POST_HOOK" <"$FIFO"
+cd "$TMP_ROOT" || exit 2
+exec 9>&-
+expect_rc 0 "$rc"
+expect_stdout "branch: 629-lane"
+expect_stdout "trigger: unknown"
+end
+
+# The original leak's shape: stdin closed at launch, so the pipe of `$(read_hook_event)` can take fd 0.
+for pair in "PRE:pre-compact-snapshot.sh" "POST:post-compact-reinject.sh"; do
+  begin "${pair%%:*}: a stdin closed at launch ends within the bound, exit 0, nothing left running"
+  run_bounded 15 bash -c "exec <&-; exec env HOOK_EVENT_TIMEOUT_S=2 bash \"\$0\"" "$HOOKS/${pair##*:}"
+  expect_rc 0 "$rc"
+  end
+done
+
+begin "an event that arrives is read whole, however long it is"
+big=$(printf '%0.sx' $(seq 1 3000))
+run_hook "$PRE_HOOK" "$(event "$RE_WT" ",\"trigger\":\"auto\",\"custom_instructions\":\"$big\"")" HOOK_EVENT_TIMEOUT_S=2
+expect_rc 0 "$rc"
+snap=$(cat "$(state_file re main)" 2>/dev/null)
+contains "$snap" "trigger: auto" || bad "a 3 KB event was not read whole; got: $snap"
+end
+
 begin "pre-compact reports a snapshot it cannot write on stderr and still exits 0"
+must rm -f "$(state_file re main)"
 must mkdir -p "$(state_file re main)"
 run_hook "$PRE_HOOK" "$(event "$RE_WT" ',"trigger":"auto"')"
 expect_rc 0 "$rc"

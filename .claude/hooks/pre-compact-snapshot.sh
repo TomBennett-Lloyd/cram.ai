@@ -29,7 +29,7 @@ fi
 hook_require_tools pre-compact-snapshot "$HOOK_NODE_CMD" git || exit 0
 
 event=$(read_hook_event) || {
-  echo "pre-compact-snapshot: could not read the hook event (stdin was unreadable) — no snapshot was written." >&2
+  echo "pre-compact-snapshot: could not read the hook event (stdin was unreadable or held open for ${HOOK_EVENT_TIMEOUT_S}s) — no snapshot was written; the re-injection recomputes the state." >&2
   exit 0
 }
 cwd=$(hook_event_field "$event" cwd) || {

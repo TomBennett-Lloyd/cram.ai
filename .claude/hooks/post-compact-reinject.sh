@@ -44,9 +44,12 @@ fi
 
 hook_require_tools post-compact-reinject "$HOOK_NODE_CMD" git || exit 0
 
+# An event that cannot be read (stdin held open past HOOK_EVENT_TIMEOUT_S) degrades to the
+# recompute: no cwd means the hook's own working directory, which Claude Code sets to the
+# session's, and the state is then git's alone. It never blocks.
 event=$(read_hook_event) || {
-  echo "post-compact-reinject: could not read the hook event (stdin was unreadable) — nothing was re-injected." >&2
-  exit 0
+  echo "post-compact-reinject: could not read the hook event (stdin was unreadable or held open for ${HOOK_EVENT_TIMEOUT_S}s) — recomputing the state from $PWD." >&2
+  event=""
 }
 cwd=$(hook_event_field "$event" cwd) || {
   echo "post-compact-reinject: could not read the hook event ($HOOK_NODE_CMD failed) — nothing was re-injected." >&2
