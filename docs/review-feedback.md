@@ -571,8 +571,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-05 — issue #652 — gh-pr-writes-allowed
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to accept five lines in `.claude/settings.json` `permissions.allow`: `Bash(gh issue reopen:*)`, `Bash(gh pr create:*)`, `Bash(gh pr edit:*)`, `Bash(gh pr ready:*)`, `Bash(gh run rerun:*)`, and to accept that `gh pr merge` and `gh pr update-branch` stay out.
 - **Why**: the owner asked (2026-11-05) "can we also ensure that things like marking gh PRs ready never encounter a permission barrier", after PR #646's lane had `gh pr ready` refused. Worktrees never see the main checkout's `.claude/settings.local.json`, so only the committed file reaches lanes (the same cause as #592).
 - **How applied**: five allow entries appended after #592's; no other key changes.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-05 — "also granting pre-approval for the setting.json PR incase you need it"
