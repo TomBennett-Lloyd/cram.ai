@@ -247,7 +247,7 @@ const slidesOf = (result: IngestResult<string>): readonly SlideRecord[] => {
   return result.slides;
 };
 
-/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`, `CALL_OUT_SLIDE` alone and thrice reaches both footer rules (#567), and `BOILERPLATE_PDF` an uncounted footer and a line on every page (#641). */
+/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`; `CALL_OUT_SLIDE` alone and thrice reaches both footer rules (#567), and `BOILERPLATE_PDF` an uncounted footer and a line on every page (#641). */
 export const storedOutputCorpus = async (): Promise<
   readonly (readonly [Uint8Array, readonly SlideRecord[]])[]
 > => [

@@ -21,10 +21,12 @@ interface ReadPage {
 }
 
 const boilerplateOf = (pages: readonly ReadPage[]): ReadonlySet<string> => {
-  const texted = pages.filter(({ lines }) => lines.length > 0);
+  const texted = pages.filter(({ lines, title }) => lines.length > 0 || title !== '');
   if (texted.length < BOILERPLATE_MIN_PAGES || new Set(texted.map(({ title }) => title)).size < 2)
     return new Set();
-  const [first, ...rest] = texted.map(({ lines }) => new Set(lines.map(({ text }) => text)));
+  const [first, ...rest] = texted.map(
+    ({ lines, title }) => new Set([title, ...lines.map(({ text }) => text)]),
+  );
   return new Set([...(first ?? [])].filter((text) => rest.every((texts) => texts.has(text))));
 };
 

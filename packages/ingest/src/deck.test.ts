@@ -235,6 +235,30 @@ describe('slidesFromPages boilerplate (#641)', () => {
     ]);
   });
 
+  it('counts a marked title-only page as a page with text, and a marked title as one of its lines', () => {
+    const marked = (title: string, ...lines: string[]): PageText => ({
+      markedTitle: title,
+      lines: lines.map((text) => ({ text, size: 28 })),
+      notes: '',
+    });
+    const deck = [
+      marked('Rates', COURSE, '• Rate laws relate rate to concentration'),
+      marked('Orders', COURSE, '• An order is an exponent of a concentration'),
+      marked('Steps', COURSE, '• A step is one collision'),
+    ];
+    expect(
+      bodies([marked('Part 2'), ...deck])
+        .slice(1)
+        .every((body) => body.startsWith(COURSE)),
+    ).toBe(true);
+    expect(bodies([marked(COURSE), ...deck])).toEqual([
+      '',
+      '• Rate laws relate rate to concentration',
+      '• An order is an exponent of a concentration',
+      '• A step is one collision',
+    ]);
+  });
+
   it('reads a page left with its title and boilerplate as image-only', () => {
     const slides = slidesFromPages(
       [
