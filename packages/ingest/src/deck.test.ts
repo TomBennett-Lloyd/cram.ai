@@ -165,6 +165,27 @@ describe('slidesFromPages boilerplate (#641)', () => {
     );
   });
 
+  it('drops a line under two titles, written with other spacing or split from its bullet marker', () => {
+    const line = '• Exam: Friday, Example Hall';
+    expect(
+      bodies([
+        slide('Rates', line, '• Rate laws relate rate to concentration'),
+        slide('Rates', `  ${line.replace(' ', '   ')} `, '• Rate constants rise with temperature'),
+        slide('Orders', '•', line.slice(2), '• An order is an exponent of a concentration'),
+      ]),
+    ).toEqual([
+      '• Rate laws relate rate to concentration',
+      '• Rate constants rise with temperature',
+      '• An order is an exponent of a concentration',
+    ]);
+  });
+
+  it("keeps the steps of one slide's builds beside a blank page, which has no title to count", () => {
+    const steps = ['• Step one forms the intermediate', '• Step two consumes it', '• Step three'];
+    const builds = [1, 2, 3].map((n) => slide('Mechanisms', ...steps.slice(0, n)));
+    expect(bodies([...builds, blank])[0]).toBe(steps[0]);
+  });
+
   it('keeps a line that one page with text lacks, or carries in another case', () => {
     const deck = (last: string): PageText[] => [
       slide('Rates', COURSE, '• Rate laws relate rate to concentration'),

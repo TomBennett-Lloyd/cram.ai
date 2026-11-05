@@ -568,3 +568,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/standards/grounding.md` rule 10 labels every citation or reference to derived text, and 0009 (i) put the label on the sources entry alone, so an in-text quotation from a slide read from its picture looked and was named exactly like typed text.
 - **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one. Each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
 - **Verdict**: approved 2026-11-05 — "approve 645"
+
+## 2026-11-05 — issue #641 — adr-0006-a-strips-boilerplate
+
+- **Category**: pending — filled at merge
+- **Feedback**: the owner decided on #641 (chat, 2026-11-05, verbatim): "on 641 yeah we should strip footers for sure, we shouldn't even save them to the DB i think, how are we identifying footers? i think we should also do a check for text that appears on every slide since it's not likely to be information that contains anything unique". This PR amends `docs/adr/0006-image-only-slides.md` § Decision (a) to match. The plan comment pasted the amendment's diff verbatim before the ADR was edited: https://github.com/TomBennett-Lloyd/cram.ai/issues/641#issuecomment-6655317002.
+- **Why**: (a) stripped only page numbers before the thin-text-layer test. A PDF slide's footer, which #567 keeps out of the body, still counted, so a page holding only a diagram, its title and a footer read as `content` with an empty body and was never derived. PPTX already left its footer placeholders out.
+- **How applied**: `PageText.footer` is removed, so a footer is neither counted nor stored. `slidesFromPages` (`packages/ingest/src/deck.ts`) strips from every body a line found on every page with text, in a deck of `BOILERPLATE_MIN_PAGES` such pages under two titles or more. A page's own title is never stripped. ADR 0006 (a) and § Amendments carry the amendment.
+- **Verdict**: pending — filled at merge
