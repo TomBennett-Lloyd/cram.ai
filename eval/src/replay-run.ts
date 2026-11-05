@@ -3,7 +3,7 @@ import type { CourseId } from '@cram/shared';
 import type { EvalCourse } from './audit';
 import type { IndexedLecture } from './index-retriever';
 import type { LatencySummary } from './latency';
-import { LIVE_PINS, LIVE_SAMPLING } from './live-config';
+import { LIVE_MAX_OUTPUT_TOKENS, LIVE_PINS, LIVE_SAMPLING } from './live-config';
 import type { EvalReport } from './report';
 import type { EvalRun } from './run-files';
 import { runEval } from './run-eval';
@@ -35,6 +35,7 @@ export const replayRun = (spec: ReplaySpec): Promise<EvalReport> =>
     gateway: new FakeGateway({
       pins: LIVE_PINS,
       sampling: LIVE_SAMPLING,
+      maxOutputTokens: LIVE_MAX_OUTPUT_TOKENS,
       recordings: spec.run.recordings,
       served: spec.run.report.servedGenerator,
     }),

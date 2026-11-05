@@ -20,9 +20,10 @@ import { slideText } from './slide-text';
 
 const pins = PROVISIONAL_DEFAULT_PINS;
 const sampling = { temperature: 0, seed: 0 };
+const maxOutputTokens = 512;
 
 export const fakeGateway = (recordings: readonly Recording[]): FakeGateway =>
-  new FakeGateway({ pins, sampling, recordings });
+  new FakeGateway({ pins, sampling, maxOutputTokens, recordings });
 
 export const generatorRecording = <T>(
   request: ChatRequest<T>,
@@ -31,6 +32,7 @@ export const generatorRecording = <T>(
   role: 'generator',
   pin: pins.generator,
   sampling,
+  maxOutputTokens,
   request: chatWireRequest(request),
   reply,
 });

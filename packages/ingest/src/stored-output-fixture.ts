@@ -1,6 +1,10 @@
 import { CourseId, LectureId, type SlideRecord } from '@cram/shared';
 import type { DeckFile, IngestResult } from './adapters/deck-file';
-import { buildDeck as buildPdf, type FixtureLine } from './adapters/pdf/deck-fixture';
+import {
+  buildDeck as buildPdf,
+  CALL_OUT_SLIDE,
+  type FixtureLine,
+} from './adapters/pdf/deck-fixture';
 import { ingestPdf } from './adapters/pdf/ingest-pdf';
 import {
   alternateContent,
@@ -206,6 +210,19 @@ const PDF = await buildPdf({
   ],
 });
 
+const LAYOUT_PDFS = await Promise.all(
+  [1, 3].map((pages) =>
+    buildPdf({
+      pages: Array.from({ length: pages }, (_, index) => ({
+        lines: [
+          ...CALL_OUT_SLIDE,
+          { text: `Page ${String(index + 1)} of the layout deck`, size: 18, at: [40, 260] },
+        ],
+      })),
+    }),
+  ),
+);
+
 const deckFile = (bytes: Uint8Array, fileName: string): DeckFile => ({
   bytes,
   fileName,
@@ -219,7 +236,7 @@ const slidesOf = (result: IngestResult<string>): readonly SlideRecord[] => {
   return result.slides;
 };
 
-/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`. */
+/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`, and `CALL_OUT_SLIDE` alone and thrice reaches both footer rules (#567). */
 export const storedOutputCorpus = async (): Promise<
   readonly (readonly [Uint8Array, readonly SlideRecord[]])[]
 > => [
@@ -227,4 +244,9 @@ export const storedOutputCorpus = async (): Promise<
   [PDF, slidesOf(await ingestPdf(deckFile(PDF, 'week4\\-Lecture__04 -  Kinetics.v2.pdf')))],
   [PDF, slidesOf(await ingestPdf(deckFile(PDF, 'week4/.pdf')))],
   [PDF, slidesOf(await ingestPdf(deckFile(PDF, 'Cafe\u0301_𝑘_rates.pdf')))],
+  ...(await Promise.all(
+    LAYOUT_PDFS.map(
+      async (bytes) => [bytes, slidesOf(await ingestPdf(deckFile(bytes, 'Layout.pdf')))] as const,
+    ),
+  )),
 ];

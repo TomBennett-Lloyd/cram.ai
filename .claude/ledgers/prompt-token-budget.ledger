@@ -1,9 +1,10 @@
 # The prompt token budget, owned by PROMPT_TOKEN_BUDGET in packages/grounding/src/prompt-budget.ts
 # (docs/standards/architecture.md rule 9; docs/adr/0009-explanation-answers.md § Decision (j); #422).
 owner: packages/grounding/src/prompt-budget.ts
-claim: a prompt holds at most PROMPT_TOKEN_BUDGET tokens as estimateTokens counts them, the generator's context length less REPLY_TOKEN_RESERVE, and the estimate errs long
+claim: a prompt holds at most PROMPT_TOKEN_BUDGET tokens as estimateTokens counts them, the generator's context length less REPLY_TOKEN_RESERVE, and the estimate errs long; REPLY_TOKEN_RESERVE is also the generator's output cap (#578)
 cite: PROMPT_TOKEN_BUDGET
-sweep: PROMPT_TOKEN_BUDGET|REPLY_TOKEN_RESERVE|PROMPT_CHARS_PER_TOKEN|estimateTokens|(?i:prompt (token )?budget|reserve[sd]? (of|at) [0-9])|\b2048\b|(?<![\d.§])(?<!# )3\.5(?![\d.×])|\.claude/ledgers/prompt-token-budget\.ledger
+sweep: PROMPT_TOKEN_BUDGET|REPLY_TOKEN_RESERVE|PROMPT_CHARS_PER_TOKEN|estimateTokens|(?i:prompt (token )?budget|reserve[sd]? (of|at) [0-9])|\b2048\b|(?<![\d.§])(?<!# )3\.5(?![\d.×])|(?i:output cap\b)|\.claude/ledgers/prompt-token-budget\.ledger
+scope: :!eval/recordings/ :!eval/reports/
 carrier: packages/grounding/src/summarise-lecture.ts
 carrier: packages/grounding/src/summarise-lecture.test.ts
 carrier: packages/grounding/src/prompt-budget.test.ts
@@ -19,6 +20,10 @@ carrier: eval/src/run-eval.test.ts
 carrier: eval/README.md
 carrier: docs/adr/0009-explanation-answers.md
 carrier: docs/standards/grounding.md
+carrier: apps/server/src/gateway-config.ts
+carrier: apps/server/src/gateway-config.test.ts
+carrier: eval/src/live-config.ts
+carrier: eval/src/live-config.test.ts
 excluded: packages/grounding/src/index.ts
 excluded: docs/review-feedback.md
 excluded: .claude/scripts/models-pull.test.sh

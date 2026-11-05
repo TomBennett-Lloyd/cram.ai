@@ -68,6 +68,7 @@ class RecordingLog {
 class RecordingGenerator implements Generator {
   readonly pin: GeneratorPin;
   readonly sampling: Sampling;
+  readonly maxOutputTokens: number;
   readonly served: ServedArtefact;
   readonly #inner: RecordableGenerator;
   readonly #log: RecordingLog;
@@ -75,6 +76,7 @@ class RecordingGenerator implements Generator {
   constructor(inner: RecordableGenerator, log: RecordingLog) {
     this.pin = inner.pin;
     this.sampling = inner.sampling;
+    this.maxOutputTokens = inner.maxOutputTokens;
     this.served = inner.served;
     this.#inner = inner;
     this.#log = log;
@@ -87,6 +89,7 @@ class RecordingGenerator implements Generator {
       role: 'generator',
       pin: this.pin,
       sampling: this.sampling,
+      maxOutputTokens: this.maxOutputTokens,
       request: wire,
       reply,
     });

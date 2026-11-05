@@ -59,7 +59,9 @@ describe('readChatCompletionStream', () => {
 
   it('reports a length finish as truncated', async () => {
     const result = await read([data(delta('{"te', 'length')), data(usage), DONE]);
-    expect(result).toMatchObject({ timed: { reply: { status: 'truncated', content: '{"te' } } });
+    expect(result).toMatchObject({
+      timed: { reply: { status: 'truncated', content: '{"te', cutOffAt: 'token-limit' } },
+    });
   });
 
   it('has null usage when the server sent none', async () => {
@@ -127,6 +129,41 @@ describe('readChatCompletionStream', () => {
   it('fails a chunk that is not JSON, quoting it', async () => {
     const result = await read(['data: {oops\n\n']);
     expect(result.status === 'protocol-failed' && result.issue).toMatch(/not JSON: \{oops/);
+  });
+
+  it('returns a read that rejects as interrupted, with the content and timing that arrived', async () => {
+    const reason = new DOMException('signal timed out', 'TimeoutError');
+    const queue = [data(delta('{"text":')), data(delta('"a'))].map((p) =>
+      new TextEncoder().encode(p),
+    );
+    const failing = new ReadableStream<Uint8Array>({
+      pull: (controller) => {
+        const next = queue.shift();
+        if (next === undefined) controller.error(reason);
+        else controller.enqueue(next);
+      },
+    });
+    await expect(readChatCompletionStream(failing, tickingClock())).resolves.toEqual({
+      status: 'interrupted',
+      error: reason,
+      content: '{"text":"a',
+      timing: { firstTokenMs: 10, lastTokenMs: 20, usage: null },
+    });
+  });
+
+  it('returns a read that rejects before any content as interrupted with no timing', async () => {
+    const reason = new Error('reset');
+    const failing = new ReadableStream<Uint8Array>({
+      pull: (controller) => {
+        controller.error(reason);
+      },
+    });
+    await expect(readChatCompletionStream(failing, tickingClock())).resolves.toEqual({
+      status: 'interrupted',
+      error: reason,
+      content: '',
+      timing: null,
+    });
   });
 
   it('fails a chunk that is not a chat completion chunk, quoting the server error', async () => {

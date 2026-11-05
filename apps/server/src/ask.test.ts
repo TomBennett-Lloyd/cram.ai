@@ -290,12 +290,26 @@ describe('POST /courses/:id/ask', () => {
     ]);
   });
 
-  it('answers 502 when the generator backend fails', async () => {
-    const server = await hiveCourse((retrieved) => [
-      explained(QUESTION, retrieved, { status: 'backend-failed', reason: 'connection refused' }),
-    ]);
+  it.each([
+    [
+      { status: 'backend-failed', cause: 'timeout', reason: 'TimeoutError: aborted' },
+      'backend-failed timeout',
+    ],
+    [
+      { status: 'truncated', content: '{"sentences":["Wor', cutOffAt: 'token-limit' },
+      'cut-off token-limit',
+    ],
+    [
+      { status: 'truncated', content: '{"sentences":["Wor', cutOffAt: 'timeout' },
+      'cut-off timeout',
+    ],
+  ] as const)('answers 502 for a reply that is %j, logging %s', async (failed, outcome) => {
+    const server = await hiveCourse((retrieved) => [explained(QUESTION, retrieved, failed)]);
     const reply = await askBio(server);
     expect(reply.status).toBe(502);
     expect(reply.json).toEqual({ status: 'model-failed' });
+    expect(server.logs.filter(({ operation }) => operation !== 'ask context')).toEqual([
+      { operation: 'ask generate', courseId: 'bio', outcome },
+    ]);
   });
 });

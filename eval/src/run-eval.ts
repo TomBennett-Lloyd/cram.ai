@@ -265,5 +265,6 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       generatorTimeToFirstToken: notMeasurable(NOT_YET.generatorTiming),
       generatorTokensPerSecond: notMeasurable(NOT_YET.generatorTiming),
     },
+    generatorCutOffs: { maxOutputTokens: inner.generator.maxOutputTokens, ...gateway.cutOffs() },
   });
 };

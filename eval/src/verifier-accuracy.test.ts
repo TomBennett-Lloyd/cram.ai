@@ -10,7 +10,7 @@ const judged = (handVerdict: Verdict, returned: Verdict): JudgedLabel => ({
 
 const FAILED: VerifyOutcome = {
   status: 'model-failed',
-  failure: { status: 'backend-failed', reason: 'down' },
+  failure: { status: 'backend-failed', cause: 'request-error', reason: 'down' },
 };
 
 describe('verifierAccuracy', () => {

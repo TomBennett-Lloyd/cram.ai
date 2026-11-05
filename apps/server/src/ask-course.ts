@@ -15,7 +15,7 @@ import type {
   RetrievedSlide,
 } from '@cram/shared';
 import { type CourseFiles, courseExists, openToRead } from './course-file';
-import type { ServerLog } from './server-log';
+import { modelFailureOutcome, type ServerLog } from './server-log';
 import { embedQuestion } from './slide-embedding';
 
 export interface AskDeps {
@@ -152,7 +152,7 @@ export const askCourse = async (
       deps.log({
         operation: `ask ${result.stage}`,
         courseId,
-        outcome: result.failure.status,
+        outcome: modelFailureOutcome(result.failure),
       });
       return { status: 'replied', reply: { status: 'model-failed' } };
   }

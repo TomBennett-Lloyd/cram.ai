@@ -150,7 +150,7 @@ describe('the tag pass at upload', () => {
       tagging(gatewayOf([]), (passage) =>
         passage.includes('queen')
           ? { status: 'invalid-output', content: 'x', issue: 'not JSON' }
-          : { status: 'backend-failed', reason: 'connection refused' },
+          : { status: 'backend-failed', cause: 'request-error', reason: 'connection refused' },
       ),
     );
     await upload(server, bytes);
