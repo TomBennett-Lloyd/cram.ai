@@ -560,3 +560,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: "Run it whole; never hand-pick a subset" and "Must pass before any commit" had no arm for a leg that is red until the tier-2 run lands. Six lanes (#393, #420, #395, #424, #423, #426) each wrote their own evidence that the red was the expected one, and one of them ran the composite's legs one by one to show it.
 - **How applied**: `CLAUDE.md` § Commands gets the sentence. `.claude/agents/ticket-agent.md` rule 4 gets the declared line and the kinds that qualify. `eval/src/tier-one-mismatch.ts` names the kind behind each tier-1 failure (`report key absent`, `report key retired`, `report invalid`, `recording miss`, `value moved`), and `eval/README.md` lists them. Plan and sweep: https://github.com/TomBennett-Lloyd/cram.ai/issues/460#issuecomment-6632815598.
 - **Verdict**: approved 2026-11-04 — "approve 608"
+
+## 2026-11-04 — issue #464 — derived-label-on-in-text-references
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to accept the dated amendment to `docs/adr/0009-explanation-answers.md` § Decision (i) that carries out their decision on #464, 2026-11-04 (relayed verbatim on the issue): "Label the in-text references too." The plan comment pasted the amendment verbatim (https://github.com/TomBennett-Lloyd/cram.ai/issues/464#issuecomment-6643411095). Review then changed three of its sentences: the "Was" line, the citation for why dashed is not used, and the sweep's summary of the hits it left unedited. That takes the PR off `merge.amendmentRule` arm (a) and onto `humanAlwaysRule`'s path. The ask is the amendment as it now stands in the diff.
+- **Why**: `docs/standards/grounding.md` rule 10 labels every citation or reference to derived text, and 0009 (i) put the label on the sources entry alone, so an in-text quotation from a slide read from its picture looked and was named exactly like typed text.
+- **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one. Each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
+- **Verdict**: approved 2026-11-05 — "approve 645"

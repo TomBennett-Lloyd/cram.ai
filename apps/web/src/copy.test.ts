@@ -11,6 +11,7 @@ import {
 import {
   APPEARS_TO_CONTRADICT,
   contradictionRefLabel,
+  DERIVED_SOURCE,
   discardedMessage,
   DROPPED_QUOTES_NOTE,
   droppedQuotesHeading,
@@ -102,10 +103,18 @@ describe('storedUnavailableMessage', () => {
 
 describe('contradictionRefLabel', () => {
   it('names the slide after the label the button shows only on hover and focus', () => {
-    const slide = { lectureTitle: 'Lecture 3: Wax', slideNo: SlideNo.parse(12) };
+    const slide = { lectureTitle: 'Lecture 3: Wax', slideNo: SlideNo.parse(12), derived: false };
     expect(contradictionRefLabel(2, slide)).toBe(
       `Source 2: ${APPEARS_TO_CONTRADICT} Lecture 3: Wax, slide 12`,
     );
     expect(sourceRefLabel(2, slide)).toBe('Source 2: Lecture 3: Wax, slide 12');
+  });
+
+  it('ends the name of a slide read from its picture with the sources entry’s label', () => {
+    const slide = { lectureTitle: 'Lecture 3: Wax', slideNo: SlideNo.parse(12), derived: true };
+    expect(contradictionRefLabel(2, slide)).toBe(
+      `Source 2: ${APPEARS_TO_CONTRADICT} Lecture 3: Wax, slide 12. ${DERIVED_SOURCE}`,
+    );
+    expect(sourceRefLabel(2, slide)).toBe(`Source 2: Lecture 3: Wax, slide 12. ${DERIVED_SOURCE}`);
   });
 });

@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
   APPEARS_TO_CONTRADICT,
   ATTRIBUTED_NOTE,
+  DERIVED_SOURCE,
   DROPPED_QUOTES_NOTE,
   droppedQuotesHeading,
   SLIDE_CONTRADICTION,
@@ -10,6 +11,7 @@ import {
   COMB_TITLE,
   CONTRADICTED_QUESTION,
   CONTRADICTED_SENTENCE,
+  DERIVED_QUESTION,
   DROPPED_LINE,
   GROUNDED_QUESTION,
   NOT_COVERED_QUESTION,
@@ -158,6 +160,36 @@ test('a contradicted sentence carries a wavy danger underline in regular weight,
     offset: 'auto',
   });
   await expect(page.locator('.contradiction-label')).toBeHidden();
+});
+
+test('a quotation and number from a slide read from its picture are underlined dotted, a typed quotation solid', async ({
+  page,
+}) => {
+  await ask(page, DERIVED_QUESTION);
+  const quotes = page.locator('q.explanation-quote');
+  await expect(quotes).toHaveText(['Drones are male.', 'comb cells are hexagonal']);
+  const accent = await tokenColour(page, '--color-accent');
+  const dotted = {
+    line: 'underline',
+    style: 'dotted',
+    colour: accent,
+    thickness: await tokenLength(page, '--line-md'),
+  };
+  expect(await treatment(quotes.nth(0))).toMatchObject({ style: 'solid', colour: accent });
+  expect(await treatment(quotes.nth(1))).toEqual({ ...dotted, offset: 'auto', heavier: true });
+  const derived = page.getByRole('button', {
+    name: `Source 2: Lecture 1: The Hive, slide 7. ${DERIVED_SOURCE}`,
+    exact: true,
+  });
+  await expect(derived).toHaveCount(2);
+  for (const number of await derived.all()) {
+    expect(await treatment(number)).toMatchObject(dotted);
+  }
+  const typed = page.getByRole('button', {
+    name: 'Source 1: Lecture 1: The Hive, slide 4',
+    exact: true,
+  });
+  expect(await treatment(typed.first())).toMatchObject({ line: 'none' });
 });
 
 test('the contradiction label shows on hover over the sentence or its number, and hides when the pointer leaves', async ({
