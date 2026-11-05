@@ -569,6 +569,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one. Each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
 - **Verdict**: approved 2026-11-05 — "approve 645"
 
+## 2026-11-05 — issue #641 — adr-0006-a-strips-boilerplate
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to accept `docs/adr/0006-image-only-slides.md` § Decision (a)'s amendment as it stands on the branch. That is the diff the plan comment pasted before the ADR was edited (https://github.com/TomBennett-Lloyd/cram.ai/issues/641#issuecomment-6655317002), less two changes review asked for. First, (a)'s new sentence drops "and never stores it": the course file still stores the deck file, and each slide's rendering, which (b) and (c) make OCR's input, shows the footer. Second, the entry's quoter sweep gains its `-- ':/'` pathspec and the commit it ran at. The amendment carries out the owner's decision on #641 (chat, 2026-11-05, verbatim): "on 641 yeah we should strip footers for sure, we shouldn't even save them to the DB i think, how are we identifying footers? i think we should also do a check for text that appears on every slide since it's not likely to be information that contains anything unique".
+- **Why**: (a) stripped only page numbers before the thin-text-layer test. A PDF slide's footer, which #567 keeps out of the body, still counted, so a page holding only a diagram, its title and a footer read as `content` with an empty body and was never derived. PPTX already left its footer placeholders out.
+- **How applied**: `PageText.footer` is removed, so a footer is neither counted nor stored. `slidesFromPages` (`packages/ingest/src/deck.ts`) strips from every body a line found on every page with text, in a deck of `BOILERPLATE_MIN_PAGES` such pages under two titles or more. A page's own title is never stripped. ADR 0006 (a) and § Amendments carry the amendment.
+- **Verdict**: approved 2026-11-05 — "approve 653"
+
 ## 2026-11-05 — issue #652 — gh-pr-writes-allowed
 
 - **Category**: approved-no-changes
