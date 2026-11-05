@@ -388,7 +388,7 @@ expect_rc 0 "$rc"
 expect_silent
 end
 
-begin "re-injection recomputes with the event's agent_type and cwd, and tells a lane agent to resume"
+begin "re-injection recomputes with the event's agent_type and cwd"
 must mkdir -p "$RE_WT/sub"
 must rm -f "$(state_file re main)"
 run_hook "$POST_HOOK" "$(event "$RE_WT/sub" ',"agent_type":"ticket-agent"')"
@@ -398,26 +398,17 @@ expect_stdout "cwd: $RE_WT/sub"
 expect_stdout "continue from the first step that is neither committed nor ticked"
 end
 
-# The resume instruction is the lane's. A reviewer or consultant sharing the worktree gets the
-# state and is told its own task is unchanged.
-for t in ticket-agent implementer task-orchestrator; do
-  begin "re-injection tells a $t to resume the lane"
+# The text is the same for every agent_type, present or not: live events carry none, so it
+# addresses the lane's owner and any agent it dispatched at once.
+for t in "" ticket-agent reviewer; do
+  begin "re-injection text is role-neutral (agent_type '$t')"
   must rm -f "$(state_file re main)"
-  run_hook "$POST_HOOK" "$(event "$RE_WT" ",\"agent_type\":\"$t\"")"
-  expect_stdout "continue from the first step that is neither committed nor ticked"
-  expect_not_stdout "for orientation"
-  end
-done
-for t in reviewer confirmation-reviewer consultant planner browser-smoke; do
-  begin "re-injection gives a $t the state and no instruction to resume the lane"
-  must rm -f "$(state_file re main)"
-  run_hook "$POST_HOOK" "$(event "$RE_WT" ",\"agent_type\":\"$t\"")"
+  run_hook "$POST_HOOK" "$(event "$RE_WT" "${t:+,\"agent_type\":\"$t\"}")"
   expect_rc 0 "$rc"
-  expect_stdout "branch: 629-lane"
-  expect_stdout "for orientation"
-  expect_stdout "Your own task is unchanged"
-  expect_not_stdout "continue from the first step that is neither committed nor ticked"
-  expect_not_stdout "gh issue view"
+  expect_stdout "If you are the agent that owns that lane, reconcile"
+  expect_stdout "continue from the first step that is neither committed nor ticked"
+  expect_stdout "If you were dispatched by that agent for a narrower task"
+  expect_stdout "you do not take up its steps"
   end
 done
 
