@@ -82,7 +82,7 @@ describe('ingestPdf on a slide laid out by position (#567)', () => {
     ]);
   });
 
-  it('keeps a page holding only the footer as content, its footer still counted as text layer (#567)', async () => {
+  it('reads a page holding only a title and the footer, or only the footer, as image-only, the footer uncounted (#641)', async () => {
     const footer: FixturePage['lines'][number] = {
       text: '© Example College: Course name, Year 2026.',
       size: FOOTER,
@@ -105,13 +105,46 @@ describe('ingestPdf on a slide laid out by position (#567)', () => {
             footer,
           ],
         },
+        { lines: [{ text: 'Diagram', size: TITLE }, footer] },
         { lines: [footer] },
       ],
     });
     expect(slides.map(({ kind, title, body }) => [kind, title, body])).toEqual([
       ['content', 'Rates', '• Rates has a body line'],
       ['content', 'Orders', '• Orders has a body line'],
-      ['content', '', ''],
+      ['image-only', 'Diagram', ''],
+      ['image-only', '', ''],
+    ]);
+  });
+
+  it("drops a body-size line on every page of a deck, and keeps every step of one slide's builds (#641)", async () => {
+    const course = { text: 'CHEM 101 Physical Chemistry', size: BODY, at: [40, 500] } as const;
+    const slide = (title: string): FixturePage => ({
+      lines: [
+        { text: title, size: TITLE },
+        course,
+        { text: `• ${title} has a body line`, size: BODY },
+      ],
+    });
+    const deck = await ingested({ pages: [slide('Rates'), slide('Orders'), slide('Mechanisms')] });
+    expect(deck.map(({ body }) => body)).toEqual([
+      '• Rates has a body line',
+      '• Orders has a body line',
+      '• Mechanisms has a body line',
+    ]);
+    const steps = ['• Step one forms the intermediate', '• Step two consumes it', '• Step three'];
+    const builds = await ingested({
+      pages: [1, 2, 3].map((n) => ({
+        lines: [
+          { text: 'Mechanisms', size: TITLE },
+          ...steps.slice(0, n).map((text) => ({ text, size: BODY })),
+        ],
+      })),
+    });
+    expect(builds.map(({ body }) => body)).toEqual([
+      steps[0],
+      steps.slice(0, 2).join('\n'),
+      steps.join('\n'),
     ]);
   });
 

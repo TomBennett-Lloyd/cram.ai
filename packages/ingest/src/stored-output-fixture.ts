@@ -223,6 +223,17 @@ const LAYOUT_PDFS = await Promise.all(
   ),
 );
 
+const BOILERPLATE_PDF = await buildPdf({
+  pages: ['Rates', 'Orders', 'Mechanisms', 'Diagram'].map((title) => ({
+    lines: [
+      line(title, TITLE),
+      line('CHEM 101 Physical Chemistry'),
+      ...(title === 'Diagram' ? [] : [line(`• ${title} has a body line`)]),
+      { text: '© Example College: Course name, Year 2026.', size: 14, at: [300, 80], form: true },
+    ],
+  })),
+});
+
 const deckFile = (bytes: Uint8Array, fileName: string): DeckFile => ({
   bytes,
   fileName,
@@ -236,7 +247,7 @@ const slidesOf = (result: IngestResult<string>): readonly SlideRecord[] => {
   return result.slides;
 };
 
-/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`, and `CALL_OUT_SLIDE` alone and thrice reaches both footer rules (#567). */
+/** Each deck's bytes and records; the PDF is read under three file names so its untitled first page reaches the stem fallback, `storedText` on a stem, and `UNTITLED_LECTURE`, `CALL_OUT_SLIDE` alone and thrice reaches both footer rules (#567), and `BOILERPLATE_PDF` an uncounted footer and a line on every page (#641). */
 export const storedOutputCorpus = async (): Promise<
   readonly (readonly [Uint8Array, readonly SlideRecord[]])[]
 > => [
@@ -249,4 +260,5 @@ export const storedOutputCorpus = async (): Promise<
       async (bytes) => [bytes, slidesOf(await ingestPdf(deckFile(bytes, 'Layout.pdf')))] as const,
     ),
   )),
+  [BOILERPLATE_PDF, slidesOf(await ingestPdf(deckFile(BOILERPLATE_PDF, 'Boilerplate.pdf')))],
 ];

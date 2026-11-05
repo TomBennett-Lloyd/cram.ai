@@ -259,12 +259,6 @@ describe('slideText kind', () => {
     );
   });
 
-  it("counts a footer's words toward the text layer, as only page numbers are stripped before the test (#567)", () => {
-    const thin = { ...page(line('Diagram', TITLE)), footer: ['© Example College: Course, Year.'] };
-    expect(slideText(thin, 2)).toEqual({ kind: 'content', title: 'Diagram', body: '' });
-    expect(slideText({ ...thin, footer: [] }, 2).kind).toBe('image-only');
-  });
-
   it('counts words, not bullet markers', () => {
     expect(slideText(page(line('• one'), line('• two'), line('• six')), 1).kind).toBe('image-only');
   });
@@ -294,5 +288,38 @@ describe('slideText kind', () => {
     expect(slideText(page(line('Using references well', TITLE), line(ENOUGH)), 3).kind).toBe(
       'content',
     );
+  });
+});
+
+describe('slideText boilerplate (#641)', () => {
+  const COURSE = 'CHEM 101, Example College';
+  const strip = (thin: PageText, slideNo: number, boilerplate: readonly string[]): SlideText =>
+    readSlide(thin, SlideNo.parse(slideNo), new Set(boilerplate));
+
+  it('strips a boilerplate line from the body before the thin-text-layer test', () => {
+    const thin = page(line('Diagram', TITLE), line(COURSE, FOOTER));
+    expect(strip(thin, 2, [])).toEqual({ kind: 'content', title: 'Diagram', body: COURSE });
+    expect(strip(thin, 2, [COURSE])).toEqual({ kind: 'image-only', title: 'Diagram', body: '' });
+  });
+
+  it('matches a line as the body reads it, collapsed and joined to its bullet marker', () => {
+    const text = strip(
+      page(line('Rates', TITLE), line('•'), line(` ${COURSE.replace(' ', '  ')}`), line(ENOUGH)),
+      2,
+      [`• ${COURSE}`],
+    );
+    expect(text.body).toBe(ENOUGH);
+  });
+
+  it('never strips the title, inferred or marked', () => {
+    expect(strip(page(line(COURSE, TITLE), line(ENOUGH)), 2, [COURSE])).toMatchObject({
+      title: COURSE,
+      body: ENOUGH,
+    });
+    expect(strip({ ...page(line(ENOUGH)), markedTitle: COURSE }, 2, [COURSE, ENOUGH])).toEqual({
+      kind: 'image-only',
+      title: COURSE,
+      body: '',
+    });
   });
 });
