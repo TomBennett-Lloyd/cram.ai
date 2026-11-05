@@ -15,7 +15,13 @@ SUBJECT=${SWEEP_ORPHANS_SCRIPT:-$SCRIPTS/sweep-orphans.sh}
 harness_init_tmp
 
 bg_pids=""
+# A stranded fixture is launchd's child, which reaps it the moment it exits and frees its pid, so
+# its pid is signalled only while it still shows the harness's temp tree on its command line.
+stranded_pids=""
 harness_extra_cleanup() {
+  for pid in $stranded_pids; do
+    ps -ww -o command= -p "$pid" 2>/dev/null | grep -qF -- "$TMP_ROOT" && kill -KILL "$pid" 2>/dev/null
+  done
   for pid in $bg_pids; do
     kill -KILL "$pid" 2>/dev/null
     wait "$pid" 2>/dev/null
@@ -365,17 +371,20 @@ end
 # single-process `sleep` park_argv uses. Its stdio is closed so it holds nothing of the harness's.
 #
 # park_stranded <argv text> [cwd] -> PARKED, a process with ppid 1 whose command line ends with
-# <argv text> and whose cwd is [cwd] when given, once ps shows both.
+# <argv text> and whose cwd is [cwd] when given, once ps shows both. With LISTEN=1 it also holds a
+# listening socket on the loopback interface.
 park_stranded() {
   local pidfile="$TMP_ROOT/stranded.$RANDOM.pid"
   perl -e 'exit 0 if fork; chdir($ARGV[2]) if length $ARGV[2];
     open(STDIN, "<", "/dev/null"); open(STDOUT, ">", "/dev/null"); open(STDERR, ">", "/dev/null");
     open(my $f, ">", "$ARGV[1].tmp"); print $f $$; close $f; rename "$ARGV[1].tmp", $ARGV[1];
+    if ($ENV{LISTEN}) { exec "perl", "-e", "use IO::Socket::INET; our \$s = IO::Socket::INET->new(Listen => 1, LocalAddr => q(127.0.0.1), LocalPort => 0) or die; sleep 60", "--", $ARGV[0] }
     exec "perl", "-e", "sleep 60", "--", $ARGV[0]' -- "$1" "$pidfile" "${2:-}"
   await "[ -s \"\$1\" ]" "$pidfile"
   PARKED=$(cat "$pidfile")
-  bg_pids="$bg_pids $PARKED"
+  stranded_pids="$stranded_pids $PARKED"
   await "[ \"\$(ps -o ppid= -p $PARKED | tr -d ' ')\" = 1 ] && ps -ww -o command= -p $PARKED | grep -qF -- \"\$1\"" "$1"
+  [ -z "${LISTEN:-}" ] || await "lsof -a -p $PARKED -iTCP -sTCP:LISTEN -t | grep -q ." "$1"
 }
 
 stranded_sweep() { # stranded_sweep <pid> <etime> [bound] — <pid> reads <etime>; no bound runs the default
@@ -393,12 +402,25 @@ begin "a dry run lists a process stranded under a live worktree, apart from the 
 fixture stranded
 park_stranded "$W/live/eval"
 by_argv=$PARKED
-park_stranded "plain-cwd" "$W/live"
+park_stranded "$ROOT/plain-cwd" "$W/live"
 by_cwd=$PARKED
 park_argv "$W/live/eval"
 has_parent=$PARKED
 park_stranded "$ROOT/main/.claude/elsewhere"
 outside_root=$PARKED
+LISTEN=1 park_stranded "$W/live/server"
+server=$PARKED
+LISTEN=1 park_stranded "$ROOT/plain-server" "$W/live"
+server_cwd=$PARKED
+park_stranded "$W/../elsewhere"
+dotdot=$PARKED
+park_stranded "$W/./foo"
+dot=$PARKED
+must touch "$W/stray-file" "$W/a+stray"
+park_stranded "$W/stray-file/x"
+stray=$PARKED
+park_stranded "$W/a+stray"
+stray_plus=$PARKED
 park_stranded "${W}2/live"
 sibling_dir=$PARKED
 park_stranded "$W/"
@@ -422,6 +444,12 @@ expect_unlisted "$has_parent"
 expect_unlisted "$outside_root"
 expect_unlisted "$sibling_dir"
 expect_unlisted "$bare_root"
+expect_unlisted "$server"
+expect_unlisted "$server_cwd"
+expect_unlisted "$dotdot"
+expect_unlisted "$dot"
+expect_unlisted "$stray"
+expect_unlisted "$stray_plus"
 expect_unlisted "$glued"
 expect_out "WOULD-KILL $glued_then_real (0m, ppid 1 under live $W/live)"
 expect_out "WOULD-KILL $bare_then_real (0m, ppid 1 under live $W/live)"
@@ -438,7 +466,7 @@ begin "a real run ends a stranded process and leaves a live parent's child and a
 fixture strandedreal
 park_stranded "$W/live/eval"
 by_argv=$PARKED
-park_stranded "plain-cwd" "$W/live"
+park_stranded "$ROOT/plain-cwd" "$W/live"
 by_cwd=$PARKED
 park_argv "$W/live/eval"
 has_parent=$PARKED

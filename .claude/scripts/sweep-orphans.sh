@@ -5,12 +5,13 @@
 # <main>/.claude/worktrees/<name>:
 #   vanished  no entry <name> exists there any more (older than WORKTREE_ORPHAN_MIN_AGE_MINUTES);
 #   stranded  <name> still exists, but the process's parent is pid 1, so whatever launched it
-#             is gone, and it is older than WORKTREE_STRANDED_MIN_AGE_MINUTES (#654: a hook
-#             blocked on a stdin pipe nobody closed). A live lane's processes always have a
-#             living parent, so ppid 1 is what separates a leak from a workload.
-# A process under a live worktree with a living parent is never a candidate; the worktree
-# itself is reap-worktree.sh's to judge. A process naming no worktree path is not this
-# script's business, whatever its parent.
+#             is gone; it holds no listening TCP socket, since a dev server a script detached
+#             on purpose is also ppid 1 and is a workload; and it is older than
+#             WORKTREE_STRANDED_MIN_AGE_MINUTES (#654: a hook blocked on a stdin pipe nobody
+#             closed).
+# Under a worktree that still exists only the stranded arm applies, so a process with a
+# living parent is left to reap-worktree.sh's judgement of the worktree. A process naming no
+# worktree path is not this script's business, whatever its parent.
 #
 # Usage: sweep-orphans.sh [--dry-run]   (finds the repo from the cwd; sweep-worktrees.sh runs it)
 # Exit:  0 the sweep ran (finding nothing is a normal outcome), 2 unexpected failure, or an
@@ -25,8 +26,8 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # A younger process may name a worktree that is being created: `git worktree add <path>` runs
 # before <path> exists. 0 disables the guard.
 : "${WORKTREE_ORPHAN_MIN_AGE_MINUTES:=10}"
-# The stranded arm's bound, and the one place its figure is declared: a just-detached child
-# of a live lane is re-parented to pid 1 for a moment, and a leak is hours old.
+# The stranded arm's bound, and the one place its figure is declared: a child detached a
+# moment ago may still be doing its work, and a leak is hours old.
 : "${WORKTREE_STRANDED_MIN_AGE_MINUTES:=180}"
 
 usage() {
@@ -114,12 +115,17 @@ live_name() {
       [A-Za-z0-9._/-]) ;;
       *)
         name=${rest%%[!A-Za-z0-9._-]*}
-        if [ -n "$name" ] && [ -e "$root/$name" ]; then
-          printf '%s\n' "$name"
-          return 0
-        fi
+        case "$name" in
+          '' | . | ..) ;;
+          *)
+            if [ -d "$root/$name" ]; then
+              printf '%s\n' "$name"
+              return 0
+            fi
+            ;;
+        esac
         while IFS= read -r e; do
-          [ -n "$e" ] || continue
+          [ -d "$root/$e" ] || continue
           case "$rest" in
             "$e" | "$e"[!A-Za-z0-9._-]*)
               printf '%s\n' "$e"
@@ -201,6 +207,7 @@ consider_stranded() { # consider_stranded <pid> <text>
   [ -n "$name" ] || return
   ppid=$(printf '%s\n' "$table" | awk -v p="$1" '$1 == p { print $2; exit }')
   [ "$ppid" = "1" ] || return
+  [ -z "$(lsof -a -p "$1" -iTCP -sTCP:LISTEN -t 2>/dev/null)" ] || return
   consider "$1" "ppid 1 under live $root/$name" "$WORKTREE_STRANDED_MIN_AGE_MINUTES"
 }
 while read -r pid path; do
