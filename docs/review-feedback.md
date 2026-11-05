@@ -576,3 +576,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: (a) stripped only page numbers before the thin-text-layer test. A PDF slide's footer, which #567 keeps out of the body, still counted, so a page holding only a diagram, its title and a footer read as `content` with an empty body and was never derived. PPTX already left its footer placeholders out.
 - **How applied**: `PageText.footer` is removed, so a footer is neither counted nor stored. `slidesFromPages` (`packages/ingest/src/deck.ts`) strips from every body a line found on every page with text, in a deck of `BOILERPLATE_MIN_PAGES` such pages under two titles or more. A page's own title is never stripped. ADR 0006 (a) and § Amendments carry the amendment.
 - **Verdict**: approved 2026-11-05 — "approve 653"
+
+## 2026-11-05 — issue #652 — gh-pr-writes-allowed
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to accept five lines in `.claude/settings.json` `permissions.allow`: `Bash(gh issue reopen:*)`, `Bash(gh pr create:*)`, `Bash(gh pr edit:*)`, `Bash(gh pr ready:*)`, `Bash(gh run rerun:*)`, and to accept that `gh pr merge` and `gh pr update-branch` stay out.
+- **Why**: the owner asked (2026-11-05) "can we also ensure that things like marking gh PRs ready never encounter a permission barrier", after PR #646's lane had `gh pr ready` refused. Worktrees never see the main checkout's `.claude/settings.local.json`, so only the committed file reaches lanes (the same cause as #592).
+- **How applied**: five allow entries appended after #592's; no other key changes.
+- **Verdict**: approved 2026-11-05 — "also granting pre-approval for the setting.json PR incase you need it"
