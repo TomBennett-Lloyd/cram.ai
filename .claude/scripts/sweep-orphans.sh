@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
-# Ends the processes left behind by worktrees that no longer exist, which hold the shared
+# Ends the processes left behind under <main>/.claude/worktrees, which hold the shared
 # machine's load up and redden other lanes' verify runs on timeouts (#483). A process is an
-# orphan when its cwd or its command line names <main>/.claude/worktrees/<name> and no entry
-# <name> exists there any more. A worktree that still exists is reap-worktree.sh's to judge.
+# orphan by either of two arms, each judged on its cwd or its command line naming
+# <main>/.claude/worktrees/<name>:
+#   vanished  no entry <name> exists there any more (older than WORKTREE_ORPHAN_MIN_AGE_MINUTES);
+#   stranded  <name> still exists, but the process's parent is pid 1, so whatever launched it
+#             is gone, and it is older than WORKTREE_STRANDED_MIN_AGE_MINUTES (#654: a hook
+#             blocked on a stdin pipe nobody closed). A live lane's processes always have a
+#             living parent, so ppid 1 is what separates a leak from a workload.
+# A process under a live worktree with a living parent is never a candidate; the worktree
+# itself is reap-worktree.sh's to judge. A process naming no worktree path is not this
+# script's business, whatever its parent.
 #
 # Usage: sweep-orphans.sh [--dry-run]   (finds the repo from the cwd; sweep-worktrees.sh runs it)
 # Exit:  0 the sweep ran (finding nothing is a normal outcome), 2 unexpected failure, or an
@@ -17,6 +25,9 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 # A younger process may name a worktree that is being created: `git worktree add <path>` runs
 # before <path> exists. 0 disables the guard.
 : "${WORKTREE_ORPHAN_MIN_AGE_MINUTES:=10}"
+# The stranded arm's bound, and the one place its figure is declared: a just-detached child
+# of a live lane is re-parented to pid 1 for a moment, and a leak is hours old.
+: "${WORKTREE_STRANDED_MIN_AGE_MINUTES:=180}"
 
 usage() {
   echo "usage: sweep-orphans.sh [--dry-run]" >&2
@@ -87,6 +98,43 @@ gone_name() {
   done
 }
 
+# live_name <text> -> the name of the first reference in <text> to a worktree that exists,
+# or nothing; the reference grammar is gone_name's.
+live_name() {
+  local s=$1 before rest prev name e
+  while :; do
+    case "$s" in
+      *"$root/"*) ;;
+      *) return 0 ;;
+    esac
+    before=${s%%"$root/"*}
+    rest=${s#*"$root/"}
+    prev=${before: -1}
+    case "$prev" in
+      [A-Za-z0-9._/-]) ;;
+      *)
+        name=${rest%%[!A-Za-z0-9._-]*}
+        if [ -n "$name" ] && [ -e "$root/$name" ]; then
+          printf '%s\n' "$name"
+          return 0
+        fi
+        while IFS= read -r e; do
+          [ -n "$e" ] || continue
+          case "$rest" in
+            "$e" | "$e"[!A-Za-z0-9._-]*)
+              printf '%s\n' "$e"
+              return 0
+              ;;
+          esac
+        done <<EOF
+$entries
+EOF
+        ;;
+    esac
+    s=$rest
+  done
+}
+
 age_minutes() { # age_minutes <ps etime: [[dd-]hh:]mm:ss>
   local t=$1 d=0 h=0
   case "$t" in *-*) d=${t%%-*} t=${t#*-} ;; esac
@@ -113,7 +161,7 @@ while [ "$pid" -gt 1 ]; do
 done
 
 candidates=""
-consider() { # consider <pid> <reason>
+consider() { # consider <pid> <reason> [min age in minutes; default the vanished arm's]
   case "$protected" in *" $1 "*) return ;; esac
   case "$candidates" in *"<$1>"*) return ;; esac
   local line etime cmd age
@@ -123,7 +171,7 @@ consider() { # consider <pid> <reason>
 $line
 EOF
   age=$(age_minutes "$etime")
-  [ "$age" -ge "$WORKTREE_ORPHAN_MIN_AGE_MINUTES" ] || return
+  [ "$age" -ge "${3:-$WORKTREE_ORPHAN_MIN_AGE_MINUTES}" ] || return
   candidates="$candidates<$1>"
   orphan_pids="$orphan_pids $1"
   count=$((count + 1))
@@ -142,6 +190,26 @@ EOF
 while read -r pid _ _ cmd; do
   name=$(gone_name "$cmd")
   [ -n "$name" ] && consider "$pid" "names $root/$name"
+done <<EOF
+$(printf '%s\n' "$table" | grep -F "$root/")
+EOF
+
+# The stranded arm: <text> references a live worktree and the process's parent is pid 1.
+consider_stranded() { # consider_stranded <pid> <text>
+  local name ppid
+  name=$(live_name "$2")
+  [ -n "$name" ] || return
+  ppid=$(printf '%s\n' "$table" | awk -v p="$1" '$1 == p { print $2; exit }')
+  [ "$ppid" = "1" ] || return
+  consider "$1" "ppid 1 under live $root/$name" "$WORKTREE_STRANDED_MIN_AGE_MINUTES"
+}
+while read -r pid path; do
+  consider_stranded "$pid" "$path"
+done <<EOF
+$(printf '%s\n' "$cwds" | grep -F "$root/")
+EOF
+while read -r pid _ _ cmd; do
+  consider_stranded "$pid" "$cmd"
 done <<EOF
 $(printf '%s\n' "$table" | grep -F "$root/")
 EOF

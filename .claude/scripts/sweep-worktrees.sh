@@ -2,7 +2,8 @@
 # Backstop for agent worktrees whose session was killed before the merging agent could reap
 # them (issue cumulo#34). Offers every linked worktree to reap-worktree.sh, which owns all the
 # safety checks — this script only decides what to offer, never whether it is safe to delete.
-# Then it runs sweep-orphans.sh in the same mode, for the processes such worktrees leave (#483).
+# Then it runs sweep-orphans.sh in the same mode, for the processes such worktrees leave and
+# those stranded under a live one (#483, #654).
 #
 # Usage: sweep-worktrees.sh [--dry-run]   (finds the repo from the cwd)
 # Exit:  0 the sweep ran (reaping nothing is a normal outcome), 2 unexpected failure.
