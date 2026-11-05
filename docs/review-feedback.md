@@ -568,3 +568,30 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/standards/grounding.md` rule 10 labels every citation or reference to derived text, and 0009 (i) put the label on the sources entry alone, so an in-text quotation from a slide read from its picture looked and was named exactly like typed text.
 - **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one. Each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
 - **Verdict**: approved 2026-11-05 — "approve 645"
+
+## 2026-11-05 — issue #641 — adr-0006-a-strips-boilerplate
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to accept `docs/adr/0006-image-only-slides.md` § Decision (a)'s amendment as it stands on the branch. That is the diff the plan comment pasted before the ADR was edited (https://github.com/TomBennett-Lloyd/cram.ai/issues/641#issuecomment-6655317002), less two changes review asked for. First, (a)'s new sentence drops "and never stores it": the course file still stores the deck file, and each slide's rendering, which (b) and (c) make OCR's input, shows the footer. Second, the entry's quoter sweep gains its `-- ':/'` pathspec and the commit it ran at. The amendment carries out the owner's decision on #641 (chat, 2026-11-05, verbatim): "on 641 yeah we should strip footers for sure, we shouldn't even save them to the DB i think, how are we identifying footers? i think we should also do a check for text that appears on every slide since it's not likely to be information that contains anything unique".
+- **Why**: (a) stripped only page numbers before the thin-text-layer test. A PDF slide's footer, which #567 keeps out of the body, still counted, so a page holding only a diagram, its title and a footer read as `content` with an empty body and was never derived. PPTX already left its footer placeholders out.
+- **How applied**: `PageText.footer` is removed, so a footer is neither counted nor stored. `slidesFromPages` (`packages/ingest/src/deck.ts`) strips from every body a line found on every page with text, in a deck of `BOILERPLATE_MIN_PAGES` such pages under two titles or more. A page's own title is never stripped. ADR 0006 (a) and § Amendments carry the amendment.
+- **Verdict**: approved 2026-11-05 — "approve 653"
+
+## 2026-11-05 — issue #652 — gh-pr-writes-allowed
+
+- **Category**: approved-no-changes
+- **Feedback**: the PR asks the owner to accept five lines in `.claude/settings.json` `permissions.allow`: `Bash(gh issue reopen:*)`, `Bash(gh pr create:*)`, `Bash(gh pr edit:*)`, `Bash(gh pr ready:*)`, `Bash(gh run rerun:*)`, and to accept that `gh pr merge` and `gh pr update-branch` stay out.
+- **Why**: the owner asked (2026-11-05) "can we also ensure that things like marking gh PRs ready never encounter a permission barrier", after PR #646's lane had `gh pr ready` refused. Worktrees never see the main checkout's `.claude/settings.local.json`, so only the committed file reaches lanes (the same cause as #592).
+- **How applied**: five allow entries appended after #592's; no other key changes.
+- **Verdict**: approved 2026-11-05 — "also granting pre-approval for the setting.json PR incase you need it"
+
+## 2026-11-04 — issue #629 — compaction-hooks-registered
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner's ask, 2026-11-04 (chat, quoted in #629): "add the PreCompact hook to settings.json and we could lower the limit to something smaller if we have a decent preCompact hook hopefully?" The PR asks the owner to decide:
+  - accept two registrations in `.claude/settings.json`, which grants every session a hook: `PreCompact` (all triggers) running `.claude/hooks/pre-compact-snapshot.sh`, and a `SessionStart` entry with matcher `compact` running `.claude/hooks/post-compact-reinject.sh`. Both exit 0 on every path, call no network command and carry no file content;
+  - accept that the snapshot is kept in the git directory (`git rev-parse --git-path`), not in a gitignored file inside the work tree as the issue proposed;
+  - accept `autoCompactWindow: 200000` in `.claude/agents/ticket-agent.md`'s frontmatter ("yeah 200k seems good after the test", 2026-11-05), added once a live run showed both hooks fire when a subagent compacts. The run also showed a compaction triggers at about three quarters of the window (see the PR body), so 200000 compacts a lane at roughly 150k tokens.
+- **Why**: `.claude/settings.json` is `humanAlways`: it grants every session hooks, and only the owner widens it (`merge.humanAlwaysRule`, #440). A hook that runs on every compaction of every session on this machine is the kind of grant that rule is for.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-05 — "nice feel free to merge the compaction stuff when you're happy with it"
