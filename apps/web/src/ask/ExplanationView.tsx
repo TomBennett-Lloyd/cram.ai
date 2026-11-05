@@ -29,6 +29,8 @@ interface Refs {
 
 const Missing = () => <span className="citation-missing">{SOURCE_MISSING}</span>;
 
+const derivedMark = (derived: boolean) => (derived ? '' : undefined);
+
 /** A number that moves focus to its sources entry, which opens the slide. */
 const SourceRef = ({ sourceId, refs }: { readonly sourceId: SourceId; readonly refs: Refs }) => {
   const found = refs.cite(sourceId);
@@ -37,6 +39,7 @@ const SourceRef = ({ sourceId, refs }: { readonly sourceId: SourceId; readonly r
     <button
       type="button"
       className="source-ref"
+      data-derived={derivedMark(found.cited.slide.record.derived)}
       aria-label={sourceRefLabel(found.number, found.cited.slide.record)}
       onClick={() => {
         refs.jump(sourceId);
@@ -64,6 +67,7 @@ const ContradictionRefs = ({
           key={sourceId}
           type="button"
           className="source-ref"
+          data-derived={derivedMark(found.cited.slide.record.derived)}
           aria-label={contradictionRefLabel(found.number, found.cited.slide.record)}
           onClick={() => {
             refs.onOpen({ ...found.cited, contradicted: sentence.text });
@@ -93,7 +97,16 @@ const SentenceView = ({
       <Fragment key={index}>{text}</Fragment>
     ) : (
       <Fragment key={index}>
-        <q className="explanation-quote">{text}</q>
+        <q
+          className="explanation-quote"
+          data-derived={derivedMark(
+            quote.sourceIds.some(
+              (sourceId) => refs.cite(sourceId)?.cited.slide.record.derived === true,
+            ),
+          )}
+        >
+          {text}
+        </q>
         {quote.ends &&
           quote.sourceIds.map((sourceId) => (
             <SourceRef key={sourceId} sourceId={sourceId} refs={refs} />

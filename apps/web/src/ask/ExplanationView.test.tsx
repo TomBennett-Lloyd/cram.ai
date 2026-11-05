@@ -1,10 +1,4 @@
-import {
-  type Explanation,
-  type RetrievedSlide,
-  SourceId,
-  type VerificationDepth,
-} from '@cram/shared';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { COMB, CONTRADICTED, GROUNDED, HIVE, retrievedSlide, sentence } from '../api/api-fixture';
 import {
@@ -16,34 +10,7 @@ import {
   SOURCE_MISSING,
   sourceRefLabel,
 } from '../copy';
-import { ExplanationView } from './ExplanationView';
-
-const id = (value: string) => SourceId.parse(value);
-
-interface Shown {
-  readonly depth?: VerificationDepth;
-  readonly slides?: readonly RetrievedSlide[];
-}
-
-const show = (
-  explanation: Explanation,
-  { depth = 'light', slides = GROUNDED.slides }: Shown = {},
-) =>
-  render(
-    <ExplanationView
-      explanation={explanation}
-      slides={slides}
-      depth={depth}
-      onOpen={() => undefined}
-    />,
-  ).container;
-
-/** Each reference button's visible number and accessible name, in document order. */
-const refsIn = (scope: Element) =>
-  [...scope.querySelectorAll('.source-ref')].map((ref) => [
-    ref.textContent,
-    ref.getAttribute('aria-label'),
-  ]);
+import { id, refsIn, show } from './explanation-view-fixture';
 
 const sourcesEntries = () =>
   within(screen.getByRole('list', { name: 'Sources' }))
