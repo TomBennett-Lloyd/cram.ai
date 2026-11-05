@@ -858,11 +858,11 @@ expect_not_stdout "guard: "
 end
 
 # The shipped members, not stand-ins: the real merge-pr.test.sh, fill-verdict.test.sh and
-# adr-amendment-check.test.sh, copied in, must pass the climb check as they stand, so an edit that adds a climb to either
-# goes red here rather than silently costing the exemption. Each names one of the changed
-# files as fixture text (merge-pr.test.sh's V_FILES, fill-verdict.test.sh's fixture ADR,
-# adr-amendment-check.test.sh's ADR fixture path), and none of those names exists in this
-# repository. Its line naming the project instructions is the real hit #471 closed; this
+# adr-amendment-check.test.sh, copied in, must pass the climb check as they stand, so an
+# edit that adds a climb goes red here rather than silently costing the exemption. Each
+# names one of the changed files as fixture text (merge-pr.test.sh's V_FILES,
+# fill-verdict.test.sh's fixture ADR, adr-amendment-check.test.sh's ADR fixture path), and
+# none of those names exists in this repository. Its line naming the project instructions is the real hit #471 closed; this
 # file does not name them itself, for the reason exempt_fixture gives.
 begin "the real fixture-only harnesses, naming the changed markdown, leave the docs tier"
 must fixture exempt_real

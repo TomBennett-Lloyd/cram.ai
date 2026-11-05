@@ -72,14 +72,13 @@
 # FIXTURE-ONLY HARNESSES (#471) are the one declared exception: FIXTURE_ONLY_HARNESSES
 # below names the harnesses whose markdown strings are fixture text, and the guard
 # does not grep them. The soundness argument, per member: it runs its subject only
-# against repositories and diffs it builds under its tmp root, passing that root (or a
-# diff file inside it) on every invocation that gets past argument parsing, and it
-# reads from the working tree only its neighbours in .claude/scripts and
-# .claude/workflow.json. So no markdown file here can reach it. A member keeps the exemption only while its source shows
-# no other way out of its directory: no `..` path component but `/../workflow.json`,
-# and no `dirname` but the one of its own BASH_SOURCE. That check is a floor, not a
-# proof; the routes it cannot see are #471's accepted residual, with CI's
-# `verify:full` on every PR as the backstop.
+# against repositories and diffs it builds under its tmp root, and it reads from the
+# working tree only its neighbours in .claude/scripts and .claude/workflow.json. So no
+# markdown file here can reach it. A member keeps the exemption only while its source
+# shows no other way out of its directory: no `..` path component but
+# `/../workflow.json`, and no `dirname` but the one of its own BASH_SOURCE. That check
+# is a floor, not a proof; the routes it cannot see are #471's accepted residual, with
+# CI's `verify:full` on every PR as the backstop.
 # The exemption is this rung's alone: the census and rung 3's selection still see
 # the harness, so a change to merge-pr.sh still runs merge-pr.test.sh.
 #
