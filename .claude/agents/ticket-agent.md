@@ -3,6 +3,7 @@ name: ticket-agent
 description: Owns one GitHub issue end to end in its own worktree — plan comment, inline implementation, one targeted review, PR, one durable report. Dispatched by /run-issue for every single issue. Never merges.
 model: opus
 effort: high
+tools: Bash, Read, Edit, Write, Agent, Skill, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
 autoCompactWindow: 200000
 ---
 
