@@ -8,12 +8,17 @@
 #
 # The state is the snapshot pre-compact-snapshot.sh stored for this agent when it is fresh
 # (compaction_snapshot_fresh), consumed so a later compaction cannot read it again, and
-# recomputed from git otherwise: PreCompact may not fire where SessionStart does, and the
-# state is git's either way.
+# recomputed otherwise: PreCompact may not fire where SessionStart does.
 #
 # Only a LANE is handed this: a branch named `<issue>-<slug>`, the shape
-# `.claude/agents/ticket-agent.md` rule 1 creates. A session on `main`, or a detached HEAD,
-# has no issue to reconcile against, and the hook stays silent by design (hook-context.sh).
+# `.claude/agents/ticket-agent.md` rule 1 creates (compaction-lib.sh reads it through a
+# rebase). A session on `main` or a plain detached HEAD has no issue to reconcile against, and
+# the hook stays silent by design (hook-context.sh).
+#
+# The instruction to resume the lane's steps goes only to the agents that write the lane: an
+# absent agent_type (the lane's own main thread) or ticket-agent, implementer or
+# task-orchestrator. A reviewer, consultant or planner that shares the worktree gets the
+# state and is told its own task is unchanged.
 #
 # The pointer names `gh` commands; it never runs them — a hook that reached GitHub would be
 # a network call on every compaction (CLAUDE.md Hard constraints).
@@ -64,13 +69,29 @@ if [ -n "$file" ] && [ -f "$file" ]; then
 fi
 [ -n "$state" ] || state=$(compaction_snapshot "$root" "" "$agent_type" "${cwd:-$PWD}")
 
+case "$agent_type" in
+  "" | ticket-agent | implementer | task-orchestrator) resumes=1 ;;
+  *) resumes=0 ;;
+esac
+
 cat <<TEXT
-Your context was just compacted. What follows is repo state, not memory: it was written by a hook from git, never from the conversation.
+Your context was just compacted. What follows is repo state, not memory: it was written by a hook, never from the conversation.
 
 $state
+TEXT
+
+if [ "$resumes" = "0" ]; then
+  cat <<TEXT
+
+This is the lane's repository state, for orientation. Your own task is unchanged: continue it, and do not take up the lane's steps.
+TEXT
+  exit 0
+fi
+
+cat <<TEXT
 
 Before continuing, reconcile from what survives compaction, in this order:
-1. \`git log --oneline origin/main..HEAD\` and \`git status --short\` in the worktree above: what is committed and what is not.
+1. \`git log --oneline origin/main..HEAD\` and \`git status --short\` in the worktree above: what is committed and what is not. If the state says \`rebase: in progress\`, finish or abort that rebase first.
 2. Issue #$issue's plan comment (\`gh issue view $issue --comments\`, the one headed \`## Plan (ticket-agent lane)\`): its ticked steps say which steps are done.
 3. Any open PR for the branch (\`gh pr list --head $branch\`): its body, checks and review state.
 Then continue from the first step that is neither committed nor ticked. Do not redo a ticked step, and do not trust a recollection of the conversation over these three.

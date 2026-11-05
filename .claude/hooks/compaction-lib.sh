@@ -6,10 +6,14 @@
 # WHY THERE IS A PAIR. PreCompact cannot tell the model anything: its stdout goes to the
 # debug log (https://code.claude.com/docs/en/hooks.md). SessionStart with matcher
 # `compact` can: its stdout joins the compacted context. So the first hook writes state to
-# disk and the second puts it back in front of the model. The state is repo state only —
-# branch, commits, status — and every line of it is re-derivable from git, so the
-# snapshot is a convenience the re-injection can do without (compaction_snapshot below is
-# also what the second hook runs when no fresh file exists).
+# disk and the second puts it back in front of the model. The branch, commits and paths in
+# it are git's, so the second hook recomputes them (compaction_snapshot below) when no fresh
+# file exists; the trigger and agent_type come from the event and are then `unknown` or absent.
+#
+# ONLY A LANE IS SNAPSHOT: a branch named `<issue>-<slug>`, the shape ticket-agent.md rule 1
+# creates, which compaction_branch reads even while a rebase has HEAD detached. Both hooks
+# apply the same test, so a tree the second hook would never read is never written to — the
+# parked main checkout's git directory included, which nothing removes.
 #
 # THE FILE LIVES IN THE GIT DIRECTORY, not the work tree. `git rev-parse --git-path`
 # names `.git/worktrees/<name>/…` for a linked worktree: per worktree, never tracked,
@@ -35,8 +39,7 @@ fi
 # that is 60 commits ahead is not helped by 60 subjects in the context it just compacted.
 COMPACTION_LIST_CAP=40
 
-# How old a stored snapshot may be and still be believed, in minutes (`find -mmin`, the one
-# age test BSD and GNU share). PreCompact and the SessionStart that follows are two events of
+# How old a stored snapshot may be and still be believed, in minutes (`find -mmin`). PreCompact and the SessionStart that follows are two events of
 # one compaction, seconds to a minute apart; a file older than this belongs to some earlier
 # compaction whose state has moved on.
 COMPACTION_SNAPSHOT_MAX_AGE_MIN=15
@@ -60,9 +63,33 @@ compaction_state_file() {
   git -C "$1" rev-parse --path-format=absolute --git-path "cram-compaction-snapshot.$2" 2>/dev/null
 }
 
-# compaction_branch <root> -> the branch name, empty when HEAD is detached.
+# compaction_rebase_file <root> <name> -> the absolute path of <name> in the rebase state.
+compaction_rebase_file() {
+  git -C "$1" rev-parse --path-format=absolute --git-path "$2" 2>/dev/null
+}
+
+# compaction_branch <root> -> the branch name; empty on a plain detached HEAD. A rebase
+# detaches HEAD, so during one the name is read from the rebase's own record: a lane
+# resolving a rebase conflict (ticket-agent.md rule 8) is the state it can least afford to lose.
 compaction_branch() {
-  git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null
+  local name file
+  if name=$(git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null); then
+    printf '%s' "$name"
+    return 0
+  fi
+  for name in rebase-merge/head-name rebase-apply/head-name; do
+    file=$(compaction_rebase_file "$1" "$name")
+    if [ -f "$file" ]; then
+      name=$(cat "$file" 2>/dev/null)
+      printf '%s' "${name#refs/heads/}"
+      return 0
+    fi
+  done
+}
+
+# compaction_rebasing <root> -> 0 while a rebase is in progress.
+compaction_rebasing() {
+  [ -d "$(compaction_rebase_file "$1" rebase-merge)" ] || [ -f "$(compaction_rebase_file "$1" rebase-apply/head-name)" ]
 }
 
 # compaction_issue <branch> -> the issue number when the branch is `<digits>-<slug>`, else
@@ -84,7 +111,8 @@ compaction_snapshot() {
   [ -n "$agent_type" ] && printf 'agent_type: %s\n' "$agent_type"
   printf 'cwd: %s\n' "${cwd:-$root}"
   printf 'worktree: %s\n' "$root"
-  printf 'branch: %s\n' "${branch:-(detached HEAD)}"
+  printf 'branch: %s\n' "$branch"
+  compaction_rebasing "$root" && printf 'rebase: in progress\n'
   [ -n "$issue" ] && printf 'issue: #%s\n' "$issue"
 
   if ahead=$(git -C "$root" rev-list --count origin/main..HEAD 2>/dev/null); then

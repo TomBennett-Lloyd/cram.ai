@@ -111,8 +111,8 @@ contains() { # contains <haystack> <needle>
 
 # --- registration ---------------------------------------------------------------------
 
-# One node run reads the settings and prints the two commands, so each case below is a
-# comparison against what settings.json actually says rather than against this file's belief.
+# Each call parses settings.json and prints the commands for one event and matcher, so each case
+# below compares against what settings.json says rather than against this file's belief.
 registered() { # registered <event> <matcher-or-"-"> -> the hook command, or nothing
   node -e '
     const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
@@ -226,13 +226,12 @@ snap=$(cat "$(state_file noref main)" 2>/dev/null)
 contains "$snap" "commits ahead of origin/main: unknown" || bad "unknown count missing; got: $snap"
 end
 
-begin "a snapshot on main carries no issue line"
+begin "pre-compact writes nothing on main, silently: only a lane is snapshot"
 make_lane onmain main 0 0
-run_hook "$PRE_HOOK" "$(event "$TMP_ROOT/onmain/main" ',"trigger":"auto"')"
+run_hook "$PRE_HOOK" "$(event "$TMP_ROOT/onmain/main" ',"trigger":"auto","agent_id":"abc123"')"
 expect_rc 0 "$rc"
-snap=$(cat "$(git -C "$TMP_ROOT/onmain/main" rev-parse --path-format=absolute --git-path cram-compaction-snapshot.main)" 2>/dev/null)
-contains "$snap" "branch: main" || bad "branch line missing; got: $snap"
-contains "$snap" "issue:" && bad "an issue line on main; got: $snap"
+expect_silent
+[ -e "$(git -C "$TMP_ROOT/onmain/main" rev-parse --path-format=absolute --git-path cram-compaction-snapshot.abc123)" ] && bad "a snapshot was written on main"
 end
 
 begin "a snapshot of an agent id holding a dash and an underscore keeps both"
@@ -256,13 +255,13 @@ contains "$snap" "cwd: $SNAP_WT/sub" || bad "cwd line is not the event's; got: $
 contains "$snap" "worktree: $SNAP_WT"$'\n' || bad "worktree line is not the root; got: $snap"
 end
 
-begin "a detached HEAD is named, not reported as the branch HEAD"
+begin "pre-compact writes nothing on a plain detached HEAD"
 make_lane detpre 629-lane 0 0
 must git -C "$(lane_wt detpre)" checkout -q --detach
 run_hook "$PRE_HOOK" "$(event "$(lane_wt detpre)" ',"trigger":"auto"')"
 expect_rc 0 "$rc"
-snap=$(cat "$(state_file detpre main)" 2>/dev/null)
-contains "$snap" "branch: (detached HEAD)" || bad "detached HEAD not named; got: $snap"
+expect_silent
+[ -e "$(state_file detpre main)" ] && bad "a snapshot was written on a detached HEAD"
 end
 
 # The caps, at their boundary: 40 fits, 41 is cut to 40 and says so.
@@ -362,6 +361,10 @@ for b in main x-629 v629-x 629 lane-6-x; do
   run_hook "$POST_HOOK" "$(event "$(lane_wt "g_$b")")"
   expect_rc 0 "$rc"
   expect_silent
+  run_hook "$PRE_HOOK" "$(event "$(lane_wt "g_$b")" ',"trigger":"auto"')"
+  expect_rc 0 "$rc"
+  expect_silent
+  [ -e "$(state_file "g_$b" main)" ] && bad "pre-compact wrote a snapshot on non-lane branch $b"
   end
 done
 
@@ -377,12 +380,100 @@ for pair in "6290-y:6290" "007-z:007" "629-a-b-c:629"; do
   end
 done
 
-begin "re-injection is silent on a detached HEAD"
+begin "re-injection is silent on a plain detached HEAD"
 make_lane detached 629-lane 0 0
 must git -C "$(lane_wt detached)" checkout -q --detach
 run_hook "$POST_HOOK" "$(event "$(lane_wt detached)")"
 expect_rc 0 "$rc"
 expect_silent
+end
+
+begin "re-injection recomputes with the event's agent_type and cwd, and tells a lane agent to resume"
+must mkdir -p "$RE_WT/sub"
+must rm -f "$(state_file re main)"
+run_hook "$POST_HOOK" "$(event "$RE_WT/sub" ',"agent_type":"ticket-agent"')"
+expect_rc 0 "$rc"
+expect_stdout "agent_type: ticket-agent"
+expect_stdout "cwd: $RE_WT/sub"
+expect_stdout "continue from the first step that is neither committed nor ticked"
+end
+
+# The resume instruction is the lane's. A reviewer or consultant sharing the worktree gets the
+# state and is told its own task is unchanged.
+for t in ticket-agent implementer task-orchestrator; do
+  begin "re-injection tells a $t to resume the lane"
+  must rm -f "$(state_file re main)"
+  run_hook "$POST_HOOK" "$(event "$RE_WT" ",\"agent_type\":\"$t\"")"
+  expect_stdout "continue from the first step that is neither committed nor ticked"
+  expect_not_stdout "for orientation"
+  end
+done
+for t in reviewer confirmation-reviewer consultant planner browser-smoke; do
+  begin "re-injection gives a $t the state and no instruction to resume the lane"
+  must rm -f "$(state_file re main)"
+  run_hook "$POST_HOOK" "$(event "$RE_WT" ",\"agent_type\":\"$t\"")"
+  expect_rc 0 "$rc"
+  expect_stdout "branch: 629-lane"
+  expect_stdout "for orientation"
+  expect_stdout "Your own task is unchanged"
+  expect_not_stdout "continue from the first step that is neither committed nor ticked"
+  expect_not_stdout "gh issue view"
+  end
+done
+
+# A rebase detaches HEAD; the lane resolving one is the state it can least afford to lose. The
+# oracle for "a rebase is in progress" is `git status`'s own words.
+# make_rebasing <name> [--apply] -> a lane whose rebase onto a conflicting origin/main has stopped.
+# The merge backend (default) keeps its state in rebase-merge/, the apply backend in rebase-apply/.
+make_rebasing() {
+  local wt
+  make_lane "$1" 629-lane 0 0
+  wt=$(lane_wt "$1")
+  must printf 'lane\n' >"$wt/f.txt"
+  must git -C "$wt" add f.txt
+  must git -C "$wt" commit -q -m lane-edit
+  must printf 'main\n' >"$TMP_ROOT/$1/main/f.txt"
+  must git -C "$TMP_ROOT/$1/main" add f.txt
+  must git -C "$TMP_ROOT/$1/main" commit -q -m main-edit
+  must git -C "$TMP_ROOT/$1/main" update-ref refs/remotes/origin/main HEAD
+  git -C "$wt" rebase ${2:+"$2"} origin/main >/dev/null 2>&1
+  local st
+  st=$(git -C "$wt" status 2>&1)
+  case "$st" in
+    *"rebase in progress"*) ;;
+    *)
+      printf 'FATAL fixture is not mid-rebase; git status says: %s\n' "$st" >&2
+      exit 2
+      ;;
+  esac
+}
+
+make_rebasing rb
+make_rebasing rbapply --apply
+[ -d "$(git -C "$(lane_wt rb)" rev-parse --path-format=absolute --git-path rebase-merge)" ] || exit 2
+[ -f "$(git -C "$(lane_wt rbapply)" rev-parse --path-format=absolute --git-path rebase-apply/head-name)" ] || exit 2
+
+for r in rb rbapply; do
+  begin "a lane mid-rebase ($r) is still a lane: both hooks name its branch and issue and say a rebase is in progress"
+  run_hook "$PRE_HOOK" "$(event "$(lane_wt "$r")" ',"trigger":"auto"')"
+  expect_rc 0 "$rc"
+  snap=$(cat "$(state_file "$r" main)" 2>/dev/null)
+  contains "$snap" "branch: 629-lane" || bad "branch not read through the rebase; got: $snap"
+  contains "$snap" "issue: #629" || bad "issue not read through the rebase; got: $snap"
+  contains "$snap" "rebase: in progress" || bad "rebase not named; got: $snap"
+  run_hook "$POST_HOOK" "$(event "$(lane_wt "$r")")"
+  expect_rc 0 "$rc"
+  # A line of its own: the resume instruction quotes the phrase, so a bare substring proves nothing.
+  expect_stdout $'\nrebase: in progress'
+  expect_stdout "gh issue view 629 --comments"
+  expect_stdout "finish or abort that rebase first"
+  end
+done
+
+begin "a lane not in a rebase says nothing about one"
+must rm -f "$(state_file re main)"
+run_hook "$POST_HOOK" "$(event "$RE_WT")"
+expect_not_stdout $'\nrebase: in progress'
 end
 
 # --- never blocks, never exits 2 ---------------------------------------------------------
@@ -471,6 +562,42 @@ for name in pre-compact-snapshot.sh post-compact-reinject.sh; do
   expect_stderr "could not load"
   expect_stderr "compaction-lib.sh"
 done
+end
+
+# No git on PATH. The hooks prepend /opt/homebrew/bin, which on some machines holds a git, so
+# the case runs byte-for-byte copies of the hooks with that one PATH line deleted, against a PATH
+# of symlinks that has everything they call but git. The fixture checks prove the deletion landed.
+NOGIT_HOOKS="$TMP_ROOT/nogit-hooks"
+NOGIT_BIN="$TMP_ROOT/nogit-bin"
+must mkdir -p "$NOGIT_HOOKS" "$NOGIT_BIN"
+PATH_LINE="export PATH=\"/opt/homebrew/bin:\$PATH\""
+for f in hook-context.sh compaction-lib.sh pre-compact-snapshot.sh post-compact-reinject.sh; do
+  fixture_has "$HOOKS/$f" "$PATH_LINE"
+  must grep -vxF "$PATH_LINE" "$HOOKS/$f" >"$NOGIT_HOOKS/$f"
+  fixture_lacks "$NOGIT_HOOKS/$f" 'export PATH="/opt/homebrew/bin'
+done
+for t in bash node env cat tr sed find date wc head rm dirname; do
+  must ln -sf "$(command -v "$t")" "$NOGIT_BIN/$t"
+done
+[ ! -e "$NOGIT_BIN/git" ] || exit 2
+GIT_DIR_OF=$(dirname "$(command -v git)")
+
+for pair in "PRE:pre-compact-snapshot.sh" "POST:post-compact-reinject.sh"; do
+  begin "${pair%%:*}: with no git on PATH the hook says so on stderr and still exits 0"
+  run_hook "$NOGIT_HOOKS/${pair##*:}" "$(event "$RE_WT" ',"trigger":"auto"')" PATH="$NOGIT_BIN"
+  expect_rc 0 "$rc"
+  expect_stderr "required tool not found: git"
+  end
+done
+
+begin "control: the same copies with git on PATH do their work"
+must rm -f "$(state_file re main)"
+run_hook "$NOGIT_HOOKS/pre-compact-snapshot.sh" "$(event "$RE_WT" ',"trigger":"auto"')" PATH="$NOGIT_BIN:$GIT_DIR_OF"
+expect_rc 0 "$rc"
+[ -f "$(state_file re main)" ] || bad "the copy wrote no snapshot with git on PATH"
+run_hook "$NOGIT_HOOKS/post-compact-reinject.sh" "$(event "$RE_WT")" PATH="$NOGIT_BIN:$GIT_DIR_OF"
+expect_rc 0 "$rc"
+expect_stdout "Your context was just compacted"
 end
 
 begin "pre-compact reports a snapshot it cannot write on stderr and still exits 0"
