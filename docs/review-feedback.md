@@ -563,8 +563,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-04 — issue #464 — derived-label-on-in-text-references
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the PR asks the owner to accept the dated amendment to `docs/adr/0009-explanation-answers.md` § Decision (i) that carries out their decision on #464, 2026-11-04 (relayed verbatim on the issue): "Label the in-text references too." The plan comment pasted the amendment verbatim (https://github.com/TomBennett-Lloyd/cram.ai/issues/464#issuecomment-6643411095). Review then changed three of its sentences: the "Was" line, the citation for why dashed is not used, and the sweep's summary of the hits it left unedited. That takes the PR off `merge.amendmentRule` arm (a) and onto `humanAlwaysRule`'s path. The ask is the amendment as it now stands in the diff.
 - **Why**: `docs/standards/grounding.md` rule 10 labels every citation or reference to derived text, and 0009 (i) put the label on the sources entry alone, so an in-text quotation from a slide read from its picture looked and was named exactly like typed text.
 - **How applied**: a quotation from a derived slide, and every number naming one, take a dotted underline in the quote's accent, told apart by style from the quote's solid line and the contradiction's wavy one. Each such number's accessible name ends with `DERIVED_SOURCE`. 0009 (i) is annotated in two places and gains a dated § Amendments entry.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-05 — "approve 645"
