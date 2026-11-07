@@ -298,7 +298,7 @@ printf 'STORED-SENTINEL\n' >>"$(state_file re main)"
 run_hook "$POST_HOOK" "$(event "$RE_WT" ',"source":"compact"')"
 expect_rc 0 "$rc"
 [ -z "$err" ] || bad "re-injection wrote to stderr: $err"
-for want in "STORED-SENTINEL" "trigger: auto" "issue: #629" "gh issue view 629 --comments" "## Plan (ticket-agent lane)" "gh pr list --head 629-lane" "git log --oneline origin/main..HEAD" "ticked"; do
+for want in "STORED-SENTINEL" "trigger: auto" "issue: #629" "gh-owner-comments.sh issue 629" "## Plan (ticket-agent lane)" "gh pr list --head 629-lane" "git log --oneline origin/main..HEAD" "ticked"; do
   expect_stdout "$want"
 done
 end
@@ -376,7 +376,7 @@ for pair in "6290-y:6290" "007-z:007" "629-a-b-c:629"; do
   run_hook "$POST_HOOK" "$(event "$(lane_wt "h_$b")")"
   expect_rc 0 "$rc"
   expect_stdout "issue: #$want"
-  expect_stdout "gh issue view $want --comments"
+  expect_stdout "gh-owner-comments.sh issue $want"
   end
 done
 
@@ -456,7 +456,7 @@ for r in rb rbapply; do
   expect_rc 0 "$rc"
   # A line of its own: the resume instruction quotes the phrase, so a bare substring proves nothing.
   expect_stdout $'\nrebase: in progress'
-  expect_stdout "gh issue view 629 --comments"
+  expect_stdout "gh-owner-comments.sh issue 629"
   expect_stdout "finish or abort that rebase first"
   end
 done

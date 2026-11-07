@@ -764,8 +764,28 @@ amendment_state() { # amendment_state <diff> <added lines> -> as feedback_state
         rc=2
       else
         printf '%s' "$comment" >"$spool.comment"
-        reason=$(node "$check" plan-named "$spool" "$spool.comment" "$issue" ${hits[@]+"${hits[@]}"} 2>&1)
+        # Anyone can comment on a public repo, so a comment headed `## Plan` that pastes an ADR
+        # diff is not evidence until the owner is shown to have written it (security.md rule 6).
+        owner=$(gh_call repo view --json owner 2>&1)
         rc=$?
+        if [ "$rc" -ne 0 ]; then
+          reason="gh repo view for the owner exited $rc: $owner"
+          rc=2
+        else
+          printf '%s' "$owner" >"$spool.owner"
+          reason=$(node "$script_dir/gh-owner-comments.mjs" authored "$spool.comment" "$spool.owner" 2>&1)
+          rc=$?
+          case "$rc" in
+            0) reason=$(node "$check" plan-named "$spool" "$spool.comment" "$issue" ${hits[@]+"${hits[@]}"} 2>&1)
+              rc=$?
+              ;;
+            3)
+              reason="the cited plan comment $id was not written by the repository owner (docs/standards/security.md rule 6)"
+              rc=1
+              ;;
+            *) rc=2 ;;
+          esac
+        fi
       fi
     else
       reason=$cite
@@ -774,7 +794,7 @@ amendment_state() { # amendment_state <diff> <added lines> -> as feedback_state
     rm -f "$spool"
     return 0
   fi
-  rm -f "$spool" "$spool.comment"
+  rm -f "$spool" "$spool.comment" "$spool.owner"
   [ "$rc" -eq 0 ] && return 0
   if [ "$rc" -eq 2 ]; then
     printf 'merge.amendmentRule: %s\n' "$reason"

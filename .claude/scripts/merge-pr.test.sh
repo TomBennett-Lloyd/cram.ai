@@ -251,6 +251,13 @@ gh_stub() { # gh_stub <path> <state dir>
 state="$2"
 printf '%s\n' "\$*" >>"\$state/calls.log"
 case "\$1 \$2" in
+  "repo view")
+    # The owner's login, the one fact gh-owner-comments.mjs judges a comment's author by.
+    if [ -f "\$state/owner.json" ]; then cat "\$state/owner.json"; else printf '{"owner":{"login":"O"}}'; fi
+    rc=0
+    [ -f "\$state/owner.rc" ] && read -r rc <"\$state/owner.rc"
+    exit "\$rc"
+    ;;
   "api repos/{owner}/{repo}/issues/comments/"*)
     [ -f "\$state/comment.json" ] && cat "\$state/comment.json"
     rc=0
@@ -1091,9 +1098,9 @@ AM_APPEND="diff --git a/$AM_ADR b/$AM_ADR
 +- **2026-11-04 — (f): moved** (#12).
 +$AM_LINE"
 
-am_comment() { # am_comment <body> [issue]
-  node -e 'process.stdout.write(JSON.stringify({ issue_url: "https://api.github.com/repos/O/R/issues/" + process.argv[2], body: process.argv[1] }))' \
-    "$1" "${2:-12}" >"$STATE/comment.json" || exit 2
+am_comment() { # am_comment <body> [issue] [login] [association]  (the author defaults to the owner)
+  node -e 'process.stdout.write(JSON.stringify({ issue_url: "https://api.github.com/repos/O/R/issues/" + process.argv[2], body: process.argv[1], user: { login: process.argv[3] }, author_association: process.argv[4] }))' \
+    "$1" "${2:-12}" "${3:-O}" "${4:-OWNER}" >"$STATE/comment.json" || exit 2
 }
 
 begin "an approved-at-plan amendment whose plan comment carries every line merges, after the comment is read"
@@ -1105,7 +1112,44 @@ run_merge
 expect_rc 0
 expect_stdout 'entry on the branch, both placeholders filled'
 expect_called 'api repos/{owner}/{repo}/issues/comments/77'
+expect_called 'repo view --json owner'
 expect_merged squash
+end
+
+begin "an approved-at-plan amendment whose plan comment a stranger wrote is refused, unmerged, however well it matches"
+am_case am-plan-stranger approved-at-plan "approved at plan 2026-11-04 — named verbatim in $AM_COMMENT" "$AM_APPEND"
+am_comment "## Plan (ticket-agent lane)
++- **2026-11-04 — (f): moved** (#12).
++$AM_LINE" 12 stranger NONE
+run_merge
+expect_rc 1
+expect_stderr 'feedback — FAILED'
+expect_stderr 'was not written by the repository owner'
+expect_not_merged squash
+end
+
+begin "a plan comment carrying the owner's login under another association is refused too"
+am_case am-plan-halfmatch approved-at-plan "approved at plan 2026-11-04 — named verbatim in $AM_COMMENT" "$AM_APPEND"
+am_comment "## Plan (ticket-agent lane)
++- **2026-11-04 — (f): moved** (#12).
++$AM_LINE" 12 O CONTRIBUTOR
+run_merge
+expect_rc 1
+expect_stderr 'was not written by the repository owner'
+expect_not_merged squash
+end
+
+begin "an unreadable owner fails the feedback step closed, unmerged"
+am_case am-plan-noowner approved-at-plan "approved at plan 2026-11-04 — named verbatim in $AM_COMMENT" "$AM_APPEND"
+am_comment "## Plan (ticket-agent lane)
++- **2026-11-04 — (f): moved** (#12).
++$AM_LINE"
+must printf '1\n' >"$STATE/owner.rc"
+run_merge
+expect_rc 1
+expect_stderr 'feedback — FAILED'
+expect_stderr 'gh repo view for the owner exited 1'
+expect_not_merged squash
 end
 
 begin "an approved-at-plan amendment whose text differs from the plan's is refused, unmerged"
