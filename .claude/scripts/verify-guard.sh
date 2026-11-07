@@ -28,7 +28,8 @@
 # $CRAM_VERIFY_STATE_DIR (see STATE below; one directory for the whole machine, which
 # is what makes the cap machine-wide), holding an `owner` file of pid, the pid's
 # start time (a reused pid is not the holder; read under LC_ALL=C TZ=UTC so a
-# waiter in another locale or zone reads the same string), worktree and epoch. A waiting run says it is queued and names the holders.
+# waiter in another locale or zone reads the same string), worktree and epoch.
+# A waiting run says it is queued and names the holders.
 # A slot whose pid is dead, or alive with another start time, is stale and is
 # recovered. Recovery runs under a second mkdir lock, `recover.lock`, because
 # judging a slot stale and renaming it must not interleave with another waiter's
@@ -50,7 +51,7 @@
 #   the core count), CRAM_VERIFY_STATE_DIR, CRAM_VERIFY_POLL (seconds between
 #   attempts), CRAM_VERIFY_HEARTBEAT (seconds between "still queued" lines).
 # Exit: the command's code; 1 when it passed and the tree moved; 2 when the
-#       invocation was wrong.
+#       invocation was wrong or the tree could not be stamped before the run.
 #
 # The harness is verify-guard.test.sh.
 set -uo pipefail

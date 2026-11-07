@@ -602,7 +602,7 @@ begin "a stamp that fails while another git process holds the index lock is retr
 fresh_state
 reset_repo
 touch "$REPO/.git/index.lock"
-(sleep 0.5 && rm -f "$REPO/.git/index.lock") &
+(sleep 0.3 && rm -f "$REPO/.git/index.lock") &
 BG_PIDS="$BG_PIDS $!"
 guard 1 -- bash "$STUBS/pass.sh"
 expect_rc 0
