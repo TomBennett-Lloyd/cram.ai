@@ -210,7 +210,7 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    A lane that returns `BLOCKED` on a refused conflict resolution has stopped mid-rebase, or
    mid-merge on an eval-report branch, and pushes nothing more, which makes the worktree
    yours: finish that rebase or merge there — git only, under every rule
-   `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify, push the branch
+   `.claude/skills/review-loop/SKILL.md` step 5 states for it — the verify `.claude/agents/ticket-agent.md` rule 4 calls for (none after a clean merge), push the branch
    (forced after a rebase, plain after a merge), then run any fill the PR still owes per
    step 4 (#205).
 6. **Release**: PR merged, issue closed, no bounce open → post the lane's row on #624
