@@ -214,8 +214,9 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    waiting for it. A wedged agent (no report,
    no branch movement) gets the worktree and the issue inspected FIRST, then `TaskStop`, then
    a fresh `RESUME issue #n` dispatch — the new agent reconciles from
-   `git log origin/main..<branch>`, `git status`, the plan comment and any PR, and adopts
-   what is already done.
+   `git log origin/main..<branch>`, `git status`, the plan comment and any PR, adopts
+   what is already done, and checks the plan's Standing facts (`.claude/agents/ticket-agent.md`
+   rule 2).
 
    A dead lane is recognised, not diagnosed: the task shows no progress or an `ENOTFOUND` /
    stall-watchdog failure, its output file is a few hundred bytes, and `ps` shows no process
