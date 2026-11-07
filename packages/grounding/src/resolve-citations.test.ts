@@ -15,8 +15,8 @@ const verdictOf = (unit: ReturnType<typeof draft>, retrieved = [hive, comb]) => 
 describe('resolveCitations', () => {
   it('quotes each cited line from the stored slide, in citation order', () => {
     const unit = draft('Worker bees are male and comb cells are square.', [
-      line('l1/1', 2),
-      line('l1/2', 1),
+      line('l1/1', 'Worker bees are male.'),
+      line('l1/2', 'Bees build comb from square cells.'),
     ]);
     const quoted = answer(unit.text, [
       cite('l1/1', 'Worker bees are male.'),
@@ -36,7 +36,11 @@ describe('resolveCitations', () => {
       'Smoke calms the guards. It masks their alarm scent.\nWear a veil.',
     );
     const { resolved } = resolveCitations(
-      [draft('Smoke calms the guards.', [line('l2/1', 1)])],
+      [
+        draft('Smoke calms the guards.', [
+          line('l2/1', 'Smoke calms the guards. It masks their alarm scent.'),
+        ]),
+      ],
       [smoke],
     );
     expect(resolved[0]?.quotes).toEqual(['Smoke calms the guards. It masks their alarm scent.']);
@@ -47,24 +51,46 @@ describe('resolveCitations', () => {
   });
 
   it('withholds a citation to a slide that was not retrieved', () => {
-    expect(verdictOf(draft('Comb cells are square.', [line('l1/2', 1)]), [hive])).toBe(
+    expect(
+      verdictOf(
+        draft('Comb cells are square.', [line('l1/2', 'Bees build comb from square cells.')]),
+        [hive],
+      ),
+    ).toBe('dangling-citation');
+  });
+
+  it.each([
+    ['altered at its start', 'Xorker bees are male.'],
+    ['altered in its middle', 'Worker bees are mole.'],
+    ['altered at its end', 'Worker bees are male!'],
+    ['in another case', 'worker bees are male.'],
+    ['that is part of a line', 'Worker bees'],
+    ['that spans two lines', 'Worker bees are male. The queen is the colony’s only female.'],
+  ])('withholds a copy %s, since it equals no line of its slide', (_, copy) => {
+    expect(verdictOf(draft('Worker bees are male.', [line('l1/1', copy)]))).toBe(
       'dangling-citation',
     );
   });
 
-  it('withholds a line number the slide does not have, at either end', () => {
-    for (const n of [0, -1, 4]) {
-      expect(verdictOf(draft('Worker bees are male.', [line('l1/1', n)]))).toBe(
-        'dangling-citation',
-      );
-    }
-    expect(verdictOf(draft('Worker bees are male.', [line('l1/1', 3)]))).toBe('resolved');
+  it('withholds a copy of a line its slide holds twice, since it names neither', () => {
+    const repeated = slide('l1/3', 'Drones\nDrones never forage.', { title: 'Drones' });
+    expect(verdictOf(draft('Drones never forage.', [line('l1/3', 'Drones')]), [repeated])).toBe(
+      'dangling-citation',
+    );
+  });
+
+  it('reads whitespace runs in a copy as one space, and quotes the line as the slide holds it', () => {
+    const { resolved } = resolveCitations(
+      [draft('Worker bees are male.', [line('l1/1', '  Worker  bees\tare male. ')])],
+      [hive, comb],
+    );
+    expect(resolved[0]?.quotes).toEqual(['Worker bees are male.']);
   });
 
   it('withholds the whole unit when one citation fails, keeping the ones that resolved', () => {
     const unit = draft('Worker bees are male and comb cells are hexagonal.', [
-      line('l1/1', 2),
-      line('l1/2', 2),
+      line('l1/1', 'Worker bees are male.'),
+      line('l1/2', 'Bees build comb from hexagonal cells.'),
     ]);
     expect(resolveCitations([unit], [hive, comb]).withheld).toEqual([
       {
@@ -76,7 +102,7 @@ describe('resolveCitations', () => {
 
   it('looks a line up in, and checks it against, the same record when a source id repeats', () => {
     const { resolved } = resolveCitations(
-      [draft('x', [line('l1/1', 1)])],
+      [draft('x', [line('l1/1', 'bar')]), draft('y', [line('l1/1', 'foo')])],
       [slide('l1/1', 'foo'), slide('l1/1', 'bar')],
     );
     expect(resolved.map(({ quotes }) => quotes)).toEqual([['bar']]);
@@ -84,10 +110,10 @@ describe('resolveCitations', () => {
 
   it('keeps passing units in order and withholds the rest in order', () => {
     const units = [
-      draft('a', [line('l1/1', 1)]),
+      draft('a', [line('l1/1', 'Castes')]),
       draft('b', []),
-      draft('c', [line('l1/2', 1)]),
-      draft('d', [line('l9/9', 1)]),
+      draft('c', [line('l1/2', 'Bees build comb from square cells.')]),
+      draft('d', [line('l9/9', 'Castes')]),
     ];
     const { resolved, withheld } = resolveCitations(units, [hive, comb]);
     expect(resolved.map((r) => r.unit.text)).toEqual(['a', 'c']);

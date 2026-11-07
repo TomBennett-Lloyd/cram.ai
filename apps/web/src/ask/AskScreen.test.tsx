@@ -185,10 +185,10 @@ describe('AskScreen', () => {
   });
 
   it('names a dropped quote mark’s slide as missing when the reply lacks it', async () => {
-    const lost = { reason: 'dangling-citation', text: '[3]', sourceId: SourceId.parse('s9') };
+    const lost = { reason: 'dangling-citation', text: 'Drones.', sourceId: SourceId.parse('s9') };
     await askWith({ status: 200, body: { ...GROUNDED, withheld: [lost] } });
     const panel = answer().querySelector('details');
-    expect(panel?.querySelector('.withheld-text')?.textContent).toBe('[3]');
+    expect(panel?.querySelector('.withheld-text')?.textContent).toBe(lost.text);
     expect(panel?.querySelector('.citation-missing')?.textContent).toBe(SOURCE_MISSING);
     expect(panel?.querySelector('button')).toBeNull();
   });

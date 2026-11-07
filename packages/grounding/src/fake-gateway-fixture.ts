@@ -12,7 +12,7 @@ import { type Citation, type RetrievedSlide, SlideRecord, SourceId, type Unit } 
 import type { DraftUnit } from './generate-units';
 import type { SearchSentence } from './explain';
 import type { EntailmentScores } from './nli-verdict';
-import { type LineCitation, SlideLineNo } from './prompts/generation-prompt';
+import type { LineCitation } from './prompts/generation-prompt';
 import { type SentenceKind, sentenceKindRequest } from './prompts/sentence-kind-prompt';
 import { scoredPremises, slidePremise } from './premise';
 import { resolveCitations } from './resolve-citations';
@@ -89,9 +89,9 @@ export const cite = (id: string, quote: string): Citation => ({
   quote,
 });
 
-export const line = (id: string, n: number): LineCitation => ({
+export const line = (id: string, copy: string): LineCitation => ({
   sourceId: SourceId.parse(id),
-  line: SlideLineNo.parse(n),
+  line: copy,
 });
 
 export const draft = (text: string, citations: readonly LineCitation[]): DraftUnit => ({
@@ -104,13 +104,11 @@ export const emittedCitation = (
   citation: Citation,
   slides: readonly RetrievedSlide[],
 ): LineCitation => {
-  for (let n = 1; ; n += 1) {
-    const emitted = line(citation.sourceId, n);
-    const [looked] = resolveCitations([draft('', [emitted])], slides).resolved;
-    if (looked === undefined)
-      throw new Error(`fixture: "${citation.quote}" is no line of ${citation.sourceId}`);
-    if (looked.quotes[0] === citation.quote) return emitted;
-  }
+  const emitted = line(citation.sourceId, citation.quote);
+  const [looked] = resolveCitations([draft('', [emitted])], slides).resolved;
+  if (looked?.quotes[0] !== citation.quote)
+    throw new Error(`fixture: "${citation.quote}" is no line of ${citation.sourceId}`);
+  return emitted;
 };
 
 export const answer = (text: string, citations: readonly Citation[]): Unit => ({

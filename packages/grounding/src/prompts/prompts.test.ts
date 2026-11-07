@@ -53,18 +53,21 @@ describe.each(prompts)('the %s prompt', (_, build) => {
 });
 
 describe('generationRequest', () => {
-  it('shows each slide under its id, its lines numbered from 1, then the lecture’s title', () => {
+  it('shows each slide under its id, its lines one to a row, then the lecture’s title', () => {
     const user = summarised('Comb', [hive, comb]).messages[1]?.content ?? '';
     expect(user).toBe(
-      '<source id="l1/1">\n[1] Worker bees are male.\n</source>\n\n' +
-        '<source id="l1/2">\n[1] Bees build comb from square cells.\n</source>\n\n' +
+      '<source id="l1/1">\nWorker bees are male.\n</source>\n\n' +
+        '<source id="l1/2">\nBees build comb from square cells.\n</source>\n\n' +
         '<lecture>Comb</lecture>',
     );
   });
 
   it('bounds the units in the output schema and in the task line alike', () => {
     const request = summarised('The Hive', [hive], 2);
-    const unit = { text: 'Workers are male.', citations: [{ sourceId: 'l1/1', line: 1 }] };
+    const unit = {
+      text: 'Workers are male.',
+      citations: [{ sourceId: 'l1/1', line: 'Worker bees are male.' }],
+    };
     expect(request.output.schema.safeParse({ units: [unit, unit] }).success).toBe(true);
     expect(request.output.schema.safeParse({ units: [unit, unit, unit] }).success).toBe(false);
     expect(request.output.schema.safeParse({ units: [] }).success).toBe(false);
@@ -74,20 +77,26 @@ describe('generationRequest', () => {
     expect(request.messages[0].content).toMatch(/\bat most 2 units\b/);
   });
 
-  it('asks for no slide text to be copied, into a unit or a citation', () => {
-    expect(summarised('The Hive').messages[0].content).not.toMatch(
-      /\b(cop(y|ied|ying)|quot(e|es|ed|ing)|verbatim|word for word|exact(ly)?|character for character)\b/i,
+  it('asks for no slide text to be copied into a unit, and for the citation as a copy of a line', () => {
+    const rules = summarised('The Hive').messages[0].content;
+    expect(rules).not.toMatch(
+      /\b(quot(e|es|ed|ing)|verbatim|word for word|exact(ly)?|character for character)\b/i,
     );
+    const copying = rules
+      .split(/(?<=\.) /)
+      .filter((sentence) => /\bcop(y|ied|ying)\b/i.test(sentence));
+    expect(copying).toHaveLength(1);
+    expect(copying[0]).toMatch(/\bcitation\b/);
   });
 
-  it('numbers a slide’s non-blank lines in slideLines order: title, body, notes, captions', () => {
+  it('lists a slide’s non-blank lines in slideLines order: title, body, notes, captions', () => {
     const noted = slide('l1/3', 'Drones never forage.', {
       title: 'Castes',
       speakerNotes: 'Ask who feeds them.',
       imageCaptions: ['A drone at rest'],
     });
     expect(summarised('Castes', [noted]).messages[1]?.content).toBe(
-      '<source id="l1/3">\n[1] Castes\n[2] Drones never forage.\n[3] Ask who feeds them.\n[4] A drone at rest\n</source>\n\n' +
+      '<source id="l1/3">\nCastes\nDrones never forage.\nAsk who feeds them.\nA drone at rest\n</source>\n\n' +
         '<lecture>Castes</lecture>',
     );
   });

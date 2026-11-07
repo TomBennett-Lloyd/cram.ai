@@ -38,7 +38,7 @@ describe('explain at the deep depth', () => {
   it('cuts a contradicted sentence, names its slide, and shows the rest with its entailing slides', async () => {
     const result = await run(
       [
-        explained(TEXT, [line('l1/1', 1)]),
+        explained(TEXT, [line('l1/1', MALE)]),
         verified(
           scored(FIRST, retrieved, CONTRADICTED, NEUTRAL),
           scored(SQUARE, retrieved, NEUTRAL, ENTAILED),
@@ -63,7 +63,7 @@ describe('explain at the deep depth', () => {
   it('keeps a quote in a kept sentence and names its slide among the sources', async () => {
     const result = await run(
       [
-        explained(TEXT, [line('l1/1', 1)]),
+        explained(TEXT, [line('l1/1', MALE)]),
         verified(
           scored(FIRST, retrieved, ENTAILED, NEUTRAL),
           scored(SQUARE, retrieved, NEUTRAL, NEUTRAL),
@@ -80,7 +80,10 @@ describe('explain at the deep depth', () => {
 
   it('names a quoted slide among the sources when another slide entails its sentence', async () => {
     const result = await run(
-      [explained(FIRST, [line('l1/1', 1)]), verified(scored(FIRST, retrieved, NEUTRAL, ENTAILED))],
+      [
+        explained(FIRST, [line('l1/1', MALE)]),
+        verified(scored(FIRST, retrieved, NEUTRAL, ENTAILED)),
+      ],
       deep(),
     );
     expect(result).toMatchObject({
@@ -164,7 +167,7 @@ describe('explain at the deep depth', () => {
   it('puts a dropped pointer before the sentences it withholds', async () => {
     const result = await run(
       [
-        explained(SQUARE, [line('l1/2', 9)]),
+        explained(SQUARE, [line('l1/2', 'Bees build comb from round cells.')]),
         verified(scored(SQUARE, retrieved, NEUTRAL, NEUTRAL)),
         kindsRecording([SQUARE], retrieved, ['course-claim']),
       ],
@@ -173,7 +176,11 @@ describe('explain at the deep depth', () => {
     expect(result).toEqual({
       status: 'not-covered',
       withheld: [
-        { reason: 'dangling-citation', text: '[9]', sourceId: 'l1/2' },
+        {
+          reason: 'dangling-citation',
+          text: 'Bees build comb from round cells.',
+          sourceId: 'l1/2',
+        },
         { reason: 'ungrounded', text: SQUARE },
       ],
       context: contextOf(),

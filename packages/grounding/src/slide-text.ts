@@ -14,7 +14,7 @@ export const slideText = (record: QuotableFields): string =>
 
 const nonBlank = (text: string): boolean => /\S/.test(text);
 
-/** The lines a citation names by number, counted from 1: the generator is shown these and a quote is looked up in them (#367). */
+/** The lines the generator is shown, one to a row, and the lines a citation's copy is looked up in (#367, #481). */
 export const slideLines = (record: SlideRecord): readonly string[] =>
   slideFields(record)
     .flatMap(({ text }) => text.split('\n'))

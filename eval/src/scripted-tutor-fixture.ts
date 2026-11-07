@@ -31,7 +31,7 @@ const sourcesOf = (prompt: string): readonly Source[] =>
   [...prompt.matchAll(/<source id="([^"]+)">\n([\s\S]*?)\n<\/source>/g)].map(([, id, text]) => ({
     id: id ?? '',
     text: text ?? '',
-    line: (text ?? '').split('\n')[CITED_LINE - 1]?.replace(/^\[\d+\] /, '') ?? '',
+    line: (text ?? '').split('\n')[CITED_LINE - 1] ?? '',
   }));
 
 /** Answers from each source sharing a long word with the question, or from every source when `eager`. */
@@ -51,14 +51,14 @@ export const tutor =
               ? null
               : {
                   text: from.map(({ line }) => line).join(' '),
-                  quotes: from.map(({ id }) => ({ sourceId: id, line: CITED_LINE })),
+                  quotes: from.map(({ id, line }) => ({ sourceId: id, line })),
                 },
         });
       }
       case 'units': {
         const units = sourcesOf(prompt).map(({ id, line }) => ({
           text: line,
-          citations: [{ sourceId: id, line: CITED_LINE }],
+          citations: [{ sourceId: id, line }],
         }));
         return content({ units });
       }

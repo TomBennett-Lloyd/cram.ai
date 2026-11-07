@@ -31,13 +31,13 @@ const retrieved = [
 const male = cite('l1/1', 'Worker bees are male.');
 const square = cite('l1/2', 'Bees build comb from square cells.');
 const queen = cite('l1/1', 'The queen is the colony’s only female.');
-/** Past every fixture slide's last line, so the citation names a line its slide does not have. */
-const NO_SUCH_LINE = 99;
+/** A copy equal to no fixture slide's line, so the citation names a line its slide does not have. */
+const NO_SUCH_LINE = 'No slide says this.';
 const PARTIAL_TEXT = 'Workers are male. They forage at night.';
 
 interface Reply {
   text: string;
-  citations: (Citation | { sourceId: string; line: number })[];
+  citations: (Citation | { sourceId: string; line: string })[];
 }
 /** The model's reply, each quoted citation as `emittedCitation` emits it. */
 const generatedFrom =

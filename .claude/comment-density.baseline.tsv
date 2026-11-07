@@ -166,7 +166,7 @@ packages/grounding/src/nli-verdict.ts	769
 packages/grounding/src/premise.ts	555
 packages/grounding/src/prompt-budget.ts	5000
 packages/grounding/src/prompts/explanation-prompt.ts	526
-packages/grounding/src/prompts/generation-prompt.ts	200
+packages/grounding/src/prompts/generation-prompt.ts	0
 packages/grounding/src/prompts/rewrite-prompt.ts	526
 packages/grounding/src/prompts/sentence-kind-prompt.ts	333
 packages/grounding/src/prompts/source-block.ts	909

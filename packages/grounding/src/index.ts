@@ -40,7 +40,6 @@ export {
   type GenerationTask,
   generationRequest,
   LineCitation,
-  SlideLineNo,
   type SummaryTask,
 } from './prompts/generation-prompt';
 export { explanationRequest, GeneratedExplanation } from './prompts/explanation-prompt';

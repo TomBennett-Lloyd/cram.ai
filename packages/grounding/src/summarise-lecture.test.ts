@@ -28,10 +28,11 @@ const task: SummaryTask = {
 const workers = slide('l1/1', 'Worker bees are male.');
 const comb = slide('l1/2', 'Bees build comb from square cells.', { slideNo: SlideNo.parse(2) });
 const drones = slide('l1/3', 'Drones never forage.', { slideNo: SlideNo.parse(3) });
+const bodyOf = new Map([workers, comb, drones].map((s) => [String(s.sourceId), s.record.body]));
 
 const unitCiting = (text: string, sourceId: string) => ({
   text,
-  citations: [{ sourceId, line: 1 }],
+  citations: [{ sourceId, line: bodyOf.get(sourceId) }],
 });
 const replies = (slides: readonly RetrievedSlide[], ...units: object[]): Recording =>
   generatorReplies(generationRequest(task, slides), { units });
@@ -148,7 +149,7 @@ describe('summariseLecture', () => {
         [
           replies([workers], unitCiting(male, 'l1/1'), {
             text: stray,
-            citations: [{ sourceId: 'l1/1', line: 9 }],
+            citations: [{ sourceId: 'l1/1', line: 'No slide says this.' }],
           }),
           judged(male, 'Worker bees are male.', ENTAILED),
         ],

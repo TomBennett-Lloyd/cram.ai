@@ -41,7 +41,7 @@ describe('explain at the light depth', () => {
     const { search, asked } = scriptedSearch(candidates);
     const result = await run(
       [
-        explained(TEXT, [line('l1/1', 1)]),
+        explained(TEXT, [line('l1/1', MALE)]),
         verified(
           scored(FIRST, [comb, hive], NEUTRAL, NEUTRAL),
           scored(SQUARE, [winter, comb], NEUTRAL, ENTAILED),
@@ -72,7 +72,7 @@ describe('explain at the light depth', () => {
     const { search, asked } = scriptedSearch({ [quoted]: [comb], [SQUARE]: [winter] });
     const result = await run(
       [
-        explained(`${quoted} ${SQUARE}`, [line('l1/1', 1)]),
+        explained(`${quoted} ${SQUARE}`, [line('l1/1', MALE)]),
         verified(
           scored(quoted, [comb, hive], NEUTRAL, ENTAILED),
           scored(SQUARE, [winter], NEUTRAL),
@@ -109,7 +109,10 @@ describe('explain at the light depth', () => {
     const { search } = scriptedSearch({ [SQUARE]: [comb] });
     const result = await run(
       [
-        explained(SQUARE, [line('l1/1', 2), line('l1/2', 9)]),
+        explained(SQUARE, [
+          line('l1/1', 'The queen is the colony’s only female.'),
+          line('l1/2', 'Bees build comb from round cells.'),
+        ]),
         verified(scored(SQUARE, [comb], NEUTRAL)),
       ],
       { depth: 'light', searchSentence: search },
@@ -128,7 +131,11 @@ describe('explain at the light depth', () => {
           text: 'The queen is the colony’s only female.',
           sourceId: 'l1/1',
         },
-        { reason: 'dangling-citation', text: '[9]', sourceId: 'l1/2' },
+        {
+          reason: 'dangling-citation',
+          text: 'Bees build comb from round cells.',
+          sourceId: 'l1/2',
+        },
       ],
       slides: retrieved,
       context: contextOf(),
@@ -247,7 +254,7 @@ describe('explain’s context', () => {
 
   it('then drops slides from the bottom, never the last, and a pointer to a dropped slide dangles', async () => {
     const result = await run(
-      [explained(MALE, [line('l1/2', 1)], [hive]), verified()],
+      [explained(MALE, [line('l1/2', comb.record.body)], [hive]), verified()],
       light(),
       retrieved,
       [hiveSummary],
@@ -265,7 +272,7 @@ describe('explain’s context', () => {
   it('drops a pointer to a slide the budget dropped, though retrieval returned it', async () => {
     const [combLine] = comb.record.body.split('\n');
     const result = await run(
-      [explained(combLine ?? '', [line('l1/2', 1)], [hive]), verified()],
+      [explained(combLine ?? '', [line('l1/2', comb.record.body)], [hive]), verified()],
       light(),
       retrieved,
       [],

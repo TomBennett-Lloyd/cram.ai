@@ -4,12 +4,13 @@ import { resolveQuotes } from './resolve-quotes';
 
 const hive = slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.');
 const comb = slide('l1/2', 'Bees build comb from square cells.');
-const retrieved = [hive, comb];
+const repeated = slide('l1/3', 'Drones\nDrones never forage.', { title: 'Drones' });
+const retrieved = [hive, comb, repeated];
 
 describe('resolveQuotes', () => {
   it('keeps a pointer whose line the text repeats, as the looked-up line', () => {
     const text = 'The slides put it plainly: "Worker bees are male." That surprises people.';
-    expect(resolveQuotes(text, [line('l1/1', 1)], retrieved)).toEqual({
+    expect(resolveQuotes(text, [line('l1/1', 'Worker bees are male.')], retrieved)).toEqual({
       quotes: [{ sourceId: 'l1/1', quote: 'Worker bees are male.' }],
       withheld: [],
     });
@@ -17,14 +18,20 @@ describe('resolveQuotes', () => {
 
   it('reads whitespace runs in the text as one space, and nothing else', () => {
     const spaced = 'Worker   bees\nare male.';
-    expect(resolveQuotes(spaced, [line('l1/1', 1)], retrieved).quotes).toHaveLength(1);
+    expect(
+      resolveQuotes(spaced, [line('l1/1', 'Worker bees are male.')], retrieved).quotes,
+    ).toHaveLength(1);
     const cased = 'worker bees are male.';
-    expect(resolveQuotes(cased, [line('l1/1', 1)], retrieved).quotes).toEqual([]);
+    expect(resolveQuotes(cased, [line('l1/1', 'Worker bees are male.')], retrieved).quotes).toEqual(
+      [],
+    );
   });
 
   it('withholds a pointer to a line the text does not repeat, with that line as its text', () => {
     const text = 'Workers are male.';
-    expect(resolveQuotes(text, [line('l1/1', 2)], retrieved)).toEqual({
+    expect(
+      resolveQuotes(text, [line('l1/1', 'The queen is the colony’s only female.')], retrieved),
+    ).toEqual({
       quotes: [],
       withheld: [
         {
@@ -37,13 +44,14 @@ describe('resolveQuotes', () => {
   });
 
   it.each([
-    ['past the slide’s last line', line('l1/2', 2), '[2]'],
-    ['numbered zero', line('l1/2', 0), '[0]'],
-    ['on a slide not retrieved', line('l9/9', 1), '[1]'],
-  ])('withholds a pointer %s, shown as the prompt numbers it', (_, pointer, text) => {
-    expect(resolveQuotes('Bees build comb from square cells.', [pointer], retrieved)).toEqual({
+    ['altered by one character', line('l1/2', 'Bees build comb from square cells')],
+    ['equal to two lines of its slide', line('l1/3', 'Drones')],
+    ['on a slide not retrieved', line('l9/9', 'Worker bees are male.')],
+  ])('withholds a pointer %s, with the copy as its text', (_, pointer) => {
+    const text = 'Drones. Bees build comb from square cells. Worker bees are male.';
+    expect(resolveQuotes(text, [pointer], retrieved)).toEqual({
       quotes: [],
-      withheld: [{ reason: 'dangling-citation', text, sourceId: pointer.sourceId }],
+      withheld: [{ reason: 'dangling-citation', text: pointer.line, sourceId: pointer.sourceId }],
     });
   });
 
@@ -51,7 +59,11 @@ describe('resolveQuotes', () => {
     const text = 'Worker bees are male. Bees build comb from square cells.';
     const resolved = resolveQuotes(
       text,
-      [line('l1/2', 1), line('l1/1', 2), line('l1/1', 1)],
+      [
+        line('l1/2', 'Bees build comb from square cells.'),
+        line('l1/1', 'The queen is the colony’s only female.'),
+        line('l1/1', 'Worker bees are male.'),
+      ],
       retrieved,
     );
     expect(resolved.quotes.map(({ sourceId }) => sourceId)).toEqual(['l1/2', 'l1/1']);

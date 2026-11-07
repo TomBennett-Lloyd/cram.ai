@@ -1,4 +1,4 @@
-import { resolveCitations, SlideLineNo, slideLines } from '@cram/grounding';
+import { resolveCitations, slideLines } from '@cram/grounding';
 import { CourseId, LectureId, SourceId } from '@cram/shared';
 import { getDocumentProxy } from 'unpdf';
 import { describe, expect, it } from 'vitest';
@@ -48,9 +48,7 @@ describe('ingestPdf on a slide laid out by position (#567)', () => {
           citations: [
             {
               sourceId,
-              line: SlideLineNo.parse(
-                lines.indexOf('• Example: a sentence the tutor should be able to quote.') + 1,
-              ),
+              line: '• Example: a sentence the tutor should be able to quote.',
             },
           ],
         },
