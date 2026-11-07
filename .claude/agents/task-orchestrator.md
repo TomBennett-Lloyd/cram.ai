@@ -8,7 +8,7 @@ description: Owns one small same-surface batch of GitHub issues, full lifecycle
   merges; the top-level session owns merging.
 model: opus
 effort: medium
-tools: Bash, Read, Edit, Write, Agent, Skill, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
+tools: Bash, Read, Edit, Write, Agent, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
@@ -166,7 +166,8 @@ your issue's comments; the top-level never posts them for you.
    chunk id is not unique across concurrent tickets, and on 2026-08-10 one orchestrator's
    ledger was overwritten by another's under the same name while an implementer read a
    foreign verify log and nearly banked its `rc=0`. (b) **Maintain GitHub comments
-   fetch-modify-push** — re-fetch the comment body from the API, edit that, push it back —
+   fetch-modify-push** — re-fetch the comment body from the API, edit that, push it back
+   (`.claude/scripts/edit-comment.sh`; `docs/standards/evidence.md` § Host conventions member 8) —
    never upload a body from a shared path you wrote earlier, because between the write and
    the upload the file may be someone else's. The `verify root:` line and a re-fetch are
    what turn "my file" from an assumption into a fact.

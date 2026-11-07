@@ -4,6 +4,6 @@ claim: a --rebase PR that classifies HUMAN is refused at merge-pr.sh's classify 
 cite: .claude/scripts/merge-pr.sh § classify
 sweep: merge-pr\.sh(?: §|'s) classify|PR (?:that )?classifies HUMAN|(?i:HUMAN batch[^.;]{0,60}refus)
 carrier: .claude/workflow.json
-carrier: .claude/skills/run-issue/SKILL.md
+carrier: .claude/skills/run-issue/batch-lane.md
 carrier: .claude/scripts/merge-pr.test.sh
 excluded: docs/review-feedback.md

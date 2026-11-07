@@ -572,7 +572,7 @@ if [ -n "$human_hits" ]; then
 fi
 
 curated_history_ok() { # -> 0, or 1 with the reason on stdout
-  # .claude/skills/run-issue/SKILL.md step 4 makes --rebase conditional on this:
+  # .claude/skills/run-issue/batch-lane.md step 4 makes --rebase conditional on this:
   # one commit per surviving member, each naming its member issue. A script that
   # took the rebase branch without checking would merge batches on terms the repo
   # forbids, so the check travels with the branch that needs it.
@@ -636,7 +636,7 @@ if [ "$already_merged" = "0" ]; then
   # Ahead of the curated-history check, so that a HUMAN batch carrying its
   # verdict commit is told the rule rather than a commit count; a batch whose
   # verdict was folded by hand would pass that count (#105). Naming the member is
-  # the merge owner's FIX bounce (.claude/skills/run-issue/SKILL.md step 4). The
+  # the merge owner's FIX bounce (.claude/skills/run-issue/batch-lane.md step 4). The
   # sites stating that this guard is the refusal: .claude/ledgers/human-batch-refusal.ledger.
   if [ "$merge_method" = "--rebase" ] && [ "$is_human" = "1" ]; then
     fail 'classify' "a --rebase PR classifies HUMAN (humanAlways: $human_hits), and a batch never carries a humanAlways path (.claude/workflow.json → orchestration.routeRule, #56) — bounce the batch to drop the member whose footprint reaches $human_hits, which runs as its own ticket-agent lane, or pass --method squash if this PR is a single issue"
@@ -1312,7 +1312,7 @@ EOF
 # because a watch looked green" — it is NOT unconditional across merge methods.
 #
 # A --rebase batch never runs it. `gh pr update-branch` writes a MERGE COMMIT, and
-# .claude/skills/run-issue/SKILL.md's batch lane step 4 says why that is fatal there: a
+# .claude/skills/run-issue/batch-lane.md step 4 says why that is fatal there: a
 # merge commit breaks the one-commit-per-member invariant and blocks rebase-merge
 # outright, so a batch that is BEHIND or conflicted gets a "curate onto latest
 # main" bounce to the branch's owner instead (.claude/agents/task-orchestrator.md
@@ -1652,8 +1652,8 @@ elif [ "$already_merged" = "0" ]; then
   stray_reason=$(stray_closes_ok) || fail 'merge' "$stray_reason, on head $pr_head_sha"
 
   # The bounce is prescribed only for the two states it is the repair for. The
-  # rule is scoped that way where it is stated — .claude/skills/run-issue/SKILL.md's
-  # batch lane step 4 says "a batch that is BEHIND or conflicted" — and the scoping
+  # rule is scoped that way where it is stated — .claude/skills/run-issue/batch-lane.md
+  # step 4 says "a batch that is BEHIND or conflicted" — and the scoping
   # is load-bearing rather than pedantic: BLOCKED (branch protection), UNKNOWN
   # (GitHub still computing) and DRAFT all reach this point too. The residual, so
   # nobody rediscovers it as a bug: a batch that is
