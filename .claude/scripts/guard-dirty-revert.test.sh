@@ -210,6 +210,12 @@ refuses $'cat <<-EOF\n\tbody\n\tEOF\ngit checkout -- dirty.txt' dirty.txt
 refuses $'cat <<<x\ngit checkout -- dirty.txt' dirty.txt
 refuses $'cat << "EOF"\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
 refuses $'cat <<EOF >/dev/null\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
+# A delimiter ends at `;&|()` and `\EOF` is `EOF`: the shared scanner (.claude/hooks/shell-scan.cjs,
+# #692) reads these as the shell does; the copy it replaced swallowed the text after them.
+refuses $'cat <<EOF; git checkout -- dirty.txt\nbody\nEOF' dirty.txt
+refuses $'cat <<EOF|wc\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
+refuses $'cat <<\\EOF\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
+refuses $'(cat <<EOF)\nbody\nEOF\ngit checkout -- dirty.txt' dirty.txt
 passes 'git commit -m "git checkout -- dirty.txt"'
 passes $'git commit -m "$(cat <<\'EOF\'\n#1: drop the old advice "revert it (git checkout -- dirty.txt)"\nEOF\n)"'
 passes $'git commit -m "$(cat <<\'EOF\'\n#1: a 6" ruler\ngit restore dirty.txt was the bad revert\nEOF\n)"'

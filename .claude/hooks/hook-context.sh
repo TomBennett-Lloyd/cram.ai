@@ -70,6 +70,20 @@ hook_require_tools() {
   [ "$missing" = "0" ]
 }
 
+# The lexical shell scanner the command-shape guards load (shell-scan.cjs's header owns what it
+# reads). A test seam like HOOK_NODE_CMD: the harness points it at a file that is missing.
+: "${HOOK_SHELL_SCAN:=$(dirname -- "${BASH_SOURCE[0]}")/shell-scan.cjs}"
+
+# hook_require_scanner <hook-name> <what was not checked> -> 0 when the scanner is readable.
+# A guard that cannot load it cannot judge, so the miss is loud and the caller exits 1.
+hook_require_scanner() {
+  local hook="$1"
+  shift
+  [ -r "$HOOK_SHELL_SCAN" ] && return 0
+  echo "$hook: could not read the shell scanner $HOOK_SHELL_SCAN — $* was not checked for this call." >&2
+  return 1
+}
+
 # read_hook_event -> the hook event JSON from stdin, or empty when there is none.
 #
 # The `-t 0` guard is not defensiveness about the real caller — Claude Code always
