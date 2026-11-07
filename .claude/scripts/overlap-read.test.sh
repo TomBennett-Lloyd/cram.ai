@@ -134,6 +134,49 @@ expect_stderr "origin/nope does not resolve"
 read_overlap origin/h
 expect_rc 2
 expect_stderr "usage:"
+read_overlap origin/h h extra
+expect_rc 2
+expect_stderr "usage:"
+read_overlap origin/h nope
+expect_rc 2
+expect_stderr "nope does not resolve"
+end
+
+# ==========================================================================================
+begin "a path that only contains a log's name is not a log"
+fixture nearmiss
+printf 'base\n' >"$REPO/docs/tech-debt.md2"
+must git -C "$REPO" add -A
+must git -C "$REPO" commit --quiet -m "near-miss paths"
+must git -C "$REPO" update-ref refs/remotes/origin/main main
+branch r docs/tech-debt.md2
+branch h docs/tech-debt.md2
+read_overlap origin/r h
+expect_rc 0
+expect_stdout "adds docs/tech-debt.md2"
+end
+
+# ==========================================================================================
+begin "a merge-tree failure (unrelated histories) is no verdict"
+fixture unrelated
+branch r a.txt
+must git -C "$REPO" switch --quiet --orphan h
+must git -C "$REPO" commit --quiet --allow-empty -m orphan
+read_overlap origin/r h
+expect_rc 2
+expect_stderr "exited"
+end
+
+# ==========================================================================================
+begin "no APPEND_ONLY_LOGS to read is no verdict"
+fixture nologs
+branch r a.txt
+branch h a.txt
+must mkdir "$TMP_ROOT/bare-scripts"
+must cp "$SUBJECT" "$TMP_ROOT/bare-scripts/overlap-read.sh"
+capture -C "$REPO" bash "$TMP_ROOT/bare-scripts/overlap-read.sh" origin/r h
+expect_rc 2
+expect_stderr "found no APPEND_ONLY_LOGS"
 end
 
 finish
