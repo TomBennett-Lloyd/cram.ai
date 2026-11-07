@@ -3,7 +3,7 @@
 # points of non-blank lines (5000 = 50.00%). A ratio may fall, never
 # rise. Regenerate with:
 #     bash .claude/scripts/check-comment-density.sh --ratchet
-apps/server/src/ask-course.ts	50
+apps/server/src/ask-course.ts	48
 apps/server/src/compose-server.ts	330
 apps/server/src/course-file.ts	535
 apps/server/src/course-repair.ts	350

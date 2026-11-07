@@ -1,4 +1,4 @@
-import type { EntailRequest } from '@cram/gateway';
+import type { ChatRequest, ChatResult, EntailRequest } from '@cram/gateway';
 import type { AskTurn } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { explain } from './explain';
@@ -19,6 +19,7 @@ import {
 import { fakeGateway, NEUTRAL, scriptedSearch } from './fake-gateway-fixture';
 import { PROVISIONAL_NLI_THRESHOLDS } from './nli-verdict';
 import { scoredPremises, slidePremise } from './premise';
+import { requestTokens } from './prompt-budget';
 import { explanationRequest, turnBlock } from './prompts/explanation-prompt';
 import { sourceBlock, summaryBlock } from './prompts/source-block';
 
@@ -102,6 +103,34 @@ describe('explain with carried turns', () => {
         sources: ['l1/2', 'l5/6'],
       },
     });
+  });
+
+  it('counts the turns in the fixed cost, so the prompt sent stays within the budget', async () => {
+    const budget =
+      requestTokens(explanationRequest(QUESTION, contextOf(retrieved, [hiveSummary]), TURNS)) - 1;
+    const sent: ChatRequest<unknown>[] = [];
+    const { generator, verifier } = fakeGateway([]);
+    const chat = <T>(request: ChatRequest<T>): Promise<ChatResult<T>> => {
+      sent.push(request);
+      return Promise.resolve({
+        status: 'backend-failed',
+        cause: 'request-error',
+        reason: 'captured',
+      });
+    };
+    const result = await explain(
+      { question: QUESTION, turns: [...TURNS] },
+      { retrieved, summaries: [hiveSummary] },
+      { depth: 'light', searchSentence: scriptedSearch({}).search },
+      {
+        gateway: { generator: { ...generator, chat }, verifier },
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+        budget,
+      },
+    );
+    expect(result.context.summaries).toEqual([]);
+    expect(sent.map(requestTokens).every((used) => used <= budget)).toBe(true);
+    expect(sent).toHaveLength(1);
   });
 
   it('sends today’s request for a new thread', () => {

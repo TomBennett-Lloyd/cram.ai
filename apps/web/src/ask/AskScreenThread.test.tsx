@@ -104,6 +104,18 @@ describe('AskScreen’s thread', () => {
     expect(turnsSent(1)).toEqual([]);
   });
 
+  it('drops a reply that lands after New question was pressed', async () => {
+    let land: (reply: Reply) => void = () => undefined;
+    const { ask } = thread([new Promise<Reply>((resolve) => (land = resolve))]);
+    await ask('What are drones?');
+    fireEvent.click(screen.getByRole('button', { name: NEW_QUESTION }));
+    await act(async () => {
+      land(GROUNDED_REPLY);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(exchanges()).toEqual([]);
+  });
+
   it('shows a pending answer under its question, the earlier exchange still shown', async () => {
     const { ask } = thread([GROUNDED_REPLY, new Promise<Reply>(() => undefined)]);
     await ask('What are drones?');

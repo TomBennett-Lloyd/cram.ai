@@ -33,6 +33,21 @@ const answered = async (page: Page, question = GROUNDED_QUESTION) => {
   return card;
 };
 
+/** `docs/standards/design.md` rule 11: Ask and New question each disable or remove the button pressed, and the next act is typing. */
+test('a keyboard reader who presses Ask or New question lands in the textbox', async ({ page }) => {
+  await stubApi(page);
+  await page.goto('/#/courses/bio');
+  const textbox = page.getByRole('textbox', { name: 'Question' });
+  await textbox.fill(GROUNDED_QUESTION);
+  await page.getByRole('button', { name: 'Ask' }).focus();
+  await page.keyboard.press('Space');
+  await expect(textbox).toBeFocused();
+  await expect(page.locator('.exchange .explanation-text')).toHaveCount(1);
+  await page.getByRole('button', { name: NEW_QUESTION }).focus();
+  await page.keyboard.press('Enter');
+  await expect(textbox).toBeFocused();
+});
+
 test('a keyboard reader sees the ring on a source number', async ({ page }) => {
   await answered(page);
   await page.getByRole('button', { name: NEW_QUESTION }).focus();

@@ -117,7 +117,7 @@ describe('POST /courses/:id/ask, a follow-up', () => {
       explanation: { text: ANSWER },
       searched: STANDALONE,
     });
-    expect(spy.embedded).toEqual([STANDALONE, ANSWER]);
+    expect(spy.embedded).toEqual([FOLLOW_UP, STANDALONE, ANSWER]);
     const [rewrite, context, ...rest] = askLogs(server);
     expect(rewrite).toEqual({ operation: 'ask rewrite', courseId: 'bio', outcome: 'rewritten' });
     expect(context?.operation).toBe('ask context');
@@ -137,7 +137,7 @@ describe('POST /courses/:id/ask, a follow-up', () => {
     spy.embedded.length = 0;
     const reply = await askBio(server, FOLLOW_UP, TURNS);
     expect(reply.json).not.toHaveProperty('searched');
-    expect(spy.embedded[0]).toBe(FOLLOW_UP);
+    expect(spy.embedded).toEqual([FOLLOW_UP, FOLLOW_UP, ANSWER]);
     expect(askLogs(server)[0]).toEqual({
       operation: 'ask rewrite',
       courseId: 'bio',
@@ -193,6 +193,15 @@ describe('POST /courses/:id/ask, a follow-up', () => {
       courseId: 'bio',
       outcome: 'over-length',
     });
+  });
+
+  it('refuses an over-length follow-up as it refuses a first question, before any rewrite', async () => {
+    const server = await hiveCourse(() => [], new ShortEmbedder(4));
+    const reply = await askBio(server, 'And what do the drones do all day long?', TURNS);
+    expect(reply.status).toBe(422);
+    expect(reply.json).toEqual({ status: 'question-over-length', maxInputTokens: 4 });
+    expect(askLogs(server)).toEqual([]);
+    expect(readers.opened).toBe(0);
   });
 
   it('asks a question with no turns exactly as a new thread, with no rewrite', async () => {

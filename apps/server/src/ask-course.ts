@@ -85,7 +85,11 @@ const sentenceSearch =
   };
 
 type Asked =
-  | { readonly status: 'over-length'; readonly maxInputTokens: number }
+  | {
+      readonly status: 'over-length';
+      readonly maxInputTokens: number;
+      readonly rewriteOverLength: boolean;
+    }
   | {
       readonly status: 'asked';
       readonly result: Awaited<ReturnType<typeof ask>>;
@@ -127,7 +131,7 @@ const contextOutcome = (
   `${String(requestTokens(explanationRequest(question, context, turns)))} prompt tokens, ${String(context.leftOut.length)} left out, ${String(turns.length)} turns carried, ${String(dropped)} turns dropped`;
 
 const rewriteOutcome = (asked: Asked, kept: boolean): string => {
-  if (asked.status === 'asked' && asked.rewriteOverLength) return 'over-length';
+  if (asked.rewriteOverLength) return 'over-length';
   return kept ? 'kept' : 'rewritten';
 };
 
@@ -142,6 +146,11 @@ export const askCourse = async (
 ): Promise<AskOutcome> => {
   if (!courseExists(deps.files, courseId)) return { status: 'no-such-course' };
   const { carried, dropped } = carriedTurns(request.turns);
+  if (carried.length > 0) {
+    const typed = await embedQuestion(deps.gateway.embedder, request.question);
+    if (typed.status === 'over-length')
+      return { status: 'question-over-length', maxInputTokens: typed.maxInputTokens };
+  }
   const rewrite =
     carried.length === 0
       ? undefined

@@ -1,5 +1,5 @@
 import type { CourseId } from '@cram/shared';
-import { type SubmitEvent, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 import { useApi } from '../api/api-context';
 import { failureMessage, NEW_QUESTION, PENDING } from '../copy';
 import { Failed, Pending } from '../shell/async-states';
@@ -29,16 +29,19 @@ export const AskScreen = ({ courseId }: { readonly courseId: CourseId }) => {
   const { exchanges, ask, reset } = useThread(useApi(), courseId);
   const [question, setQuestion] = useState('');
   const [open, setOpen] = useState<CitedSlide | null>(null);
+  const field = useRef<HTMLInputElement>(null);
   const onSubmit = (event: SubmitEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (question.trim() === '') return;
     ask(question);
     setQuestion('');
+    field.current?.focus();
   };
   return (
     <main className="screen">
       <form className="ask-form" onSubmit={onSubmit}>
         <input
+          ref={field}
           aria-label="Question"
           name="question"
           autoComplete="off"
@@ -56,6 +59,7 @@ export const AskScreen = ({ courseId }: { readonly courseId: CourseId }) => {
             onClick={() => {
               reset();
               setQuestion('');
+              field.current?.focus();
             }}
           >
             {NEW_QUESTION}
