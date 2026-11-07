@@ -320,6 +320,26 @@ expect_not_stdout "verify: queued"
 expect_stdout "stub ran"
 end
 
+begin "a dead pid whose start time reads empty (the same as the live-check's own answer for it) is still stale"
+fresh_state
+reset_repo
+fake_slot 1 "$(dead_pid)" ""
+guard 1 -- bash "$STUBS/pass.sh"
+expect_rc 0
+expect_stdout "recovered a stale slot"
+expect_not_stdout "verify: queued"
+end
+
+begin "an owner file naming a pid that is not a whole number (-1 signals every process) is stale"
+fresh_state
+reset_repo
+fake_slot 1 "-1" ""
+guard 1 -- bash "$STUBS/pass.sh"
+expect_rc 0
+expect_stdout "recovered a stale slot"
+expect_not_stdout "verify: queued"
+end
+
 begin "a slot whose pid is alive with another start time (pid reuse) is recovered"
 fresh_state
 reset_repo
@@ -379,19 +399,24 @@ expect_rc 0
 [ "$(sed -n 1p "$STATE/verify-slots/slot-1/owner")" = "$$" ] || bad "the owner file was not left as the other process wrote it"
 end
 
-begin "SIGTERM to the guard lets the command finish, then releases the slot and exits 143"
-fresh_state
-reset_repo
-rm -f "$TMP_ROOT/started-t" "$TMP_ROOT/release-t"
-guard_bg t 1 -- bash "$STUBS/hold.sh" t
-pid_t=$BG_PID
-wait_for "$TMP_ROOT/started-t" || bad "holder t never started"
-kill -TERM "$pid_t"
-touch "$TMP_ROOT/release-t"
-wait "$pid_t"
-rc_t=$?
-[ "$rc_t" = "143" ] || bad "expected exit 143 after SIGTERM, got $rc_t"
-[ "$(slot_dirs)" = "0" ] || bad "the slot was left behind after SIGTERM"
+begin "SIGTERM and SIGHUP let the command finish, then release the slot and exit 143 and 129"
+for pair in "TERM 143" "HUP 129"; do
+  read -r sig want <<<"$pair"
+  case_ctx="SIG$sig"
+  fresh_state
+  reset_repo
+  rm -f "$TMP_ROOT/started-t" "$TMP_ROOT/release-t"
+  guard_bg t 1 -- bash "$STUBS/hold.sh" t
+  pid_t=$BG_PID
+  wait_for "$TMP_ROOT/started-t" || bad "holder t never started"
+  kill -"$sig" "$pid_t"
+  touch "$TMP_ROOT/release-t"
+  wait "$pid_t"
+  rc_t=$?
+  [ "$rc_t" = "$want" ] || bad "expected exit $want after SIG$sig, got $rc_t"
+  [ "$(slot_dirs)" = "0" ] || bad "the slot was left behind after SIG$sig"
+done
+case_ctx=""
 end
 
 # --- a stamp that cannot be taken ---------------------------------------------------------------
