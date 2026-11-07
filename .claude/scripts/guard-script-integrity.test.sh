@@ -237,6 +237,11 @@ refuses edited $'cat > b.md <<\'EOF\'\nIt\'s fixed.\nEOF\nbash .claude/scripts/f
 refuses edited $'cat <<EOF\ncd '"$TMP_ROOT"$'/good\nEOF\nbash .claude/scripts/fill-verdict.sh 1' "differs from main"
 refuses edited $'cat <<-EOF\n\tx\n\tEOF\nbash .claude/scripts/fill-verdict.sh 1' "differs from main"
 passes edited $'cat <<EOF\nbash .claude/scripts/fill-verdict.sh 1\nEOF'
+# A `<<` inside arithmetic is a shift, not a heredoc.
+refuses edited $'echo $((1<<2))\nbash .claude/scripts/fill-verdict.sh 1\n2' "differs from main"
+refuses edited $'(( x = 1<<2 ))\nbash .claude/scripts/fill-verdict.sh 1\n2' "differs from main"
+refuses edited $'echo $((1<<EOF))\nbash .claude/scripts/fill-verdict.sh 1\nEOF' "differs from main"
+refuses edited "((cd $TMP_ROOT/good); bash .claude/scripts/fill-verdict.sh 1)" "differs from main"
 
 # --- what it cannot resolve fails closed, only for a guarded script ----------------------------
 

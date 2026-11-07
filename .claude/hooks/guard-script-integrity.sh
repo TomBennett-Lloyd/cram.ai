@@ -24,7 +24,7 @@
 # The scan is lexical, and runs on every Bash call because the shell reads `.cla''ude//scripts` as
 # the path a rule matches and no substring test on the raw command can say it will not. Simple
 # commands split at `; & | ( ) newline`; backticks, `$(…)` and `bash -c '…'` are parsed in turn;
-# heredoc bodies are skipped; redirections, assignments, `WRAPPERS` and reserved words before the
+# heredoc bodies are skipped and `((…))` is one opaque word; redirections, assignments, `WRAPPERS` and reserved words before the
 # command are stripped; and only a command headed by one of `RUNNERS` is looked at. A `cd` followed
 # or not by the script is tracked: after `&&`, `||`, `then`/`do`/`else`, in a pipeline or `&`, or to
 # a directory that is not there, it may not have taken effect, so the script is judged in the
@@ -95,6 +95,23 @@ if (rules.length === 0) process.exit(0);
 
 const ENTER = Symbol('enter');
 const LEAVE = Symbol('leave');
+
+// The index of the `)` closing the `(` at `from`, or -1.
+function closeParen(src, from) {
+  let depth = 0;
+  for (let j = from; j < src.length; j++) {
+    if (src[j] === '(') depth++;
+    else if (src[j] === ')' && --depth === 0) return j;
+  }
+  return -1;
+}
+
+// The end of an arithmetic expansion opened by the `((` at `from`: the outer `)` when the inner
+// pair closes right before it, so `((cd x); bash y)` stays two nested subshells.
+function arithmeticEnd(src, from) {
+  const outer = closeParen(src, from);
+  return outer > 0 && closeParen(src, from + 1) === outer - 1 ? outer : -1;
+}
 
 // Splits `src` into simple commands (`{ words: [{ text, dynamic }] }`) and ENTER/LEAVE markers
 // bracketing the scopes a `cd` does not leave. A word is `dynamic` when it holds an expansion
@@ -167,6 +184,11 @@ function parse(src) {
         if (c === '|') sub = true;
       }
       i++;
+    } else if (c === '(' && src[i + 1] === '(' && arithmeticEnd(src, i) >= 0) {
+      // `$((…))` and `((…))`: an opaque word, so a `<<` inside is a shift, not a heredoc.
+      const end = arithmeticEnd(src, i);
+      add(src.slice(i, end + 1), true);
+      i = end + 1;
     } else if (c === '(') {
       flush();
       items.push(ENTER);
