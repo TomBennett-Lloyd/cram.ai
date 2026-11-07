@@ -207,7 +207,7 @@ Review loop: VERDICT APPROVE | CAP-REACHED | CAP-REACHED+CONFIRMED-APPROVE — c
     last cycle never saw>, rounds <n>, verdict APPROVE | ITERATE, findings <n>. It is not
     a cycle, so it never moves the /3 above. Report bare CAP-REACHED only if the pass has
     not returned APPROVE — that is what routes the PR to human review.
-  FIX-NOW found/resolved: <n>/<n>
+  FIX-NOW <n> found, <n> addressed
   Demoted at cap (pure-quality, filed as discovered issues — review-loop Exit conditions): <#numbers | none>
   Correctness residue: NONE (mandatory NONE — a known bug never reaches this report as DONE)
   SYSTEMIC → discovered issues: <n>: <#numbers | none>

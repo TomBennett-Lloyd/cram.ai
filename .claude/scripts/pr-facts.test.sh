@@ -125,4 +125,40 @@ facts_of "$TMP_ROOT/indented.json" "$TMP_ROOT/indented/scripts/pr-facts.mjs"
 expect_not_stdout 'lanemissing'
 end
 
+# filled_template <extra body text> -> a JSON PR object whose body is the live lane-report template
+# with every innermost `<...>` placeholder (a `#<...>` one too) and every letter reference such as
+# `#m` replaced by the issue reference #703, and the brackets of the alternatives around them
+# dropped: whatever verb the template puts before a value then sits before an issue number (#720).
+# A failing filling is the template's to reword.
+filled_template() {
+  EXTRA="$1" capture node --input-type=module -e '
+    import { readFileSync } from "node:fs";
+    const t = readFileSync(process.argv[1], "utf8").replace(/\r\n?/g, "\n").split("\n");
+    const start = t.findIndex((l) => l.startsWith("## Lane report — issue #<n>"));
+    const end = t.findIndex((l, i) => i > start && l.startsWith("STATUS:"));
+    const block = t.slice(start, end + 1).join("\n").replace(/#?<[^<>]*>/g, "#703").replace(/#[a-z]\b/g, "#703").replace(/[<>]/g, "");
+    process.stdout.write(JSON.stringify({ title: "#21: the change", number: 490, body: "Closes #21.\n" + block + (process.env.EXTRA || "") }));
+  ' "$SCRIPTS/../agents/ticket-agent.md"
+}
+
+begin "the template filled with issue references yields no stray or closes record"
+filled_template ''
+expect_rc 0 "$rc"
+printf '%s' "$out" >"$TMP_ROOT/filled.json"
+facts_of "$TMP_ROOT/filled.json"
+expect_rc 0 "$rc"
+expect_stdout "lane	703"
+expect_not_stdout "stray"
+expect_not_stdout "closes	703"
+expect_not_stdout "lanemissing"
+end
+
+begin "control: a filled field that puts a closing verb before an issue reference is a stray record"
+filled_template $'\nDiscovered, not fixed: #703'
+printf '%s' "$out" >"$TMP_ROOT/filled-bad.json"
+facts_of "$TMP_ROOT/filled-bad.json"
+expect_rc 0 "$rc"
+expect_stdout "stray"
+end
+
 finish
