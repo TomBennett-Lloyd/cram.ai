@@ -14,3 +14,6 @@ excluded: docs/adr/0005-evaluation-as-gate.md
 excluded: docs/standards/prose.md
 excluded: docs/tech-debt.md
 excluded: package.json
+excluded: .claude/scripts/check-settings-hooks.sh
+excluded: .claude/scripts/verify-guard.sh
+excluded: .claude/scripts/verify-guard.test.sh

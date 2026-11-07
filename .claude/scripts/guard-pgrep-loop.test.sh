@@ -183,6 +183,9 @@ refuses $'while true; do cat <<EOF\nbody\nEOF\npgrep -f vitest; done'
 # --- commands holding `$` or a backtick ----------------------------------------------------
 # The rows are a quoted heredoc so that shellcheck does not read their `$` as unexpanded
 # (SC2016): one `refuses|passes <command>` per line, the command as typed.
+# The `${x:- #}` row is what the shared scanner (.claude/hooks/shell-scan.cjs, #692) reads and this
+# hook's own copy did not: the `#` opens no comment over the pgrep behind it. The unterminated-quote
+# row after it, which no shell runs, reads as one quoted word, so the pgrep in it goes unseen.
 while read -r verdict row; do
   case $verdict in
     refuses) refuses "$row" ;;
@@ -194,6 +197,8 @@ while read -r verdict row; do
   esac
 done <<'ROWS'
 refuses while f=$(pgrep -f vitest); do sleep 1; done
+refuses while true; do echo ${x:- #}; pgrep -f vitest; done
+passes while true; do echo "${x:-"; pgrep -f vitest; done
 refuses while [ -n "$(pgrep -f vitest)" ]; do sleep 1; done
 refuses while [ -n "`pgrep -f vitest`" ]; do sleep 1; done
 refuses until [ -z "$(echo $(pgrep -f vitest))" ]; do sleep 1; done
@@ -245,6 +250,21 @@ printf '{"tool_input": {"file_path": "pgrep"}}' >"$TMP_ROOT/event.json" || exit 
 capture bash "$HOOK" <"$TMP_ROOT/event.json"
 expect_rc 0
 expect_silent
+end
+
+begin "a Monitor event carrying the same loop is refused (the matcher names Monitor too)"
+must node -e '
+  const ev = { tool_name: "Monitor", tool_input: { command: "until ! pgrep -f vitest; do sleep 1; done", description: "wait", timeout_ms: 5000 } };
+  process.stdout.write(JSON.stringify(ev));
+' >"$TMP_ROOT/event.json"
+capture bash "$HOOK" <"$TMP_ROOT/event.json"
+expect_rc 2
+expect_stderr "refused"
+end
+
+begin "the committed matcher covers Monitor"
+matcher=$(node -e 'const s=require(process.argv[1]);console.log(s.hooks.PreToolUse.find(e=>e.hooks.some(h=>h.command.includes("guard-pgrep-loop"))).matcher)' "$SCRIPTS/../settings.json") || bad "settings.json unreadable"
+case "|$matcher|" in *"|Monitor|"*) ;; *) bad "matcher is '$matcher', which leaves Monitor unguarded" ;; esac
 end
 
 begin "the hook parses under every bash on the box"

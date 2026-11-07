@@ -3,8 +3,6 @@ name: burn-backlog
 description: 'PHASE 2 — NOT YET ACTIVE. Orchestrate a fleet of agents through the issue backlog with conflict-aware scheduling and rebase handling. Do not use until the single-ticket loop has been through several retros.'
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 **STATUS: design stub.** If invoked now: explain that this activates after the single-ticket workflow (plan-issue → execute → review-loop → retro) has stabilized over several tickets, then stop. Do not orchestrate.
 
 ## Design sketch (refine before activation)

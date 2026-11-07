@@ -3,8 +3,6 @@ name: triage
 description: Convert tech-debt log entries into root-cause GitHub issues and mine the friction log for workflow patterns. Run every ~5 merged PRs, or when either log grows past a screenful.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are running the periodic triage pass over both logs. The logs are buffers — your job is to empty them into well-formed issues.
 
 **Tech debt** (`docs/tech-debt.md`):

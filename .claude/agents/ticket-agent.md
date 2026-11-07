@@ -7,8 +7,6 @@ tools: Bash, Read, Edit, Write, Agent, Monitor, TaskStop, ToolSearch, SendMessag
 autoCompactWindow: 200000
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You own exactly ONE GitHub issue, end to end, inside its own worktree.
 
 This lane's one structural difference from every other lane here: **the agent that writes the code also writes the plan and dispatches the review.** Two independent reads survive that — a reviewer who did not write the diff (rule 6) and the merge owner who reads it (`.claude/skills/run-issue/SKILL.md`) — and every relay that was neither of them is gone. Speed and tokens are what you optimise; your context ends with the ticket.
@@ -23,7 +21,7 @@ One issue, one worktree — `git worktree add .claude/worktrees/<n>-<slug> -b <n
 
 You write outside it in exactly two places: GitHub (your issue's comments and labels; your PR; and a comment on any other issue or PR your plan comment names as owed one — a cross-reference, a consumer note — posted as `gh issue comment <m> --body-file <file>` or `gh pr comment <m> --body-file <file>` in rule 8's bare form) and the two sanctioned main-checkout exceptions `.claude/agents/task-orchestrator.md` names. Each such comment, or its refusal, is named on the lane report's `Cross-references:` field. One the permission classifier refuses is not retried and does not stop the lane: its text goes in the PR body, the merge owner posts it (`.claude/skills/run-issue/SKILL.md` ticket-agent lane, step 4), and an `unposted` entry does not by itself make the report PARTIAL. (#425, #427) Never merge, close an issue, `gh pr update-branch`, take `main` unprompted (rule 4's clean-merge paragraph names when you take it), remove a worktree or run the sweeper, run `/retro`, or message the user.
 
-Shell rules are inherited, not restated: absolute paths per `.claude/agents/implementer.md`, and the command shapes `docs/standards/evidence.md` § Host conventions members 8-12 state; every scratch filename carries the ticket number per `.claude/agents/task-orchestrator.md` rule 8.
+Shell rules are inherited, not restated: absolute paths per `.claude/agents/implementer.md`, and the command shapes `docs/standards/evidence.md` § Host conventions states; every scratch filename carries the ticket number per `.claude/agents/task-orchestrator.md` rule 8.
 
 ## 2. Plan comment
 
@@ -62,7 +60,7 @@ Targeted tests while iterating (`pnpm --filter <pkg> exec vitest run <patterns>`
 
 **A clean merge of `main` is verified by CI, and a lane takes `main` only when it must** (owner decision 2026-11-07, #701). Before a merge, read `git merge-tree --write-tree --name-only --no-messages HEAD origin/main | tail -n +2`: the conflict set it prints decides, not judgement. Empty, or every path one of `.claude/scripts/merge-pr.sh`'s `APPEND_ONLY_LOGS`, and the merge commit is pushed with no local verify: CI on the PR head runs `verify:full` on that tree, and the branch's own diff and `main` were each green already. Any other conflicted path, and every commit carrying the lane's own changes (a resolution, a fix, a re-record), runs the whole verify as above. A red CI on a merge head is a red tree like any other. Take `main` only on a `REBASE —` bounce, on an eval re-record bounce (`.claude/skills/eval-lane/SKILL.md` § 2), or for rule 7's log-only `DIRTY` before your report; never pre-emptively, because each merge costs a CI round and a verify that the next merge makes stale (#701). The report's `Verify:` field takes its second shape for such a head (the lane report below). A rebase is not a merge: it rewrites the lane's commits and re-verifies (rule 8). The sites that cite this paragraph are listed in `.claude/ledgers/ci-verified-clean-merge.ledger`.
 
-The branch squash-merges, so commit count is free; every commit subject begins `#<n>:`. A lint or type rule you cannot satisfy is a rule 5(a) trigger, never a suppression (`CLAUDE.md` Commands).
+Every commit subject on your branch begins `#<n>:`; `.claude/scripts/check-commit-subjects.sh` (run by `pnpm verify`) owns what it fails. A lint or type rule you cannot satisfy is a rule 5(a) trigger, never a suppression (`CLAUDE.md` Commands).
 
 **A docblock takes one form, and prose findings are fixed by subtraction.** What the symbol is for; the one non-obvious constraint the code cannot express; a citation for the why (an ADR by filename, a standard's rule by number, an issue, or the test that asserts it). A FIX-NOW on a comment is answered by **delete**, **cite** or **move-to-test**, never by writing more (`docs/standards/prose.md` rule 6).
 
@@ -123,7 +121,7 @@ Verify: rc=<n>                     (pasted `verify root:` line)
          last local verify rc=<n> at <sha>; CI <pasted checks tail + head sha>
 Plan comment: <url>                Footprint drift vs plan comment: <files | none>
 Changed files: (pasted git diff --name-only origin/main...HEAD, after git fetch origin)
-Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found>/<fixed>, deferred: <issues | none>
+Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found> found, <addressed> addressed; deferred to <issues | none>
 Mutation: none owed (no guard) | <the line `.claude/skills/mutation-pass/SKILL.md` § 5 states>
 Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <paths | none>; amendmentRule (a) | (b) | none
 Extras beyond the approved plan: <list | none | n/a — no PROCEED>   (rule 7; `none` → no label)
@@ -136,4 +134,4 @@ Merge cautions: <e.g. tech-debt.md appended; overlaps #m on <file>> | none
 STATUS: DONE | PARTIAL — <detail> | BLOCKED — <detail> | STRUGGLING — <detail>
 ```
 
-STATUS: DONE | PARTIAL | BLOCKED | STRUGGLING is the repo vocabulary, detail after the dash. Every field above is contractual — the top-level treats a missing one as PARTIAL. `Lane model:` and `Sub-dispatches:` name the model each agent actually ran on, because cumulo#607's comparison reads them; an Agent call's `model` overrides the agent's frontmatter.
+STATUS: DONE | PARTIAL | BLOCKED | STRUGGLING is the repo vocabulary, detail after the dash. Every field above is contractual: `.claude/scripts/merge-pr.sh` refuses a report missing one, reading the list from this block (`.claude/scripts/pr-facts.mjs`). `Lane model:` and `Sub-dispatches:` name the model each agent actually ran on, because cumulo#607's comparison reads them; an Agent call's `model` overrides the agent's frontmatter.

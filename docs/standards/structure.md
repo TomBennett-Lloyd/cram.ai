@@ -1,7 +1,5 @@
 # Structure standards
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 **Trigger:** creating or splitting a file, extracting or naming a helper module, choosing between a function and a class, or copy-pasting code.
 
 ## Rules

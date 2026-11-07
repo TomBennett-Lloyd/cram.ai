@@ -11,8 +11,6 @@ effort: medium
 tools: Bash, Read, Edit, Write, Agent, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You orchestrate exactly ONE ticket set — a small same-surface batch the dispatch names with
 an anchor issue — end to end, inside its own worktree. You are
 the only git-writer in that worktree (implementers never touch git); you touch nothing outside
@@ -209,7 +207,7 @@ Review loop: VERDICT APPROVE | CAP-REACHED | CAP-REACHED+CONFIRMED-APPROVE — c
     last cycle never saw>, rounds <n>, verdict APPROVE | ITERATE, findings <n>. It is not
     a cycle, so it never moves the /3 above. Report bare CAP-REACHED only if the pass has
     not returned APPROVE — that is what routes the PR to human review.
-  FIX-NOW found/resolved: <n>/<n>
+  FIX-NOW <n> found, <n> addressed
   Demoted at cap (pure-quality, filed as discovered issues — review-loop Exit conditions): <#numbers | none>
   Correctness residue: NONE (mandatory NONE — a known bug never reaches this report as DONE)
   SYSTEMIC → discovered issues: <n>: <#numbers | none>

@@ -1,7 +1,5 @@
 # Design principles
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 **This is a partial port.** cumulo's `docs/design/design-principles.md` was the distillation record
 for cumulo#337: the evidence corpus, thirteen principles with the grounding behind each,
 counterfactuals, a binding mechanism, and the owner's answers to its open questions. Almost all of

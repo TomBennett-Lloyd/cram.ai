@@ -18,6 +18,13 @@ echo RC=$rc
 
 Capture `$?` on the line immediately after the command. Read the `verify root:` line and confirm it names this worktree before banking the exit code (a verify run from another checkout is green about the wrong tree). Report `rc=<n>` and that line, pasted; never "verify passed".
 
+## Two lines that are not a red leg (#700)
+
+`pnpm verify` runs inside `.claude/scripts/verify-guard.sh`, whose header owns both.
+
+- `verify: queued` in the capture: every machine-wide slot was held, and the run waits its turn. The wait counts toward the Bash foreground limit, so a lane that might queue starts the command with `run_in_background: true` and reads the exit code from the file.
+- `verify: tree changed during the run — result void` beside a non-zero `rc`: the run belongs to no single tree. Re-run it with the tree held still; do not triage a leg from it.
+
 ## When it is red
 
 1. Name the failing leg from the tail. If the tail does not show it, count first: `n=$(command grep -cE '(FAIL|Error|error TS)' <scratchpad>/verify-<n>.out)` and read at most `command grep -nE '(FAIL|Error|error TS)' <scratchpad>/verify-<n>.out | head -n 20`. The words locate the failure; the exit code is still the verdict (evidence.md form 6).

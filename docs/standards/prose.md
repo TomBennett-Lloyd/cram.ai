@@ -1,7 +1,5 @@
 # Prose — code comments, docblocks, and standing documentation
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 The unit of value is the claim, not the line. Standing prose is a liability that must earn its keep: nothing in `verify` fails when it rots. These rules keep the prose surface small enough to sweep and true — and they bind `.claude/` skills, agent docs, and `docs/` exactly as they bind source, because process prose rots the same way.
 
 ## Rules
