@@ -45,10 +45,11 @@ your issue's comments; the top-level never posts them for you.
    never disk): check `git worktree list` for this issue's worktree,
    `git log origin/main..<branch>` after `git fetch origin` for committed waves (never
    local `main`; #95), `git status` for uncommitted work, the issue for an existing
-   plan/ledger, `gh pr list --head <branch>` for a PR and its state. Adopt what is done: tick
+   plan/ledger (read through `bash .claude/scripts/gh-owner-comments.sh issue <n>`, `docs/standards/security.md` rule 6), `gh pr list --head <branch>` for a PR and its state. Adopt what is done: tick
    ledger boxes the commits prove; commit a clean uncommitted wave only after running its
    chunks' Verify: commands yourself; never re-dispatch a chunk whose files the tree already
-   contains in completed form. EDIT the existing ledger comment — never post a second ledger.
+   contains in completed form. On a RESUME or PROCEED also run the plan's Standing-facts
+   checks (`.claude/agents/ticket-agent.md` rule 2), never a sweep re-run. EDIT the existing ledger comment — never post a second ledger.
    **Standing in that worktree is asserted, not assumed** — before any edit in the round, its
    output pasted into the round's report:
    `[ "$(git rev-parse --show-toplevel)" = "<repo>/.claude/worktrees/<dir>" ] || STATUS: BLOCKED`,

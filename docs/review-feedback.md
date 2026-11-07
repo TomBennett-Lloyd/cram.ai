@@ -54,6 +54,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ---
 
+## 2026-11-07 — issue #676 — pgrep-loop-hook-registered
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner's ask, 2026-11-07 (chat): "did you add the pgrep hook to the committed settings.json? i only update the local one but you can update the committed one and this should live in the committed one i think". The PR asks the owner to accept one registration in `.claude/settings.json`: a second hook on the existing `PreToolUse` `Bash` matcher, running `.claude/hooks/guard-pgrep-loop.sh`.
+- **Why**: PR #693 shipped the hook script but not its registration, since `.claude/settings.json` is `humanAlways`. Worktrees never see the main checkout's `.claude/settings.local.json`, so only the committed file reaches lanes, and lanes are the ones that ran `pgrep -f` waits (#670).
+- **How applied**: one hooks entry appended after `guard-dirty-revert.sh`'s; no other key changes.
+- **Verdict**: approved 2026-11-07 — "you can update the committed one and this should live in the committed one i think"
+
 ## 2026-10-14 — issue #1 — plan-feedback-quote-anchored-synthesis
 
 - **Category**: plan
@@ -624,3 +632,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `.claude/settings.json` is `humanAlways`: it grants every session its permissions, and only the owner widens it (`merge.humanAlwaysRule`, #440). The owner asked for durable permissions for a fresh clone in the issue.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: can i pre-approve the settings.json changes the planned changes look good to me so i'm happy for you to merge when your happy with them
+
+## 2026-11-07 — issue #672 — cite-not-restate
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to decide whether `CLAUDE.md` § Hard constraints and § Workflow may become concise bullets that cite `docs/adr/0009-explanation-answers.md` § Decision (f) and the `merge.*` keys of `.claude/workflow.json` instead of restating them, with a short per-surface summary kept in `CLAUDE.md`; and whether `.claude/workflow.json` may state "starts at this state by owner decision on 2026-10-13, and the retro loop re-earns or revokes it" once, in `provenance`, instead of seven times. Measured saving: `CLAUDE.md` 13514 to 12320 bytes, `.claude/workflow.json` 21288 to 20643 bytes.
+- **Why**: both files are `humanAlways` (`merge.humanAlwaysRule`): they are the gates and the first document reviewers read. The owner's direction on #672 was concise bullets, human-reviewable, readability weighed against the gain, and clear to lower-powered models.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-07 — "approve 702"
