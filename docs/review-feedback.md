@@ -659,8 +659,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-07 — issue #701 — ci-covers-clean-merge
 
-- **Category**: pending — filled at merge
+- **Category**: convention
 - **Feedback**: this PR asks the owner to decide whether `CLAUDE.md` § Commands may carry one clause saying a clean merge or rebase of `main` is the one commit that skips the local `pnpm verify` (CI on the PR head verifies it), citing `.claude/agents/ticket-agent.md` rule 4, which owns the rule: the conflict set `git merge-tree --write-tree --name-only --no-messages HEAD origin/main` prints decides, a lane takes `main` only on a `REBASE —` bounce, an eval re-record bounce or a log-only `DIRTY`, and a rebase that stops on a conflict outside the three logs `merge-pr.sh` unions still verifies.
 - **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`): its Commands section is the gate every lane reads. The owner's chat decision of 2026-11-07 ("Yes, let CI cover it") is recorded in the issue.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved 2026-11-07 at 35b5b68 — "Approve 712", after one revision: "yeah a conflict free rebase should skip local verify too"
