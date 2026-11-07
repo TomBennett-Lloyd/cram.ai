@@ -8,4 +8,3 @@ carrier: .claude/scripts/merge-pr.sh
 carrier: .claude/scripts/merge-pr.test.sh
 carrier: .claude/scripts/sweep-report.sh
 carrier: .claude/skills/review-loop/SKILL.md
-carrier: .claude/skills/run-issue/SKILL.md

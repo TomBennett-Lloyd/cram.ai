@@ -56,9 +56,9 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    `eval/recordings/` and `eval/reports/`, which neither issue names because the run
    generates them. A lane is eval-bearing when its predicted footprint meets a trigger path
    of `docs/adr/0005-evaluation-as-gate.md` § Decision (g), or holds anything else that owes
-   a `pnpm eval` run under `eval/README.md`'s tier-1 paragraph. Sequence the second, or
+   a `pnpm eval` run under `eval/README.md`'s tier-1 paragraph (this definition is owned here: `.claude/ledgers/eval-bearing-lane.ledger`). Sequence the second, or
    admit it with step 2's overlap note naming the first as the lane its tier-2 run waits
-   for (`.claude/agents/ticket-agent.md` rule 6): six lanes re-recorded or lost a run
+   for (`.claude/skills/eval-lane/SKILL.md` § 1): six lanes re-recorded or lost a run
    without this (#486). `conserve` budget mode: one lane.
    **Load gate** (owner, 2026-11-04, #483): immediately before every dispatch, in either
    lane, read `sysctl -n vm.loadavg` and `sysctl -n hw.ncpu`; while the middle figure, the
@@ -121,12 +121,9 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    `humanAlways` ritual, and the merge-time `Category`/`Verdict` fill, which reaches the agent
    as a bounce because only it writes to its worktree:
    `FILL — bash .claude/scripts/fill-verdict.sh <pr> --category <category> --verdict "<text>" --worktree <path>`,
-   filled in and sent verbatim. The agent runs it exactly as sent, from any cwd, with no `cd`,
-   `export`, prefix, pipe or redirect, because the owner's permission allow rule matches the
-   bare form and nothing wrapped around it (#205). An agent the permission classifier refuses
-   once, on that fill or on a rebase's conflict resolution, returns `BLOCKED` with its git
-   state and never retries (`.claude/agents/ticket-agent.md` rule 8); you then run the same
-   bare command yourself. On an `/execute`-path branch, which has no lane agent, you run it
+   filled in and sent verbatim. The agent runs it bare, as `docs/standards/evidence.md` § Host
+   conventions member 10 states (#205); an agent the classifier refuses returns `BLOCKED` with
+   its git state and never retries (`.claude/agents/ticket-agent.md` rule 8), and you then run the same bare command yourself. On an `/execute`-path branch, which has no lane agent, you run it
    yourself from the start. A report whose `Cross-references:` field reads `unposted` leaves
    you the posting: post each from the text in the PR body yourself, before the merge
    chain, naming the lane in the comment (`.claude/agents/ticket-agent.md` rule 1; PR #425
@@ -144,18 +141,11 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    **Merge order** — whenever a PR is ready (this step's diff check done, CI green on the
    reported head) and another PR is ready or another lane is in flight, in both lanes: read
    `.claude/skills/run-issue/merge-order.md` and follow it.
-   **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
-   `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
-   poll, a merge taken only from `CLEAN` and pinned with `--match-head-commit` to the
-   head whose checks it read — a squash whose message
-   `.claude/scripts/pr-facts.mjs --squash-message` builds, refused before update-branch on
-   every closing reference that file's `stray` records list (#617) — and then, only once the PR reports `MERGED`, the
-   label removal, the `Closes`-issue check and the worktree reap. It is idempotent and
-   re-runnable from any state, so the repair for a chain that dies mid-poll is to run it
-   again; a failure names the step the next run resumes from. It never fills a **Verdict** —
-   a `humanAlways` PR whose entry still carries the `pending — filled at merge` placeholder
-   is refused outright — so the fill above stays a bounce to the agent, and every judgement
-   this prose owns stays yours.
+   **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you**, through
+   the label removal and worktree reap after the merge; its header and step comments own what each
+   step does. It is re-runnable from any state, so the repair for a chain that dies mid-poll is to
+   run it again. It never fills a **Verdict**, so the fill above stays a bounce to the agent, and
+   every judgement this prose owns stays yours.
 5. **Rebase hand-off** — your next touchpoint, and only when `main` moved. This step owns
    when an open PR is brought current. After every merge, read
    `gh pr view --json mergeStateStatus` on each open lane PR, and each `DIRTY` one's
@@ -188,8 +178,8 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    warm agent, which rebases per its rule 8 and re-reports. On a branch whose diff against
    `origin/main` adds or updates a file under `eval/reports/` — the second of two
    eval-bearing PRs in `merge-order.md` among them — the bounce reads
-   `REBASE — merge origin/main (ADR 0005 (f))`, and the lane merges rather than rebases,
-   under the same rule 8, so the commit its report measured stays in the PR's history. The
+   `REBASE — merge origin/main (ADR 0005 (f))`; `.claude/skills/eval-lane/SKILL.md` § 2 owns why
+   the lane merges and does not rebase. The
    second merger takes `main` in one of these two forms, always; merges serialise, in `merge-order.md`. The bounce carries pasted command output
    and citations, and no
    figure of its own. Set `base=$(git merge-base origin/main "$b")`, then paste:

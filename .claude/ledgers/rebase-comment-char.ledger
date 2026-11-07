@@ -1,0 +1,14 @@
+# Where the core.commentChar / commit.cleanup pair for a rebase or merge is restated (docs/standards/architecture.md rule 9; #670).
+# The scripts carry the pair in code; the prose that tells a lane to type it cites review-loop step 5 for the reason.
+owner: .claude/skills/review-loop/SKILL.md
+claim: every rebase subcommand and the merge of main runs as git -c core.commentChar=';' -c commit.cleanup=strip, because git's default cleanup reads a leading # as a comment and deletes the #<issue> subject
+cite: commentChar
+sweep: commentChar|commit\.cleanup|\.claude/ledgers/rebase-comment-char\.ledger
+carrier: .claude/agents/ticket-agent.md
+carrier: .claude/agents/task-orchestrator.md
+carrier: .claude/skills/eval-lane/SKILL.md
+carrier: .claude/scripts/fill-verdict.sh
+carrier: .claude/scripts/fill-verdict.test.sh
+carrier: .claude/scripts/merge-pr.sh
+excluded: package.json
+excluded: docs/friction-log.md
