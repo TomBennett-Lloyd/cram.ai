@@ -640,3 +640,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: both files are `humanAlways` (`merge.humanAlwaysRule`): they are the gates and the first document reviewers read. The owner's direction on #672 was concise bullets, human-reviewable, readability weighed against the gain, and clear to lower-powered models.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved 2026-11-07 — "approve 702"
+
+## 2026-11-07 — issue #701 — ci-covers-clean-merge
+
+- **Category**: pending — filled at merge
+- **Feedback**: this PR asks the owner to decide whether `CLAUDE.md` § Commands may carry one clause saying a clean merge of `main` is the one commit that skips the local `pnpm verify` (CI on the PR head verifies it), citing `.claude/agents/ticket-agent.md` rule 4, which owns the rule: the conflict set `git merge-tree --write-tree --name-only --no-messages HEAD origin/main` prints decides, a lane takes `main` only on a `REBASE —` bounce, an eval re-record bounce or a log-only `DIRTY`, and a rebase still re-verifies.
+- **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`): its Commands section is the gate every lane reads. The owner's chat decision of 2026-11-07 ("Yes, let CI cover it") is recorded in the issue.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge

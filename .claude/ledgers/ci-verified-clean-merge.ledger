@@ -1,0 +1,12 @@
+# Where the clean-merge verify exemption is restated (docs/standards/architecture.md rule 9; #701).
+# Rule 4 of the ticket-agent owns when a merge of main skips the local verify and when a lane takes main at all; sites below cite it.
+owner: .claude/agents/ticket-agent.md
+claim: a merge commit of origin/main whose conflict set is empty or only the append-only logs is verified by CI and skips the local pnpm verify, any other resolved conflict or lane commit runs it, and a lane takes main only on a REBASE bounce, an eval re-record bounce or a log-only DIRTY
+cite: `.claude/agents/ticket-agent.md` § clean-merge
+sweep: ticket-agent\.md. § clean-merge|(?i:CI-verified)|(?i:clean[- ]merge)|\.claude/ledgers/ci-verified-clean-merge\.ledger
+carrier: .claude/agents/ticket-agent.md
+carrier: CLAUDE.md
+carrier: .claude/skills/verify-report/SKILL.md
+carrier: .claude/skills/eval-lane/SKILL.md
+carrier: .claude/skills/run-issue/SKILL.md
+excluded: docs/review-feedback.md
