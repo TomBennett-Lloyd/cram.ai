@@ -22,3 +22,4 @@ excluded: docs/adr/0004-storage.md
 excluded: docs/adr/0006-image-only-slides.md
 excluded: packages/shared/src/unit.ts
 excluded: docs/adr/0007-desktop-packaging.md
+carrier: docs/adr/0011-ask-conversation.md

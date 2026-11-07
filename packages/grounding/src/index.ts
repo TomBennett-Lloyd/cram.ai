@@ -43,7 +43,15 @@ export {
   SlideLineNo,
   type SummaryTask,
 } from './prompts/generation-prompt';
-export { explanationRequest, GeneratedExplanation } from './prompts/explanation-prompt';
+export {
+  explanationRequest,
+  GeneratedExplanation,
+  NOT_COVERED_TURN,
+  turnBlock,
+} from './prompts/explanation-prompt';
+export { StandaloneQuestion, standaloneRequest } from './prompts/standalone-question-prompt';
+export { type StandaloneOutcome, standaloneQuestion } from './standalone-question';
+export { ASK_TURN_WINDOW, type CarriedTurns, carriedTurns } from './turn-window';
 export { rewriteRequest, RewriteReply } from './prompts/rewrite-prompt';
 export { VerdictReply, verifierRequest } from './prompts/verifier-prompt';
 export {

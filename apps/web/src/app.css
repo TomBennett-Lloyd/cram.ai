@@ -175,6 +175,26 @@ input:not([type='file']) {
   gap: var(--space-4);
 }
 
+/* Exchanges a column-gap apart, each question touching its answer (`docs/standards/design.md` rule 4). */
+.thread {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exchange {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.exchange-question {
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+}
+
 .explanation {
   display: flex;
   flex-direction: column;

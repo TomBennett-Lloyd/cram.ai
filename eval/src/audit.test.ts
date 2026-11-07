@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { auditEvalCourse } from './audit';
-import { course, kindLabel, label, lecture, question, slide, topicLabel } from './eval-fixture';
+import {
+  course,
+  followUp,
+  kindLabel,
+  label,
+  lecture,
+  question,
+  slide,
+  topicLabel,
+} from './eval-fixture';
 
 describe('auditEvalCourse', () => {
   it('finds nothing in a consistent course', () => {
@@ -105,6 +114,28 @@ describe('auditEvalCourse', () => {
         kind: 'duplicate-variant',
         question: 'What size are cells?',
         variant: 'what shape are cels?',
+      },
+    ]);
+  });
+
+  it('reports a follow-up citing a slide the deck does not have, by the follow-up', () => {
+    const followUps = [followUp({ expectedCitations: [{ lectureId: 'l1', slideNo: 2 }] })];
+    expect(auditEvalCourse(course({ followUps }))).toEqual([
+      { kind: 'unknown-citation', question: 'And how big are they?', lectureId: 'l1', slideNo: 2 },
+    ]);
+  });
+
+  it('reports a follow-up whose question and standalone form an earlier one already holds', () => {
+    const followUps = [
+      followUp(),
+      followUp({ question: 'and how big are   they?', turns: [{ question: 'Q?', answer: null }] }),
+      followUp({ standalone: 'How wide are cells?' }),
+    ];
+    expect(auditEvalCourse(course({ followUps }))).toEqual([
+      {
+        kind: 'duplicate-follow-up',
+        question: 'and how big are   they?',
+        standalone: 'How big are cells?',
       },
     ]);
   });

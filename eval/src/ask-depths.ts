@@ -43,6 +43,16 @@ export interface Light {
   readonly sent: PairTally;
 }
 
+export const lightDeps = (
+  retriever: IndexRetriever,
+  gateway: ModelGateway,
+  verifier: Verifier = gateway.verifier,
+) => ({
+  gateway: { generator: gateway.generator, verifier },
+  thresholds: PROVISIONAL_NLI_THRESHOLDS,
+  searchSentence: (sentence: string) => retriever.searchSentence(sentence, ATTRIBUTION_K),
+});
+
 export const askLight = async (
   retrievals: readonly ToAsk[],
   retriever: IndexRetriever,
@@ -50,18 +60,14 @@ export const askLight = async (
   clock: Clock,
 ): Promise<Light> => {
   const tally = { pairs: 0, overLength: 0 };
-  const deps = {
-    gateway: { generator: gateway.generator, verifier: counting(gateway.verifier, tally) },
-    thresholds: PROVISIONAL_NLI_THRESHOLDS,
-    searchSentence: (sentence: string) => retriever.searchSentence(sentence, ATTRIBUTION_K),
-  };
+  const deps = lightDeps(retriever, gateway, counting(gateway.verifier, tally));
   const asked: AskedQuestion[] = [];
   const durationsMs: number[] = [];
   for (const { question, retrieved, summaries } of retrievals) {
     const result = await timed(
       clock,
       (ms) => durationsMs.push(ms),
-      () => ask(question.question, { retrieved, summaries }, deps),
+      () => ask({ question: question.question, turns: [] }, { retrieved, summaries }, deps),
     );
     asked.push({ question, retrieved, result });
   }
@@ -84,10 +90,15 @@ export const askDeep = async (
   const sent: PairTally[] = [];
   for (const { question, retrieved, summaries } of retrievals) {
     const tally = { pairs: 0, overLength: 0 };
-    const result = await explain(question.question, { retrieved, summaries }, depth, {
-      gateway: { generator: gateway.generator, verifier: counting(gateway.verifier, tally) },
-      thresholds: PROVISIONAL_NLI_THRESHOLDS,
-    });
+    const result = await explain(
+      { question: question.question, turns: [] },
+      { retrieved, summaries },
+      depth,
+      {
+        gateway: { generator: gateway.generator, verifier: counting(gateway.verifier, tally) },
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      },
+    );
     asked.push({ question, retrieved, result });
     sent.push(tally);
   }

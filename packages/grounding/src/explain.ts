@@ -1,5 +1,6 @@
 import type { ModelGateway } from '@cram/gateway';
 import {
+  type AskRequest,
   type AttributedSentence,
   type Citation,
   type Explanation,
@@ -175,18 +176,18 @@ const deep = async (
   return shown({ text, quotes, withheld }, verified.kept, spans, slides, assembled);
 };
 
-/** `docs/standards/grounding.md` rule 2's order, the verify stage by depth (`docs/adr/0009-explanation-answers.md` § Decision (b)–(g), (k)). */
+/** `docs/standards/grounding.md` rule 2's order, the verify stage by depth (`docs/adr/0009-explanation-answers.md` § Decision (b)–(g), (k)); `turns` as `carriedTurns` returns them. */
 export const explain = async (
-  question: string,
+  { question, turns }: AskRequest,
   { retrieved, summaries }: ExplainSources,
   depth: ExplainDepth,
   { budget = PROMPT_TOKEN_BUDGET, ...deps }: BudgetedDeps,
 ): Promise<ExplainResult> => {
-  const fixed = requestTokens(explanationRequest(question, EMPTY_CONTEXT));
+  const fixed = requestTokens(explanationRequest(question, EMPTY_CONTEXT, turns));
   const context = assembleContext(retrieved, summaries, budget - fixed);
   const [head, ...tail] = context.raw;
   if (head === undefined) return { status: 'not-covered', withheld: [], context };
-  const reply = await deps.gateway.generator.chat(explanationRequest(question, context));
+  const reply = await deps.gateway.generator.chat(explanationRequest(question, context, turns));
   if (reply.status !== 'completed')
     return { status: 'model-failed', stage: 'generate', failure: reply, context };
   const { answer } = reply.value;

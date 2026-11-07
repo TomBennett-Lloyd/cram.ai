@@ -22,3 +22,4 @@ carrier: docs/adr/0008-slide-chunking.md
 excluded: packages/index/src/stored-deck.ts
 excluded: docs/tech-debt.md
 excluded: .claude/scripts/check-stored-output-pin.test.sh
+excluded: docs/adr/0011-ask-conversation.md

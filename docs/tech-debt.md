@@ -177,3 +177,21 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `repeatedFooter` in `packages/ingest/src/adapters/pdf/page-layout.ts`
 - What: a line that recurs at one position on more than half a PDF deck's pages, in the lower half and smaller than the rest of the deck's text, is read as a footer and kept out of the body. A build's small "Source: …" line repeated on most pages is read that way too, so it reaches neither the body nor retrieval. A step repeated at body size stays. Suspected root cause: position, repetition and size are all the text layer tells a footer by.
 - Source: PR for #567 (review cycle 1)
+
+## 2026-11-07 — nothing bounds one carried turn's length
+
+- Where: `AskTurn` in `packages/shared/src/ask.ts`; the turn window in `packages/grounding/src/turn-window.ts`; `MAX_ASK_BYTES` in `apps/server/src/handlers.ts`
+- What: Ask carries a bounded window of earlier turns, and the window's argument rests on each turn being short, but no schema or budget holds one turn's question or answer to a length. The only bound is the request body's `MAX_ASK_BYTES`, which one long pasted answer can nearly fill. The explanation's fixed cost counts the turns and the slides give way first, so an oversized turn crowds the slides out of the prompt rather than overflowing it. Suspected root cause: the window was set in turns, and the bound was assumed from what the web sends back.
+- Source: PR for #576 (review cycle 1)
+
+## 2026-11-07 — the Ask thread can show several `role="alert"` regions at once
+
+- Where: `apps/web/src/ask/AskScreen.tsx`, the thread's exchanges; `docs/standards/react.md`, the "At most one live region per panel" bullet
+- What: every failed exchange in a thread keeps its `role="alert"`, so a thread holding two failures has two alert regions in one panel. Only the newest is a change when it mounts, so a reader hears one announcement, but the rule's literal count is exceeded and the rule has no clause for a thread of past exchanges. Suspected root cause: the rule was written for a panel showing one state at a time.
+- Source: PR for #576 (review cycle 1)
+
+## 2026-11-07 — no case pins that unmounting the Ask thread drops a reply in flight
+
+- Where: the unmount `useEffect` in `apps/web/src/ask/use-thread.ts`
+- What: the unmount effect bumps the call counter so a reply landing after the screen unmounts is dropped, but no test unmounts with a request pending; deleting the bump leaves every case green. Carried over from `use-ask`, which had the same gap. Suspected root cause: the hook's tests drive one mounted screen and never navigate away.
+- Source: PR for #576 (review cycle 1)

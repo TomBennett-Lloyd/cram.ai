@@ -13,6 +13,23 @@ describe('AskRequest', () => {
     expect(AskRequest.safeParse({ question: ' \n' }).success).toBe(false);
     expect(AskRequest.safeParse({ question: 'Who are the workers?' }).success).toBe(true);
   });
+
+  it('reads a body without turns as a new thread', () => {
+    expect(AskRequest.parse({ question: 'Who are the workers?' })).toEqual({
+      question: 'Who are the workers?',
+      turns: [],
+    });
+  });
+
+  it('carries a not-covered turn as a null answer, and refuses a blank one', () => {
+    const turn = (answer: string | null) => ({
+      question: 'Who are the workers?',
+      turns: [{ question: 'How many eyes?', answer }],
+    });
+    expect(AskRequest.safeParse(turn(null)).success).toBe(true);
+    expect(AskRequest.safeParse(turn('Workers are female.')).success).toBe(true);
+    expect(AskRequest.safeParse(turn(' ')).success).toBe(false);
+  });
 });
 
 describe('AskReply', () => {

@@ -1,4 +1,4 @@
-import { VERIFICATION_DEPTH } from '@cram/shared';
+import { type AskRequest, VERIFICATION_DEPTH } from '@cram/shared';
 import {
   type ExplainDepth,
   type ExplainDeps,
@@ -13,8 +13,8 @@ type AskDepth = Extract<ExplainDepth, { readonly depth: (typeof VERIFICATION_DEP
 export type AskDeps = ExplainDeps & Omit<AskDepth, 'depth'>;
 
 export const ask = (
-  question: string,
+  asked: AskRequest,
   sources: ExplainSources,
   { gateway, thresholds, ...depth }: AskDeps,
 ): Promise<ExplainResult> =>
-  explain(question, sources, { ...depth, depth: VERIFICATION_DEPTH.ask }, { gateway, thresholds });
+  explain(asked, sources, { ...depth, depth: VERIFICATION_DEPTH.ask }, { gateway, thresholds });
