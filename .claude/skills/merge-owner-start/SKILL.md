@@ -45,7 +45,7 @@ That prints an index, time, length and first line per comment from the plan on; 
 ## 3. Resume
 
 - **An answered plan** resumes as `RESUME issue #<n>` followed by the owner's line verbatim (`PROCEED — <words>` or `REVISE — <feedback>`, `.claude/agents/ticket-agent.md` rule 2), with the four dispatch fields of `run-issue` step 2. Post the owner's words on the issue first, so the record outlives your session.
-- **A plan older than main.** The overlap note pastes `git log --oneline <the sha the plan's sweep names>..origin/main -- <the plan's files>`. A non-empty output tells the lane the plan's counts predate those commits and its sweep is re-run before the first edit (`.claude/skills/carrier-sweep/SKILL.md`); the lane decides what moved.
+- **A plan older than main.** Nothing to paste and no sweep to ask for: the lane checks the plan's `### Standing facts` rows on resume (`.claude/agents/ticket-agent.md` rule 2), and the plan's own sha is in its first line. Name any commit you know has moved a planned file in the dispatch, as a hint to the lane and not a substitute for the check.
 - **Plans that share a file** the append-only logs do not cover, such as the tail of one ADR's Amendments, release one at a time, in `run-issue` step 4's **Merge order**; the second to merge takes a `REBASE —` bounce, and each plan's footprint says so before you dispatch.
 - **A plan with no answer** stays parked, and you work the rest of the backlog (§ How you work). Do not ask the owner again for what an issue comment already records.
 
