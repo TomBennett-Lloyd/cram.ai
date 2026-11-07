@@ -4,6 +4,7 @@ import { explain } from './explain';
 import { describe, expect, it } from 'vitest';
 import { ask } from './ask';
 import {
+  ASKED,
   QUESTION,
   hive,
   comb,
@@ -175,7 +176,7 @@ describe('explain at the light depth', () => {
     };
     const { search } = scriptedSearch({});
     await expect(
-      run([generatorRecording(explanationRequest(QUESTION, contextOf()), failure)], {
+      run([generatorRecording(explanationRequest(QUESTION, contextOf(), []), failure)], {
         depth: 'light',
         searchSentence: search,
       }),
@@ -185,7 +186,7 @@ describe('explain at the light depth', () => {
   it('is what ask runs', async () => {
     const { search } = scriptedSearch({ [MALE]: [hive] });
     const result = await ask(
-      QUESTION,
+      ASKED,
       { retrieved, summaries: [] },
       {
         gateway: fakeGateway([explained(MALE), verified(scored(MALE, [hive], CONTRADICTED))]),
@@ -214,7 +215,7 @@ const capturing = () => {
 
 describe('explain’s context', () => {
   const tokens = (raw: readonly RetrievedSlide[], summaries: readonly LoadedSummary[] = []) =>
-    requestTokens(explanationRequest(QUESTION, contextOf(raw, summaries)));
+    requestTokens(explanationRequest(QUESTION, contextOf(raw, summaries), []));
   const light = () => ({ depth: 'light' as const, searchSentence: scriptedSearch({}).search });
   const sources = { retrieved, summaries: [hiveSummary] };
 
@@ -281,7 +282,7 @@ describe('explain’s context', () => {
     const budgets = [0, tokens([hive]), tokens(retrieved) - 1, tokens(retrieved, [hiveSummary])];
     for (const budget of budgets) {
       const { sent, gateway } = capturing();
-      const result = await explain(QUESTION, sources, light(), {
+      const result = await explain(ASKED, sources, light(), {
         gateway,
         thresholds: PROVISIONAL_NLI_THRESHOLDS,
         budget,
@@ -291,7 +292,7 @@ describe('explain’s context', () => {
       expect(result).toMatchObject({ status: 'model-failed', stage: 'generate' });
       expect(result.context.raw.length).toBeGreaterThan(0);
       if (requestTokens(request) > budget) expect(result.context.raw).toEqual([hive]);
-      expect(request).toEqual(explanationRequest(QUESTION, result.context));
+      expect(request).toEqual(explanationRequest(QUESTION, result.context, []));
     }
   });
 });

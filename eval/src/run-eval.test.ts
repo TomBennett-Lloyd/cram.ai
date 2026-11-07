@@ -119,6 +119,7 @@ const spec = (
   courseId: COURSE,
   lectures: LECTURES,
   questions: QUESTIONS,
+  followUps: [],
   labels: LABELS,
   sentenceKinds: SENTENCE_KINDS,
   topicLabels: TOPICS,

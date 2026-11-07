@@ -50,6 +50,7 @@ const liveRun = async (): Promise<EvalRun> => {
     courseId: COURSE_ID,
     lectures: LECTURES,
     questions: COURSE.questions,
+    followUps: COURSE.followUps,
     labels: COURSE.labels,
     sentenceKinds: COURSE.sentenceKinds,
     topicLabels: COURSE.topicLabels,

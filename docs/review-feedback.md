@@ -664,3 +664,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`): its Commands section is the gate every lane reads. The owner's chat decision of 2026-11-07 ("Yes, let CI cover it") is recorded in the issue.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved 2026-11-07 at 35b5b68 — "Approve 712", after one revision: "yeah a conflict free rebase should skip local verify too"
+
+## 2026-11-07 — issue #576 — ask-conversation
+
+- **Category**: approved-at-plan
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/576#issuecomment-6655661168 in chat on 2026-11-07, relayed at https://github.com/TomBennett-Lloyd/cram.ai/issues/576#issuecomment-6704993604. PROCEED, verbatim: "i agree with the 3 plans". Offered a lighter turn window, the owner chose, verbatim: "Plan as written". So the window is 4 turns and Q1 to Q6 take the defaults the plan stated.
+- **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR that carries nothing beyond the approved plan merge on that plan's PROCEED.
+- **How applied**: new ADR 0011 (Ask holds a conversation), whose § Decision (a)–(j) is the plan's Decision outline points 1–10. ADR 0009 gains the plan's pasted diff exactly: three as-it-stood annotations and one dated § Amendments entry. The PR body pastes the mapping.
+- **Verdict**: approved at plan 2026-11-07 — i agree with the 3 plans

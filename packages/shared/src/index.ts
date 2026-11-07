@@ -56,7 +56,7 @@ export { PartialPolicy, Verdict, VerificationDepth, WithheldReason } from './ver
 export { VERIFICATION_DEPTH } from './verification-depth';
 export { type DroppedPointer, WithheldSentence, WithheldUnit } from './withheld';
 export { ApiRefusal } from './api-refusal';
-export { AskReply, AskRequest } from './ask';
+export { AskReply, AskRequest, AskTurn } from './ask';
 export { CourseList } from './course-list';
 export {
   CourseRepair,

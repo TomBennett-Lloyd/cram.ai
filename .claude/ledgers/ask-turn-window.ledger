@@ -1,0 +1,16 @@
+# The Ask turn-history window, owned by ASK_TURN_WINDOW in packages/grounding/src/turn-window.ts
+# (docs/standards/architecture.md rule 9; docs/adr/0011-ask-conversation.md § Decision (b); #576).
+owner: packages/grounding/src/turn-window.ts
+claim: Ask carries the thread's newest ASK_TURN_WINDOW turns into the rewrite and the prompt, and drops the rest, as carriedTurns applies it once per request
+cite: ASK_TURN_WINDOW
+sweep: ASK_TURN_WINDOW|carriedTurns|\.claude/ledgers/ask-turn-window\.ledger|(?i:turn[- ]history window|newest \w+ turns|turns? (are |is )?carried)
+scope: :!eval/recordings/ :!eval/reports/
+carrier: docs/adr/0011-ask-conversation.md
+carrier: apps/server/src/ask-context.test.ts
+carrier: apps/server/src/ask-course.ts
+carrier: apps/server/src/ask-thread.test.ts
+carrier: eval/src/ask-follow-ups.ts
+carrier: packages/grounding/src/explain.ts
+carrier: packages/grounding/src/standalone-question.ts
+carrier: packages/grounding/src/turn-window.test.ts
+excluded: packages/grounding/src/index.ts

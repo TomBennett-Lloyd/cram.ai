@@ -181,7 +181,7 @@ describe('explain at the deep depth', () => {
   });
 
   it('still names a retrieved slide the budget dropped among the reply’s slides', async () => {
-    const budget = requestTokens(explanationRequest(QUESTION, contextOf())) - 1;
+    const budget = requestTokens(explanationRequest(QUESTION, contextOf(), [])) - 1;
     const result = await run(
       [explained(MALE, [], [hive]), verified(scored(MALE, [hive], ENTAILED))],
       deep(),

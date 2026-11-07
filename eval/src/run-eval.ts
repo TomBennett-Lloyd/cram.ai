@@ -10,6 +10,7 @@ import {
 import { ATTRIBUTION_K, RETRIEVAL_K } from '@cram/index';
 import type { CourseId } from '@cram/shared';
 import { askDeep, askLight, type Retrieved, type ToAsk, widened } from './ask-depths';
+import { askFollowUps } from './ask-follow-ups';
 import { citationValidity } from './citation-validity';
 import { contextOverflow, promptTokens, sourceCoverage } from './context-rows';
 import { contradictionSet } from './contradiction-set';
@@ -20,6 +21,8 @@ import {
   explanationWithheld,
   quotedShare,
 } from './depth-rows';
+import type { FollowUpItem } from './follow-up';
+import { followUpAttributionRecall, followUpRetrieval } from './follow-up-rows';
 import type { GoldenQuestion } from './golden-question';
 import type { HandLabel } from './hand-label';
 import { IndexRetriever, type IndexedLecture } from './index-retriever';
@@ -49,6 +52,7 @@ export interface EvalRunSpec {
   readonly courseId: CourseId;
   readonly lectures: readonly IndexedLecture[];
   readonly questions: readonly GoldenQuestion[];
+  readonly followUps: readonly FollowUpItem[];
   readonly labels: readonly HandLabel[];
   readonly sentenceKinds: readonly SentenceKindLabel[];
   readonly topicLabels: readonly TopicLabel[];
@@ -134,7 +138,7 @@ const NOT_YET = {
   generatorTiming: 'Generator.chat reports neither first-token time nor token counts (#138)',
 };
 
-/** One whole run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), both depths over one retrieved set, misspelt variants retrieved only; a recording miss rejects it. */
+/** One whole run (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), both depths over one retrieved set, misspelt variants retrieved only, follow-ups asked as Ask asks them; a recording miss rejects it. */
 export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
   const gateway = new TimedGateway(spec.gateway, spec.clock);
   const retriever = await IndexRetriever.open({
@@ -160,6 +164,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
           misspelt.push({ question, retrieved: await retriever.retrieve(variant) });
       }
       const light = await askLight(retrievals, retriever, gateway, spec.clock);
+      const followUps = await askFollowUps(spec.followUps, retriever, gateway);
       const deep = await byStrategy(DEEP_STRATEGIES, (strategy) =>
         askDeep(retrievals, gateway, strategy),
       );
@@ -169,6 +174,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
         retrievals,
         misspelt,
         light,
+        followUps,
         deep,
         wide: await widened(light.asked, gateway),
       };
@@ -176,7 +182,7 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       retriever.close();
     }
   })();
-  const { tagged, summaries, retrievals, misspelt, light, deep, wide } = ran;
+  const { tagged, summaries, retrievals, misspelt, light, followUps, deep, wide } = ran;
   const labels = await byStrategy(LABEL_STRATEGIES, (strategy) =>
     judgeAll(spec.labels, gateway, strategy, spec.clock),
   );
@@ -232,6 +238,8 @@ export const runEval = async (spec: EvalRunSpec): Promise<EvalReport> => {
       contradictionSetLight: contradictionSetLight(light.asked),
       lightFlagRate: lightFlagRate(light.asked),
       lightFlagRateWide: lightFlagRate(wide),
+      followUpRetrieval: followUpRetrieval(followUps, RETRIEVAL_K),
+      followUpAttributionRecall: followUpAttributionRecall(followUps),
       sentenceKindPrecision: kinds.precision,
       sentenceKindRecall: kinds.recall,
       ...summaryRows(summaries),

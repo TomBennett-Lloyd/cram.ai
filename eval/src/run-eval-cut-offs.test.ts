@@ -17,6 +17,7 @@ const run = (respond: Respond) =>
       indexedLecture(lectureId, [record({ lectureId, slideNo: 1, body: 'Bees build comb.' })]),
     ),
     questions: [],
+    followUps: [],
     labels: [],
     sentenceKinds: [],
     topicLabels: [],

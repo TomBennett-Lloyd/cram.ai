@@ -29,6 +29,7 @@ export const replayRun = (spec: ReplaySpec): Promise<EvalReport> =>
     courseId: spec.courseId,
     lectures: spec.lectures,
     questions: spec.course.questions,
+    followUps: spec.course.followUps,
     labels: spec.course.labels,
     sentenceKinds: spec.course.sentenceKinds,
     topicLabels: spec.course.topicLabels,

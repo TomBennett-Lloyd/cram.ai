@@ -124,3 +124,4 @@ first edit, and one that only trues up a file path the same PR moves. `.claude/w
 - [0008 — Slide chunking: a slide is indexed as one or more chunks; citations stay on the slide](0008-slide-chunking.md)
 - [0009 — Explanation answers: the tutor explains the course in its own words, quotes are marked pointers, and verification depth is chosen by surface](0009-explanation-answers.md)
 - [0010 — Misspelt golden variants: retrieval-only typos on a golden question, and their recall@k beside the clean figure](0010-misspelt-golden-variants.md)
+- [0011 — Ask holds a conversation: follow-up turns, a standalone retrieval rewrite, earlier answers never a source](0011-ask-conversation.md)

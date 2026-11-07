@@ -50,6 +50,9 @@ const sentence = (
 });
 
 export const GROUNDED_QUESTION = 'What are drones?';
+/** Asked after another question, it is answered as retrieved on `FOLLOW_UP_SEARCHED` (#576). */
+export const FOLLOW_UP_QUESTION = 'And the drones?';
+export const FOLLOW_UP_SEARCHED = 'What are the drones?';
 export const NOT_COVERED_QUESTION = 'Who wrote Hamlet?';
 /** Its answer's second sentence is marked against HIVE, whose speaker notes say drones do not forage. */
 export const CONTRADICTED_QUESTION = 'Do drones forage?';
@@ -69,6 +72,8 @@ const SENTENCES = [
   sentence('Drones are male.', ['s1']),
   sentence('Workers are female, and comb cells are hexagonal.', ['s1', 's2']),
 ];
+/** `GROUNDED_QUESTION`'s explanation text, which a follow-up carries as its turn's answer. */
+export const GROUNDED_TEXT = SENTENCES.map(({ text }) => text).join(' ');
 
 const grounded = (
   sentences: readonly ReturnType<typeof sentence>[],
@@ -88,7 +93,9 @@ const grounded = (
   leftOut: [],
 });
 
-const askReply = (question: string) => {
+const askReply = (question: string, turns: number) => {
+  if (question === FOLLOW_UP_QUESTION && turns > 0)
+    return { ...grounded(SENTENCES), searched: FOLLOW_UP_SEARCHED };
   switch (question) {
     case NOT_COVERED_QUESTION:
       return { status: 'not-covered', withheld: [], slides: [COMB], leftOut: [] };
@@ -154,11 +161,13 @@ const SLIDE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height
 const json = (route: Route, status: number, body: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
-const questionOf = (body: string | null): string => {
+const askOf = (body: string | null): { readonly question: string; readonly turns: number } => {
   const parsed: unknown = JSON.parse(body ?? '{}');
-  return typeof parsed === 'object' && parsed !== null && 'question' in parsed
-    ? String(parsed.question)
-    : '';
+  if (typeof parsed !== 'object' || parsed === null) return { question: '', turns: 0 };
+  return {
+    question: 'question' in parsed ? String(parsed.question) : '',
+    turns: 'turns' in parsed && Array.isArray(parsed.turns) ? parsed.turns.length : 0,
+  };
 };
 
 /** The rebuild report `stubApi` serves when asked for one, until the app dismisses it. */
@@ -243,7 +252,8 @@ export const stubApi = async (page: Page, options: StubOptions = {}): Promise<vo
   );
   await page.route('**/courses/*/ask', async (route) => {
     await options.askReplyAfter;
-    await json(route, 200, askReply(questionOf(route.request().postData())));
+    const { question, turns } = askOf(route.request().postData());
+    await json(route, 200, askReply(question, turns));
   });
   await page.route('**/courses/*/decks?*', (route) =>
     json(route, 202, {

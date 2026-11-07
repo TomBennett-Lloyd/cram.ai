@@ -23,7 +23,7 @@ import { readBody, sendBytes, sendJson, sendRefusal } from './http-body';
 import type { IngestQueue } from './ingest-queue';
 import { badRequest, courseIdOf, jsonBody, mediaTypeOf, type RouteRequest } from './route-request';
 
-/** Ceilings on what one request may send; a deck is a whole lecture, a question is a sentence or two. */
+/** Ceilings on what one request may send; a deck is a whole lecture, a question is a sentence or two with the turns it follows (`docs/adr/0011-ask-conversation.md` § Decision (a)). */
 export const MAX_DECK_BYTES = 256 * 1024 * 1024;
 export const MAX_ASK_BYTES = 64 * 1024;
 export const MAX_REMAKE_BYTES = 4 * 1024;
@@ -205,7 +205,7 @@ export const askQuestion = async (route: RouteRequest, context: HandlerContext):
     badRequest(response, z.prettifyError(parsed.error));
     return;
   }
-  const outcome = await askCourse(courseId, parsed.data.question, context);
+  const outcome = await askCourse(courseId, parsed.data, context);
   switch (outcome.status) {
     case 'no-such-course':
       sendRefusal(response, 404, { status: 'no-such-course' });

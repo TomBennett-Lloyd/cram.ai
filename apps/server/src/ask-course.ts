@@ -1,14 +1,17 @@
 import type { Embedder, ModelGateway } from '@cram/gateway';
 import {
   ask,
+  carriedTurns,
   explanationRequest,
   PROVISIONAL_NLI_THRESHOLDS,
   requestTokens,
   type SearchSentence,
+  standaloneQuestion,
 } from '@cram/grounding';
 import { ATTRIBUTION_K, type CourseReader, loadSummaries } from '@cram/index';
 import type {
   AskReply,
+  AskRequest,
   CourseId,
   CourseUnavailableProblem,
   LoadedSummary,
@@ -41,11 +44,11 @@ type Retrieval =
 
 const retrieve = async (
   course: CourseReader | undefined,
-  question: string,
+  { search, typed }: { readonly search: string; readonly typed: string },
   embedder: Embedder,
 ): Promise<Retrieval> => {
-  const correction = course?.correctSpelling(question);
-  const text = correction?.status === 'corrected' ? correction.searched : question;
+  const correction = course?.correctSpelling(search);
+  const text = correction?.status === 'corrected' ? correction.searched : search;
   const embedded = await embedQuestion(embedder, text);
   if (embedded.status === 'over-length')
     return { status: 'over-length', maxInputTokens: embedded.maxInputTokens };
@@ -54,7 +57,22 @@ const retrieve = async (
     status: 'retrieved',
     slides,
     summaries: course === undefined ? [] : loadSummaries(course, slides),
-    searched: correction?.status === 'corrected' ? text : undefined,
+    searched: text === typed ? undefined : text,
+  };
+};
+
+const retrieveFollowUp = async (
+  course: CourseReader | undefined,
+  search: string,
+  typed: string,
+  embedder: Embedder,
+): Promise<Retrieval & { readonly rewriteOverLength: boolean }> => {
+  const retrieval = await retrieve(course, { search, typed }, embedder);
+  if (retrieval.status === 'retrieved' || search === typed)
+    return { ...retrieval, rewriteOverLength: false };
+  return {
+    ...(await retrieve(course, { search: typed, typed }, embedder)),
+    rewriteOverLength: true,
   };
 };
 
@@ -67,25 +85,31 @@ const sentenceSearch =
   };
 
 type Asked =
-  | { readonly status: 'over-length'; readonly maxInputTokens: number }
+  | {
+      readonly status: 'over-length';
+      readonly maxInputTokens: number;
+      readonly rewriteOverLength: boolean;
+    }
   | {
       readonly status: 'asked';
       readonly result: Awaited<ReturnType<typeof ask>>;
       readonly retrieved: readonly RetrievedSlide[];
       readonly searched: string | undefined;
+      readonly rewriteOverLength: boolean;
     };
 
 const askOpen = async (
   course: CourseReader | undefined,
-  question: string,
+  asked: AskRequest,
+  search: string,
   gateway: ModelGateway,
 ): Promise<Asked> => {
   try {
-    const retrieval = await retrieve(course, question, gateway.embedder);
+    const retrieval = await retrieveFollowUp(course, search, asked.question, gateway.embedder);
     if (retrieval.status === 'over-length') return retrieval;
-    const { slides: retrieved, summaries } = retrieval;
+    const { slides: retrieved, summaries, searched, rewriteOverLength } = retrieval;
     const result = await ask(
-      question,
+      asked,
       { retrieved, summaries },
       {
         gateway,
@@ -93,37 +117,72 @@ const askOpen = async (
         searchSentence: sentenceSearch(course, gateway.embedder),
       },
     );
-    return { status: 'asked', result, retrieved, searched: retrieval.searched };
+    return { status: 'asked', result, retrieved, searched, rewriteOverLength };
   } finally {
     course?.close();
   }
 };
 
-const contextOutcome = (question: string, { context }: Awaited<ReturnType<typeof ask>>): string =>
-  `${String(requestTokens(explanationRequest(question, context)))} prompt tokens, ${String(context.leftOut.length)} left out`;
+const contextOutcome = (
+  { question, turns }: AskRequest,
+  dropped: number,
+  { context }: Awaited<ReturnType<typeof ask>>,
+): string =>
+  `${String(requestTokens(explanationRequest(question, context, turns)))} prompt tokens, ${String(context.leftOut.length)} left out, ${String(turns.length)} turns carried, ${String(dropped)} turns dropped`;
 
-/** Retrieve on the corrected question (#393), then `@cram/grounding`'s `ask` on the typed one (`docs/standards/grounding.md` rule 2). */
+const rewriteOutcome = (asked: Asked, kept: boolean): string => {
+  if (asked.rewriteOverLength) return 'over-length';
+  return kept ? 'kept' : 'rewritten';
+};
+
+const sameWords = (left: string, right: string): boolean =>
+  left.replace(/\s+/g, ' ').trim() === right.replace(/\s+/g, ' ').trim();
+
+/** Retrieve on a follow-up's standalone rewrite, else the corrected question (#393), then `@cram/grounding`'s `ask` on the typed one with the carried turns (`docs/adr/0011-ask-conversation.md` § Decision (b)–(d); `docs/standards/grounding.md` rule 2). */
 export const askCourse = async (
   courseId: CourseId,
-  question: string,
+  request: AskRequest,
   deps: AskDeps,
 ): Promise<AskOutcome> => {
   if (!courseExists(deps.files, courseId)) return { status: 'no-such-course' };
+  const { carried, dropped } = carriedTurns(request.turns);
+  if (carried.length > 0) {
+    const typed = await embedQuestion(deps.gateway.embedder, request.question);
+    if (typed.status === 'over-length')
+      return { status: 'question-over-length', maxInputTokens: typed.maxInputTokens };
+  }
+  const rewrite =
+    carried.length === 0
+      ? undefined
+      : await standaloneQuestion(request.question, carried, deps.gateway.generator);
+  if (rewrite?.status === 'model-failed') {
+    deps.log({ operation: 'ask rewrite', courseId, outcome: modelFailureOutcome(rewrite.failure) });
+    return { status: 'replied', reply: { status: 'model-failed' } };
+  }
   const opened = openToRead(deps.files, courseId);
   if (opened.status !== 'open' && opened.status !== 'blank')
     return { status: 'course-unavailable', problem: opened.status };
+  const kept = rewrite === undefined || sameWords(rewrite.question, request.question);
+  const thread = { question: request.question, turns: [...carried] };
   const asked = await askOpen(
     opened.status === 'open' ? opened.course : undefined,
-    question,
+    thread,
+    kept ? request.question : rewrite.question,
     deps.gateway,
   );
+  if (rewrite !== undefined)
+    deps.log({ operation: 'ask rewrite', courseId, outcome: rewriteOutcome(asked, kept) });
   if (asked.status === 'over-length')
     return { status: 'question-over-length', maxInputTokens: asked.maxInputTokens };
   const { result, retrieved, searched } = asked;
   const named = searched === undefined ? {} : { searched };
   const { leftOut } = result.context;
   if (result.context.raw.length > 0)
-    deps.log({ operation: 'ask context', courseId, outcome: contextOutcome(question, result) });
+    deps.log({
+      operation: 'ask context',
+      courseId,
+      outcome: contextOutcome(thread, dropped, result),
+    });
   switch (result.status) {
     case 'grounded':
       return {
