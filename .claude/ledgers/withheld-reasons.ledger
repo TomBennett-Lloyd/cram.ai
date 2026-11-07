@@ -14,6 +14,8 @@ carrier: packages/grounding/src/explain.test.ts
 carrier: packages/grounding/src/explain-deep.test.ts
 carrier: eval/src/depth-rows.ts
 carrier: eval/src/depth-rows.test.ts
+carrier: eval/src/summary-key.ts
+carrier: eval/src/summary-key.test.ts
 carrier: packages/grounding/src/resolve-citations.test.ts
 carrier: packages/grounding/src/ground.test.ts
 carrier: apps/web/src/copy.ts

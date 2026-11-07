@@ -3,6 +3,7 @@ import {
   SLIDE_FIELD_SEPARATOR,
   type SlideRecord,
   slideFields,
+  whitespaceNormalised,
 } from '@cram/shared';
 
 /** What a quote must be a substring of (`docs/standards/grounding.md` rule 3); a chunk's text is the same fields' (#426). */
@@ -19,3 +20,11 @@ export const slideLines = (record: SlideRecord): readonly string[] =>
     .flatMap(({ text }) => text.split('\n'))
     .filter(nonBlank)
     .map((line) => line.trim());
+
+export const copiedLines = (record: SlideRecord, copy: string): readonly string[] =>
+  slideLines(record).filter((line) => whitespaceNormalised(line) === whitespaceNormalised(copy));
+
+export const copiedLine = (record: SlideRecord, copy: string): string | undefined => {
+  const [only, ...more] = copiedLines(record, copy);
+  return more.length === 0 ? only : undefined;
+};

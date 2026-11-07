@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { quoteSpan, slideFields } from './quotable-text';
+import { quoteSpan, slideFields, whitespaceNormalised } from './quotable-text';
 import { slide } from './slide-record-fixture';
 
 /** The text `quote` spans in `text`, so one string states where it was found. */
@@ -44,6 +44,22 @@ describe('quoteSpan', () => {
     expect(quoteSpan('Bees build comb.', 'Bees build hives')).toBeUndefined();
     expect(quoteSpan('Bees build comb.', ' \n ')).toBeUndefined();
     expect(quoteSpan('', 'Bees')).toBeUndefined();
+  });
+});
+
+describe('whitespaceNormalised', () => {
+  it('reads each run of spaces, tabs and line breaks as one space and trims the ends', () => {
+    expect(whitespaceNormalised(' \tWorker  bees\n\nare\tmale. \n')).toBe('Worker bees are male.');
+  });
+
+  it('changes nothing but whitespace: not case, not punctuation, not apostrophes', () => {
+    expect(whitespaceNormalised('The Colony’s queen, "mated".')).toBe(
+      'The Colony’s queen, "mated".',
+    );
+  });
+
+  it('reads a blank text as empty', () => {
+    expect(whitespaceNormalised(' \n\t ')).toBe('');
   });
 });
 

@@ -35,10 +35,12 @@ const collapsed = (text: string): { readonly text: string; readonly origin: read
   return { text: out, origin };
 };
 
+export const whitespaceNormalised = (text: string): string => collapsed(text).text.trim();
+
 /** Where `quote` sits in `text`, whitespace runs read as one space, nothing else normalised (`docs/standards/grounding.md` rule 3). */
 export const quoteSpan = (text: string, quote: string): QuoteSpan | undefined => {
   const haystack = collapsed(text);
-  const needle = collapsed(quote).text.trim();
+  const needle = whitespaceNormalised(quote);
   const at = haystack.text.indexOf(needle);
   const start = haystack.origin[at];
   const end = haystack.origin[at + needle.length - 1];
