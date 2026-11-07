@@ -128,8 +128,8 @@ guard() {
 
 # guard_bg <name> <slots> <command...> -> a guarded run in the background, output in
 # $TMP_ROOT/bg-<name>.out, pid in BG_PID. perl resets SIGINT to its default before it
-# execs the guard: a job started with & in a non-interactive shell ignores SIGINT, and an
-# ignored signal cannot be trapped.
+# execs the guard: a job started with & in a non-interactive shell ignores SIGINT, and a
+# harness run under nohup ignores SIGHUP; an ignored signal cannot be trapped.
 guard_bg() {
   local name="$1" slots="$2"
   shift 2
@@ -185,6 +185,7 @@ own_start() { LC_ALL=C TZ=UTC ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//'; }
 # Stubs on a PATH of their own, put ahead of the real one only in the cases that name them.
 cat >"$BIN/default-int.pl" <<'EOF' || exit 2
 $SIG{INT} = "DEFAULT";
+$SIG{HUP} = "DEFAULT";
 exec @ARGV;
 EOF
 cat >"$BIN/sleep" <<'EOF' || exit 2
@@ -507,6 +508,36 @@ expect_rc 0
 expect_stdout "recovered a stale slot"
 polls=$(grep -c . "$TMP_ROOT/sleeps" 2>/dev/null || true)
 [ "${polls:-0}" -ge 9 ] || bad "an ownerless recovery lock was discarded after ${polls:-0} sleeps; the grace is ten polls"
+end
+
+begin "a slot that turns ownerless between a waiter's stale reading and its recovery is not discarded before its grace"
+fresh_state
+reset_repo
+cat >"$BIN/ps" <<'PSEOF' || exit 2
+#!/usr/bin/env bash
+if [ ! -e "$STUB_DIR/ps-stalled" ]; then
+  touch "$STUB_DIR/ps-stalled"
+  while [ ! -e "$STUB_DIR/ps-go" ]; do /bin/sleep 0.05; done
+fi
+exec /bin/ps "$@"
+PSEOF
+chmod +x "$BIN/ps" || exit 2
+rm -f "$TMP_ROOT/ps-stalled" "$TMP_ROOT/ps-go"
+fake_slot 1 "$(dead_pid)" ""
+GUARD_EXTRA=(PATH="$BIN:$PATH" CRAM_VERIFY_POLL=30)
+guard_bg w 1 -- bash "$STUBS/pass.sh"
+pid_w=$BG_PID
+wait_for "$TMP_ROOT/ps-stalled" || bad "the waiter never reached its recovery lock"
+# the waiter read slot-1 as stale and is inside write_owner for recover.lock; another run now takes the slot and is between its mkdir and its first owner write
+rm -rf "$STATE/verify-slots/slot-1"
+must mkdir "$STATE/verify-slots/slot-1"
+touch "$TMP_ROOT/ps-go"
+sleep 1.5
+grep -qF "recovered a stale slot" "$TMP_ROOT/bg-w.out" && bad "a slot with no owner file yet was discarded before its grace: $(cat "$TMP_ROOT/bg-w.out")"
+grep -qF "stub ran" "$TMP_ROOT/bg-w.out" && bad "the waiter took a slot another run was taking"
+kill -9 "$pid_w" 2>/dev/null
+{ wait "$pid_w"; } 2>/dev/null
+rm -f "$BIN/ps"
 end
 
 begin "a slot whose owner file could not be written is removed, not left to be waited out as abandoned"
