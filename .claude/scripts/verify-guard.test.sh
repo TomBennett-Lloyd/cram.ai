@@ -495,6 +495,20 @@ wait_for "$TMP_ROOT/ran-rl" || bad "the run never recovered once the recovery lo
 wait "$pid_rl" || bad "the run did not exit 0"
 end
 
+begin "a recovery lock with no owner file is waited out for the grace polls, then discarded"
+fresh_state
+reset_repo
+rm -f "$TMP_ROOT/sleeps"
+fake_slot 1 "$(dead_pid)" "Thu Jan  1 00:00:00 1970"
+must mkdir -p "$STATE/verify-slots/recover.lock"
+GUARD_EXTRA=(PATH="$BIN:$PATH")
+guard 1 -- bash "$STUBS/pass.sh"
+expect_rc 0
+expect_stdout "recovered a stale slot"
+polls=$(grep -c . "$TMP_ROOT/sleeps" 2>/dev/null || true)
+[ "${polls:-0}" -ge 9 ] || bad "an ownerless recovery lock was discarded after ${polls:-0} sleeps; the grace is ten polls"
+end
+
 begin "a slot whose owner file could not be written is removed, not left to be waited out as abandoned"
 fresh_state
 reset_repo
