@@ -82,8 +82,9 @@ function laneReportMissing(body) {
   const tpl = laneReportLabels();
   if (!tpl.ok) return [`(lane-report template unreadable: ${tpl.reason})`];
   const report = body.slice(at);
-  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-  return tpl.labels.filter((l) => !new RegExp(`(?:^|\\s)${esc(l)}:`, 'm').test(report));
+  // A label holds only letters, `/`, space and `-` (the extraction above), none special in a
+  // pattern; the report starts at its header, so a label always follows whitespace.
+  return tpl.labels.filter((l) => !new RegExp(`\\s${l}:`).test(report));
 }
 
 let raw = '';

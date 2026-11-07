@@ -64,7 +64,7 @@ for label in "${EXPECTED[@]}"; do
 done
 
 begin "a label inside a word is not the label"
-printf '{"body":"## Lane report — issue #21\\nSubreview: x"}' >"$TMP_ROOT/embedded.json"
+printf '{"body":"## Lane report — issue #21\\nSubreview: x\\nXReview: x"}' >"$TMP_ROOT/embedded.json"
 facts_of "$TMP_ROOT/embedded.json"
 expect_stdout "lanemissing	Review"
 end
@@ -103,6 +103,30 @@ must cp "$FACTS" "$TMP_ROOT/blockless/scripts/"
 printf 'no template here\n' >"$TMP_ROOT/blockless/agents/ticket-agent.md"
 facts_of "$TMP_ROOT/full2.json" "$TMP_ROOT/blockless/scripts/pr-facts.mjs"
 expect_stdout 'no lane-report template block found'
+end
+
+# template_case <dir> <template text> -> a copy of pr-facts.mjs with its own agents/ticket-agent.md.
+template_case() {
+  must mkdir -p "$TMP_ROOT/$1/scripts" "$TMP_ROOT/$1/agents"
+  must cp "$FACTS" "$TMP_ROOT/$1/scripts/"
+  printf '%s\n' "$2" >"$TMP_ROOT/$1/agents/ticket-agent.md"
+}
+
+begin "a template holding STATUS: but no report header is flagged rather than read from line 0"
+template_case nostart 'Alpha: x
+STATUS: DONE'
+facts_of "$TMP_ROOT/full2.json" "$TMP_ROOT/nostart/scripts/pr-facts.mjs"
+expect_stdout 'no lane-report template block found'
+end
+
+begin "an indented line in the template block is a continuation, never a label"
+template_case indented '## Lane report — issue #<n>
+Alpha: x
+      Indented: y
+STATUS: DONE'
+printf '{"body":"## Lane report — issue #21\\nAlpha: x\\nSTATUS: DONE"}' >"$TMP_ROOT/indented.json"
+facts_of "$TMP_ROOT/indented.json" "$TMP_ROOT/indented/scripts/pr-facts.mjs"
+expect_not_stdout 'lanemissing'
 end
 
 finish

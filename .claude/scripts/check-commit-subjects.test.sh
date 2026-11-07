@@ -146,4 +146,28 @@ expect_rc 2 "$rc"
 expect_stderr "origin/main does not resolve"
 end
 
+begin "a branch holding the lane pattern only after other text is not a lane branch"
+fixture inner x671-slug
+commit "no prefix here"
+run_check
+expect_rc 0 "$rc"
+expect_out "not a lane branch"
+end
+
+begin "a lane branch with no commit of its own passes with zero subjects"
+fixture empty 671-slug
+run_check
+expect_rc 0 "$rc"
+expect_out "0 commit subject(s)"
+end
+
+begin "an origin/main ref naming an object the repo lacks fails closed"
+fixture dangling 671-slug
+commit "#671: fine"
+printf '1234567890123456789012345678901234567890\n' >"$DIR/.git/refs/remotes/origin/main" || exit 2
+run_check
+expect_rc 2 "$rc"
+expect_stderr "git log origin/main..HEAD failed"
+end
+
 finish
