@@ -8,7 +8,7 @@ description: Owns one small same-surface batch of GitHub issues, full lifecycle
   merges; the top-level session owns merging.
 model: opus
 effort: medium
-tools: Bash, Read, Edit, Write, Agent, Skill, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
+tools: Bash, Read, Edit, Write, Agent, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
 ---
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.

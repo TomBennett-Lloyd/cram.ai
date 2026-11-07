@@ -23,6 +23,7 @@ carrier: .claude/skills/retro/SKILL.md
 carrier: .claude/skills/plan-issue/SKILL.md
 carrier: .claude/agents/task-orchestrator.md
 carrier: .claude/agents/ticket-agent.md
+carrier: .claude/skills/adr-lane/SKILL.md
 carrier: docs/review-feedback.md
 excluded: docs/adr/0002-deployables.md
 excluded: docs/adr/0003-model-roles-and-backends.md

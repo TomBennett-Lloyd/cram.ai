@@ -17,6 +17,7 @@ carrier: .claude/skills/run-issue/SKILL.md
 carrier: .claude/skills/run-issue/batch-lane.md
 carrier: .claude/skills/plan-issue/SKILL.md
 carrier: .claude/agents/ticket-agent.md
+carrier: .claude/skills/adr-lane/SKILL.md
 carrier: .claude/agents/task-orchestrator.md
 carrier: .claude/agents/planner.md
 carrier: .claude/scripts/check-no-network-egress.sh
