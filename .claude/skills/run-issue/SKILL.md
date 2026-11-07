@@ -121,9 +121,9 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    `humanAlways` ritual, and the merge-time `Category`/`Verdict` fill, which reaches the agent
    as a bounce because only it writes to its worktree:
    `FILL — bash .claude/scripts/fill-verdict.sh <pr> --category <category> --verdict "<text>" --worktree <path>`,
-   filled in and sent verbatim. The agent runs it bare, as `.claude/agents/ticket-agent.md`
-   rule 8 states (#205); an agent the classifier refuses returns `BLOCKED` with its git state
-   and never retries, and you then run the same bare command yourself. On an `/execute`-path branch, which has no lane agent, you run it
+   filled in and sent verbatim. The agent runs it bare, as `docs/standards/evidence.md` § Host
+   conventions member 10 states (#205); an agent the classifier refuses returns `BLOCKED` with
+   its git state and never retries (`.claude/agents/ticket-agent.md` rule 8), and you then run the same bare command yourself. On an `/execute`-path branch, which has no lane agent, you run it
    yourself from the start. A report whose `Cross-references:` field reads `unposted` leaves
    you the posting: post each from the text in the PR body yourself, before the merge
    chain, naming the lane in the comment (`.claude/agents/ticket-agent.md` rule 1; PR #425

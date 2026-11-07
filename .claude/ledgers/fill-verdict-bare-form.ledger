@@ -1,15 +1,14 @@
 # Where the bare fill-verdict.sh rule is restated (docs/standards/architecture.md rule 9; #670, #688).
-# After PR #690 merges, #688 moves the bare form's owner to docs/standards/evidence.md § Host conventions member 10; the no-retry return stays in ticket-agent rule 8.
-# The merge owner's half (run the refused fill itself) is owned by .claude/skills/run-issue/SKILL.md step 4.
-owner: .claude/agents/ticket-agent.md
-claim: fill-verdict.sh is sent bare (no cd, export, prefix, pipe or redirect; the allow rule is a prefix match), and a lane the classifier refuses on a fill or a rebase's conflict resolution returns BLOCKED and never retries
-cite: .claude/agents/ticket-agent.md § rule 8
-sweep: ticket-agent\.md`? (§ )?rule 8\b|(?i:\bbare\b[^\n]{0,20}fill-verdict|fill-verdict[^\n]{0,80}\bbare\b|\bbare fill\b|never retries|no-retry rule)|\.claude/ledgers/fill-verdict-bare-form\.ledger
+# The lane's no-retry return on a refusal is owned by .claude/agents/ticket-agent.md rule 8 (evidence.md member 11 points there);
+# the merge owner's half (run the refused fill itself) by .claude/skills/run-issue/SKILL.md step 4.
+owner: docs/standards/evidence.md
+claim: fill-verdict.sh is sent bare (no cd, export, prefix, pipe or redirect; --worktree replaces the cd), because the allow rule is a prefix match and a wrapped form is read as a lane writing an owner's approval
+cite: docs/standards/evidence.md § Host conventions member 10
+sweep: Host conventions members? 10\b|(?i:\bbare\b[^\n]{0,20}fill-verdict|fill-verdict[^\n]{0,80}\bbare\b|\bbare fill\b|never retries|no-retry rule)|\.claude/ledgers/fill-verdict-bare-form\.ledger
+carrier: .claude/agents/ticket-agent.md
 carrier: .claude/skills/review-loop/SKILL.md
 carrier: .claude/skills/run-issue/SKILL.md
 carrier: .claude/skills/adr-lane/SKILL.md
-carrier: .claude/skills/merge-owner-start/SKILL.md
-excluded: .claude/skills/eval-lane/SKILL.md
 excluded: .claude/hooks/compaction-lib.sh
 excluded: .claude/scripts/pr-facts.mjs
 excluded: docs/friction-log.md
