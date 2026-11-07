@@ -606,7 +606,7 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-07 — issue #659 — merge-owner-start-and-routing
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: the owner's ask, 2026-11-07 (chat, quoted in #659): "i feel like it this workflow should be mostly reproducible if someone else were to pick it up?" The PR asks the owner to decide, on the one `humanAlways` path it edits, `CLAUDE.md`:
   - accept the routing experiment in § Model tiers: a docs-tier or `.claude/` scripts-and-prose lane runs on Sonnet, every other lane on Opus, tallied on #624 and decided after ten lanes of each model. Two things it deliberately leaves out, because the 2026-11-04 "yes run the routing experiment" does not say them: "reviewer follows the lane's model" and a Sonnet review for docs-tier PRs (#624 proposals A and D);
   - accept that every other lane means Opus, including `apps/web`, `eval/` and `packages/shared`, which #624 proposal A did not name;
@@ -615,4 +615,4 @@ A category going quiet across consecutive reviews is the evidence for graduating
       The rest of the diff (the `merge-owner-start` skill, the `retro` step 0, `run-issue` and `review-loop` phrases, one `README.md` phrase) is `.claude/` prose and needs no owner decision.
 - **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`), and the model policy lives there by the owner's decision in #624.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approve 675
