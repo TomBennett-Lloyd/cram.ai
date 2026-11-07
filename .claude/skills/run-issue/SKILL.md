@@ -68,7 +68,7 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    measurement alone: it is not a sequencing decision and never a reason to batch. While anything is
    held, `bash .claude/scripts/sweep-worktrees.sh --dry-run` lists as `WOULD-KILL` the
    orphans `.claude/scripts/sweep-orphans.sh`'s header defines, which a real sweep ends. The
-   evidence, lanes' verify runs red on load timeouts, is #483's.
+   evidence, lanes' verify runs red on load timeouts, is #483's. The gate bounds dispatch; `.claude/scripts/verify-guard.sh` separately bounds how many `pnpm verify` runs execute at once (#700).
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
    mode and the overlap note — nothing else; it reads the issue and the files.
    The overlap note asserts only what a command printed: each overlapping lane's issue or
