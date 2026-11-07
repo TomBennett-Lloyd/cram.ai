@@ -27,3 +27,4 @@ carrier: eval/src/live-config.test.ts
 excluded: packages/grounding/src/index.ts
 excluded: docs/review-feedback.md
 excluded: .claude/scripts/models-pull.test.sh
+carrier: docs/adr/0011-ask-conversation.md

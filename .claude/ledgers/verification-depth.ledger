@@ -22,3 +22,4 @@ excluded: packages/shared/src/verification.test.ts
 excluded: docs/tech-debt.md
 carrier: apps/web/src/ask/AnswerView.tsx
 excluded: apps/web/src/ask/ExplanationView.test.tsx
+carrier: docs/adr/0011-ask-conversation.md
