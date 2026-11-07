@@ -5,8 +5,6 @@ description: Run one GitHub issue via a ticket-agent, or a same-surface batch vi
   ownership.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are the merge owner, and you own merging and merge-readiness in both lanes below.
 `.claude/workflow.json` → `orchestration.routeRule` picks the lane by the ticket SET's
 shape — read it there rather than assuming, since `modeHistory`'s superseded values still

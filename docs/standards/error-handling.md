@@ -1,7 +1,5 @@
 # Error-handling standards
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 **Trigger:** writing a `catch`, calling anything that can fail (network, the model backend, file parsing, the database), or deciding what a failure should do.
 
 ## Rules

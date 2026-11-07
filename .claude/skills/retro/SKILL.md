@@ -3,8 +3,6 @@ name: retro
 description: Post-merge retrospective on how the workflow performed for a task. Produces exactly one output — a concrete workflow improvement PR, or a friction-log entry. Run after merged PRs, one retro per PR or one over several (step 0).
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are reviewing how the _workflow_ performed on the tasks just merged — not re-reviewing the code.
 
 0. **Scope: one PR or several.** One retro may cover every PR merged since the last `retro:` PR (`git log --oneline origin/main | command grep -m1 'retro:'`) when none of them has a clear signal with a clear fix of its own (step 2's first arm) in a file another's fix does not touch; a PR that does gets its own retro. A combined retro reads each PR's `## Lane report` against its issue, the friction log and the last retro's body, so that nothing is logged twice, and its output is one change PR or one friction-log entry per distinct signal, a signal several PRs share being one entry that names them (`PR #565, PR #591, PR #610`). Owner observation 2026-11-07 (#659): combined retros (PRs #604, #611, #621) cost less than one per PR, and the lane report is durable in the PR body, so a retro deferred to a combined one loses nothing.

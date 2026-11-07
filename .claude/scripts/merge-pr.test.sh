@@ -113,6 +113,10 @@ V_FILES=""
 V_CHECKS=""
 V_COMMITS=""
 V_BODY=""
+# A complete lane report's fields, JSON-escaped; a body spells them `@FIELDS@` (#671). The list is
+# harness-lib.sh's lane_report_labels, proved against the live template by pr-facts.test.sh.
+LANE_FIELDS=''
+while IFS= read -r l; do LANE_FIELDS="$LANE_FIELDS${LANE_FIELDS:+\\n}$l: x"; done < <(lane_report_labels)
 V_BASE_REF=""
 V_URL=""
 V_TITLE=""
@@ -206,7 +210,7 @@ pr_json() {
   printf '"title":"%s",' "$V_TITLE"
   printf '"baseRefName":"%s",' "$V_BASE_REF"
   printf '"headRefName":"%s","headRefOid":"%s","mergeStateStatus":"%s","body":"%s",' \
-    "$HEAD_REF" "$V_OID" "$V_MSST" "$V_BODY"
+    "$HEAD_REF" "$V_OID" "$V_MSST" "${V_BODY//@FIELDS@/$LANE_FIELDS}"
   printf '"labels":'
   json_objects name "$V_LABELS"
   # `files` is present here and the subject must IGNORE it — GitHub still answers
@@ -1639,7 +1643,7 @@ end
 # wherever a line starts with it.
 begin "a lane report with two Closes lines merges --squash, not as a batch"
 fixture lane-two-closes
-V_BODY='Closes #21. Closes #22.\n\n~~~\n## Lane report — issue #21\nSTATUS: DONE\n~~~'
+V_BODY='Closes #21. Closes #22.\n\n~~~\n## Lane report — issue #21\n@FIELDS@\nSTATUS: DONE\n~~~'
 V_COMMITS="#21: the first,#21: the second,#21: the third"
 write_view default
 write_merged_view
@@ -1661,7 +1665,7 @@ end
 # refusal and merge with the issue left open.
 begin "a lane report with no Closes line for its issue is refused at classify"
 fixture lane-unclosed
-V_BODY='What and why.\n## Lane report — issue #21'
+V_BODY='What and why.\n## Lane report — issue #21\n@FIELDS@'
 write_view default
 write_merged_view
 run_merge
@@ -1674,7 +1678,7 @@ end
 
 begin "a lane report whose issue is missing from its Closes lines is refused at classify"
 fixture lane-other-closes
-V_BODY='Closes #22.\n## Lane report — issue #21'
+V_BODY='Closes #22.\n## Lane report — issue #21\n@FIELDS@'
 write_view default
 write_merged_view
 run_merge
@@ -1690,7 +1694,7 @@ end
 # nothing.
 begin "a PARTIAL lane report with a Part of line for its issue merges --squash and leaves it open"
 fixture lane-part-of
-V_BODY='Part of #21. The issue stays open for its deferred criterion.\n## Lane report — issue #21\nSTATUS: PARTIAL — one criterion deferred'
+V_BODY='Part of #21. The issue stays open for its deferred criterion.\n## Lane report — issue #21\n@FIELDS@\nSTATUS: PARTIAL — one criterion deferred'
 V_COMMITS="#21: the half that ships"
 write_view default
 write_merged_view
@@ -1705,7 +1709,7 @@ end
 
 begin "a Part of line after the first, in a CRLF body, still declares the lane's issue"
 fixture lane-part-of-crlf
-V_BODY='What and why.\r\nPart of #21.\r\n## Lane report — issue #21\r\nSTATUS: PARTIAL — one criterion deferred'
+V_BODY='What and why.\r\nPart of #21.\r\n## Lane report — issue #21\r\n@FIELDS@\r\nSTATUS: PARTIAL — one criterion deferred'
 V_COMMITS="#21: the half that ships"
 write_view default
 write_merged_view
@@ -1717,7 +1721,7 @@ end
 
 begin "a lane report naming its issue as part of something mid-line is still refused at classify"
 fixture lane-part-of-midline
-V_BODY='This is part of #21 and Part of #21 mid-line.\n## Lane report — issue #21'
+V_BODY='This is part of #21 and Part of #21 mid-line.\n## Lane report — issue #21\n@FIELDS@'
 write_view default
 write_merged_view
 run_merge
@@ -1729,7 +1733,7 @@ end
 
 begin "a lane report whose Part of line names another issue is refused at classify"
 fixture lane-part-of-other
-V_BODY='Part of #22.\n## Lane report — issue #21'
+V_BODY='Part of #22.\n## Lane report — issue #21\n@FIELDS@'
 write_view default
 write_merged_view
 run_merge
@@ -1773,7 +1777,7 @@ end
 
 begin "a lane report beside a batch TASK REPORT header is refused at classify"
 fixture lane-and-batch
-V_BODY='Closes #21\nCloses #22\n## Lane report — issue #21\n## TASK REPORT — batch: anchor #21, members #21 #22'
+V_BODY='Closes #21\nCloses #22\n## Lane report — issue #21\n@FIELDS@\n## TASK REPORT — batch: anchor #21, members #21 #22'
 V_COMMITS="#21: the first,#22: the second"
 write_view default
 write_merged_view
@@ -1792,7 +1796,7 @@ end
 # body that may be a batch is the irreversible direction.
 begin "a body with two lane reports is refused at classify"
 fixture lane-two-reports
-V_BODY='Closes #21. Closes #22.\n## Lane report — issue #21\n## Lane report — issue #22'
+V_BODY='Closes #21. Closes #22.\n## Lane report — issue #21\n@FIELDS@\n## Lane report — issue #22\n@FIELDS@'
 V_COMMITS="#21: the first,#22: the second"
 write_view default
 write_merged_view
@@ -1803,6 +1807,80 @@ expect_stderr '2 lane declarations'
 expect_not_called "pr update-branch $PR"
 expect_not_merged squash
 expect_not_merged rebase
+end
+
+# ==========================================================================================
+# 10g. a lane report missing a field of the ticket-agent template is refused at classify (#671)
+# ==========================================================================================
+# pr-facts.mjs reads the field list from the template block in .claude/agents/ticket-agent.md and
+# pr-facts.test.sh proves every label one by one; these cases prove the refusal end to end.
+begin "a lane report without 'Review:' is refused at classify, naming it"
+fixture lane-missing-review
+V_BODY="Closes #21.\\n## Lane report — issue #21\\n${LANE_FIELDS/"Review: x"/}"
+V_COMMITS="#21: the step"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'classify — FAILED'
+expect_stderr "the lane report is missing field(s): Review"
+expect_not_called "pr update-branch $PR"
+expect_not_merged squash
+end
+
+begin "an already-MERGED PR whose lane report lacks a field is not refused at classify"
+fixture lane-missing-merged
+V_STATE="MERGED"
+V_MSST="UNKNOWN"
+V_BODY="Closes #21.\\n## Lane report — issue #21\\nprose only"
+V_COMMITS="#21: the step"
+write_view default
+run_merge
+expect_rc 0
+expect_not_stderr 'missing field'
+end
+
+begin "a lane-report template that cannot be read is refused as the repo's fault, not the lane's"
+fixture lane-template-gone
+must mkdir -p "$ROOT/tree"
+must cp -R "$SCRIPTS" "$ROOT/tree/scripts"
+V_BODY="Closes #21.\\n## Lane report — issue #21\\n${LANE_FIELDS}"
+V_COMMITS="#21: the step"
+write_view default
+write_merged_view
+SUBJECT_KEPT=$SUBJECT
+SUBJECT="$ROOT/tree/scripts/merge-pr.sh"
+run_merge
+SUBJECT=$SUBJECT_KEPT
+expect_rc 1
+expect_stderr 'classify — FAILED'
+expect_stderr 'the lane-report template cannot be read'
+expect_not_stderr 'missing field'
+expect_not_merged squash
+end
+
+begin "a lane report with no fields at all is refused, naming the first and the last"
+fixture lane-no-fields
+V_BODY='Closes #21.\n## Lane report — issue #21\nprose only'
+V_COMMITS="#21: the step"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'missing field(s): Branch/HEAD'
+expect_stderr 'STATUS'
+expect_not_merged squash
+end
+
+begin "a field label buried in a word is not the field: 'Subreview:' does not stand in for 'Review:'"
+fixture lane-embedded
+V_BODY="Closes #21.\n## Lane report — issue #21\n${LANE_FIELDS/"Review: x"/Subreview: x}"
+V_COMMITS="#21: the step"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'missing field(s): Review'
 end
 
 # ==========================================================================================
@@ -3675,7 +3753,7 @@ refused_at_classify() {
 
 begin "a squash lands the title and the body above the lane report, with the commits' trailers"
 fixture squash-message
-V_BODY='Closes #12\n\nWhat and why.\n\n- Correction: commit abc says X. That holds for Y only.\n\n## Lane report — issue #12\nSTATUS: DONE'
+V_BODY='Closes #12\n\nWhat and why.\n\n- Correction: commit abc says X. That holds for Y only.\n\n## Lane report — issue #12\n@FIELDS@\nSTATUS: DONE'
 V_COMMITS='#12: the change|Every other metric matches both.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\r\n,#12: review fix|co-authored-by: claude <NoReply@anthropic.com>\nco-authored-by:   Other <o@example.test>  '
 write_view default
 write_merged_view
@@ -3695,7 +3773,7 @@ end
 
 begin "the body is cut at a TASK REPORT header too, whichever declaration comes first"
 fixture squash-cut-batch
-V_BODY='Closes #12\r\nline two\r\n\r\n## TASK REPORT — batch: anchor #12\r\nmiddle\r\n## Lane report — issue #12\r\nlast'
+V_BODY='Closes #12\r\nline two\r\n\r\n## TASK REPORT — batch: anchor #12\r\nmiddle\r\n## Lane report — issue #12\r\n@FIELDS@\r\nlast'
 write_view default
 write_merged_view
 MERGE_METHOD=squash run_merge
@@ -3708,7 +3786,7 @@ end
 
 begin "...and at a lane report that comes before a TASK REPORT"
 fixture squash-cut-lane-first
-V_BODY='Closes #12\n## Lane report — issue #12\nmiddle\n## TASK REPORT — batch: anchor #12\nlast'
+V_BODY='Closes #12\n## Lane report — issue #12\n@FIELDS@\nmiddle\n## TASK REPORT — batch: anchor #12\nlast'
 write_view default
 write_merged_view
 MERGE_METHOD=squash run_merge
@@ -3733,7 +3811,7 @@ end
 
 begin "a body with nothing above its lane report is refused at classify"
 fixture squash-no-summary
-V_BODY=' \n\n## Lane report — issue #12\nCloses #12'
+V_BODY=' \n\n## Lane report — issue #12\n@FIELDS@\nCloses #12'
 write_view default
 run_merge
 refused_at_classify 'no summary above its lane report'
@@ -3757,7 +3835,7 @@ end
 
 begin "...and the same body with a Closes line for that issue merges"
 fixture stray-body-named
-V_BODY='What and why. Closes #12. Closes #404.\nThe owner fixes: #404 later.\n## Lane report — issue #12'
+V_BODY='What and why. Closes #12. Closes #404.\nThe owner fixes: #404 later.\n## Lane report — issue #12\n@FIELDS@'
 write_view default
 write_merged_view
 run_merge
@@ -3767,7 +3845,7 @@ end
 
 begin "a stray keyword in the lane report is refused, since GitHub links the whole body"
 fixture stray-report
-V_BODY='What and why. Closes #12\n## Lane report — issue #12\nRetro: fixes: #404'
+V_BODY='What and why. Closes #12\n## Lane report — issue #12\n@FIELDS@\nRetro: fixes: #404'
 write_view default
 run_merge
 refused_at_classify '"fixes: #404"'

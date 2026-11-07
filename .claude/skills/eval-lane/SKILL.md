@@ -3,7 +3,7 @@ name: eval-lane
 description: What a ticket-agent lane does when its diff is eval-bearing - when the tier-2 run is recorded, what it waits for, what reviews it, and why a branch carrying an eval report takes main by merge and never by rebase. Use when the lane is eval-bearing (run-issue skill step 1), or the diff adds or updates a file under eval/reports/.
 ---
 
-Moved out of `.claude/agents/ticket-agent.md` rules 6 and 8 by #669, which keeps each trigger sentence; this file owns the procedure. Bare `#<n>` is this repo's; `cumulo#<n>` is cumulo's.
+Moved out of `.claude/agents/ticket-agent.md` rules 6 and 8 by #669, which keeps each trigger sentence; this file owns the procedure.
 
 ## 1. Recording the tier-2 run
 

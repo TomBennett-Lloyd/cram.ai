@@ -1,7 +1,5 @@
 # Evidence standards
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 **Trigger:** offering command output — a grep, an exit status, a diff — as evidence that something worked, that something matches, or that nothing remains; writing a harness or a scripted edit whose result you will report; or writing a figure, a verdict or a claim about how a tool behaves into a plan comment, PR body, lane report, commit message or comment; or writing an inline edit, a wait on a process, a multi-step git chain or a heredoc'd body (§ Host conventions).
 
 Every idiom catalogued below printed something that read as proof and was not. Use the sanctioned forms; when you recognise a member of the catalogue, replace it rather than annotate it.
