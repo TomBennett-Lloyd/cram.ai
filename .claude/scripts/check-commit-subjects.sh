@@ -31,13 +31,10 @@ branch=${GITHUB_HEAD_REF:-}
   exit 2
 }
 
-case "$branch" in
-  [0-9]*-*) ;;
-  *)
-    echo "check-commit-subjects: OK — '$branch' is not a lane branch (<n>-<slug>), nothing to check"
-    exit 0
-    ;;
-esac
+if ! [[ "$branch" =~ ^[0-9]+- ]]; then
+  echo "check-commit-subjects: OK — '$branch' is not a lane branch (<n>-<slug>), nothing to check"
+  exit 0
+fi
 
 git -C "$ROOT" rev-parse -q --verify refs/remotes/origin/main >/dev/null || {
   echo "check-commit-subjects: origin/main does not resolve in $ROOT, so the branch's commits cannot be listed (run git fetch origin)" >&2

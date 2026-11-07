@@ -107,6 +107,28 @@ expect_rc 0 "$rc"
 expect_out "not a lane branch"
 end
 
+begin "a branch whose number is followed by letters before the dash is not a lane branch"
+fixture alnum 6a-slug
+commit "no prefix here"
+run_check
+expect_rc 0 "$rc"
+expect_out "not a lane branch"
+end
+
+begin "a subject '#<n>:' with no space after the colon fails"
+fixture nospace 671-slug
+commit "#671:glued"
+run_check
+expect_rc 1 "$rc"
+end
+
+begin "a subject '#:' with no number fails"
+fixture nonum 671-slug
+commit "#: nothing"
+run_check
+expect_rc 1 "$rc"
+end
+
 begin "GITHUB_HEAD_REF names the lane branch on a detached checkout"
 fixture detached 671-slug
 commit "no prefix here"
