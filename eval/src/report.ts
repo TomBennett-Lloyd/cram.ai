@@ -13,6 +13,7 @@ import { PromptTokens } from './context-rows';
 import { ContradictionSetRow } from './contradiction-set';
 import { AttributionCounts, DeepPairCounts, DepthRows } from './depth-rows';
 import { DerivedCoverageRow } from './derived-text';
+import { FollowUpSetRow } from './follow-up-rows';
 import { LatencySummary } from './latency';
 import { LightSetRow } from './light-rows';
 import { BaselineRow, NotMeasurable } from './metric-row';
@@ -69,6 +70,8 @@ export const EvalReport = z.strictObject({
     contradictionSetLight: LightSetRow,
     lightFlagRate: BaselineRow,
     lightFlagRateWide: BaselineRow,
+    followUpRetrieval: FollowUpSetRow,
+    followUpAttributionRecall: BaselineRow,
     summaryYield: BaselineRow,
     summaryUnitYield: BaselineRow,
     sourceCoverage: BaselineRow,

@@ -6,6 +6,7 @@ import type { z } from 'zod';
 import type { EvalCourse } from './audit';
 import { parseDeck, type DeckFile } from './deck';
 import { attempt } from './file-attempt';
+import { FollowUpItem } from './follow-up';
 import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { parseJsonLines } from './json-text';
@@ -18,6 +19,7 @@ export const EVAL_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 export const DECK_DIR = 'decks/hollowmere';
 export const QUESTIONS_FILE = 'questions.jsonl';
+export const FOLLOW_UPS_FILE = 'follow-ups.jsonl';
 export const LABELS_FILE = 'labels/verifier.jsonl';
 export const SENTENCE_KINDS_FILE = 'labels/sentence-kind.jsonl';
 export const TOPICS_FILE = 'labels/topics.jsonl';
@@ -68,6 +70,8 @@ export const readEvalCourse = (root: string = EVAL_ROOT): EvalCourseRead => {
     return { status: 'invalid', where: deck.file, message: deck.message };
   const questions = readJsonLines(root, QUESTIONS_FILE, GoldenQuestion);
   if (questions.status === 'invalid') return questions;
+  const followUps = readJsonLines(root, FOLLOW_UPS_FILE, FollowUpItem);
+  if (followUps.status === 'invalid') return followUps;
   const labels = readJsonLines(root, LABELS_FILE, HandLabel);
   if (labels.status === 'invalid') return labels;
   const sentenceKinds = readJsonLines(root, SENTENCE_KINDS_FILE, SentenceKindLabel);
@@ -79,6 +83,7 @@ export const readEvalCourse = (root: string = EVAL_ROOT): EvalCourseRead => {
     course: {
       deck: deck.deck,
       questions: questions.value,
+      followUps: followUps.value,
       labels: labels.value,
       sentenceKinds: sentenceKinds.value,
       topicLabels: topics.value,

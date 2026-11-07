@@ -1,5 +1,6 @@
 import { type LectureId, quoteSpan, type SlideNo } from '@cram/shared';
 import { slideText, type Deck } from './deck';
+import type { FollowUpItem } from './follow-up';
 import { firstForbiddenEntry, type GoldenQuestion, normaliseForMatch } from './golden-question';
 import type { HandLabel } from './hand-label';
 import type { SentenceKindLabel } from './sentence-kind-label';
@@ -8,6 +9,7 @@ import type { TopicLabel } from './topic-label';
 export interface EvalCourse {
   readonly deck: Deck;
   readonly questions: readonly GoldenQuestion[];
+  readonly followUps: readonly FollowUpItem[];
   readonly labels: readonly HandLabel[];
   readonly sentenceKinds: readonly SentenceKindLabel[];
   readonly topicLabels: readonly TopicLabel[];
@@ -38,6 +40,7 @@ export type AuditProblem =
     }
   | { readonly kind: 'variant-of-uncovered'; readonly question: string; readonly variant: string }
   | { readonly kind: 'duplicate-variant'; readonly question: string; readonly variant: string }
+  | { readonly kind: 'duplicate-follow-up'; readonly question: string; readonly standalone: string }
   | { readonly kind: 'unquotable'; readonly text: string; readonly quote: string }
   | {
       readonly kind: 'unknown-premise';
@@ -53,6 +56,11 @@ export type AuditProblem =
 
 const slideKey = (lectureId: LectureId, slideNo: SlideNo): string =>
   `${lectureId}#${String(slideNo)}`;
+
+const slideKeys = (deck: Deck): ReadonlySet<string> =>
+  new Set(
+    deck.flatMap((lecture) => lecture.slides.map((s) => slideKey(lecture.lectureId, s.slideNo))),
+  );
 
 const deckProblems = (deck: Deck): AuditProblem[] => {
   const seen = new Set<LectureId>();
@@ -78,9 +86,7 @@ const deckProblems = (deck: Deck): AuditProblem[] => {
 };
 
 const questionProblems = (deck: Deck, questions: readonly GoldenQuestion[]): AuditProblem[] => {
-  const slides = new Set(
-    deck.flatMap((lecture) => lecture.slides.map((s) => slideKey(lecture.lectureId, s.slideNo))),
-  );
+  const slides = slideKeys(deck);
   const seen = new Set<string>();
   return questions.flatMap((item): AuditProblem[] => {
     const duplicate: AuditProblem[] = seen.has(item.question)
@@ -125,6 +131,22 @@ const variantProblems = (questions: readonly GoldenQuestion[]): AuditProblem[] =
   );
 };
 
+const followUpProblems = (deck: Deck, followUps: readonly FollowUpItem[]): AuditProblem[] => {
+  const slides = slideKeys(deck);
+  const seen = new Set<string>();
+  return followUps.flatMap(({ question, standalone, expectedCitations }): AuditProblem[] => {
+    const key = JSON.stringify([normaliseForMatch(question), normaliseForMatch(standalone)]);
+    const duplicate: AuditProblem[] = seen.has(key)
+      ? [{ kind: 'duplicate-follow-up', question, standalone }]
+      : [];
+    seen.add(key);
+    const unknown = expectedCitations
+      .filter((ref) => !slides.has(slideKey(ref.lectureId, ref.slideNo)))
+      .map((ref): AuditProblem => ({ kind: 'unknown-citation', question, ...ref }));
+    return [...duplicate, ...unknown];
+  });
+};
+
 const labelProblems = (deck: Deck, labels: readonly HandLabel[]): AuditProblem[] => {
   const texts = deck.flatMap((lecture) => lecture.slides.map(slideText));
   return labels.flatMap((label) =>
@@ -135,9 +157,7 @@ const labelProblems = (deck: Deck, labels: readonly HandLabel[]): AuditProblem[]
 };
 
 const premiseProblems = (deck: Deck, labels: readonly SentenceKindLabel[]): AuditProblem[] => {
-  const slides = new Set(
-    deck.flatMap((lecture) => lecture.slides.map((s) => slideKey(lecture.lectureId, s.slideNo))),
-  );
+  const slides = slideKeys(deck);
   return labels.flatMap(({ sentence, premises }) =>
     premises
       .filter((ref) => !slides.has(slideKey(ref.lectureId, ref.slideNo)))
@@ -146,9 +166,7 @@ const premiseProblems = (deck: Deck, labels: readonly SentenceKindLabel[]): Audi
 };
 
 const topicProblems = (deck: Deck, labels: readonly TopicLabel[]): AuditProblem[] => {
-  const slides = new Set(
-    deck.flatMap((lecture) => lecture.slides.map((s) => slideKey(lecture.lectureId, s.slideNo))),
-  );
+  const slides = slideKeys(deck);
   const seen = new Set<string>();
   return labels.flatMap(({ lectureId, slideNo }): AuditProblem[] => {
     const key = slideKey(lectureId, slideNo);
@@ -162,7 +180,7 @@ const topicProblems = (deck: Deck, labels: readonly TopicLabel[]): AuditProblem[
 
 /**
  * Every disagreement among the deck, the golden questions, their misspelt variants
- * (`docs/adr/0010-misspelt-golden-variants.md` § Decision (c)) and the three label files. A
+ * (`docs/adr/0010-misspelt-golden-variants.md` § Decision (c)), the follow-ups and the three label files. A
  * `mustNotContain` entry is checked against the whole deck because a unit faithfully
  * reporting any slide that contains it would fail its item.
  */
@@ -170,6 +188,7 @@ export const auditEvalCourse = (course: EvalCourse): readonly AuditProblem[] => 
   ...deckProblems(course.deck),
   ...questionProblems(course.deck, course.questions),
   ...variantProblems(course.questions),
+  ...followUpProblems(course.deck, course.followUps),
   ...labelProblems(course.deck, course.labels),
   ...premiseProblems(course.deck, course.sentenceKinds),
   ...topicProblems(course.deck, course.topicLabels),

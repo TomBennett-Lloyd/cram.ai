@@ -1,3 +1,4 @@
+import type { ExplainResult } from '@cram/grounding';
 import type { AttributedSentence, SourceId } from '@cram/shared';
 import { z } from 'zod';
 import { type AskedQuestion, namesExpected, shownSentences } from './asked-question';
@@ -6,7 +7,7 @@ import {
   type ContradictionProblem,
   coverageProblems,
 } from './contradiction-set';
-import { firstForbiddenEntry, inContradictionSet } from './golden-question';
+import { firstForbiddenEntry, inContradictionSet, type SlideRef } from './golden-question';
 import { type BaselineRow, baselineRow, NotMeasurable, notMeasurable, Ratio } from './metric-row';
 
 /** Never red (`docs/adr/0009-explanation-answers.md` § Decision (o)), so a baseline row that keeps its failures. */
@@ -25,7 +26,7 @@ export const LightSetRow = z.discriminatedUnion('status', [
 ]);
 export type LightSetRow = z.infer<typeof LightSetRow>;
 
-export const attributionSet = ({ result }: AskedQuestion): readonly SourceId[] =>
+export const attributionSet = ({ result }: Pick<AskedQuestion, 'result'>): readonly SourceId[] =>
   result.status === 'grounded'
     ? [
         ...result.explanation.sentences.flatMap(({ slides }) => slides),
@@ -33,19 +34,33 @@ export const attributionSet = ({ result }: AskedQuestion): readonly SourceId[] =
       ]
     : [];
 
-export const attributionRecall = (asked: readonly AskedQuestion[]): BaselineRow => {
+export interface Attributed {
+  readonly expected: readonly SlideRef[];
+  readonly result: ExplainResult | null;
+}
+
+export const pooledAttributionRecall = (
+  items: readonly Attributed[],
+  emptyReason: string,
+): BaselineRow => {
   let expected = 0;
   let found = 0;
-  for (const item of asked) {
-    const named = attributionSet(item);
-    const slides = item.result.status === 'grounded' ? item.result.slides : [];
-    for (const ref of item.question.expectedCitations) {
+  for (const { expected: refs, result } of items) {
+    const named = result === null ? [] : attributionSet({ result });
+    const slides = result?.status === 'grounded' ? result.slides : [];
+    for (const ref of refs) {
       expected += 1;
       if (named.some((id) => namesExpected(id, slides, [ref]))) found += 1;
     }
   }
-  return baselineRow(found, expected, 'no golden question names an expected slide');
+  return baselineRow(found, expected, emptyReason);
 };
+
+export const attributionRecall = (asked: readonly AskedQuestion[]): BaselineRow =>
+  pooledAttributionRecall(
+    asked.map(({ question, result }) => ({ expected: question.expectedCitations, result })),
+    'no golden question names an expected slide',
+  );
 
 export interface ForbiddenSentence {
   readonly index: number;

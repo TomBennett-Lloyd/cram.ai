@@ -9,6 +9,7 @@ carrier: docs/adr/0011-ask-conversation.md
 carrier: apps/server/src/ask-context.test.ts
 carrier: apps/server/src/ask-course.ts
 carrier: apps/server/src/ask-thread.test.ts
+carrier: eval/src/ask-follow-ups.ts
 carrier: packages/grounding/src/explain.ts
 carrier: packages/grounding/src/standalone-question.ts
 carrier: packages/grounding/src/turn-window.test.ts

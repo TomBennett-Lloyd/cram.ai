@@ -8,6 +8,7 @@ import { auditEvalCourse, type EvalCourse } from './audit';
 import { inContradictionSet } from './golden-question';
 import {
   DECK_DIR,
+  FOLLOW_UPS_FILE,
   LABELS_FILE,
   QUESTIONS_FILE,
   readEvalCourse,
@@ -106,6 +107,12 @@ describe('readEvalCourse', () => {
     expectedCitations: [],
     mustNotContain: [],
   });
+  const followUpLine = JSON.stringify({
+    turns: [{ question: 'q', answer: null }],
+    question: 'f',
+    standalone: 's',
+    expectedCitations: [{ lectureId: 'l1', slideNo: 1 }],
+  });
   const labelLine = JSON.stringify({ text: 't', quotes: ['Cells'], verdict: 'supported' });
   const kindLine = JSON.stringify({
     sentence: 's',
@@ -118,6 +125,7 @@ describe('readEvalCourse', () => {
     const dir = root({
       [`${DECK_DIR}/lecture-01.json`]: lecture,
       [QUESTIONS_FILE]: `${questionLine}\n`,
+      [FOLLOW_UPS_FILE]: `${followUpLine}\n`,
       [LABELS_FILE]: `${labelLine}\n`,
       [SENTENCE_KINDS_FILE]: `${kindLine}\n`,
       [TOPICS_FILE]: `${topicLine}\n`,
@@ -127,6 +135,7 @@ describe('readEvalCourse', () => {
       course: {
         deck: [{ lectureId: 'l1' }],
         questions: [{ question: 'q' }],
+        followUps: [{ question: 'f' }],
         labels: [{ text: 't' }],
         sentenceKinds: [{ sentence: 's' }],
         topicLabels: [{ tags: ['cells'] }],
@@ -141,6 +150,7 @@ describe('readEvalCourse', () => {
       [`${DECK_DIR}/lecture-01.json`]: lecture,
       [`${DECK_DIR}/notes.txt`]: 'not a lecture',
       [QUESTIONS_FILE]: '',
+      [FOLLOW_UPS_FILE]: '',
       [LABELS_FILE]: '',
       [SENTENCE_KINDS_FILE]: '',
       [TOPICS_FILE]: '',
@@ -188,10 +198,21 @@ describe('readEvalCourse', () => {
     expect(readEvalCourse(dir)).toMatchObject({ status: 'invalid', where: `${QUESTIONS_FILE}:2` });
   });
 
+  it('names a missing follow-ups file, and the line of it that does not parse', () => {
+    const files = { [`${DECK_DIR}/lecture-01.json`]: lecture, [QUESTIONS_FILE]: '' };
+    expect(readEvalCourse(root(files))).toMatchObject({
+      status: 'invalid',
+      where: FOLLOW_UPS_FILE,
+    });
+    const bad = root({ ...files, [FOLLOW_UPS_FILE]: `${followUpLine}\n{"question":"f"}\n` });
+    expect(readEvalCourse(bad)).toMatchObject({ status: 'invalid', where: `${FOLLOW_UPS_FILE}:2` });
+  });
+
   it('names the labels line that does not parse', () => {
     const dir = root({
       [`${DECK_DIR}/lecture-01.json`]: lecture,
       [QUESTIONS_FILE]: '',
+      [FOLLOW_UPS_FILE]: '',
       [LABELS_FILE]: '{"text":"t"}\n',
     });
     expect(readEvalCourse(dir)).toMatchObject({ status: 'invalid', where: `${LABELS_FILE}:1` });
@@ -201,6 +222,7 @@ describe('readEvalCourse', () => {
     const files = {
       [`${DECK_DIR}/lecture-01.json`]: lecture,
       [QUESTIONS_FILE]: '',
+      [FOLLOW_UPS_FILE]: '',
       [LABELS_FILE]: '',
     };
     expect(readEvalCourse(root(files))).toMatchObject({
@@ -218,6 +240,7 @@ describe('readEvalCourse', () => {
     const files = {
       [`${DECK_DIR}/lecture-01.json`]: lecture,
       [QUESTIONS_FILE]: '',
+      [FOLLOW_UPS_FILE]: '',
       [LABELS_FILE]: '',
       [SENTENCE_KINDS_FILE]: '',
     };

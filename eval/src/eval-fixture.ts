@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type { EvalCourse } from './audit';
 import { DeckLecture, DeckSlide } from './deck';
+import { FollowUpItem } from './follow-up';
 import { GoldenQuestion } from './golden-question';
 import { HandLabel } from './hand-label';
 import { SentenceKindLabel } from './sentence-kind-label';
@@ -17,6 +18,15 @@ export const question = (overrides: Partial<z.input<typeof GoldenQuestion>> = {}
     question: 'What shape are cells?',
     expectedCitations: [{ lectureId: 'l1', slideNo: 1 }],
     mustNotContain: [],
+    ...overrides,
+  });
+
+export const followUp = (overrides: Partial<z.input<typeof FollowUpItem>> = {}): FollowUpItem =>
+  FollowUpItem.parse({
+    turns: [{ question: 'What shape are cells?', answer: 'Cells are square.' }],
+    question: 'And how big are they?',
+    standalone: 'How big are cells?',
+    expectedCitations: [{ lectureId: 'l1', slideNo: 1 }],
     ...overrides,
   });
 
@@ -44,6 +54,7 @@ export const topicLabel = (overrides: Partial<z.input<typeof TopicLabel>> = {}):
 export const course = (overrides: Partial<EvalCourse> = {}): EvalCourse => ({
   deck: [lecture('l1')],
   questions: [question()],
+  followUps: [followUp()],
   labels: [label()],
   sentenceKinds: [kindLabel()],
   topicLabels: [topicLabel()],

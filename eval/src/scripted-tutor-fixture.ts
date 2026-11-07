@@ -34,7 +34,7 @@ const sourcesOf = (prompt: string): readonly Source[] =>
     line: (text ?? '').split('\n')[CITED_LINE - 1]?.replace(/^\[\d+\] /, '') ?? '',
   }));
 
-/** Answers from each source sharing a long word with the question, or from every source when `eager`. */
+/** Answers from each source sharing a long word with the question, or from every source when `eager`; a follow-up's rewrite puts the last earlier question's last long word for each pronoun. */
 export const tutor =
   (eager: boolean): Respond =>
   (wire: ChatWireRequest) => {
@@ -54,6 +54,12 @@ export const tutor =
                   quotes: from.map(({ id }) => ({ sourceId: id, line: CITED_LINE })),
                 },
         });
+      }
+      case 'standalone-question': {
+        const typed = /<question>(.*)<\/question>/.exec(prompt)?.[1] ?? '';
+        const earlier = [...prompt.matchAll(/<student>(.*)<\/student>/g)].at(-1)?.[1] ?? '';
+        const topic = words(earlier).at(-1) ?? 'it';
+        return content({ question: typed.replace(/\b(it|they|them|that)\b/g, topic) });
       }
       case 'units': {
         const units = sourcesOf(prompt).map(({ id, line }) => ({

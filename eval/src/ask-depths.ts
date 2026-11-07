@@ -43,6 +43,16 @@ export interface Light {
   readonly sent: PairTally;
 }
 
+export const lightDeps = (
+  retriever: IndexRetriever,
+  gateway: ModelGateway,
+  verifier: Verifier = gateway.verifier,
+) => ({
+  gateway: { generator: gateway.generator, verifier },
+  thresholds: PROVISIONAL_NLI_THRESHOLDS,
+  searchSentence: (sentence: string) => retriever.searchSentence(sentence, ATTRIBUTION_K),
+});
+
 export const askLight = async (
   retrievals: readonly ToAsk[],
   retriever: IndexRetriever,
@@ -50,11 +60,7 @@ export const askLight = async (
   clock: Clock,
 ): Promise<Light> => {
   const tally = { pairs: 0, overLength: 0 };
-  const deps = {
-    gateway: { generator: gateway.generator, verifier: counting(gateway.verifier, tally) },
-    thresholds: PROVISIONAL_NLI_THRESHOLDS,
-    searchSentence: (sentence: string) => retriever.searchSentence(sentence, ATTRIBUTION_K),
-  };
+  const deps = lightDeps(retriever, gateway, counting(gateway.verifier, tally));
   const asked: AskedQuestion[] = [];
   const durationsMs: number[] = [];
   for (const { question, retrieved, summaries } of retrievals) {

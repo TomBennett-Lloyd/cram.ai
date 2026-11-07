@@ -46,6 +46,11 @@ test('a follow-up joins the thread under the first answer, carrying it, and New 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+  const bottom = async (name: string) => {
+    const box = await page.getByRole('button', { name, exact: true }).boundingBox();
+    return box === null ? Number.NaN : box.y + box.height;
+  };
+  expect(await bottom('Ask')).toBe(await bottom(NEW_QUESTION));
   await page.getByRole('button', { name: NEW_QUESTION }).click();
   await expect(exchanges).toHaveCount(0);
 });

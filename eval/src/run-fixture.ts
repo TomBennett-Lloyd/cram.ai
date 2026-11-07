@@ -107,6 +107,7 @@ export const scriptedReport = async (measuredCommit: string): Promise<EvalReport
     courseId: CourseId.parse('hollowmere'),
     lectures: [indexedLecture('l1')],
     questions: [],
+    followUps: [],
     labels: [],
     sentenceKinds: [],
     topicLabels: [],

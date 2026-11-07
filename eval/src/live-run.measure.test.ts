@@ -45,6 +45,7 @@ describe.runIf(env.CRAM_EVAL === '1')('pnpm eval', () => {
           courseId: EVAL_COURSE_ID,
           lectures: await ingestedCourse(read.course.deck, EVAL_COURSE_ID, dir),
           questions: read.course.questions,
+          followUps: read.course.followUps,
           labels: read.course.labels,
           sentenceKinds: read.course.sentenceKinds,
           topicLabels: read.course.topicLabels,
