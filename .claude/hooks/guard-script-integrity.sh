@@ -21,11 +21,16 @@
 # cannot be read or a path that cannot be resolved ($VAR, a glob, a `cd` to a computed directory)
 # is exit 2: failing open there is the hole this hook closes, and the cost is confined to those calls.
 #
-# The scan is lexical: simple commands split at `; & | ( ) newline`, backticks and `$(…)`, with
-# `cd`, subshell and `bash -c '…'` scopes followed. A command reached through `eval`, `xargs` or a
-# function is not seen, and a heredoc line spelling the command at command position is refused
-# like the real one. The guarded script's own `pnpm verify` of a branch runs that branch's code by
-# design and is not covered. Cases: .claude/scripts/guard-script-integrity.test.sh.
+# The scan is lexical, and runs on every Bash call because the shell reads `.cla''ude//scripts` as
+# the path the rule matches and no substring test on the raw command can say it will not: simple
+# commands split at `; & | ( ) newline`, backticks and `$(…)`, with `cd`, subshell and `bash -c '…'`
+# scopes followed. A `cd` after `&&` or `||` may not have run, so the script is judged in the
+# directory before it and the one after. Not seen: a command reached through `eval`, `xargs`, `sudo`,
+# `timeout` or a function, and a `cd` behind a `{` group (the script is judged in the directory
+# before it, a false refusal when that one differs). A heredoc line spelling the command at command
+# position is refused like the real one. A wildcard rule (`.claude/scripts/*`) is not guarded:
+# the harness fails if settings.json gains one. The guarded script's own `pnpm verify` of a branch
+# runs that branch's code by design and is not covered. Cases: .claude/scripts/guard-script-integrity.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
 
@@ -49,11 +54,6 @@ event=$(read_hook_event) || {
   echo "guard-script-integrity: could not read the hook event (stdin was unreadable) — allow-rule scripts were not checked for this call." >&2
   exit 1
 }
-
-case "$event" in
-  *.claude/scripts/*) ;;
-  *) exit 0 ;;
-esac
 
 # Prints one line per refusal reason; nothing when the call passes; exit 1 when settings.json
 # cannot be read.
@@ -80,7 +80,7 @@ let rules;
 try {
   const allow = JSON.parse(fs.readFileSync(settingsFile, 'utf8'))?.permissions?.allow ?? [];
   rules = allow.flatMap((r) => {
-    const m = /^Bash\(bash (\.claude\/scripts\/[^\s*/]+):\*\)$/.exec(r);
+    const m = /^Bash\(bash (\.claude\/scripts\/[^\s*]+):\*\)$/.exec(r);
     return m ? [m[1]] : [];
   });
 } catch (e) {
@@ -100,6 +100,7 @@ function parse(src) {
   let words = [];
   let word = null;
   let tick = false;
+  let cond = false;
   const add = (ch, dynamic = false) => {
     word ??= { text: '', dynamic: false };
     word.text += ch;
@@ -111,14 +112,24 @@ function parse(src) {
   };
   const flush = () => {
     push();
-    if (words.length > 0) items.push({ words });
+    if (words.length > 0) {
+      items.push({ words, cond });
+      cond = false;
+    }
     words = [];
   };
   let i = 0;
   while (i < src.length) {
     const c = src[i];
-    if (c === '\n' || c === ';' || c === '&' || c === '|') {
+    if (c === '\n' || c === ';') {
       flush();
+      i++;
+    } else if (c === '&' || c === '|') {
+      flush();
+      if (src[i + 1] === c) {
+        cond = true;
+        i++;
+      }
       i++;
     } else if (c === '(') {
       flush();
@@ -205,7 +216,7 @@ function closure(rel) {
 
 const refused = [];
 
-function check(word, dir, unknown) {
+function check(word, dirs, unknown) {
   const text = word.text;
   if (word.dynamic) {
     // A rule is a text prefix, so only a word that begins with a rule's path can match one.
@@ -224,34 +235,39 @@ function check(word, dir, unknown) {
     refused.push(`${rel}: cannot be compared, ${ref} is not readable from ${repoDir} (${refOk.error?.code ?? `git exit ${refOk.status}`}).`);
     return;
   }
-  const file = path.resolve(dir, rel);
-  for (const [dep, blob] of closure(rel)) {
-    const local = path.join(path.dirname(file), path.basename(dep));
-    let bytes;
-    try {
-      bytes = fs.readFileSync(local);
-    } catch {
-      continue;
+  const blobs = closure(rel);
+  for (const dir of dirs) {
+    const file = path.resolve(dir, rel);
+    for (const [dep, blob] of blobs) {
+      const local = path.join(path.dirname(file), path.basename(dep));
+      let bytes;
+      try {
+        bytes = fs.readFileSync(local);
+      } catch {
+        continue;
+      }
+      if (blob === null) refused.push(`${local}: ${dep} is not on ${ref}.`);
+      else if (!bytes.equals(blob)) refused.push(`${local}: differs from ${ref}'s ${dep}.`);
     }
-    if (blob === null) refused.push(`${local}: ${dep} is not on ${ref}.`);
-    else if (!bytes.equals(blob)) refused.push(`${local}: differs from ${ref}'s ${dep}.`);
   }
 }
 
 const RUNNERS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'source', '.']);
 const WRAPPERS = new Set(['env', 'command', 'exec', 'nohup', 'time', 'builtin']);
 
+// `dirs` is every directory the shell may be in: a `cd` after `&&` or `||` may not have run, so it
+// adds its target beside the directory it left, and a script is judged in each.
 function run(items, start) {
-  let dir = start;
+  let dirs = start;
   let unknown = false;
   const stack = [];
   for (const item of items) {
     if (item === ENTER) {
-      stack.push([dir, unknown]);
+      stack.push([dirs, unknown]);
       continue;
     }
     if (item === LEAVE) {
-      [dir, unknown] = stack.pop() ?? [dir, unknown];
+      [dirs, unknown] = stack.pop() ?? [dirs, unknown];
       continue;
     }
     let words = item.words;
@@ -261,26 +277,29 @@ function run(items, start) {
     const args = words.slice(1);
     if (head === 'cd' || head === 'pushd') {
       const target = args.find((w) => !w.text.startsWith('-') || w.text === '-');
-      if (target === undefined) dir = os.homedir();
-      else if (target.dynamic || target.text === '-') unknown = true;
-      else dir = path.resolve(dir, target.text);
+      if (target !== undefined && (target.dynamic || target.text === '-')) {
+        unknown = true;
+      } else {
+        const moved = dirs.map((d) => (target === undefined ? os.homedir() : path.resolve(d, target.text)));
+        dirs = item.cond ? [...new Set([...dirs, ...moved])] : moved;
+      }
     } else if (head === 'popd') {
       unknown = true;
     } else if (RUNNERS.has(head)) {
       for (const [k, w] of args.entries()) {
         if (/^-[a-zA-Z]*c/.test(w.text) && args[k + 1] !== undefined) {
-          run([ENTER, ...parse(args[k + 1].text), LEAVE], dir);
+          run([ENTER, ...parse(args[k + 1].text), LEAVE], dirs);
           break;
         }
         if (w.text.startsWith('-') && !w.dynamic) continue;
-        check(w, dir, unknown);
+        check(w, dirs, unknown);
         break;
       }
     }
   }
 }
 
-run(parse(command), typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallbackDir);
+run(parse(command), [typeof event.cwd === 'string' && event.cwd !== '' ? event.cwd : fallbackDir]);
 for (const reason of refused) console.log(`  ${reason}`);
 NODE
 

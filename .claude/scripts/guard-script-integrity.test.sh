@@ -104,6 +104,15 @@ printf 'echo new\n' >"$TMP_ROOT/newscript/.claude/scripts/brand-new.sh" || exit 
 cat >"$TMP_ROOT/settings-new.json" <<'JSON' || exit 2
 { "permissions": { "allow": ["Bash(bash .claude/scripts/brand-new.sh:*)"] } }
 JSON
+# A rule naming a nested file, and a wildcard rule, which the hook does not guard.
+must mkdir -p "$TMP_ROOT/newscript/.claude/scripts/sub"
+printf 'echo nested\n' >"$TMP_ROOT/newscript/.claude/scripts/sub/nested.sh" || exit 2
+cat >"$TMP_ROOT/settings-nested.json" <<'JSON' || exit 2
+{ "permissions": { "allow": ["Bash(bash .claude/scripts/sub/nested.sh:*)"] } }
+JSON
+cat >"$TMP_ROOT/settings-wild.json" <<'JSON' || exit 2
+{ "permissions": { "allow": ["Bash(bash .claude/scripts/fill-verdict.sh:*)", "Bash(bash .claude/scripts/*:*)"] } }
+JSON
 # A tree where the guarded script is a symlink out to an edited copy.
 tree linked
 must cp "$TMP_ROOT/edited/.claude/scripts/fill-verdict.sh" "$TMP_ROOT/linked-target.sh"
@@ -197,6 +206,12 @@ passes edited "(cd $TMP_ROOT/good); cd $TMP_ROOT/good && bash .claude/scripts/fi
 passes edited "cd $TMP_ROOT/good && (cd $TMP_ROOT/edited); bash .claude/scripts/fill-verdict.sh 1"
 passes edited "cd $TMP_ROOT/good && cd .. && cd good && bash .claude/scripts/fill-verdict.sh 1"
 passes edited "cd $TMP_ROOT && cd good && bash .claude/scripts/fill-verdict.sh 1"
+passes edited "cd $TMP_ROOT && bash .claude/scripts/fill-verdict.sh 1"
+# A `cd` after `&&` or `||` may not have run, so the script is judged in both directories.
+refuses edited "true || cd $TMP_ROOT/good; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+refuses edited "false && cd $TMP_ROOT/good; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+refuses good "false && cd $TMP_ROOT/edited; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+passes good "true || cd $TMP_ROOT/good; bash .claude/scripts/fill-verdict.sh 1"
 
 # --- what it cannot resolve fails closed, only for a guarded script ----------------------------
 
@@ -235,6 +250,11 @@ done <<'ROWS'
 refuses	edited	differs from main	echo $(bash .claude/scripts/fill-verdict.sh 1)
 refuses	edited	differs from main	echo "$(bash .claude/scripts/fill-verdict.sh 1)"
 refuses	edited	differs from main	echo `bash .claude/scripts/fill-verdict.sh 1`
+refuses	edited	differs from main	echo `cd /tmp`; bash .claude/scripts/fill-verdict.sh 1
+refuses	edited	differs from main	bash .claude//scripts/fill-verdict.sh 1
+refuses	edited	differs from main	bash .cla''ude/scripts/fill-verdict.sh 1
+refuses	edited	differs from main	bash .claude"/"scripts/fill-verdict.sh 1
+refuses	edited	differs from main	bash .claude/scr\ipts/fill-verdict.sh 1
 refuses	good	working directory is not known	cd "$WT" && bash .claude/scripts/fill-verdict.sh 1
 refuses	good	working directory is not known	cd $(mktemp -d) && bash .claude/scripts/fill-verdict.sh 1
 refuses	good	cannot be resolved	bash .claude/scripts/fill-verdict.sh$X 1
@@ -259,6 +279,23 @@ event "$TMP_ROOT/newscript" 'bash .claude/scripts/brand-new.sh'
 GUARD_SCRIPT_SETTINGS="$TMP_ROOT/settings-new.json" capture bash "$HOOK" <"$TMP_ROOT/event.json"
 expect_rc 2
 expect_stderr "brand-new.sh is not on main"
+end
+
+begin "refuses: a rule naming a nested file guards it"
+event "$TMP_ROOT/newscript" 'bash .claude/scripts/sub/nested.sh'
+GUARD_SCRIPT_SETTINGS="$TMP_ROOT/settings-nested.json" capture bash "$HOOK" <"$TMP_ROOT/event.json"
+expect_rc 2
+expect_stderr "sub/nested.sh is not on main"
+end
+
+begin "passes: a wildcard rule is not guarded (the hook header's stated limit)"
+event "$TMP_ROOT/edited" 'bash .claude/scripts/*.sh'
+GUARD_SCRIPT_SETTINGS="$TMP_ROOT/settings-wild.json" capture bash "$HOOK" <"$TMP_ROOT/event.json"
+expect_rc 0
+end
+
+begin "the shipped settings.json holds no wildcard script rule, which the hook cannot guard"
+if node -e 'const a=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).permissions.allow; process.exit(a.some((r)=>/^Bash\(bash \.claude\/scripts\/[^:]*\*/.test(r))?1:0)' "$SCRIPTS/../settings.json"; then :; else bad "a wildcard Bash(bash .claude/scripts/…) rule is in settings.json"; fi
 end
 
 begin "the guarded set is read from settings.json: a rule added there guards its script"
