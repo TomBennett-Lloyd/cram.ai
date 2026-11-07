@@ -1,0 +1,15 @@
+# Where the bare fill-verdict.sh rule is restated (docs/standards/architecture.md rule 9; #670, #688).
+# The lane's no-retry return on a refusal is owned by .claude/agents/ticket-agent.md rule 8 (evidence.md member 11 points there);
+# the merge owner's half (run the refused fill itself) by .claude/skills/run-issue/SKILL.md step 4.
+owner: docs/standards/evidence.md
+claim: fill-verdict.sh is sent bare (no cd, export, prefix, pipe or redirect; --worktree replaces the cd), because the allow rule is a prefix match and a wrapped form is read as a lane writing an owner's approval
+cite: docs/standards/evidence.md § Host conventions member 10
+sweep: Host conventions members? 10\b|(?i:\bbare\b[^\n]{0,20}fill-verdict|fill-verdict[^\n]{0,80}\bbare\b|\bbare fill\b|never retries|no-retry rule)|\.claude/ledgers/fill-verdict-bare-form\.ledger
+carrier: .claude/agents/ticket-agent.md
+carrier: .claude/skills/review-loop/SKILL.md
+carrier: .claude/skills/run-issue/SKILL.md
+carrier: .claude/skills/adr-lane/SKILL.md
+excluded: .claude/hooks/compaction-lib.sh
+excluded: .claude/scripts/pr-facts.mjs
+excluded: docs/friction-log.md
+excluded: docs/review-feedback.md
