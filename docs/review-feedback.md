@@ -598,8 +598,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-07 — issue #587 — lecture-notes-split
 
-- **Category**: pending — filled at merge
+- **Category**: approved-at-plan
 - **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/587#issuecomment-6655674867 in chat on 2026-11-07, relayed at https://github.com/TomBennett-Lloyd/cram.ai/issues/587#issuecomment-6704837229. PROCEED, verbatim: "i agree with the 3 plans". The plan's questions Q1 to Q6 take the defaults the plan stated. The owner also said that re-running a whole sweep is excessive and that a plan should list the changeable facts its reasoning rests on, each with a range inside which it stands; the PR body does that for this amendment.
 - **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR carrying nothing beyond the approved plan merge on that plan's PROCEED, and `merge.amendmentRule` (a) holds an amendment footprint to the plan comment having pasted the amendment before the first edit.
 - **How applied**: ADR 0009 § Decision (l) is annotated as it stood, and a dated § Amendments entry records the split of the lecture digest into a prompt map and student notes, when the notes are made, the retirement of the unit summary and what the eval measures. No other file is edited for the amendment.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved at plan 2026-11-07 — i agree with the 3 plans — https://github.com/TomBennett-Lloyd/cram.ai/issues/587#issuecomment-6655674867
