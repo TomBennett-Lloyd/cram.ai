@@ -641,6 +641,22 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved 2026-11-07 — "approve 702"
 
+## 2026-11-07 — issue #687 — script-allow-rule-integrity
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to decide whether `.claude/settings.json` may register one more PreToolUse hook on Bash, `.claude/hooks/guard-script-integrity.sh`, which refuses `bash .claude/scripts/<x>.sh` (for every such allow rule in that file) when the cwd-relative script, or a file it sources, differs from `origin/main`'s bytes, and fails closed when the path or the working directory cannot be resolved. No allow rule is added or widened. It also asks about the one standards member (`docs/standards/evidence.md` Host conventions member 13) and the README bullet that state it, and about the known limits the hook's header lists (`eval`, wrappers outside `RUNNERS` and `WRAPPERS`, a write in the same command), three of which are filed as #709, #710 and #711.
+- **Why**: `.claude/settings.json` is `humanAlways` (`merge.humanAlwaysRule`): it wires what runs before every Bash call. The allow rules for `fill-verdict.sh`, `edit-comment.sh` and `sweep-orphans.sh` match command text, so an edited or planted copy at that path ran with no prompt (#687).
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-07 — "approve the 3 PRs"
+
+## 2026-11-07 — PR #719 — pgrep-guard-monitor-matcher
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to decide whether the matcher of the first `PreToolUse` group in `.claude/settings.json` may widen from `Bash` to `Bash|Monitor`, so that `guard-pgrep-loop.sh` also refuses a self-matching `pgrep -f` wait loop written in a Monitor call, as #694's lane wrote one. The group also holds `guard-dirty-revert.sh`, so that guard now sees Monitor calls too.
+- **Why**: `.claude/settings.json` is `humanAlways` (`merge.humanAlwaysRule`): it wires every hook for every session, and only the owner widens it.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-07 — "approve the 3 PRs"
+
 ## 2026-11-07 — issue #576 — ask-conversation
 
 - **Category**: pending — filled at merge
