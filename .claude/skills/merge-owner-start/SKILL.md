@@ -37,10 +37,10 @@ gh issue list --state open --label adr --json number,title
 A planned issue's state is **its plan comment and everything after it**, not its newest comments: a plan over GitHub's 65k-character comment limit puts its sweep output in a sibling comment, and a lane's `BLOCKED` report, the owner's `PROCEED` and a resume addendum all follow it. For issue `<n>`:
 
 ```
-gh issue view <n> --json comments --jq '.comments | (map(.body | startswith("## Plan (ticket-agent lane)")) | index(true)) as $i | to_entries | map(select(.key >= $i)) | .[] | "\(.key)\t\(.value.createdAt)\t\(.value.body | length)\t\(.value.body[0:70] | gsub("\n";" "))"'
+bash .claude/scripts/gh-owner-comments.sh --json issue <n> | jq -r '[.records[] | select(.source == "comment")] | (map(.body | startswith("## Plan (ticket-agent lane)")) | index(true)) as $i | to_entries | map(select(.key >= $i)) | .[] | "\(.key)\t\(.value.createdAt)\t\(.value.body | length)\t\(.value.body[0:70] | gsub("\n";" "))"'
 ```
 
-That prints an index, time, length and first line per comment from the plan on; read bodies with `gh issue view <n> --json comments --jq '.comments[<key>].body'`. Plan comments run to tens of thousands of characters, so give the read to one read-only agent (`Explore`) per set of issues, asking for each plan's footprint, its `Depends on` lines, its open questions and what the owner has answered since, and keep the summary. A plan is **parked** when its last comment is a lane `BLOCKED — owner decision` report with no owner answer after it.
+That prints an index, time, length and first line per comment from the plan on; read bodies with the same command ending `jq -r '[.records[] | select(.source == "comment")][<key>].body'`. Only the owner's comments reach this read (`gh-owner-comments.sh`, `docs/standards/security.md` rule 6): a stranger's PROCEED-shaped comment is not an owner answer and does not appear. Plan comments run to tens of thousands of characters, so give the read to one read-only agent (`Explore`) per set of issues, asking for each plan's footprint, its `Depends on` lines, its open questions and what the owner has answered since, and keep the summary. A plan is **parked** when its last comment is a lane `BLOCKED — owner decision` report with no owner answer after it.
 
 ## 3. Resume
 
@@ -64,7 +64,7 @@ That prints an index, time, length and first line per comment from the plan on; 
   ```
 
   Each assistant message appears once per content block, so the filter deduplicates on `message.id`; `effective` weights input 1, cache read 0.1, cache write 2 and output 5, the weighting #624 used. The count is the comments that start `Lane row:`:
-  `gh issue view 624 --json comments --jq '[.comments[].body | select(startswith("Lane row:"))] | {total: length, sonnet: map(select(test(" sonnet "))) | length, opus: map(select(test(" opus "))) | length}'`.
+  `bash .claude/scripts/gh-owner-comments.sh --json issue 624 | jq '[.records[] | select(.source == "comment") | .body | select(startswith("Lane row:"))] | {total: length, sonnet: map(select(test(" sonnet "))) | length, opus: map(select(test(" opus "))) | length}'`.
   At ten rows of each model, post the comparison table on #624 and put the policy decision to the owner (`CLAUDE.md` is on the list of paths `.claude/workflow.json` holds for the owner's review). #628's re-run is ten rows of any model with no lane above 20M effective without a named cause, and #624's acceptance re-runs the medians after twenty.
 
 - **#656's first-turn check.** A ticket-agent's `first_turn` is the `first-turn` figure above. #656's target is within 10k of a reviewer's first turn; read it from the first lane row and say so on #656.

@@ -3,7 +3,7 @@ name: mutation-pass
 description: The mutation pass a lane owes before its first reviewer dispatch when its diff adds or changes a guard, parser or exclusion - the two lists, the hostile corpus with its oracle, the differential against main, and the run, which a fresh Sonnet agent does in a scratch worktree. Use when a ticket-agent plan comment names a guard.
 ---
 
-Moved out of `.claude/agents/ticket-agent.md` rule 4 by #628, which keeps the obligation and a pointer from the `Mutation:` report line; this file owns the procedure and, since #669, the line's multi-line form (section 5). Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; bare `#<n>` is this repo's.
+Moved out of `.claude/agents/ticket-agent.md` rule 4 by #628, which keeps the obligation and a pointer from the `Mutation:` report line; this file owns the procedure and, since #669, the line's multi-line form (section 5).
 
 **Who does what.** The lane writes sections 1 to 3 inline, because a list is only worth having if it came from a source other than the lane's own guards. The lane commits first (`git status` clean), writes the lists to `<scratchpad>/mutation-<n>.md`, then dispatches one fresh synchronous `general-purpose` agent on Sonnet (`.claude/agents/ticket-agent.md` rule 3(f)) to run section 4 on that file. It keeps only the table that comes back, writes a case for each survivor, and runs section 4 again once, in a fresh agent, over the survivors alone. It then pastes the four lists — grammar with its axes, criteria, the hostile corpus with its oracle's verdicts, mutants with their verdicts — into the `reviewer` dispatch and the PR body and names the two lists' sources and the corpus's oracle on the lane report's `Mutation:` line.
 

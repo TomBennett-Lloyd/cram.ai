@@ -5,8 +5,6 @@ description: Run one GitHub issue via a ticket-agent, or a same-surface batch vi
   ownership.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are the merge owner, and you own merging and merge-readiness in both lanes below.
 `.claude/workflow.json` → `orchestration.routeRule` picks the lane by the ticket SET's
 shape — read it there rather than assuming, since `modeHistory`'s superseded values still
@@ -24,7 +22,12 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    (issue, agent handle, phase, footprint, branch; the footprint once the plan comment
    lands). A row leaves the table only at RELEASE. Predict the footprint from the issue body and
    name any known in-flight overlap in the dispatch prompt, so the agent either plans around
-   it or expects the rebase. Before dispatch, read the issue body as it stands — every
+   it or expects the rebase. Before dispatch, read the issue as it stands through
+   `bash .claude/scripts/gh-owner-comments.sh issue <n>` (`docs/standards/security.md` rule 6;
+   exit 3 means the owner did not file it, so it is neither planned nor dispatched and the
+   owner is told in chat and files an issue of their own to take it up; every other read of issue or PR
+   text in this skill — plan-comment ticks, `Depends on` lines, the RETRO NOTES comment — goes
+   through the same script) — every
    issue, however filed, owner-filed included (#369) — reading each
    acceptance bullet against the `## Decision` points of every ADR
    `docs/adr/README.md` § Index lists, read at `origin/main`, a row annotated superseded
@@ -70,7 +73,8 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    orphans `.claude/scripts/sweep-orphans.sh`'s header defines, which a real sweep ends. The
    evidence, lanes' verify runs red on load timeouts, is #483's. The gate bounds dispatch; `.claude/scripts/verify-guard.sh` separately bounds how many `pnpm verify` runs execute at once (#700).
 2. **Dispatch** `ticket-agent` with the issue number, the main-checkout path, the budget
-   mode and the overlap note — nothing else; it reads the issue and the files.
+   mode and the overlap note — nothing else; it reads the issue (through the script above)
+   and the files.
    The overlap note asserts only what a command printed: each overlapping lane's issue or
    PR with its files pasted from `gh pr diff <m> --name-only`, or from the lane's plan
    comment before it has a PR. A rule or precedent the note leans on is cited by file and
@@ -90,8 +94,8 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    what an orchestrator spawns, and the reason it exists — a nested child's completion routing
    past its parent to you — cannot arise for your own direct child, whose completion IS the
    lane report arriving. Silence until that report is the healthy state; do not poll. If the
-   notification is lost the report is still durable: `gh pr view <n> --json body`, or the
-   issue's comments.
+   notification is lost the report is still durable: `bash .claude/scripts/gh-owner-comments.sh pr <n>`,
+   or the same with `issue <n>` for its comments.
 3. **Approval relay** — a touchpoint only an `adr` issue, or a plan holding a question only
    the owner can answer, reaches. The agent posts its plan comment and returns
    `STATUS: BLOCKED — owner decision: <the plan summary and the questions>`; put that

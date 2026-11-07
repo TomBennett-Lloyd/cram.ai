@@ -3,7 +3,7 @@ name: carrier-sweep
 description: The restatement (carrier) sweep a plan comment must carry when a lane changes or deletes a stated value, name, path or rule - the three declarations, one scripted git grep into a file, positive control, classified hits. Run it in a fresh agent, not grep by grep in the lane. Use at plan time, before the first edit.
 ---
 
-Moved out of `.claude/agents/ticket-agent.md` rule 2 by #628, which keeps the obligation; this file owns the procedure. The rule it answers is `docs/standards/architecture.md` rule 9 (the recorded-sweep form) and rule 10 (the derived figures), and `docs/standards/evidence.md` form 5 (the positive control). Citations of the form `cumulo#<n>` point at cumulo's issues and PRs; bare `#<n>` is this repo's.
+Moved out of `.claude/agents/ticket-agent.md` rule 2 by #628, which keeps the obligation; this file owns the procedure. The rule it answers is `docs/standards/architecture.md` rule 9 (the recorded-sweep form) and rule 10 (the derived figures), and `docs/standards/evidence.md` form 5 (the positive control).
 
 **Why a skill and not grep by grep.** A sweep is one command, its output goes to a file, and the answer is a count and a short list; a fresh agent does it in a small context. The measurement is #624 and #628.
 

@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "verify:root": "echo \"verify root: $(git rev-parse --show-toplevel) [$(git rev-parse -q --verify HEAD >/dev/null && git rev-parse --abbrev-ref HEAD || echo 'no commits yet')]\"",
+    "verify:root": "echo \"verify root: $(git rev-parse --show-toplevel) [$(git rev-parse -q --verify HEAD >/dev/null && git rev-parse --abbrev-ref HEAD || echo 'no commits yet')]\" && pnpm check:commit-subjects",
     "dev": "pnpm --filter @cram/server dev",
     "models:pull": "bash .claude/scripts/models-pull.sh",
     "eval": "pnpm --filter @cram/eval run eval",
@@ -19,6 +19,7 @@
     "test": "pnpm -r run test",
     "test:scripts": "bash .claude/scripts/run-script-tests.sh",
     "check:adr-index": "bash .claude/scripts/check-adr-index.sh",
+    "check:commit-subjects": "bash .claude/scripts/check-commit-subjects.sh",
     "check:comment-density": "bash .claude/scripts/check-comment-density.sh",
     "check:ledgers": "bash .claude/scripts/check-ledgers.sh",
     "check:markdown-links": "bash .claude/scripts/check-markdown-links.sh",

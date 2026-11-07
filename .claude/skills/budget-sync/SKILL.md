@@ -3,8 +3,6 @@ name: budget-sync
 description: Record the user's /usage percentages into the machine-local budget ledger and report the resulting model-budget mode (normal/conserve) that governs Fable dispatch. Use when the user reports usage numbers, asks about budget mode, or before a heavy orchestration run.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You feed the machine-local budget ledger, which decides the mode that every Fable dispatch consults (see CLAUDE.md Model tiers). The ledger lives outside the repo — this skill maintains no repo file, and the mode value is never written into the repo.
 
 1. **Plan change first.** If the user has switched plan since the last sync, run this _before_ recording any numbers, so the new allowance starts a fresh baseline:

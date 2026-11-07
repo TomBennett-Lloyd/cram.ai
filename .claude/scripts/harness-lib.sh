@@ -283,6 +283,19 @@ fixture_lacks() { # fixture_lacks <file> <fixed-string>
   fi
 }
 
+# --- the lane report's fields ------------------------------------------------------------------
+
+# lane_report_labels — prints, one per line, the labels of the `## Lane report` block in .claude/agents/ticket-agent.md,
+# in template order, kept once for the harnesses that need a complete report. pr-facts.test.sh
+# proves the list against the live template both ways; merge-pr.test.sh builds its fixtures from it
+# (#671). A field added to the template is added here and nowhere else.
+lane_report_labels() {
+  printf '%s\n' 'Branch/HEAD' 'PR' 'CI' 'Verify' 'Plan comment' 'Footprint drift vs plan comment' \
+    'Changed files' 'Review' 'Mutation' 'Classification' 'Extras beyond the approved plan' \
+    'Lane model' 'Sub-dispatches' 'Consultant' 'Discovered' 'Cross-references' 'Retro' \
+    'Merge cautions' 'STATUS'
+}
+
 # --- verdict ---------------------------------------------------------------------------------
 
 # finish — the footer every harness ends on, and the whole of the exit convention.
