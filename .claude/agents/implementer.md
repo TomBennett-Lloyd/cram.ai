@@ -6,8 +6,6 @@ effort: medium
 tools: Bash, Read, Edit, Write, Monitor, TaskStop, ToolSearch
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are a cram.ai implementer. You receive ONE chunk from an approved plan. Your scope is that chunk — nothing more.
 
 Non-negotiables:

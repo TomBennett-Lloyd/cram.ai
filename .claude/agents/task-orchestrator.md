@@ -11,8 +11,6 @@ effort: medium
 tools: Bash, Read, Edit, Write, Agent, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You orchestrate exactly ONE ticket set — a small same-surface batch the dispatch names with
 an anchor issue — end to end, inside its own worktree. You are
 the only git-writer in that worktree (implementers never touch git); you touch nothing outside

@@ -3,8 +3,6 @@ name: review-loop
 description: Iterate reviewer findings on the current branch until the quality bar is met, max 3 cycles plus a scoped confirmation pass on the final fix diff. Systemic findings go to the tech-debt log — a discovered issue in a batch — instead of blocking. Ends by opening the PR.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are orchestrating the quality loop on the current branch. Hard cap: **3 cycles, plus a scoped confirmation pass on the final fix diff.** The cap is what stops "exemplary quality" from becoming an infinite loop; the tech-debt log (step 2 names a batch's route) is where the overflow goes. The confirmation pass is not a fourth cycle and does not extend the cap: the cap bounds **iteration on the branch**, while the pass reviews the fix commits the last cycle never saw, on that diff alone, under its own termination rule. Both are specified under Exit conditions — read them before deciding you are finished, because stopping at cycle 3 with unreviewed fixes on the branch is the specific failure this shape exists to prevent.
 
 **Restatement ledger for this bound** (`architecture.md` rule 9). This list is a **floor, not a census** — it is what `command grep -rnE '3[ -]cycle|three[ -]cycle|cycles? <c>/3|≤ ?3 cycle' .claude docs CLAUDE.md` returned, classified; run it again before moving the bound rather than trusting the list.

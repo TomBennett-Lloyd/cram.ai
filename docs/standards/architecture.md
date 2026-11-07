@@ -1,7 +1,5 @@
 # Architecture standards
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 **Trigger:** adding a module, package, or deployable; adding a dependency between packages; restating an owned value (a configured limit, schema ceiling, cost) in code or prose; unsure where new code belongs; changing behaviour that a comment beside it argues for; writing a worked or derived figure into a comment or doc.
 
 ## Rules

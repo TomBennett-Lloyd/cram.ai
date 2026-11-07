@@ -3,7 +3,7 @@ name: adr-lane
 description: What a ticket-agent lane does when its issue carries the adr label - the planner dispatch, the PROCEED and REVISE bounces, the approved-at-plan classification and fill, and the ADR amendment arms. Use when the issue has an adr label, a PROCEED or REVISE arrives, or the PR's humanAlways paths are all ADRs.
 ---
 
-Moved out of `.claude/agents/ticket-agent.md` rules 2, 3(e) and 7 by #669, which keeps each trigger sentence; this file owns the procedure. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; bare `#<n>` is this repo's.
+Moved out of `.claude/agents/ticket-agent.md` rules 2, 3(e) and 7 by #669, which keeps each trigger sentence; this file owns the procedure.
 
 ## 1. Planning an `adr` issue
 

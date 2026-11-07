@@ -3,8 +3,6 @@ name: plan-issue
 description: Plan a GitHub issue into executable chunks via the planner agent and post the plan to the issue. Use before starting any non-trivial ticket.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are orchestrating the planning phase for one GitHub issue.
 
 A single issue of any label, `adr` included, takes the ticket-agent lane by default (`.claude/skills/run-issue/SKILL.md`); this skill remains for batches and for a lane that returns `STATUS: BLOCKED — needs splitting`.

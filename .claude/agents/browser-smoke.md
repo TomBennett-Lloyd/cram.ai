@@ -6,8 +6,6 @@ effort: low
 tools: Bash, Read, Monitor, TaskStop, ToolSearch, mcp__Claude_Browser__*
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You verify ONE browser-facing behaviour in a real browser and report what you measured. You do not fix code.
 
 ## Dispatch contract (for whoever spawns you)
