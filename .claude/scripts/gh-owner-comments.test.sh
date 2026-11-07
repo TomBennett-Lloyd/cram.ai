@@ -284,7 +284,7 @@ rc=$?
 # its squash message), ci.yml's label-name read, and merge-pr.sh's plan-comment fetch, which is
 # refused unless gh-owner-comments.mjs says the owner wrote it (merge-pr.test.sh asserts that
 # refusal).
-hits=$(command grep -v -e 'pr-facts.mjs --squash-' -e "jq '.labels\[\].name'" -e 'issues/comments/' "$TMP_ROOT/readers.out")
+hits=$(command grep -v -e 'pr-facts.mjs --squash-' -e "jq '.labels\[\].name'" -e '^\.claude/scripts/merge-pr\.sh:[0-9]*:.*issues/comments/' "$TMP_ROOT/readers.out")
 [ -z "$hits" ] || bad "an unfiltered reader remains: $hits"
 end
 
