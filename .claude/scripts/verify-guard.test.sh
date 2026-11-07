@@ -85,12 +85,19 @@ EOF
 stub hold.sh <<'EOF'
 touch "$STUB_DIR/started-$1"; while [ ! -e "$STUB_DIR/release-$1" ]; do sleep 0.1; done
 EOF
+stub corrupt-index.sh <<'EOF'
+echo garbage > "$(git rev-parse --git-dir)/index"
+EOF
+stub steal-owner.sh <<'EOF'
+printf '%s\n%s\n%s\n%s\n' "$STUB_PID" "$STUB_START" "/elsewhere" "1" > "$CRAM_VERIFY_STATE_DIR/verify-slots/slot-1/owner"
+EOF
 stub mark.sh <<'EOF'
 touch "$STUB_DIR/ran-$1"
 EOF
 
 # reset_repo -> the fixture back to its seeded state, whatever a case did to it.
 reset_repo() {
+  rm -f "$REPO/.git/index"
   must git -C "$REPO" reset -q --hard seed_ref
   must git -C "$REPO" clean -fdq -e untracked.txt
   must git -C "$REPO" checkout -q main
@@ -358,7 +365,50 @@ reset_repo
 must mkdir -p "$STATE/verify-slots/slot-1"
 guard 1 -- bash "$STUBS/pass.sh"
 expect_rc 0
+expect_stdout "verify: queued"
 expect_stdout "recovered a stale slot"
+end
+
+begin "a slot another process took over is not removed by the run that lost it"
+fresh_state
+reset_repo
+capture -C "$REPO" env -u CRAM_VERIFY_GUARD_HELD -u CRAM_VERIFY_NCPU CRAM_VERIFY_STATE_DIR="$STATE" \
+  CRAM_VERIFY_SLOTS=1 CRAM_VERIFY_POLL=0.1 STUB_PID="$$" STUB_START="$(own_start)" bash "$GUARD" -- bash "$STUBS/steal-owner.sh"
+expect_rc 0
+[ "$(slot_dirs)" = "1" ] || bad "the run removed a slot whose owner file names another live process"
+[ "$(sed -n 1p "$STATE/verify-slots/slot-1/owner")" = "$$" ] || bad "the owner file was not left as the other process wrote it"
+end
+
+begin "SIGTERM to the guard lets the command finish, then releases the slot and exits 143"
+fresh_state
+reset_repo
+rm -f "$TMP_ROOT/started-t" "$TMP_ROOT/release-t"
+guard_bg t 1 -- bash "$STUBS/hold.sh" t
+pid_t=$BG_PID
+wait_for "$TMP_ROOT/started-t" || bad "holder t never started"
+kill -TERM "$pid_t"
+touch "$TMP_ROOT/release-t"
+wait "$pid_t"
+rc_t=$?
+[ "$rc_t" = "143" ] || bad "expected exit 143 after SIGTERM, got $rc_t"
+[ "$(slot_dirs)" = "0" ] || bad "the slot was left behind after SIGTERM"
+end
+
+# --- a stamp that cannot be taken ---------------------------------------------------------------
+
+begin "a tree that cannot be stamped before the run is refused, and one that cannot after it is void"
+fresh_state
+reset_repo
+printf 'garbage\n' >"$REPO/.git/index"
+guard 1 -- bash "$STUBS/pass.sh"
+expect_rc 2
+expect_stderr "could not stamp the work tree"
+expect_not_stdout "stub ran"
+reset_repo
+guard 1 -- bash "$STUBS/corrupt-index.sh"
+expect_rc 1
+expect_stderr "could not stamp the work tree after the run — result void"
+reset_repo
 end
 
 # --- not guarded -------------------------------------------------------------------------------
