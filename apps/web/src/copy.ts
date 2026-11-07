@@ -251,7 +251,7 @@ export const withheldHeading = (count: number): string => `Withheld (${String(co
 export const droppedQuotesHeading = (count: number): string =>
   `Quote marks removed (${String(count)})`;
 export const DROPPED_QUOTES_NOTE =
-  'The answer marked these as quotes, but doesn’t repeat them word for word, or names a line its slide doesn’t have, so the marks were taken off. Taking a mark off removed no words.';
+  'The answer marked these as quotes, but doesn’t repeat them word for word, or doesn’t copy a line its slide has, so the marks were taken off. Taking a mark off removed no words.';
 
 export const withheldMessage = (withheld: Exclude<WithheldSentence, DroppedPointer>): string => {
   switch (withheld.reason) {

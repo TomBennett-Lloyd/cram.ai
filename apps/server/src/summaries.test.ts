@@ -74,8 +74,8 @@ const hiveSummary = async (
   const slides = summarisable(await retrievedFrom(bytes, 'bio', 'l1', 'hive.pdf'));
   const [first] = slides;
   if (first === undefined) throw new Error('hive deck has no slide');
-  const unit = { text: MALE, citations: [{ sourceId: first.sourceId, line: 2 }] };
   const quote = slideLines(first.record)[1] ?? '';
+  const unit = { text: MALE, citations: [{ sourceId: first.sourceId, line: quote }] };
   return [
     summarised('The Hive', slides, {
       status: 'content',

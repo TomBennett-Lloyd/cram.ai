@@ -616,3 +616,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`), and the model policy lives there by the owner's decision in #624.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approve 675
+
+## 2026-11-07 — issue #481 — copied-line-key
+
+- **Category**: pending — filled at merge
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/481#issuecomment-6655860936 on 2026-11-07 (relayed at https://github.com/TomBennett-Lloyd/cram.ai/issues/481#issuecomment-6704836979), verbatim: "PROCEED — i agree with the 3 plans". The plan's stop rule then fired on its verbatim-share criterion, and the owner overrode it on 2026-11-07, verbatim: "PROCEED — with this increase in text copied verbatim, that is only an issue if it doesn't actually make sense in it's context, if it makes sense then that's actually a good thing, we shouldn't be re-wording stuff unless it actually needs to be re-worded to answer the question in the most understandable way" (https://github.com/TomBennett-Lloyd/cram.ai/issues/481#issuecomment-6705617329). The PR asks the owner to decide two extras beyond the plan as it stood at the first PROCEED. (1) ADR 0009's 2026-11-07 entry carries a "What the owner overrode" bullet, which records that override and the measurement it answers. (2) `packages/ingest/src/adapters/pdf/ingest-pdf-layout.test.ts`, a test #641 added after the plan's sweep, was moved from a numbered citation to a copied one. It is not a `humanAlways` path, but the sweep did not list it.
+- **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR merge on its plan's PROCEED only when it carries nothing beyond that plan, and both items above are beyond it: one rests on a measurement taken after the plan, the other on a carrier the plan's sweep did not list.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge

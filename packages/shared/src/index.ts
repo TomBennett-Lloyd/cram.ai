@@ -19,6 +19,7 @@ export {
   quoteSpan,
   SLIDE_FIELD_SEPARATOR,
   slideFields,
+  whitespaceNormalised,
 } from './quotable-text';
 export { RetrievedSlide } from './retrieved-slide';
 export { ChunkNo, type QuotableFields, type SlideChunk, wholeSlideChunk } from './slide-chunk';

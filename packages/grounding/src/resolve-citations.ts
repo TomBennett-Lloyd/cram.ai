@@ -9,7 +9,7 @@ import {
 } from '@cram/shared';
 import type { DraftUnit } from './generate-units';
 import type { LineCitation } from './prompts/generation-prompt';
-import { slideLines, slideText } from './slide-text';
+import { copiedLine, slideText } from './slide-text';
 import type { Quotes } from './verifier-input';
 
 export interface ResolvedUnit {
@@ -43,11 +43,11 @@ export const quoteResolves = (citation: Citation, retrieved: readonly RetrievedS
 
 const quoted = (citation: LineCitation, records: Records): Citation | undefined => {
   const record = records.get(citation.sourceId);
-  const quote = record === undefined ? undefined : slideLines(record)[citation.line - 1];
+  const quote = record === undefined ? undefined : copiedLine(record, citation.line);
   return quote === undefined ? undefined : { sourceId: citation.sourceId, quote };
 };
 
-/** Mechanical, before any model sees a unit: each quote is the cited line looked up, never the model's copy (`docs/standards/grounding.md` rule 3; #367). */
+/** Mechanical, before any model sees a unit: each quote is the one line the citation's copy equals, never the copy (`docs/standards/grounding.md` rule 3; #367, #481). */
 export const resolveCitations = (
   units: readonly DraftUnit[],
   retrieved: readonly RetrievedSlide[],

@@ -26,7 +26,7 @@ describe('explanationWithheld', () => {
     const id = sourceIdOf(slide);
     const shown = withWithheld(grounded([square], [slide]), [
       { reason: 'unsupported', text: 'Bees hum.' },
-      { reason: 'dangling-citation', text: '[9]', sourceId: id },
+      { reason: 'dangling-citation', text: 'Bees are busy.', sourceId: id },
     ]);
     const none = withWithheld(NOT_COVERED, [
       { reason: 'contradicted', text: 'Cells are round.', sourceId: id },

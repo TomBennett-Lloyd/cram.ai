@@ -40,7 +40,6 @@ export {
   type GenerationTask,
   generationRequest,
   LineCitation,
-  SlideLineNo,
   type SummaryTask,
 } from './prompts/generation-prompt';
 export { explanationRequest, GeneratedExplanation } from './prompts/explanation-prompt';
@@ -59,7 +58,7 @@ export {
   resolveCitations,
 } from './resolve-citations';
 export { type QuoteResolution, resolveQuotes } from './resolve-quotes';
-export { slideLines, slideText } from './slide-text';
+export { copiedLine, copiedLines, slideLines, slideText } from './slide-text';
 export {
   type FactTagging,
   lectureFacts,
