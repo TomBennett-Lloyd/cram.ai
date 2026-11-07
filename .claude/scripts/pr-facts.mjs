@@ -6,7 +6,10 @@
 // code-execution surface. A field the caller did not ask gh for comes out empty or absent.
 // With `--squash-message`, stdout is instead the message merge-pr.sh squashes with: subject,
 // a blank line, body (#617). Exit 2 when stdin is not JSON; 3 when that message has no subject
-// or no summary to carry.
+// or no summary to carry. A `lanemissing\t<label>` record names a field of the lane-report template
+// the body's report lacks (#671).
+import { readFileSync } from 'node:fs';
+
 const LANE_REPORT = /^## Lane report — issue #(\d+)/m;
 const BATCH_REPORT = /^## TASK REPORT — .*?batch: anchor #(\d+)/m;
 
@@ -45,6 +48,42 @@ function squashMessage(pr) {
         trailers.set(t[1].toLowerCase(), `Co-authored-by: ${t[1]}`);
   const tail = trailers.size ? `\n\n${[...trailers.values()].join('\n')}` : '';
   return { ok: true, text: `${title} (#${pr.number})\n\n${summary}${tail}\n` };
+}
+
+// The lane report's field labels, read from the template block in .claude/agents/ticket-agent.md,
+// the one owner of the list (#671). A label opens a template line or follows two or more spaces on
+// it; indented continuation lines and lowercase `x:` inside a value are not labels.
+const TEMPLATE_PATH = new URL('../agents/ticket-agent.md', import.meta.url);
+function laneReportLabels() {
+  let text;
+  try {
+    text = readFileSync(TEMPLATE_PATH, 'utf8');
+  } catch (e) {
+    return { ok: false, reason: `cannot read ${TEMPLATE_PATH.pathname}: ${e.message}` };
+  }
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  const start = lines.findIndex((l) => l.startsWith('## Lane report — issue #<n>'));
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('STATUS:'));
+  if (start < 0 || end < 0) return { ok: false, reason: 'no lane-report template block found' };
+  const labels = [];
+  for (const line of lines.slice(start + 1, end + 1)) {
+    if (/^\s/.test(line)) continue;
+    for (const m of line.matchAll(/(?:^|\s{2,})([A-Z][A-Za-z/ -]*?):/g)) labels.push(m[1]);
+  }
+  return labels.length
+    ? { ok: true, labels }
+    : { ok: false, reason: 'the template names no fields' };
+}
+
+// The labels the body's lane report (everything from its header on) lacks.
+function laneReportMissing(body) {
+  const at = body.search(LANE_REPORT);
+  if (at < 0) return [];
+  const tpl = laneReportLabels();
+  if (!tpl.ok) return [`(lane-report template unreadable: ${tpl.reason})`];
+  const report = body.slice(at);
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  return tpl.labels.filter((l) => !new RegExp(`(?:^|\\s)${esc(l)}:`, 'm').test(report));
 }
 
 let raw = '';
@@ -152,5 +191,6 @@ process.stdin.on('end', () => {
     while ((m = declRe.exec(body))) found.add(m[1]);
     for (const n of found) put(kind, n);
   }
+  for (const label of laneReportMissing(body.replace(/\r\n?/g, '\n'))) put('lanemissing', label);
   process.stdout.write(out.join('\n') + '\n');
 });
