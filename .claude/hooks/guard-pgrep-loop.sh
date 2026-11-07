@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# PreToolUse hook on Bash: refuses a `pgrep -f <pattern>` inside a `while` or `until` loop when
+# PreToolUse hook on Bash and Monitor (both carry the script in `tool_input.command`; #694's
+# lane wrote the loop in a Monitor call): refuses a `pgrep -f <pattern>` inside a `while` or `until` loop when
 # the pattern matches the text of the call itself. `-f` reads every process's whole command
 # line, and a second shell running the same call holds that text, so two such waits never end:
 # docs/standards/evidence.md § Host conventions rule 2 owns the reason and the replacements

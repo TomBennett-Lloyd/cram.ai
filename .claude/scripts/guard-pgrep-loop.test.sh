@@ -252,6 +252,21 @@ expect_rc 0
 expect_silent
 end
 
+begin "a Monitor event carrying the same loop is refused (the matcher names Monitor too)"
+must node -e '
+  const ev = { tool_name: "Monitor", tool_input: { command: "until ! pgrep -f vitest; do sleep 1; done", description: "wait", timeout_ms: 5000 } };
+  process.stdout.write(JSON.stringify(ev));
+' >"$TMP_ROOT/event.json"
+capture bash "$HOOK" <"$TMP_ROOT/event.json"
+expect_rc 2
+expect_stderr "refused"
+end
+
+begin "the committed matcher covers Monitor"
+matcher=$(node -e 'const s=require(process.argv[1]);console.log(s.hooks.PreToolUse.find(e=>e.hooks.some(h=>h.command.includes("guard-pgrep-loop"))).matcher)' "$SCRIPTS/../settings.json") || bad "settings.json unreadable"
+case "|$matcher|" in *"|Monitor|"*) ;; *) bad "matcher is '$matcher', which leaves Monitor unguarded" ;; esac
+end
+
 begin "the hook parses under every bash on the box"
 expect_parses "$HOOK"
 end
