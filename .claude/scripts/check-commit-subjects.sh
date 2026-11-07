@@ -7,7 +7,7 @@
 #
 # Merge commits are exempt, because the subjects of three of them are not the lane's to write:
 # `gh pr update-branch`, GitHub's synthetic `Merge <sha> into <sha>` commit on a pull_request
-# checkout, and merge-pr.sh's append-only-log union commit. A lane's own `merge origin/main`
+# checkout, and the merge commit merge-pr.sh makes to clear a conflict. A lane's own `merge origin/main`
 # carries `#<n>:` by .claude/skills/eval-lane/SKILL.md § 2 and is not checked.
 #
 # Branch name: $GITHUB_HEAD_REF when set (a pull_request checkout is detached), else the
