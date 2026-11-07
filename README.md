@@ -25,6 +25,7 @@ A fresh clone should not meet a wall of prompts. `.claude/settings.json` commits
 - Editing `.claude/agents`, `.claude/skills`, `CLAUDE.md` or the ledgers from the merge owner's session (self-modification: the process that is judged does not rewrite its own rules).
 - `--no-verify` and other gate-skipping git (CI and review bypass).
 - `Bash(gh api:*)`, `Bash(kill:*)` and any wildcard for them: an issue-comment edit goes through `edit-comment.sh` and stray processes through `sweep-orphans.sh`, each scoped to one job.
+- A `bash .claude/scripts/<x>.sh` allow-rule script that differs from `origin/main`'s, which `.claude/hooks/guard-script-integrity.sh` refuses so an edited or planted copy never runs unprompted (`docs/standards/evidence.md` § Host conventions member 13).
 - Some `rm -rf` forms, which `docs/standards/evidence.md` § Host conventions member 12 records.
 - Automating an installed application (`osascript`, accessibility APIs): the owner's decision, per `.claude/agents/ticket-agent.md` rule 5(g).
 
