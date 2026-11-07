@@ -603,3 +603,16 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR carrying nothing beyond the approved plan merge on that plan's PROCEED, and `merge.amendmentRule` (a) holds an amendment footprint to the plan comment having pasted the amendment before the first edit.
 - **How applied**: ADR 0009 § Decision (l) is annotated as it stood, and a dated § Amendments entry records the split of the lecture digest into a prompt map and student notes, when the notes are made, the retirement of the unit summary and what the eval measures. No other file is edited for the amendment.
 - **Verdict**: approved at plan 2026-11-07 — i agree with the 3 plans — https://github.com/TomBennett-Lloyd/cram.ai/issues/587#issuecomment-6655674867
+
+## 2026-11-07 — issue #659 — merge-owner-start-and-routing
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner's ask, 2026-11-07 (chat, quoted in #659): "i feel like it this workflow should be mostly reproducible if someone else were to pick it up?" The PR asks the owner to decide, on the one `humanAlways` path it edits, `CLAUDE.md`:
+  - accept the routing experiment in § Model tiers: a docs-tier or `.claude/` scripts-and-prose lane runs on Sonnet, every other lane on Opus, tallied on #624 and decided after ten lanes of each model. Two things it deliberately leaves out, because the 2026-11-04 "yes run the routing experiment" does not say them: "reviewer follows the lane's model" and a Sonnet review for docs-tier PRs (#624 proposals A and D);
+  - accept that every other lane means Opus, including `apps/web`, `eval/` and `packages/shared`, which #624 proposal A did not name;
+  - accept the § Workflow retro line becoming "after merged PRs ... alone or one over several".
+    - note, no decision asked: the skill's § How you work records the owner's 2026-11-07 direction that a merge-owner session decides the order of work and waits only when blocked (it replaces the start prompt's "don't dispatch discovered issues unasked").
+      The rest of the diff (the `merge-owner-start` skill, the `retro` step 0, `run-issue` and `review-loop` phrases, one `README.md` phrase) is `.claude/` prose and needs no owner decision.
+- **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`), and the model policy lives there by the owner's decision in #624.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approve 675
