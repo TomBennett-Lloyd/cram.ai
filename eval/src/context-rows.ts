@@ -49,7 +49,7 @@ export const sourceCoverage = (asked: readonly AskedQuestion[]): BaselineRow => 
 
 export const promptTokens = (asked: readonly AskedQuestion[]): PromptTokens => {
   const sizes = assembled(asked).map(({ question, result }) =>
-    requestTokens(explanationRequest(question.question, result.context)),
+    requestTokens(explanationRequest(question.question, result.context, [])),
   );
   return PromptTokens.parse({
     budget: PROMPT_TOKEN_BUDGET,

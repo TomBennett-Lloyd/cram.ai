@@ -101,7 +101,7 @@ const asked = async (
 const contextLine = (retrieved: readonly RetrievedSlide[], leftOut: number) => ({
   operation: 'ask context',
   courseId: 'bio',
-  outcome: `${String(requestTokens(explanationRequest(QUESTION, { raw: retrieved, summaries: [] })))} prompt tokens, ${String(leftOut)} left out`,
+  outcome: `${String(requestTokens(explanationRequest(QUESTION, { raw: retrieved, summaries: [] }, [])))} prompt tokens, ${String(leftOut)} left out, 0 turns carried, 0 turns dropped`,
 });
 
 describe('POST /courses/:id/ask, the prompt’s context', () => {

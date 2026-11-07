@@ -3,7 +3,7 @@
 # points of non-blank lines (5000 = 50.00%). A ratio may fall, never
 # rise. Regenerate with:
 #     bash .claude/scripts/check-comment-density.sh --ratchet
-apps/server/src/ask-course.ts	66
+apps/server/src/ask-course.ts	50
 apps/server/src/compose-server.ts	330
 apps/server/src/course-file.ts	535
 apps/server/src/course-repair.ts	350
@@ -22,7 +22,7 @@ apps/server/src/loopback.ts	1666
 apps/server/src/repair-fixture.ts	496
 apps/server/src/route-request.ts	217
 apps/server/src/routes.ts	227
-apps/server/src/server-fixture.ts	254
+apps/server/src/server-fixture.ts	237
 apps/server/src/server-log.ts	312
 apps/server/src/server.ts	347
 apps/server/src/slide-browser-fixture.ts	384
@@ -75,7 +75,7 @@ apps/web/src/slides/slides-fixture.tsx	140
 apps/web/src/slides/use-chunk-tags.ts	144
 apps/web/src/slides/use-lecture-slides.ts	416
 apps/web/src/theme.ts	909
-eval/src/ask-depths.ts	158
+eval/src/ask-depths.ts	152
 eval/src/asked-question.ts	1250
 eval/src/audit.ts	421
 eval/src/citation-validity.ts	0
@@ -154,7 +154,7 @@ packages/grounding/src/attribute-sentences.ts	408
 packages/grounding/src/claims.ts	967
 packages/grounding/src/classify-sentence-kinds.ts	714
 packages/grounding/src/explain-fixture.ts	0
-packages/grounding/src/explain.ts	162
+packages/grounding/src/explain.ts	161
 packages/grounding/src/fake-gateway-fixture.ts	0
 packages/grounding/src/generate-units.ts	400
 packages/grounding/src/ground.ts	253
@@ -164,19 +164,22 @@ packages/grounding/src/model-failure.ts	0
 packages/grounding/src/nli-verdict.ts	769
 packages/grounding/src/premise.ts	555
 packages/grounding/src/prompt-budget.ts	5000
-packages/grounding/src/prompts/explanation-prompt.ts	526
+packages/grounding/src/prompts/explanation-prompt.ts	454
 packages/grounding/src/prompts/generation-prompt.ts	200
 packages/grounding/src/prompts/rewrite-prompt.ts	526
 packages/grounding/src/prompts/sentence-kind-prompt.ts	333
 packages/grounding/src/prompts/source-block.ts	909
+packages/grounding/src/prompts/standalone-question-prompt.ts	357
 packages/grounding/src/prompts/statement-block.ts	0
 packages/grounding/src/prompts/tag-prompt.ts	1304
 packages/grounding/src/prompts/verifier-prompt.ts	434
 packages/grounding/src/resolve-citations.ts	172
 packages/grounding/src/resolve-quotes.ts	1764
 packages/grounding/src/slide-text.ts	1111
+packages/grounding/src/standalone-question.ts	2500
 packages/grounding/src/summarise-lecture.ts	252
 packages/grounding/src/tag-facts.ts	131
+packages/grounding/src/turn-window.ts	4117
 packages/grounding/src/verifier-input.ts	1666
 packages/grounding/src/verify-explanation.ts	62
 packages/grounding/src/verify.ts	327
@@ -228,7 +231,7 @@ packages/ingest/src/stored-output-equations.ts	340
 packages/ingest/src/stored-output-fixture.ts	157
 packages/ingest/src/stored-text.ts	625
 packages/shared/src/api-refusal.ts	357
-packages/shared/src/ask.ts	1562
+packages/shared/src/ask.ts	1351
 packages/shared/src/blank-line.ts	5000
 packages/shared/src/citation.ts	4000
 packages/shared/src/course-list.ts	2000

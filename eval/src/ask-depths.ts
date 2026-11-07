@@ -61,7 +61,7 @@ export const askLight = async (
     const result = await timed(
       clock,
       (ms) => durationsMs.push(ms),
-      () => ask(question.question, { retrieved, summaries }, deps),
+      () => ask({ question: question.question, turns: [] }, { retrieved, summaries }, deps),
     );
     asked.push({ question, retrieved, result });
   }
@@ -84,10 +84,15 @@ export const askDeep = async (
   const sent: PairTally[] = [];
   for (const { question, retrieved, summaries } of retrievals) {
     const tally = { pairs: 0, overLength: 0 };
-    const result = await explain(question.question, { retrieved, summaries }, depth, {
-      gateway: { generator: gateway.generator, verifier: counting(gateway.verifier, tally) },
-      thresholds: PROVISIONAL_NLI_THRESHOLDS,
-    });
+    const result = await explain(
+      { question: question.question, turns: [] },
+      { retrieved, summaries },
+      depth,
+      {
+        gateway: { generator: gateway.generator, verifier: counting(gateway.verifier, tally) },
+        thresholds: PROVISIONAL_NLI_THRESHOLDS,
+      },
+    );
     asked.push({ question, retrieved, result });
     sent.push(tally);
   }

@@ -85,7 +85,7 @@ describe('promptTokens', () => {
       estimate: {
         status: 'measured',
         samples: 2,
-        maxTokens: requestTokens(explanationRequest(item.question.question, large.context)),
+        maxTokens: requestTokens(explanationRequest(item.question.question, large.context, [])),
       },
     });
     expect(promptTokens([asked(NOT_COVERED)]).estimate).toMatchObject({

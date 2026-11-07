@@ -1,5 +1,7 @@
 import type { EntailmentResult, Recording } from '@cram/gateway';
 import {
+  type AskRequest,
+  type AskTurn,
   LectureSummary,
   type LoadedSummary,
   type RetrievedSlide,
@@ -20,6 +22,7 @@ import { explanationRequest } from './prompts/explanation-prompt';
 import type { LineCitation } from './prompts/generation-prompt';
 
 export const QUESTION = 'Who are the workers?';
+export const ASKED: AskRequest = { question: QUESTION, turns: [] };
 export const hive = slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.');
 export const comb = slide('l1/2', 'Bees build comb from square cells.');
 export const winter = slide('l5/6', 'Bees sleep through the winter.');
@@ -57,11 +60,12 @@ export const explained = (
   quotes: readonly LineCitation[] = [],
   slides = retrieved,
   summaries: readonly LoadedSummary[] = [],
+  turns: readonly AskTurn[] = [],
 ) =>
-  generatorReplies(explanationRequest(QUESTION, { raw: slides, summaries }), {
+  generatorReplies(explanationRequest(QUESTION, { raw: slides, summaries }, turns), {
     answer: { text, quotes },
   });
-export const uncovered = generatorReplies(explanationRequest(QUESTION, contextOf()), {
+export const uncovered = generatorReplies(explanationRequest(QUESTION, contextOf(), []), {
   answer: null,
 });
 export const scored = (
@@ -82,7 +86,7 @@ export const run = (
   summaries: readonly LoadedSummary[] = [],
   budget?: number,
 ) =>
-  explain(QUESTION, { retrieved: slides, summaries }, depth, {
+  explain(ASKED, { retrieved: slides, summaries }, depth, {
     gateway: fakeGateway(recordings),
     thresholds: PROVISIONAL_NLI_THRESHOLDS,
     ...(budget === undefined ? {} : { budget }),

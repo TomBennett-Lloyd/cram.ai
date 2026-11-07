@@ -23,11 +23,18 @@ import {
   generationRequest,
   scoredPremises,
   slidePremise,
+  standaloneRequest,
   SUMMARY_MAX_UNITS,
 } from '@cram/grounding';
 import { sourceIdOf } from '@cram/index';
 import { ingestPdf } from '@cram/ingest';
-import { CourseId, LectureId, type LoadedSummary, type RetrievedSlide } from '@cram/shared';
+import {
+  type AskTurn,
+  CourseId,
+  LectureId,
+  type LoadedSummary,
+  type RetrievedSlide,
+} from '@cram/shared';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { type CramServer, startServer } from './server';
 import type { LogEntry } from './server-log';
@@ -274,12 +281,26 @@ export const explained = (
   retrieved: readonly RetrievedSlide[],
   reply: GeneratorReply,
   summaries: readonly LoadedSummary[] = [],
+  turns: readonly AskTurn[] = [],
 ): Recording => ({
   role: 'generator',
   pin: PROVISIONAL_DEFAULT_PINS.generator,
   sampling,
   maxOutputTokens,
-  request: chatWireRequest(explanationRequest(question, { raw: retrieved, summaries })),
+  request: chatWireRequest(explanationRequest(question, { raw: retrieved, summaries }, turns)),
+  reply,
+});
+
+export const rewritten = (
+  question: string,
+  turns: readonly AskTurn[],
+  reply: GeneratorReply,
+): Recording => ({
+  role: 'generator',
+  pin: PROVISIONAL_DEFAULT_PINS.generator,
+  sampling,
+  maxOutputTokens,
+  request: chatWireRequest(standaloneRequest(question, turns)),
   reply,
 });
 

@@ -3,11 +3,17 @@ import { Verdict } from '@cram/shared';
 import { describe, expect, it } from 'vitest';
 import { DRONES_UNIT, hiveSummary } from '../explain-fixture';
 import { slide } from '../fake-gateway-fixture';
-import { explanationRequest, GeneratedExplanation } from './explanation-prompt';
+import {
+  explanationRequest,
+  GeneratedExplanation,
+  NOT_COVERED_TURN,
+  turnBlock,
+} from './explanation-prompt';
 import { generationRequest } from './generation-prompt';
 import { rewriteRequest } from './rewrite-prompt';
 import { sentenceKindRequest } from './sentence-kind-prompt';
 import { sourceBlock } from './source-block';
+import { standaloneRequest } from './standalone-question-prompt';
 import { TAG_MAX_CHARS, tagRequest, TAGS_PER_FACT } from './tag-prompt';
 import { verifierRequest } from './verifier-prompt';
 
@@ -17,6 +23,8 @@ const comb = slide('l1/2', 'Bees build comb from square cells.');
 const summarised = (lectureTitle: string, slides = [hive], maxUnits = 4) =>
   generationRequest({ kind: 'lecture-summary', lectureTitle, maxUnits }, slides);
 const statement = (text: string, quote: string) => ({ text, quotes: [quote] as const });
+const grounded = { question: 'Who are the workers?', answer: 'The workers are male.' };
+const notCovered = { question: 'How do bees see?', answer: null };
 
 const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unknown>])[] = [
   ['generation', (n) => (n === 0 ? summarised('The Hive') : summarised('Comb', [hive, comb]))],
@@ -24,8 +32,8 @@ const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unkn
     'explanation',
     (n) =>
       n === 0
-        ? explanationRequest('Who are the workers?', { raw: [hive], summaries: [] })
-        : explanationRequest('What shape are cells?', { raw: [hive, comb], summaries: [] }),
+        ? explanationRequest('Who are the workers?', { raw: [hive], summaries: [] }, [])
+        : explanationRequest('What shape are cells?', { raw: [hive, comb], summaries: [] }, []),
   ],
   ['verifier', (n) => verifierRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
   ['rewrite', (n) => rewriteRequest(n === 0 ? statement('a', 'q') : statement('b', 'r'))],
@@ -34,6 +42,13 @@ const prompts: readonly (readonly [string, (variant: number) => ChatRequest<unkn
     (n) => (n === 0 ? sentenceKindRequest(['a'], ['q']) : sentenceKindRequest(['b', 'c'], ['r'])),
   ],
   ['tag', (n) => (n === 0 ? tagRequest('The Hive', 'a') : tagRequest('Comb', 'b'))],
+  [
+    'standalone-question',
+    (n) =>
+      n === 0
+        ? standaloneRequest('And the drones?', [grounded])
+        : standaloneRequest('Why?', [grounded, notCovered]),
+  ],
 ];
 
 const TRUTH_OR_CAVEAT =
@@ -98,14 +113,14 @@ describe('explanationRequest', () => {
     const units = summarised('Comb', [hive, comb]).messages[1]?.content ?? '';
     const sources = units.slice(0, -'<lecture>Comb</lecture>'.length);
     expect(
-      explanationRequest('What shape are cells?', { raw: [hive, comb], summaries: [] }).messages[1]
-        ?.content,
+      explanationRequest('What shape are cells?', { raw: [hive, comb], summaries: [] }, [])
+        .messages[1]?.content,
     ).toBe(`${sources}<question>What shape are cells?</question>`);
   });
 
   it('shows each loaded summary after the slides and before the question, its rows unnumbered', () => {
     const content =
-      explanationRequest('Who are the drones?', { raw: [hive], summaries: [hiveSummary] })
+      explanationRequest('Who are the drones?', { raw: [hive], summaries: [hiveSummary] }, [])
         .messages[1]?.content ?? '';
     expect(content).toBe(
       [
@@ -117,18 +132,38 @@ describe('explanationRequest', () => {
   });
 
   it('forbids quoting a summary row', () => {
-    const rules = explanationRequest('Who?', { raw: [hive], summaries: [] }).messages[0].content;
+    const rules = explanationRequest('Who?', { raw: [hive], summaries: [] }, []).messages[0]
+      .content;
     expect(rules).toMatch(/<summary> tag with the lecture's id/);
     expect(rules).toMatch(/no row of a summary/);
   });
 
   it('asks for the model’s own words, and lets it say the slides do not cover the question', () => {
-    const rules = explanationRequest('Who are the workers?', { raw: [hive], summaries: [] })
+    const rules = explanationRequest('Who are the workers?', { raw: [hive], summaries: [] }, [])
       .messages[0].content;
     expect(rules).toMatch(/in your own words/);
     expect(rules).toMatch(/the answer is null/);
     expect(GeneratedExplanation.safeParse({ answer: null }).success).toBe(true);
     expect(GeneratedExplanation.safeParse({}).success).toBe(false);
+  });
+
+  it('shows the carried turns after the summaries and before the question, as no source', () => {
+    const request = explanationRequest(
+      'And the drones?',
+      { raw: [hive], summaries: [hiveSummary] },
+      [grounded, notCovered],
+    );
+    expect(request.messages[1]?.content).toBe(
+      [
+        sourceBlock(hive),
+        `<summary lecture="l1">\n- ${DRONES_UNIT}\n</summary>`,
+        `<turn>\n<student>Who are the workers?</student>\n<tutor>The workers are male.</tutor>\n</turn>`,
+        `<turn>\n<student>How do bees see?</student>\n<tutor>${NOT_COVERED_TURN}</tutor>\n</turn>`,
+        '<question>And the drones?</question>',
+      ].join('\n\n'),
+    );
+    expect(request.messages[0].content).toMatch(/inside a <turn> tag/);
+    expect(request.messages[0].content).toMatch(/They are not sources: take no fact from them/);
   });
 
   it('refuses a blank explanation', () => {
@@ -216,5 +251,13 @@ describe('tagRequest', () => {
     const system = tagRequest('Comb', 'a').messages[0].content;
     expect(system).toMatch(/subject of any example/);
     expect(system).toMatch(/never what the passage says about it/);
+  });
+});
+
+describe('standaloneRequest', () => {
+  it('shows the carried turns as the explanation prompt does, then the question', () => {
+    expect(standaloneRequest('Why?', [grounded, notCovered]).messages[1]?.content).toBe(
+      [turnBlock(grounded), turnBlock(notCovered), '<question>Why?</question>'].join('\n\n'),
+    );
   });
 });
