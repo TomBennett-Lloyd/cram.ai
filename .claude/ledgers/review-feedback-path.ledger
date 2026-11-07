@@ -31,5 +31,6 @@ excluded: docs/adr/0004-storage.md
 excluded: docs/adr/0005-evaluation-as-gate.md
 excluded: docs/adr/0006-image-only-slides.md
 excluded: docs/friction-log.md
+excluded: .claude/scripts/verify-tier.test.sh
 excluded: docs/adr/0007-desktop-packaging.md
 excluded: docs/adr/0009-explanation-answers.md
