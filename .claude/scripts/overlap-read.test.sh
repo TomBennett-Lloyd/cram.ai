@@ -140,6 +140,10 @@ expect_stderr "usage:"
 read_overlap origin/h nope
 expect_rc 2
 expect_stderr "nope does not resolve"
+must git -C "$REPO" update-ref -d refs/remotes/origin/main
+read_overlap origin/h h
+expect_rc 2
+expect_stderr "origin/main does not resolve"
 end
 
 # ==========================================================================================
