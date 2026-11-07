@@ -55,7 +55,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const [, fallbackDir, gitCmd, scannerPath] = process.argv;
-const { scan, ENTER_SUBSHELL, LEAVE_SUBSHELL } = require(scannerPath);
+const { scan, ENTER_SUBSHELL, LEAVE_SUBSHELL } = require(path.resolve(scannerPath));
 let event;
 try {
   event = JSON.parse(fs.readFileSync(0, 'utf8'));

@@ -1,13 +1,13 @@
 'use strict';
 // The lexical shell scanner the command-shape guards share (#692): guard-dirty-revert.sh and
-// guard-pgrep-loop.sh each load it with `require(<this file>)`, and a later guard does the same.
+// guard-pgrep-loop.sh each load it with `require(<this file>)`.
 // `scan` splits a Bash tool call's text into simple commands and returns no verdict of its own.
 //
-// `commands` holds, in execution order (a `$(…)` or backtick body after the command that holds
-// it), three kinds of entry: an array of one simple command's unquoted words; the
-// ENTER_SUBSHELL and LEAVE_SUBSHELL markers bracketing a body the shell runs in a subshell; and
-// `{ owner, body }` for a heredoc, the owner being the array of the command that reads it and the
-// body its text, unscanned. A caller skips the kinds it does not use.
+// `commands` holds three kinds of entry: an array of one simple command's unquoted words; the
+// ENTER_SUBSHELL and LEAVE_SUBSHELL markers (their comment below says which bodies they
+// bracket); and `{ owner, body }` for a heredoc, the owner being the array of the command that
+// reads it and the body its text, unscanned. A caller skips the kinds it does not use. Order is
+// pinned by the rows of shell-scan.test.sh, not stated here.
 //
 // Lexical only: a command reached through a variable, `xargs` or a function is not seen.
 // Cases: .claude/scripts/shell-scan.test.sh, and each guard's own harness.
@@ -88,7 +88,7 @@ function scan(src, i, commands, nested) {
         }
         commands.push({ owner: h.owner, body: body.join('\n') });
       }
-      // The heredoc bodies sit between the command that reads them and the next command.
+      // A fresh array, so a word after the bodies is not read before them.
       if (heredocs.length > 0) {
         current = [];
         commands.push(current);

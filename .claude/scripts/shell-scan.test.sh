@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Harness for .claude/hooks/shell-scan.cjs, the lexical scanner guard-dirty-revert.sh and
-# guard-pgrep-loop.sh share (#692): one case per entry kind and per reading the guards lean on.
+# Harness for .claude/hooks/shell-scan.cjs, the lexical scanner .claude/hooks/guard-dirty-revert.sh
+# and .claude/hooks/guard-pgrep-loop.sh share (#692): one case per entry kind and per reading the guards lean on.
 # Each guard's own harness covers the verdicts built on it.
 #
 # Usage: bash .claude/scripts/shell-scan.test.sh   (or `pnpm test:scripts`)
@@ -56,7 +56,7 @@ echo $(( 1 << 2 )); ls => [["echo","$(( 1 << 2 ))"],["ls"]]
 case $x in a) ls;; esac => [["case","$x","in","a"],["ls"],["esac"]]
 ROWS
 
-# --- heredocs: the body is one entry between the reader and the next command ---------------------
+# --- heredocs: one `{ owner, body }` entry, emitted at the newline that ends the reader's line ---------------------
 
 scans $'cat <<EOF\nls\nEOF\npwd' '[["cat"],{"owner":["cat"],"body":"ls"},["pwd"]]'
 scans $'while true; do bash <<SH\npgrep -f v\nSH\ndone' '[["while","true"],["do","bash"],{"owner":["do","bash"],"body":"pgrep -f v"},["done"]]'
@@ -76,6 +76,17 @@ for hook in guard-dirty-revert guard-pgrep-loop; do
   expect_stderr "$hook: could not read the shell scanner $TMP_ROOT/no-such-scanner.cjs"
   expect_stderr "was not checked for this call"
   expect_not_stderr "refused"
+  end
+done
+
+for hook in guard-dirty-revert guard-pgrep-loop; do
+  begin "$hook: run by a relative path, it still loads the scanner"
+  printf '%s' '{"tool_input":{"command":"while pgrep -f vitest; do sleep 1; done; git checkout -- a"}}' >"$TMP_ROOT/event.json" || exit 2
+  must cd "$SCRIPTS/../.."
+  capture bash ".claude/hooks/$hook.sh" <"$TMP_ROOT/event.json"
+  must cd "$SCRIPTS"
+  [ "$rc" != "1" ] || bad "exit 1: the hook could not judge: $err"
+  expect_not_stderr "Cannot find module"
   end
 done
 

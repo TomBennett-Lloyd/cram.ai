@@ -19,8 +19,8 @@
 #
 # The scan is lexical and shared (shell-scan.cjs, which owns what it reads), with the script
 # argument of `sh|bash|zsh|dash|ksh -c`, a heredoc fed to such a shell, and `eval` read as
-# commands too. A `pgrep` reached through a variable, `xargs` or a function is not seen. A pattern holding a variable expansion, or one that does not
-# compile as a regular expression, cannot be judged and is refused.
+# commands too. A pattern holding a variable expansion, or one that does not compile as a
+# regular expression, cannot be judged and is refused.
 # Cases: .claude/scripts/guard-pgrep-loop.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -51,7 +51,7 @@ IFS= read -r -d '' LOOP_PROGRAM <<'NODE' || true
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const { scan } = require(process.argv[1]);
+const { scan } = require(path.resolve(process.argv[1]));
 
 let event;
 try {

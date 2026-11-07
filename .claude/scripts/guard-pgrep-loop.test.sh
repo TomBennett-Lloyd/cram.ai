@@ -183,9 +183,9 @@ refuses $'while true; do cat <<EOF\nbody\nEOF\npgrep -f vitest; done'
 # --- commands holding `$` or a backtick ----------------------------------------------------
 # The rows are a quoted heredoc so that shellcheck does not read their `$` as unexpanded
 # (SC2016): one `refuses|passes <command>` per line, the command as typed.
-# The `${x:- #}` row is what the shared scanner (shell-scan.cjs, #692) reads and this hook's own copy
-# did not: the `#` opens no comment over the pgrep behind it. The unterminated-quote row after it,
-# which no shell runs, is no longer read to its end.
+# The `${x:- #}` row is what the shared scanner (.claude/hooks/shell-scan.cjs, #692) reads and this
+# hook's own copy did not: the `#` opens no comment over the pgrep behind it. The unterminated-quote
+# row after it, which no shell runs, reads as one quoted word, so the pgrep in it goes unseen.
 while read -r verdict row; do
   case $verdict in
     refuses) refuses "$row" ;;
