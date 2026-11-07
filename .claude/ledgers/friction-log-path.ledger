@@ -5,6 +5,7 @@ cite: docs/friction-log.md
 sweep: friction-log\.md|\.claude/ledgers/friction-log-path\.ledger
 carrier: .claude/scripts/merge-pr.sh
 carrier: .claude/scripts/merge-pr.test.sh
+carrier: .claude/scripts/overlap-read.test.sh
 carrier: .claude/agents/task-orchestrator.md
 carrier: .claude/skills/retro/SKILL.md
 carrier: .claude/skills/review-loop/SKILL.md
