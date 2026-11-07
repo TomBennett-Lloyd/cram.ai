@@ -32,6 +32,17 @@
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
 
+# Persist the Homebrew prefix for the session's later Bash tool calls, so no lane pastes
+# `export PATH=…` in front of a command (#677; docs/standards/evidence.md § Host conventions).
+# The settings.json `env` key cannot do this: it copies a value as written, so a `$PATH` in it
+# stays literal and replaces the real PATH. Only where the prefix exists, and once per file, so a
+# Linux or Intel-Mac contributor and a compaction's second run are both left alone.
+: "${ENSURE_DEPS_BREW_BIN:=/opt/homebrew/bin}"
+if [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -d "$ENSURE_DEPS_BREW_BIN" ]; then
+  path_line="export PATH=\"$ENSURE_DEPS_BREW_BIN:\$PATH\""
+  grep -qxF -- "$path_line" "$CLAUDE_ENV_FILE" 2>/dev/null || printf '%s\n' "$path_line" >>"$CLAUDE_ENV_FILE"
+fi
+
 lib="$(dirname -- "${BASH_SOURCE[0]}")/hook-context.sh"
 # shellcheck source=./hook-context.sh
 if ! . "$lib"; then
