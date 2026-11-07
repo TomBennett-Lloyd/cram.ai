@@ -2,7 +2,7 @@
 #
 # Harness for .claude/hooks/guard-script-integrity.sh: one case per refuse arm and per pass arm.
 # REPO is a throwaway git repository whose `main` holds the reference scripts and the settings.json
-# naming the allow rules; each tree under TMP_ROOT is a plain directory holding a copy of
+# naming the allow rules; each tree under TMP_ROOT holds a copy of
 # `.claude/scripts`, identical or edited by name.
 #
 # Usage: bash .claude/scripts/guard-script-integrity.test.sh   (or `pnpm test:scripts`)
@@ -137,7 +137,7 @@ refuses() {
   expect_rc 2
   expect_stderr "$3"
   expect_stderr "guard-script-integrity: refused"
-  expect_stderr "by absolute path"
+  expect_stderr "git merge origin/main"
   [ -z "$out" ] || bad "expected no stdout; got: $out"
   end
 }
@@ -212,6 +212,31 @@ refuses edited "true || cd $TMP_ROOT/good; bash .claude/scripts/fill-verdict.sh 
 refuses edited "false && cd $TMP_ROOT/good; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
 refuses good "false && cd $TMP_ROOT/edited; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
 passes good "true || cd $TMP_ROOT/good; bash .claude/scripts/fill-verdict.sh 1"
+# A cd that did not take effect leaves the shell where it was.
+refuses edited 'cd /nonexistent-dir-687; bash .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited "cd $TMP_ROOT/good | cat; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+refuses edited "cd $TMP_ROOT/good & bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+# Reserved words and groups before the command.
+refuses edited 'if bash .claude/scripts/fill-verdict.sh 1; then :; fi' "differs from main"
+refuses edited 'for i in 1; do bash .claude/scripts/fill-verdict.sh 1; done' "differs from main"
+refuses edited '! bash .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited '{ bash .claude/scripts/fill-verdict.sh 1; }' "differs from main"
+refuses good "{ cd $TMP_ROOT/edited; }; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+refuses good "if true; then cd $TMP_ROOT/edited; fi; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+refuses edited "if false; then cd $TMP_ROOT/good; fi; bash .claude/scripts/fill-verdict.sh 1" "differs from main"
+passes edited "{ cd $TMP_ROOT/good; }; bash .claude/scripts/fill-verdict.sh 1"
+# Redirections before the command and between the runner and the script.
+refuses edited '2>/dev/null bash .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited 'bash 2>/dev/null .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited 'bash 2>&1 .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited 'bash > /dev/null .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited 'bash .claude/scripts/fill-verdict.sh 1 2>&1 | tail -3' "differs from main"
+passes good '2>/dev/null bash .claude/scripts/fill-verdict.sh 1'
+# A heredoc body is text: its quotes and `cd` lines do not move the scan.
+refuses edited $'cat > b.md <<\'EOF\'\nIt\'s fixed.\nEOF\nbash .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited $'cat <<EOF\ncd '"$TMP_ROOT"$'/good\nEOF\nbash .claude/scripts/fill-verdict.sh 1' "differs from main"
+refuses edited $'cat <<-EOF\n\tx\n\tEOF\nbash .claude/scripts/fill-verdict.sh 1' "differs from main"
+passes edited $'cat <<EOF\nbash .claude/scripts/fill-verdict.sh 1\nEOF'
 
 # --- what it cannot resolve fails closed, only for a guarded script ----------------------------
 
@@ -251,6 +276,10 @@ refuses	edited	differs from main	echo $(bash .claude/scripts/fill-verdict.sh 1)
 refuses	edited	differs from main	echo "$(bash .claude/scripts/fill-verdict.sh 1)"
 refuses	edited	differs from main	echo `bash .claude/scripts/fill-verdict.sh 1`
 refuses	edited	differs from main	echo `cd /tmp`; bash .claude/scripts/fill-verdict.sh 1
+refuses	good	working directory is not known	cd "$X/../edited" && bash -c "bash .claude/scripts/fill-verdict.sh 1"
+refuses	good	working directory is not known	for d in x; do cd $d; done; bash .claude/scripts/fill-verdict.sh 1
+refuses	edited	differs from main	bash $'.claude/scripts/fill-verdict.sh' 1
+refuses	edited	differs from main	echo "`bash .claude/scripts/fill-verdict.sh 1`"
 refuses	edited	differs from main	bash .claude//scripts/fill-verdict.sh 1
 refuses	edited	differs from main	bash .cla''ude/scripts/fill-verdict.sh 1
 refuses	edited	differs from main	bash .claude"/"scripts/fill-verdict.sh 1
@@ -266,6 +295,15 @@ passes	good	-	cd "$WT" && git status
 passes	good	-	bash "$WT/scripts/other.sh"
 passes	edited	-	bash "/$X/.claude/scripts/fill-verdict.sh" 1
 ROWS
+
+begin "the defaults: no seams set, the hook compares with its own repository's origin/main"
+event "$TMP_ROOT/edited" 'bash .claude/scripts/fill-verdict.sh 1'
+unset GUARD_SCRIPT_REPO GUARD_SCRIPT_REF GUARD_SCRIPT_SETTINGS
+capture bash "$HOOK" <"$TMP_ROOT/event.json"
+export GUARD_SCRIPT_REPO="$REPO" GUARD_SCRIPT_REF=main GUARD_SCRIPT_SETTINGS="$REPO/.claude/settings.json"
+expect_rc 2
+expect_stderr "origin/main"
+end
 
 begin "refuses: a symlink out to an edited copy is judged by its bytes"
 event "$TMP_ROOT/linked" 'bash .claude/scripts/fill-verdict.sh 1'

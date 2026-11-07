@@ -16,21 +16,25 @@
 # `git diff` there passes an untracked copy, and a planted repo carries its own origin/main.
 #
 # Exit 2 refuses the call. A missing tool or an unreadable event or settings.json is exit 1,
-# non-blocking and loud, as hook-context.sh's header says: it is known before the event is read and
-# would otherwise block every Bash call. Once an event does name a guarded script, a reference that
-# cannot be read or a path that cannot be resolved ($VAR, a glob, a `cd` to a computed directory)
-# is exit 2: failing open there is the hole this hook closes, and the cost is confined to those calls.
+# non-blocking and loud, as hook-context.sh's header says: exit 2 there would block every Bash call.
+# Once an event does name a guarded script, a reference that cannot be read or a path that cannot be
+# resolved ($VAR, a glob, a `cd` to a computed directory) is exit 2: failing open there is the hole
+# this hook closes, and the cost is confined to those calls.
 #
 # The scan is lexical, and runs on every Bash call because the shell reads `.cla''ude//scripts` as
-# the path the rule matches and no substring test on the raw command can say it will not: simple
-# commands split at `; & | ( ) newline`, backticks and `$(…)`, with `cd`, subshell and `bash -c '…'`
-# scopes followed. A `cd` after `&&` or `||` may not have run, so the script is judged in the
-# directory before it and the one after. Not seen: a command reached through `eval`, `xargs`, `sudo`,
-# `timeout` or a function, and a `cd` behind a `{` group (the script is judged in the directory
-# before it, a false refusal when that one differs). A heredoc line spelling the command at command
-# position is refused like the real one. A wildcard rule (`.claude/scripts/*`) is not guarded:
-# the harness fails if settings.json gains one. The guarded script's own `pnpm verify` of a branch
-# runs that branch's code by design and is not covered. Cases: .claude/scripts/guard-script-integrity.test.sh.
+# the path a rule matches and no substring test on the raw command can say it will not. Simple
+# commands split at `; & | ( ) newline`; backticks, `$(…)` and `bash -c '…'` are parsed in turn;
+# heredoc bodies are skipped; redirections, assignments, `WRAPPERS` and reserved words before the
+# command are stripped; and only a command headed by one of `RUNNERS` is looked at. A `cd` followed
+# or not by the script is tracked: after `&&`, `||`, `then`/`do`/`else`, in a pipeline or `&`, or to
+# a directory that is not there, it may not have taken effect, so the script is judged in the
+# directory before it and the one after. A `cd` to a computed path, `-` or `popd` makes the
+# directory unknown and a guarded script after it is refused. A command outside that grammar is not
+# seen (what falls outside it is whatever `RUNNERS` and `WRAPPERS` do not name, `eval` and a
+# function among it), a wildcard allow rule is not guarded (the harness fails if settings.json gains
+# one), and the file is read before the command runs, so a write earlier in the same command is
+# not seen. `bash -n` is refused like a run. The guarded script's own `pnpm verify` of a branch runs that branch's code by
+# design and is not covered. Cases: .claude/scripts/guard-script-integrity.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
 
@@ -101,6 +105,8 @@ function parse(src) {
   let word = null;
   let tick = false;
   let cond = false;
+  let sub = false;
+  const heredocs = [];
   const add = (ch, dynamic = false) => {
     word ??= { text: '', dynamic: false };
     word.text += ch;
@@ -113,8 +119,9 @@ function parse(src) {
   const flush = () => {
     push();
     if (words.length > 0) {
-      items.push({ words, cond });
+      items.push({ words, cond, sub });
       cond = false;
+      sub = false;
     }
     words = [];
   };
@@ -124,11 +131,40 @@ function parse(src) {
     if (c === '\n' || c === ';') {
       flush();
       i++;
+      while (c === '\n' && heredocs.length > 0) {
+        const { delim, tabs } = heredocs.shift();
+        const lines = src.slice(i).split('\n');
+        const end = lines.findIndex((l) => (tabs ? l.replace(/^\t+/, '') : l) === delim);
+        if (end >= 0) i += lines.slice(0, end + 1).join('\n').length + 1;
+      }
+    } else if (c === '<' && src.startsWith('<<', i) && src[i + 2] !== '<' && src[i + 2] !== '(') {
+      push();
+      i += 2;
+      const tabs = src[i] === '-';
+      if (tabs) i++;
+      while (src[i] === ' ' || src[i] === '\t') i++;
+      let delim = '';
+      while (i < src.length && !/[\s;|&()<>]/.test(src[i])) {
+        if (src[i] === "'" || src[i] === '"') {
+          const q = src[i++];
+          while (i < src.length && src[i] !== q) delim += src[i++];
+          i++;
+        } else delim += src[i++];
+      }
+      heredocs.push({ delim, tabs });
+    } else if ((c === '&' && (src[i - 1] === '>' || src[i - 1] === '<' || src[i + 1] === '>')) && word !== null) {
+      add(c);
+      i++;
     } else if (c === '&' || c === '|') {
       flush();
       if (src[i + 1] === c) {
         cond = true;
         i++;
+      } else {
+        // `a | b` and `a &` run `a` in a subshell, and `b` of a pipeline too.
+        const last = items[items.length - 1];
+        if (last && last !== ENTER && last !== LEAVE) last.sub = true;
+        if (c === '|') sub = true;
       }
       i++;
     } else if (c === '(') {
@@ -169,10 +205,28 @@ function parse(src) {
           word.dynamic = true;
           word.text += src.slice(i, j);
           i = j;
+        } else if (src[i] === '`') {
+          const j = src.indexOf('`', i + 1);
+          const end = j < 0 ? src.length : j;
+          items.push(ENTER, ...parse(src.slice(i + 1, end)), LEAVE);
+          word.dynamic = true;
+          word.text += src.slice(i, end + 1);
+          i = end + 1;
         } else {
-          if (src[i] === '$' || src[i] === '`') word.dynamic = true;
+          if (src[i] === '$') word.dynamic = true;
           word.text += src[i++];
         }
+      }
+      i++;
+    } else if (c === '$' && src[i + 1] === "'") {
+      word ??= { text: '', dynamic: false };
+      i += 2;
+      while (i < src.length && src[i] !== "'") {
+        if (src[i] === '\\') {
+          word.dynamic = true;
+          word.text += src[i++];
+        }
+        word.text += src[i++] ?? '';
       }
       i++;
     } else if (c === '\\') {
@@ -252,14 +306,28 @@ function check(word, dirs, unknown) {
   }
 }
 
+// Drops the redirections from a command's words: `2>&1` and `>out` as one word, `>` `out` as two.
+function withoutRedirects(words) {
+  const kept = [];
+  for (let k = 0; k < words.length; k++) {
+    const t = words[k].dynamic ? '' : words[k].text;
+    if (/^\d*(>>?|<|>&|<&|&>)$/.test(t)) k++;
+    else if (!/^\d*(>>?|<|>&|<&|&>)/.test(t)) kept.push(words[k]);
+  }
+  return kept;
+}
+
 const RUNNERS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'source', '.']);
 const WRAPPERS = new Set(['env', 'command', 'exec', 'nohup', 'time', 'builtin']);
+// Reserved words that begin a command; the ones after a test or loop head run it conditionally.
+const KEYWORDS = new Set(['if', 'while', 'until', '!', '{', 'then', 'else', 'elif', 'do']);
+const CONDITIONAL = new Set(['then', 'else', 'elif', 'do']);
 
 // `dirs` is every directory the shell may be in: a `cd` after `&&` or `||` may not have run, so it
 // adds its target beside the directory it left, and a script is judged in each.
-function run(items, start) {
+function run(items, start, startUnknown = false) {
   let dirs = start;
-  let unknown = false;
+  let unknown = startUnknown;
   const stack = [];
   for (const item of items) {
     if (item === ENTER) {
@@ -270,8 +338,14 @@ function run(items, start) {
       [dirs, unknown] = stack.pop() ?? [dirs, unknown];
       continue;
     }
-    let words = item.words;
-    while (words.length > 0 && (/^[A-Za-z_]\w*=/.test(words[0].text) || WRAPPERS.has(words[0].text))) words = words.slice(1);
+    let words = withoutRedirects(item.words);
+    let cond = item.cond || item.sub;
+    while (words.length > 0 && !words[0].dynamic) {
+      const t = words[0].text;
+      if (!(/^[A-Za-z_]\w*=/.test(t) || WRAPPERS.has(t) || KEYWORDS.has(t))) break;
+      if (CONDITIONAL.has(t)) cond = true;
+      words = withoutRedirects(words.slice(1));
+    }
     if (words.length === 0 || words[0].dynamic) continue;
     const head = words[0].text;
     const args = words.slice(1);
@@ -281,14 +355,17 @@ function run(items, start) {
         unknown = true;
       } else {
         const moved = dirs.map((d) => (target === undefined ? os.homedir() : path.resolve(d, target.text)));
-        dirs = item.cond ? [...new Set([...dirs, ...moved])] : moved;
+        // A cd to a directory that is not there fails and leaves the shell where it was.
+        const lands = moved.every((d) => fs.existsSync(d) && fs.statSync(d).isDirectory());
+        dirs = cond || !lands ? [...new Set([...dirs, ...moved])] : moved;
       }
     } else if (head === 'popd') {
       unknown = true;
     } else if (RUNNERS.has(head)) {
-      for (const [k, w] of args.entries()) {
-        if (/^-[a-zA-Z]*c/.test(w.text) && args[k + 1] !== undefined) {
-          run([ENTER, ...parse(args[k + 1].text), LEAVE], dirs);
+      const rest = withoutRedirects(args);
+      for (const [k, w] of rest.entries()) {
+        if (/^-[a-zA-Z]*c/.test(w.text) && rest[k + 1] !== undefined) {
+          run([ENTER, ...parse(rest[k + 1].text), LEAVE], dirs, unknown);
           break;
         }
         if (w.text.startsWith('-') && !w.dynamic) continue;
@@ -310,10 +387,10 @@ refusals=$(printf '%s' "$event" | "$HOOK_NODE_CMD" -e "$GUARD_PROGRAM" "$PWD" "$
 [ -z "$refusals" ] && exit 0
 
 {
-  echo "guard-script-integrity: refused — an allow rule would run this script with no prompt, but it is not origin/main's (#687):"
+  echo "guard-script-integrity: refused — an allow rule would run this script with no prompt, and it could not be shown to be origin/main's (#687):"
   printf '%s\n' "$refusals"
   echo "The rule matches the text 'bash .claude/scripts/<x>.sh', not a file, so it runs whatever the cwd holds there."
   echo "Run it from a tree whose .claude/scripts matches origin/main (the main checkout after a pull, or a branch"
-  echo "after \`git merge origin/main\`), or give the script by absolute path: that matches no rule and is prompted."
+  echo "after \`git merge origin/main\`)."
 } >&2
 exit 2
