@@ -9,7 +9,7 @@ Moved out of `.claude/agents/ticket-agent.md` rule 2 by #628, which keeps the ob
 
 ## What the lane gives the agent
 
-In the dispatch prompt (a `general-purpose` agent on Sonnet, synchronous, `.claude/agents/ticket-agent.md` rule 3(f)), invoking this skill by name:
+In the dispatch prompt (a `general-purpose` agent on Sonnet, synchronous, `.claude/agents/ticket-agent.md` rule 3(f)), naming this skill and its path:
 
 - the issue number `<n>` and the scratchpad directory;
 - the **claim** in one sentence, and the old and new wording if it moves a value;
