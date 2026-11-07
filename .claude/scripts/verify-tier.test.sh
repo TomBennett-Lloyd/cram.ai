@@ -1311,6 +1311,86 @@ expect_stdout "verify tier: full"
 expect_stdout "module tier-facts.mjs is named by src/loader.ts, outside the scripts and hooks"
 end
 
+# The importer scan reads the whole tree but the scripts and hooks, tests included in what it
+# leaves out: each exclusion and each source extension below has a case that only it decides.
+begin "a test file outside the scripts naming a module does not make the module's reach unknown"
+script_fixture script_mjs_test_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in pnpm-workspace.yaml "packages:
+  - 'pkg-t'"
+write_in pkg-t/package.json '{ "name": "@fixture/t", "private": true }'
+write_in pkg-t/loader.test.ts "import { a } from '../.claude/scripts/tier-facts.mjs';"
+seed_origin 'chore: a module and a package test that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s)"
+expect_stdout "pkg-t/loader.test.ts"
+end
+
+begin "a module another script names is the scripts tier, not full"
+script_fixture script_mjs_script_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in .claude/scripts/tier-wrap.mjs "import './tier-facts.mjs';"
+seed_origin 'chore: a module and a sibling that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s)"
+end
+
+begin "a module a hook names is the scripts tier, not full"
+script_fixture script_mjs_hook_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in .claude/hooks/tier-scan.cjs "require('../scripts/tier-facts.mjs');"
+seed_origin 'chore: a module and a hook that requires it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s)"
+end
+
+begin "a module a .cjs outside the scripts and hooks names is the full tier"
+script_fixture script_mjs_cjs_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in tier-cfg.cjs "import('./.claude/scripts/tier-facts.mjs');"
+seed_origin 'chore: a module and a cjs file that loads it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "module tier-facts.mjs is named by tier-cfg.cjs, outside the scripts and hooks"
+end
+
+begin "a module a .mjs outside the scripts and hooks names is the full tier"
+script_fixture script_mjs_mjs_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in tier-cfg.mjs "import './.claude/scripts/tier-facts.mjs';"
+seed_origin 'chore: a module and an mjs file that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "module tier-facts.mjs is named by tier-cfg.mjs, outside the scripts and hooks"
+end
+
+# A git that fails the importer scan stands in for any failure of it: the answer must be a
+# full run that says so, never an admission.
+begin "when the importer scan cannot run, a changed module is the full tier"
+script_fixture script_mjs_scan_fails
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+seed_origin 'chore: a module'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+real_git=$(command -v git)
+must mkdir -p "$ROOT/bin"
+must printf '#!/bin/sh\nfor a in "$@"; do [ "$a" = "--untracked" ] && exit 2; done\nexec "%s" "$@"\n' "$real_git" >"$ROOT/bin/git"
+must chmod +x "$ROOT/bin/git"
+capture env PATH="$ROOT/bin:$PATH" bash "$TIER" --dry-run "$WT"
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "the importers scan for module tier-facts.mjs failed"
+end
+
 # A slot nobody taught the builder runs whole: a copy of the classifier with a gate appended
 # to LEG_ORDER, held outside any repository like the no-esbuild case's copy.
 begin "a LEG_ORDER slot the builder has no rule for runs whole"

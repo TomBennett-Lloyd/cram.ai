@@ -46,15 +46,17 @@ expect_rc 0 "$rc"
 expect_stdout "check-settings-hooks: OK"
 end
 
-begin "a quoted, a bare and a braced \$CLAUDE_PROJECT_DIR command all resolve"
+begin "a quoted, a bare and a braced \$CLAUDE_PROJECT_DIR command, and a padded one, all resolve"
 hooks_fixture forms '{}'
 must printf '%s\n' '{ "hooks": { "SessionStart": [ { "hooks": [
   { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/ok.sh" },
   { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ok.sh --flag" },
-  { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/ok.sh" } ] } ] } }' >"$DIR/.claude/settings.json"
+  { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/ok.sh" },
+  { "type": "command", "command": "\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/ok.sh" },
+  { "type": "command", "command": "  $CLAUDE_PROJECT_DIR/.claude/hooks/ok.sh" } ] } ] } }' >"$DIR/.claude/settings.json"
 capture bash "$CHECK" "$DIR"
 expect_rc 0 "$rc"
-expect_stdout "3 hook command(s) resolve"
+expect_stdout "5 hook command(s) resolve"
 end
 
 # The positive control #699's acceptance names: a scratch entry pointing at a missing path.
@@ -63,6 +65,7 @@ hooks_fixture missing "$(settings_with '\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/go
 capture bash "$CHECK" "$DIR"
 expect_rc 1 "$rc"
 expect_stderr "hook file does not exist: /.claude/hooks/gone.sh"
+expect_not_stderr "not an executable"
 expect_not_stdout "OK"
 end
 
@@ -88,6 +91,43 @@ expect_rc 1 "$rc"
 expect_stderr "cannot resolve a command not under \$CLAUDE_PROJECT_DIR: /usr/bin/true"
 end
 
+# What the shell would run is the oracle: a variable that is not at the start, or no slash after
+# it, is not a path under the project, whatever file the remainder happens to name.
+begin "a command that merely contains \$CLAUDE_PROJECT_DIR later on is refused"
+hooks_fixture interpreter_first "$(settings_with 'bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/ok.sh')"
+capture bash "$CHECK" "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "cannot resolve a command not under \$CLAUDE_PROJECT_DIR"
+end
+
+begin "a variable with no slash after it is refused even when the joined name exists"
+hooks_fixture no_slash "$(settings_with '\"$CLAUDE_PROJECT_DIR\"ok.sh')"
+must cp "$DIR/.claude/hooks/ok.sh" "$DIR/ok.sh"
+capture bash "$CHECK" "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "cannot resolve a command not under \$CLAUDE_PROJECT_DIR"
+end
+
+begin "a hook that is a symlink to an executable file resolves"
+hooks_fixture symlinked "$(settings_with '\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/link.sh')"
+must ln -s ok.sh "$DIR/.claude/hooks/link.sh"
+capture bash "$CHECK" "$DIR"
+expect_rc 0 "$rc"
+expect_stdout "1 hook command(s) resolve"
+end
+
+# A hook of a type that carries no command (a prompt hook) is not this gate's to resolve.
+begin "a hook entry with no command string is skipped, beside one that resolves"
+hooks_fixture commandless '{}'
+must printf '%s\n' '{ "hooks": { "Stop": [ { "hooks": [
+  { "type": "prompt", "prompt": "check the work" },
+  { "type": "command", "command": 5 },
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ok.sh" } ] } ] } }' >"$DIR/.claude/settings.json"
+capture bash "$CHECK" "$DIR"
+expect_rc 0 "$rc"
+expect_stdout "1 hook command(s) resolve"
+end
+
 begin "one bad entry among good ones fails the run and names only the bad one"
 hooks_fixture one_bad '{}'
 must printf '%s\n' '{ "hooks": { "PreToolUse": [ { "hooks": [
@@ -104,6 +144,7 @@ hooks_fixture bad_json '{ "hooks": '
 capture bash "$CHECK" "$DIR"
 expect_rc 1 "$rc"
 expect_stderr "does not parse as JSON"
+expect_not_stderr "registers no hook command"
 end
 
 begin "a settings file registering no hook is red, not a free pass"
