@@ -4,7 +4,7 @@
 # merge-pr.test.sh proves the refusal end to end; this harness proves the reader on its own, fast:
 # the field list it derives from the template block in .claude/agents/ticket-agent.md, the
 # `lanemissing` records for a body that lacks a field, and its refusal to pass a report it cannot
-# check. EXPECTED is this harness's copy of the template's labels, in template order.
+# check. EXPECTED is harness-lib.sh's lane_report_labels, which the cases below prove against the template.
 #
 # Usage: bash .claude/scripts/pr-facts.test.sh   (or `pnpm test:scripts`)
 # Exit:  0 every case PASS, 1 at least one FAIL, 2 the harness itself broke.
@@ -17,12 +17,8 @@ FACTS="$SCRIPTS/pr-facts.mjs"
 . "$SCRIPTS/harness-lib.sh"
 harness_init_tmp
 
-EXPECTED=(
-  'Branch/HEAD' 'PR' 'CI' 'Verify' 'Plan comment' 'Footprint drift vs plan comment'
-  'Changed files' 'Review' 'Mutation' 'Classification' 'Extras beyond the approved plan'
-  'Lane model' 'Sub-dispatches' 'Consultant' 'Discovered' 'Cross-references' 'Retro'
-  'Merge cautions' 'STATUS'
-)
+EXPECTED=()
+while IFS= read -r l; do EXPECTED+=("$l"); done < <(lane_report_labels)
 
 # body_with <skipped label or ''> -> a JSON PR object whose body is a lane report holding every
 # EXPECTED label but the skipped one, each value `x`. Labels that share a line in the template (CI, Footprint drift, Consultant,
@@ -94,7 +90,7 @@ must cp "$FACTS" "$TMP_ROOT/alone/scripts/"
 body_with '' >"$TMP_ROOT/full2.json"
 facts_of "$TMP_ROOT/full2.json" "$TMP_ROOT/alone/scripts/pr-facts.mjs"
 expect_rc 0 "$rc"
-expect_stdout 'lane-report template unreadable'
+expect_stdout 'lanetemplate	cannot read'
 end
 
 begin "a template with no lane-report block is flagged rather than passed"
@@ -102,7 +98,7 @@ must mkdir -p "$TMP_ROOT/blockless/scripts" "$TMP_ROOT/blockless/agents"
 must cp "$FACTS" "$TMP_ROOT/blockless/scripts/"
 printf 'no template here\n' >"$TMP_ROOT/blockless/agents/ticket-agent.md"
 facts_of "$TMP_ROOT/full2.json" "$TMP_ROOT/blockless/scripts/pr-facts.mjs"
-expect_stdout 'no lane-report template block found'
+expect_stdout 'lanetemplate	no lane-report template block found'
 end
 
 # template_case <dir> <template text> -> a copy of pr-facts.mjs with its own agents/ticket-agent.md.
@@ -116,7 +112,7 @@ begin "a template holding STATUS: but no report header is flagged rather than re
 template_case nostart 'Alpha: x
 STATUS: DONE'
 facts_of "$TMP_ROOT/full2.json" "$TMP_ROOT/nostart/scripts/pr-facts.mjs"
-expect_stdout 'no lane-report template block found'
+expect_stdout 'lanetemplate	no lane-report template block found'
 end
 
 begin "an indented line in the template block is a continuation, never a label"

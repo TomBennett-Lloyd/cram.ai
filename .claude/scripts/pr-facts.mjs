@@ -7,7 +7,8 @@
 // With `--squash-message`, stdout is instead the message merge-pr.sh squashes with: subject,
 // a blank line, body (#617). Exit 2 when stdin is not JSON; 3 when that message has no subject
 // or no summary to carry. A `lanemissing\t<label>` record names a field of the lane-report template
-// the body's report lacks (#671).
+// the body's report lacks; a `lanetemplate\t<reason>` record says the template could not be read, so
+// no body can be checked (#671).
 import { readFileSync } from 'node:fs';
 
 const LANE_REPORT = /^## Lane report — issue #(\d+)/m;
@@ -75,16 +76,17 @@ function laneReportLabels() {
     : { ok: false, reason: 'the template names no fields' };
 }
 
-// The labels the body's lane report (everything from its header on) lacks.
+// What the body's lane report (everything from its header on) lacks: `{ template }` when the
+// template cannot be read, else `{ missing }`, the template's labels the report does not hold.
 function laneReportMissing(body) {
   const at = body.search(LANE_REPORT);
-  if (at < 0) return [];
+  if (at < 0) return { missing: [] };
   const tpl = laneReportLabels();
-  if (!tpl.ok) return [`(lane-report template unreadable: ${tpl.reason})`];
+  if (!tpl.ok) return { template: tpl.reason };
   const report = body.slice(at);
   // A label holds only letters, `/`, space and `-` (the extraction above), none special in a
   // pattern; the report starts at its header, so a label always follows whitespace.
-  return tpl.labels.filter((l) => !new RegExp(`\\s${l}:`).test(report));
+  return { missing: tpl.labels.filter((l) => !new RegExp(`\\s${l}:`).test(report)) };
 }
 
 let raw = '';
@@ -192,6 +194,8 @@ process.stdin.on('end', () => {
     while ((m = declRe.exec(body))) found.add(m[1]);
     for (const n of found) put(kind, n);
   }
-  for (const label of laneReportMissing(body.replace(/\r\n?/g, '\n'))) put('lanemissing', label);
+  const lane = laneReportMissing(body.replace(/\r\n?/g, '\n'));
+  if (lane.template) put('lanetemplate', lane.template);
+  for (const label of lane.missing ?? []) put('lanemissing', label);
   process.stdout.write(out.join('\n') + '\n');
 });

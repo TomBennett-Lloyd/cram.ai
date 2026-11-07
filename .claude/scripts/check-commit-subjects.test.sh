@@ -170,4 +170,16 @@ expect_rc 2 "$rc"
 expect_stderr "git log origin/main..HEAD failed"
 end
 
+begin "commits that main gained since the branch point are not the branch's"
+fixture moved 671-slug
+commit "#671: mine"
+must git -C "$DIR" checkout -q --detach origin/main
+must git -C "$DIR" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "retro: main moved"
+must git -C "$DIR" update-ref refs/remotes/origin/main HEAD
+must git -C "$DIR" checkout -q 671-slug
+run_check
+expect_rc 0 "$rc"
+expect_out "1 commit subject(s)"
+end
+
 finish

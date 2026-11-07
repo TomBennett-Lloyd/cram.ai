@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 # Commit-subject gate: on a lane branch, every non-merge commit since origin/main begins
-# `#<n>: ` (.claude/agents/ticket-agent.md rule 4, #671).
-#
-# The rule was prose with no check, and a lane's commit subjects are what a reader of the PR's
-# history sees first; the branch squash-merges, so a bad subject never reaches main but the
-# portfolio's commit history is read on the PR. A lane branch is one named `<n>-<slug>`
-# (.claude/skills/execute/SKILL.md step 1); retro and triage branches are the merge owner's
-# and are skipped, as is main itself.
+# `#<digits>: ` (.claude/agents/ticket-agent.md rule 4, #671). The shape is checked, not the
+# number, because a batch branch's subjects name its member issues. A lane branch is one named
+# `<n>-<slug>` (.claude/skills/execute/SKILL.md step 1); retro and triage branches are the merge
+# owner's and are skipped, as is main itself.
 #
 # Merge commits are exempt, because the subjects of three of them are not the lane's to write:
 # `gh pr update-branch`, GitHub's synthetic `Merge <sha> into <sha>` commit on a pull_request
@@ -61,7 +58,7 @@ $subjects
 EOF2
 
 if [ "$bad" -gt 0 ]; then
-  printf 'check-commit-subjects: %d of %d commit subject(s) on %s do not begin with #<n>: and a space\n' "$bad" "$total" "$branch" >&2
+  printf 'check-commit-subjects: %d of %d commit subject(s) on %s do not begin with #<digits>: and a space\n' "$bad" "$total" "$branch" >&2
   exit 1
 fi
 echo "check-commit-subjects: OK — $total commit subject(s) on $branch"

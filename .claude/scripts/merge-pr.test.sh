@@ -113,9 +113,10 @@ V_FILES=""
 V_CHECKS=""
 V_COMMITS=""
 V_BODY=""
-# A complete lane report's fields, JSON-escaped; a body spells them `@FIELDS@` (#671). Section
-# 10g proves the list against the live template in .claude/agents/ticket-agent.md, both ways.
-LANE_FIELDS="Branch/HEAD: x\nPR: x\nCI: x\nVerify: x\nPlan comment: x\nFootprint drift vs plan comment: x\nChanged files: x\nReview: x\nMutation: x\nClassification: x\nExtras beyond the approved plan: x\nLane model: x\nSub-dispatches: x\nConsultant: x\nDiscovered: x\nCross-references: x\nRetro: x\nMerge cautions: x\nSTATUS: x"
+# A complete lane report's fields, JSON-escaped; a body spells them `@FIELDS@` (#671). The list is
+# harness-lib.sh's lane_report_labels, proved against the live template by pr-facts.test.sh.
+LANE_FIELDS=''
+while IFS= read -r l; do LANE_FIELDS="$LANE_FIELDS${LANE_FIELDS:+\\n}$l: x"; done < <(lane_report_labels)
 V_BASE_REF=""
 V_URL=""
 V_TITLE=""
@@ -1767,34 +1768,52 @@ end
 # ==========================================================================================
 # 10g. a lane report missing a field of the ticket-agent template is refused at classify (#671)
 # ==========================================================================================
-# pr-facts.mjs reads the field list from the template block in .claude/agents/ticket-agent.md.
-# LANE_FIELDS is this harness's own copy, so the loop proves it both ways: every fixture above
-# that carries the whole copy merges, which makes the template's labels a subset of it, and
-# taking any one of its lines out is refused by name, which makes the copy's labels a subset of
-# the template's.
-lane_lines=()
-while IFS= read -r l; do
-  lane_lines+=("$l")
-done <<EOF2
-$(printf '%s' "$LANE_FIELDS" | sed 's/\\n/\n/g')
-EOF2
+# pr-facts.mjs reads the field list from the template block in .claude/agents/ticket-agent.md and
+# pr-facts.test.sh proves every label one by one; these cases prove the refusal end to end.
+begin "a lane report without 'Review:' is refused at classify, naming it"
+fixture lane-missing-review
+V_BODY="Closes #21.\\n## Lane report — issue #21\\n${LANE_FIELDS/"Review: x"/}"
+V_COMMITS="#21: the step"
+write_view default
+write_merged_view
+run_merge
+expect_rc 1
+expect_stderr 'classify — FAILED'
+expect_stderr "the lane report is missing field(s): Review"
+expect_not_called "pr update-branch $PR"
+expect_not_merged squash
+end
 
-for line in "${lane_lines[@]}"; do
-  label=${line%%:*}
-  begin "a lane report without '$label:' is refused at classify, naming it"
-  fixture "lane-missing-${label//[^A-Za-z]/}"
-  V_BODY="Closes #21.\n## Lane report — issue #21\n${LANE_FIELDS/"$line"/}"
-  V_COMMITS="#21: the step"
-  write_view default
-  write_merged_view
-  run_merge
-  expect_rc 1
-  expect_stderr 'classify — FAILED'
-  expect_stderr "the lane report is missing field(s): $label"
-  expect_not_called "pr update-branch $PR"
-  expect_not_merged squash
-  end
-done
+begin "an already-MERGED PR whose lane report lacks a field is not refused at classify"
+fixture lane-missing-merged
+V_STATE="MERGED"
+V_MSST="UNKNOWN"
+V_BODY="Closes #21.\\n## Lane report — issue #21\\nprose only"
+V_COMMITS="#21: the step"
+write_view default
+run_merge
+expect_rc 0
+expect_not_stderr 'missing field'
+end
+
+begin "a lane-report template that cannot be read is refused as the repo's fault, not the lane's"
+fixture lane-template-gone
+must mkdir -p "$ROOT/tree"
+must cp -R "$SCRIPTS" "$ROOT/tree/scripts"
+V_BODY="Closes #21.\\n## Lane report — issue #21\\n${LANE_FIELDS}"
+V_COMMITS="#21: the step"
+write_view default
+write_merged_view
+SUBJECT_KEPT=$SUBJECT
+SUBJECT="$ROOT/tree/scripts/merge-pr.sh"
+run_merge
+SUBJECT=$SUBJECT_KEPT
+expect_rc 1
+expect_stderr 'classify — FAILED'
+expect_stderr 'the lane-report template cannot be read'
+expect_not_stderr 'missing field'
+expect_not_merged squash
+end
 
 begin "a lane report with no fields at all is refused, naming the first and the last"
 fixture lane-no-fields
