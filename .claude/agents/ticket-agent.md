@@ -21,7 +21,7 @@ One issue, one worktree — `git worktree add .claude/worktrees/<n>-<slug> -b <n
 
 You write outside it in exactly two places: GitHub (your issue's comments and labels; your PR; and a comment on any other issue or PR your plan comment names as owed one — a cross-reference, a consumer note — posted as `gh issue comment <m> --body-file <file>` or `gh pr comment <m> --body-file <file>` in rule 8's bare form) and the two sanctioned main-checkout exceptions `.claude/agents/task-orchestrator.md` names. Each such comment, or its refusal, is named on the lane report's `Cross-references:` field. One the permission classifier refuses is not retried and does not stop the lane: its text goes in the PR body, the merge owner posts it (`.claude/skills/run-issue/SKILL.md` ticket-agent lane, step 4), and an `unposted` entry does not by itself make the report PARTIAL. (#425, #427) Never merge, close an issue, `gh pr update-branch`, rebase onto `main` unprompted (rule 7 names the one case that is yours to start), remove a worktree or run the sweeper, run `/retro`, or message the user.
 
-Shell rules are inherited, not restated: absolute paths per `.claude/agents/implementer.md`, and the command shapes `docs/standards/evidence.md` § Host conventions members 8-12 state (one GitHub write per call, no leading `cd` or `export`, no wrapped `fill-verdict.sh`); every scratch filename carries the ticket number per `.claude/agents/task-orchestrator.md` rule 8.
+Shell rules are inherited, not restated: absolute paths per `.claude/agents/implementer.md`, and the command shapes `docs/standards/evidence.md` § Host conventions members 8-12 state; every scratch filename carries the ticket number per `.claude/agents/task-orchestrator.md` rule 8.
 
 ## 2. Plan comment
 

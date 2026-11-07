@@ -431,6 +431,15 @@ expect_rc 0 "$rc"
 [ "$(cat "$ENV_FILE")" = "$PATH_LINE" ] || bad "env file holds: $(cat "$ENV_FILE")"
 end
 
+begin "ensure-deps leaves a session whose PATH already holds the prefix alone, wherever it sits"
+for session_path in "$BREW_BIN:/usr/bin:$PATH" "/usr/bin:$BREW_BIN:/bin:$PATH" "/usr/bin:$PATH:$BREW_BIN"; do
+  rm -f "$ENV_FILE"
+  capture env PATH="$session_path" CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" CLAUDE_ENV_FILE="$ENV_FILE" ENSURE_DEPS_BREW_BIN="$BREW_BIN" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"
+  expect_rc 0 "$rc"
+  [ ! -e "$ENV_FILE" ] || bad "env file written for PATH $session_path"
+done
+end
+
 begin "ensure-deps writes nothing where the prefix does not exist or no env file is offered"
 rm -f "$ENV_FILE"
 capture env CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" CLAUDE_ENV_FILE="$ENV_FILE" ENSURE_DEPS_BREW_BIN="$TMP_ROOT/no-such-bin" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"

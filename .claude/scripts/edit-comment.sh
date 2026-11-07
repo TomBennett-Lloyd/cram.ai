@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Replaces the body of one existing issue or PR conversation comment on this repository with the
-# contents of a file. It is the one sanctioned route for a plan-comment edit (ticket-agent rule 2):
+# contents of a file. It is the sanctioned route for a comment edit (docs/standards/evidence.md
+# § Host conventions member 8):
 # the allow rule in .claude/settings.json names this script alone, because a rule for `gh api`
 # would also permit every other write that command can make (#677).
 #
@@ -31,9 +32,9 @@ case "$comment_id" in
     exit 2
     ;;
 esac
-[ -f "$body_file" ] && [ -s "$body_file" ] || {
-  echo "edit-comment: body file missing or empty: $body_file" >&2
+[ -f "$body_file" ] && [ -s "$body_file" ] && [ ! -L "$body_file" ] || {
+  echo "edit-comment: body file missing, empty or a symlink: $body_file" >&2
   exit 2
 }
 
-"$EDIT_COMMENT_GH_CMD" api --method PATCH "repos/$REPO/issues/comments/$comment_id" -F "body=@$body_file" --jq '.html_url'
+"$EDIT_COMMENT_GH_CMD" api --method PATCH "repos/$REPO/issues/comments/$comment_id" -F "body=@$body_file" --jq '.html_url' || exit 1

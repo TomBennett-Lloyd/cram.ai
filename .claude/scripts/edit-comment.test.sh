@@ -45,11 +45,13 @@ expect_stdout 'https://github.com/stub/comment'
   bad "call was: $(cat "$STUB/calls.log")"
 end
 
-begin 'a gh failure is the exit code 1 of the script'
-rm -f "$STUB/calls.log"
-capture env STUB_RC=1 bash "$SUBJECT" 5 "$BODY"
-expect_rc 1
-end
+for gh_rc in 1 2 4; do
+  begin "a gh failure (its exit $gh_rc) is the exit code 1 of the script"
+  rm -f "$STUB/calls.log"
+  capture env STUB_RC=$gh_rc bash "$SUBJECT" 5 "$BODY"
+  expect_rc 1
+  end
+done
 
 for badid in 'abc' '12a' '../1' '1/2' '-1' '1 2' ''; do
   begin "refuses the comment id '$badid'"
@@ -63,14 +65,22 @@ done
 begin 'refuses a missing body file'
 run 5 "$TMP_ROOT/nope.md"
 expect_rc 2
-expect_stderr 'missing or empty'
+expect_stderr 'missing, empty or a symlink'
 expect_no_call
 end
 
 begin 'refuses an empty body file'
 run 5 "$TMP_ROOT/empty.md"
 expect_rc 2
-expect_stderr 'missing or empty'
+expect_stderr 'missing, empty or a symlink'
+expect_no_call
+end
+
+begin 'refuses a symlink to a body file'
+must ln -s "$BODY" "$TMP_ROOT/link.md"
+run 5 "$TMP_ROOT/link.md"
+expect_rc 2
+expect_stderr 'symlink'
 expect_no_call
 end
 
