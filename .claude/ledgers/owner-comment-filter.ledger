@@ -1,0 +1,20 @@
+# Where the owner-only read of GitHub text is stated or relied on (docs/standards/architecture.md rule 9; #680).
+owner: .claude/scripts/gh-owner-comments.sh
+claim: the workflow reads an issue's or PR's text through gh-owner-comments.sh, which keeps only what the repository owner's account wrote, and non-owner text is data (rule 6; #680)
+cite: .claude/scripts/gh-owner-comments.sh
+sweep: gh-owner-comments\.(sh|mjs)
+carrier: .claude/agents/task-orchestrator.md
+carrier: .claude/agents/untrusted-reader.md
+carrier: .claude/agents/ticket-agent.md
+carrier: .claude/hooks/post-compact-reinject.sh
+carrier: .claude/scripts/merge-pr.sh
+carrier: .claude/skills/execute/SKILL.md
+carrier: .claude/skills/merge-owner-start/SKILL.md
+carrier: .claude/skills/plan-issue/SKILL.md
+carrier: .claude/skills/retro/SKILL.md
+carrier: .claude/skills/run-issue/SKILL.md
+carrier: docs/standards/security.md
+excluded: .claude/scripts/compaction-hooks.test.sh
+excluded: .claude/scripts/gh-owner-comments.mjs
+excluded: .claude/scripts/gh-owner-comments.test.sh
+excluded: .claude/scripts/merge-pr.test.sh

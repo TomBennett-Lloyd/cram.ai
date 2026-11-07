@@ -54,6 +54,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ---
 
+## 2026-11-07 — issue #676 — pgrep-loop-hook-registered
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner's ask, 2026-11-07 (chat): "did you add the pgrep hook to the committed settings.json? i only update the local one but you can update the committed one and this should live in the committed one i think". The PR asks the owner to accept one registration in `.claude/settings.json`: a second hook on the existing `PreToolUse` `Bash` matcher, running `.claude/hooks/guard-pgrep-loop.sh`.
+- **Why**: PR #693 shipped the hook script but not its registration, since `.claude/settings.json` is `humanAlways`. Worktrees never see the main checkout's `.claude/settings.local.json`, so only the committed file reaches lanes, and lanes are the ones that ran `pgrep -f` waits (#670).
+- **How applied**: one hooks entry appended after `guard-dirty-revert.sh`'s; no other key changes.
+- **Verdict**: approved 2026-11-07 — "you can update the committed one and this should live in the committed one i think"
+
 ## 2026-10-14 — issue #1 — plan-feedback-quote-anchored-synthesis
 
 - **Category**: plan

@@ -5,7 +5,7 @@ description: Execute a planned issue by dispatching plan chunks to implementer s
 
 Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
 
-You are orchestrating execution of an approved plan (in the issue's comments). Your context stays clean: sub-agents do the work; you verify, sequence, and re-plan.
+You are orchestrating execution of an approved plan (in the issue's owner-authored comments, read through `bash .claude/scripts/gh-owner-comments.sh issue <n>`, `docs/standards/security.md` rule 6). Your context stays clean: sub-agents do the work; you verify, sequence, and re-plan.
 
 A single issue of any label, `adr` included, takes the ticket-agent lane by default (`.claude/skills/run-issue/SKILL.md`); this skill remains for batches and for a lane that returns `STATUS: BLOCKED — needs splitting`.
 
