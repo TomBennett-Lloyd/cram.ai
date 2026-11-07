@@ -6,6 +6,5 @@ sweep: squash-?message|squashMessage|squashes every branch under its PR title
 carrier: .claude/agents/ticket-agent.md
 carrier: .claude/scripts/merge-pr.sh
 carrier: .claude/scripts/merge-pr.test.sh
-carrier: .claude/scripts/pr-facts.test.sh
 carrier: .claude/scripts/sweep-report.sh
 carrier: .claude/skills/review-loop/SKILL.md
