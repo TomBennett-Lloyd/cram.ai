@@ -162,6 +162,9 @@ write_in() { # write_in <path under the worktree> <line>
   must printf '%s\n' "$2" >"$WT/$1"
 }
 
+# write_settings <JSON> — .claude/settings.json, @DIR@ standing for the literal $CLAUDE_PROJECT_DIR.
+write_settings() { write_in .claude/settings.json "${1//@DIR@/\$CLAUDE_PROJECT_DIR}"; }
+
 commit_all() { # commit_all <message> — a commit on the branch, never pushed
   must gitc "$WT" add -A
   must gitc "$WT" commit --quiet -m "$1"
@@ -1204,7 +1207,7 @@ for interpreter in $BASHES; do
   capture "$interpreter" "$TIER" --dry-run "$WT"
   expect_rc 0 "$rc"
   expect_stdout "verify tier: scripts — 1 shell script(s); observing tests: .claude/scripts/check-module-names.test.sh"
-  expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:module-names && bash .claude/scripts/check-module-names.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/check-module-names.sh"
+  expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:module-names && pnpm check:settings-hooks && bash .claude/scripts/check-module-names.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/check-module-names.sh"
   expect_not_stdout "tier-tool.test.sh"
   expect_not_out "verify:full"
   expect_not_out "unbound variable"
@@ -1249,7 +1252,7 @@ script_fixture script_runner
 write_in .claude/scripts/run-script-tests.sh 'echo runs every harness, revised'
 run_tier
 expect_rc 0 "$rc"
-expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm test:scripts && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/run-script-tests.sh"
+expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:settings-hooks && pnpm test:scripts && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/run-script-tests.sh"
 end
 
 begin "a shell script below .claude/scripts' top level is the full tier"
@@ -1270,18 +1273,128 @@ expect_stdout "verify tier: full"
 expect_stdout "neither markdown nor a source type the emit proof handles — .claude/ledgers/notes.txt"
 end
 
-# The scripts class is shell only: a module beside the scripts takes the emit proof.
-if begin_with_esbuild "a code change to a .mjs under .claude/scripts is the full tier"; then
-  script_fixture script_mjs
-  write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
-  seed_origin 'chore: a module beside the scripts'
-  write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
-  run_tier
-  expect_rc 0 "$rc"
-  expect_stdout "verify tier: full"
-  expect_stdout "the minified emit changed — .claude/scripts/tier-facts.mjs"
-  end
-fi
+# A module beside the scripts is the scripts class with a syntax check of its own (#699).
+begin "a code change to a .mjs under .claude/scripts is the scripts tier, and node --check runs first"
+script_fixture script_mjs
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in .claude/scripts/tier-facts.test.sh 'node .claude/scripts/tier-facts.mjs'
+seed_origin 'chore: a module beside the scripts and its harness'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s); observing tests: .claude/scripts/tier-facts.test.sh"
+expect_stdout "would run: node --check .claude/scripts/tier-facts.mjs && pnpm exec eslint --no-warn-ignored --max-warnings 0 -- .claude/scripts/tier-facts.mjs && pnpm check:ledgers && pnpm check:settings-hooks && bash .claude/scripts/tier-facts.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/tier-facts.mjs"
+expect_not_stdout "verify:full"
+end
+
+begin "a hook .cjs is the same arm, and a deleted module checks nothing but the links"
+script_fixture script_cjs
+write_in .claude/hooks/tier-scan.cjs 'module.exports = 1;'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+seed_origin 'chore: two modules'
+write_in .claude/hooks/tier-scan.cjs 'module.exports = 2;'
+must gitc "$WT" rm --quiet .claude/scripts/tier-facts.mjs
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 2 node module(s)"
+expect_stdout "would run: node --check .claude/hooks/tier-scan.cjs && pnpm exec eslint --no-warn-ignored --max-warnings 0 -- .claude/hooks/tier-scan.cjs && pnpm check:ledgers && pnpm check:settings-hooks && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- .claude/hooks/tier-scan.cjs"
+end
+
+begin "a module a source file outside the scripts and hooks names is the full tier"
+script_fixture script_mjs_imported
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in src/loader.ts "import { a } from '../.claude/scripts/tier-facts.mjs';"
+seed_origin 'chore: a module and a source file that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "module tier-facts.mjs is named by src/loader.ts, outside the scripts and hooks"
+end
+
+# The importer scan reads the whole tree but the scripts and hooks, tests included in what it
+# leaves out: each exclusion and each source extension below has a case that only it decides.
+begin "a test file outside the scripts naming a module does not make the module's reach unknown"
+script_fixture script_mjs_test_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in pnpm-workspace.yaml "packages:
+  - 'pkg-t'"
+write_in pkg-t/package.json '{ "name": "@fixture/t", "private": true }'
+write_in pkg-t/loader.test.ts "import { a } from '../.claude/scripts/tier-facts.mjs';"
+seed_origin 'chore: a module and a package test that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s)"
+expect_stdout "pkg-t/loader.test.ts"
+end
+
+begin "a module another script names is the scripts tier, not full"
+script_fixture script_mjs_script_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in .claude/scripts/tier-wrap.mjs "import './tier-facts.mjs';"
+seed_origin 'chore: a module and a sibling that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s)"
+end
+
+begin "a module a hook names is the scripts tier, not full"
+script_fixture script_mjs_hook_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in .claude/hooks/tier-scan.cjs "require('../scripts/tier-facts.mjs');"
+seed_origin 'chore: a module and a hook that requires it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 node module(s)"
+end
+
+begin "a module a .cjs outside the scripts and hooks names is the full tier"
+script_fixture script_mjs_cjs_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in tier-cfg.cjs "import('./.claude/scripts/tier-facts.mjs');"
+seed_origin 'chore: a module and a cjs file that loads it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "module tier-facts.mjs is named by tier-cfg.cjs, outside the scripts and hooks"
+end
+
+begin "a module a .mjs outside the scripts and hooks names is the full tier"
+script_fixture script_mjs_mjs_importer
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+write_in tier-cfg.mjs "import './.claude/scripts/tier-facts.mjs';"
+seed_origin 'chore: a module and an mjs file that imports it'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "module tier-facts.mjs is named by tier-cfg.mjs, outside the scripts and hooks"
+end
+
+# A git that fails the importer scan stands in for any failure of it: the answer must be a
+# full run that says so, never an admission.
+begin "when the importer scan cannot run, a changed module is the full tier"
+script_fixture script_mjs_scan_fails
+write_in .claude/scripts/tier-facts.mjs 'export const a = 1;'
+seed_origin 'chore: a module'
+write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
+real_git=$(command -v git)
+must mkdir -p "$ROOT/bin"
+must tee "$ROOT/bin/git" >/dev/null <<'SH'
+#!/bin/sh
+for a in "$@"; do [ "$a" = "--untracked" ] && exit 2; done
+exec "$REAL_GIT" "$@"
+SH
+must chmod +x "$ROOT/bin/git"
+capture env REAL_GIT="$real_git" PATH="$ROOT/bin:$PATH" bash "$TIER" --dry-run "$WT"
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full"
+expect_stdout "the importers scan for module tier-facts.mjs failed"
+end
 
 # A slot nobody taught the builder runs whole: a copy of the classifier with a gate appended
 # to LEG_ORDER, held outside any repository like the no-esbuild case's copy.
@@ -1332,14 +1445,24 @@ expect_stdout "verify tier: full"
 expect_stdout "could not read package.json's scripts"
 end
 
-# Shell under .claude/hooks is not this class's: the class is .claude/scripts' top level.
-begin "a hook edit is the full tier"
+# A hook is a shell script (#699); it also runs the settings gate, since a settings entry
+# dangles on a hook that is gone or no longer executable.
+begin "a hook edit is the scripts tier, with the settings gate beside shellcheck and its harness"
 script_fixture script_hook
 write_in .claude/hooks/tier-hook.sh 'echo hook'
 run_tier
 expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 shell script(s); observing tests: .claude/scripts/tier-hook.test.sh"
+expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:settings-hooks && bash .claude/scripts/tier-hook.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/hooks/tier-hook.sh"
+end
+
+begin "a hook below .claude/hooks' top level is the full tier"
+script_fixture script_hook_nested
+write_in .claude/hooks/lib/tier-nested.sh 'echo nested'
+run_tier
+expect_rc 0 "$rc"
 expect_stdout "verify tier: full"
-expect_stdout "neither markdown nor a source type the emit proof handles — .claude/hooks/tier-hook.sh"
+expect_stdout "neither markdown nor a source type the emit proof handles — .claude/hooks/lib/tier-nested.sh"
 end
 
 # lint:sh is the leg a deleted script still needs: whatever sourced it now names a missing file.
@@ -1349,7 +1472,7 @@ must gitc "$WT" rm --quiet .claude/scripts/tier-lib.sh
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: scripts — 1 shell script(s)"
-expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:markdown-links"
+expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:settings-hooks && pnpm check:markdown-links"
 end
 
 if begin_with_esbuild "a comment-only source edit beside a script is one source-prose+scripts tier"; then
@@ -1369,6 +1492,194 @@ write_in .claude/scripts/tier-tool.sh '. .claude/scripts/tier-lib.sh # now with 
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: scripts+ledgers — 1 shell script(s), 1 ledger(s)"
+end
+
+# ==========================================================================================
+# 13b. SETTINGS, WORKFLOW AND THE DENSITY BASELINE (#699)
+# ==========================================================================================
+# settings_fixture -> script_fixture's repository plus a settings file registering the one hook
+# whose harness it has, a workflow file read by one script, and a density baseline.
+settings_fixture() {
+  script_fixture "$1"
+  write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" } ] } ] } }'
+  write_in .claude/workflow.json '{ "merge": {} }'
+  write_in .claude/scripts/tier-reader.sh 'cat .claude/workflow.json'
+  write_in .claude/scripts/tier-reader.test.sh 'bash .claude/scripts/tier-reader.sh'
+  write_in .claude/scripts/tier-user.sh 'bash .claude/scripts/tier-reader.sh'
+  write_in .claude/scripts/tier-user.test.sh 'bash .claude/scripts/tier-user.sh'
+  write_in .claude/comment-density.baseline.tsv 'src/app.ts	100'
+  seed_origin 'chore: settings, workflow and baseline'
+}
+
+SETTINGS_LEGS="pnpm check:ledgers && pnpm check:settings-hooks && bash .claude/scripts/tier-hook.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/settings.json"
+
+begin "a settings-only diff is the settings tier: the hook gate, the named hooks' harnesses, prettier"
+settings_fixture settings_only
+write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" }, { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" } ] } ] } }'
+for interpreter in $BASHES; do
+  case_ctx="$interpreter"
+  capture "$interpreter" "$TIER" --dry-run "$WT"
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: settings — settings.json; observing tests: .claude/scripts/tier-hook.test.sh"
+  expect_stdout "would run: $SETTINGS_LEGS"
+  expect_not_stdout "tier-reader.test.sh"
+  expect_not_out "verify:full"
+  expect_not_out "unbound variable"
+done
+case_ctx=""
+end
+
+begin "a settings diff beside a review-feedback entry keeps the markdown gates"
+settings_fixture settings_md
+write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" } ] } ], "SessionStart": [] } }'
+write_in docs/review-feedback.md '- an entry, approved with no changes'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: settings — settings.json; observing tests: .claude/scripts/tier-hook.test.sh"
+expect_stdout "would run: pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:settings-hooks && pnpm check:markdown-links && bash .claude/scripts/tier-hook.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/settings.json docs/review-feedback.md"
+end
+
+begin "a settings file that does not parse is still the settings tier, and the gate leg is how it goes red"
+settings_fixture settings_unparsable
+write_in .claude/settings.json '{ "hooks": '
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: settings — settings.json; observing tests: none"
+expect_stdout "would run: pnpm check:ledgers && pnpm check:settings-hooks && pnpm exec prettier --check --ignore-unknown -- .claude/settings.json"
+end
+
+if begin_with_esbuild "a settings diff beside a source file whose emit changed is the full tier"; then
+  settings_fixture settings_src_emit
+  write_in .claude/settings.json '{ "hooks": {} }'
+  write_in src/app.ts 'export const a = 2;'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: full — 2 file(s)"
+  expect_stdout "the minified emit changed — src/app.ts"
+  end
+fi
+
+if begin_with_esbuild "a settings diff beside a comment-only source edit is one source-prose+settings tier"; then
+  settings_fixture settings_src_prose
+  write_in .claude/settings.json '{ "hooks": {} }'
+  write_in src/app.ts 'export const a = 1; // now with a note'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: source-prose+settings — 1 file(s) proven comment-only, settings.json"
+  expect_stdout "pnpm check:settings-hooks"
+  end
+fi
+
+begin "a settings diff beside a file no class admits is the full tier"
+settings_fixture settings_unadmitted
+write_in .claude/settings.json '{ "hooks": {} }'
+write_in tier-fixture.bin 'opaque'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 2 file(s)"
+expect_stdout "neither markdown nor a source type the emit proof handles — tier-fixture.bin"
+end
+
+begin "a deleted script a settings entry names runs the settings gate, because the entry now dangles"
+settings_fixture settings_script_deleted
+write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/scripts/tier-tool.sh" } ] } ] } }'
+seed_origin 'chore: a settings entry naming a script'
+must gitc "$WT" rm --quiet .claude/scripts/tier-tool.sh
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts"
+expect_stdout "pnpm check:settings-hooks"
+end
+
+begin "a deleted hook runs the settings gate, because a settings entry may now dangle"
+settings_fixture settings_hook_deleted
+must gitc "$WT" rm --quiet .claude/hooks/tier-hook.sh
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts — 1 shell script(s)"
+expect_stdout "pnpm check:settings-hooks"
+end
+
+begin "a workflow edit runs the harness of each script that names workflow.json, and no other"
+settings_fixture workflow_only
+write_in .claude/workflow.json '{ "merge": { "a": 1 } }'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: workflow — workflow.json; observing tests: .claude/scripts/tier-reader.test.sh"
+expect_stdout "would run: pnpm check:ledgers && bash .claude/scripts/tier-reader.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/workflow.json"
+expect_not_stdout "tier-hook.test.sh"
+expect_not_stdout "tier-user.test.sh"
+expect_not_out "verify:full"
+end
+
+begin "a workflow edit makes a package.json leg that runs a reading script run whole"
+settings_fixture workflow_leg
+write_in package.json '{ "scripts": { "check:module-names": "bash .claude/scripts/tier-reader.sh", "lint:sh": "bash .claude/scripts/lint-shell.sh", "test:scripts": "bash .claude/scripts/run-script-tests.sh" } }'
+seed_origin 'chore: a gate that runs the reading script'
+write_in .claude/workflow.json '{ "merge": { "b": 2 } }'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "pnpm check:ledgers && pnpm check:module-names && bash .claude/scripts/tier-reader.test.sh"
+end
+
+begin "a density baseline edit alone is the density tier, and runs the gate that reads it"
+settings_fixture density_only
+write_in .claude/comment-density.baseline.tsv 'src/app.ts	90'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: density — the density baseline"
+expect_stdout "would run: pnpm check:comment-density && pnpm check:ledgers && pnpm exec prettier --check --ignore-unknown -- .claude/comment-density.baseline.tsv"
+expect_not_out "verify:full"
+end
+
+if begin_with_esbuild "a density baseline beside a comment-only source edit adds the density gate once, to that tier"; then
+  settings_fixture density_src
+  write_in .claude/comment-density.baseline.tsv 'src/app.ts	90'
+  write_in src/app.ts 'export const a = 1; // now with a note'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: source-prose+density"
+  expect_stdout "pnpm typecheck && pnpm check:comment-density && pnpm check:ledgers"
+  expect_not_stdout "check:comment-density && pnpm check:comment-density"
+  end
+fi
+
+if begin_with_esbuild "a density baseline beside a source file whose emit changed is the full tier"; then
+  settings_fixture density_full
+  write_in .claude/comment-density.baseline.tsv 'src/app.ts	90'
+  write_in src/app.ts 'export const a = 2;'
+  run_tier
+  expect_rc 0 "$rc"
+  expect_stdout "verify tier: full — 2 file(s)"
+  end
+fi
+
+begin "package.json alone is still the full tier"
+settings_fixture stays_full_manifest
+write_in package.json '{ "scripts": {} }'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s)"
+expect_stdout "neither markdown nor a source type the emit proof handles — package.json"
+end
+
+begin "the lockfile beside a settings edit is still the full tier"
+settings_fixture stays_full_lock
+write_in .claude/settings.json '{ "hooks": {} }'
+write_in pnpm-lock.yaml 'lockfileVersion: 9'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 2 file(s)"
+expect_stdout "neither markdown nor a source type the emit proof handles — pnpm-lock.yaml"
+end
+
+begin "an eval report is still the full tier"
+settings_fixture stays_full_report
+write_in eval/reports/tier-fixture.jsonl '{}'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: full — 1 file(s)"
+expect_stdout "neither markdown nor a source type the emit proof handles — eval/reports/tier-fixture.jsonl"
 end
 
 # ==========================================================================================
