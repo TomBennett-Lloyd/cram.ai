@@ -12,7 +12,7 @@
 #   - The untrusted mode is the complement of the default, never an overlap, and a body that
 #     forges the default mode's own record header round-trips as one JSON string.
 #   - Every gh failure leaves stdout empty: the filter fails closed.
-#   - No file in the tree fetches comment or body text outside this subject (the last section),
+#   - No tracked file fetches comment text by a shape the READER pattern names (the last section),
 #     with the pattern's own positive and negative controls.
 #
 # Usage: bash .claude/scripts/gh-owner-comments.test.sh  (or `pnpm test:scripts`)
@@ -245,36 +245,46 @@ console.log(isOwnerAuthored({ user: { login: 'x' }, author_association: 'OWNER' 
 [ "$verdict" = false ] || bad "expected false, got: $verdict"
 end
 
-# --- no unfiltered reader anywhere in the tree -----------------------------------------------
+# --- tracked files that fetch comment text -------------------------------------------------------
 
-# A command that fetches comment, review or body text. Metadata reads (state, labels, checks, a
-# head sha, the file list) are not matched. The alternatives stop at a pipe or semicolon so a
-# later command on the line is not read as this one's flag.
-READER='gh (issue|pr) view[^|;&]*(--comments|--json [^ |;&]*(comments|reviews|body))|gh api[^|;&]*(issues|pulls)/[^ |;&]*(comments|reviews)'
+# A command that fetches comment, review or body text: a view or list with a body, comments or
+# reviews field, a bare view, a subject fetch through the API, GraphQL or curl, each also through
+# merge-pr.sh's gh_call wrapper. Metadata reads (state, labels, checks, a head sha, the file
+# list) are not matched. The alternatives stop at a pipe or semicolon so a later command on the
+# line is not read as this one's flag. A call through a variable (fill-verdict.sh's
+# "$FILL_VERDICT_GH_CMD") or a field list in a variable (merge-pr.sh's PR_JSON_FIELDS) is invisible
+# to any line match; the PR-body reads in merge-pr.sh and fill-verdict.sh are #683's.
+READER='gh(_call)? (issue|pr) view[^|;&]*(--comments|--json[ =][^ |;&]*(comments|reviews|body))|gh(_call)? (issue|pr|search)[^|;&]*(list|issues|prs)[^|;&]*--json[ =][^ |;&]*(comments|reviews|body)|gh(_call)? api[^|;&]*(issues|pulls)/[^ |;&]*(comments|reviews)|gh(_call)? api +graphql|gh(_call)? api[^|;&]*(issues|pulls)/[0-9{<$][^ /|;&]*["'"'"']?( |$|[|;&])|curl[^|;&]*api\.github\.com|gh(_call)? (issue|pr) view +[^- |;&][^ |;&]*( +-R +[^ |;&]+)? *([`)]|$)'
 
 begin "the reader pattern's controls: it matches the fetch shapes and not a metadata read"
-for line in 'gh issue view 5 --comments' 'gh pr view 5 --json title,body' 'gh api repos/x/y/issues/5/comments' 'gh api repos/x/y/pulls/5/reviews'; do
+for line in 'gh issue view 5 --comments' 'gh pr view 5 --json title,body' 'gh api repos/x/y/issues/5/comments' \
+  'gh api repos/x/y/pulls/5/reviews' 'gh issue view 5' 'run (gh pr view 5)' 'gh pr view 5 --json latestReviews' \
+  'gh pr view 5 --json=body' 'gh api graphql -f query=x' 'gh api repos/{owner}/{repo}/issues/5' \
+  'gh issue list --json number,body' 'gh search issues --json body' 'gh_call pr view 5 --json body' \
+  'curl -s https://api.github.com/repos/x/y/issues/5'; do
   case_ctx="hit: $line"
-  printf '%s\n' "$line" | grep -qE -e "$READER" || bad "pattern missed: $line"
+  printf '%s\n' "$line" | grep -qiE -e "$READER" || bad "pattern missed: $line"
 done
-for line in 'gh pr view 5 --json mergeStateStatus,headRefOid' 'gh issue view 5 --json labels' 'gh api repos/x/y/pulls/5/files' 'gh issue view 5 --json number,state'; do
+for line in 'gh pr view 5 --json mergeStateStatus,headRefOid' 'gh issue view 5 --json labels' 'gh api repos/x/y/pulls/5/files' \
+  'gh issue view 5 --json number,state' 'gh_call issue view 5 --json number,state' 'gh pr list --head x --json number' \
+  'an error connecting to api.github.com'; do
   case_ctx="miss: $line"
-  if printf '%s\n' "$line" | grep -qE -e "$READER"; then bad "pattern matched a metadata read: $line"; fi
+  if printf '%s\n' "$line" | grep -qiE -e "$READER"; then bad "pattern matched a metadata read: $line"; fi
 done
 end
 
-begin "no file outside this subject fetches comment or body text"
+begin "no tracked file fetches comment or body text outside this subject"
 root=$(git -C "$SCRIPTS" rev-parse --show-toplevel) || exit 2
-# merge-pr.sh fetches the one plan comment its amendment arm cites and then refuses it unless
-# gh-owner-comments.mjs says the owner wrote it; its own harness asserts that refusal.
-# The one other body read left is review-loop's hand-chain fallback, which feeds a PR the merge
-# owner names to pr-facts.mjs for its squash message (the PR-author gate is #683).
-git -C "$root" grep -n -E -e "$READER" -- .claude .github docs/standards \
+git -C "$root" grep -n -i -E -e "$READER" -- . \
   ':!*.test.sh' ':!.claude/scripts/gh-owner-comments.sh' ':!.claude/scripts/gh-owner-comments.mjs' \
-  ':!.claude/scripts/merge-pr.sh' ':!docs/standards/security.md' >"$TMP_ROOT/readers.out" 2>&1
+  ':!docs/standards/security.md' >"$TMP_ROOT/readers.out" 2>&1
 rc=$?
 [ "$rc" -le 1 ] || bad "git grep itself failed (rc=$rc): $(cat "$TMP_ROOT/readers.out")"
-hits=$(command grep -v 'pr-facts.mjs --squash-' "$TMP_ROOT/readers.out")
+# Hit lines accepted by name: review-loop's hand-chain fallback (a PR the merge owner names, for
+# its squash message), ci.yml's label-name read, and merge-pr.sh's plan-comment fetch, which is
+# refused unless gh-owner-comments.mjs says the owner wrote it (merge-pr.test.sh asserts that
+# refusal).
+hits=$(command grep -v -e 'pr-facts.mjs --squash-' -e "jq '.labels\[\].name'" -e 'issues/comments/' "$TMP_ROOT/readers.out")
 [ -z "$hits" ] || bad "an unfiltered reader remains: $hits"
 end
 

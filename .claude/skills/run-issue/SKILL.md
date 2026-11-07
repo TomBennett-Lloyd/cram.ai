@@ -26,7 +26,7 @@ first: it reconciles state from GitHub, and its § Standing rules bind every ste
    it or expects the rebase. Before dispatch, read the issue as it stands through
    `bash .claude/scripts/gh-owner-comments.sh issue <n>` (`docs/standards/security.md` rule 6;
    exit 3 means the owner did not file it, so it is neither planned nor dispatched and the
-   owner is told in chat, who adopts it by commenting the spec; every other read of issue or PR
+   owner is told in chat and files an issue of their own to take it up; every other read of issue or PR
    text in this skill — plan-comment ticks, `Depends on` lines, the RETRO NOTES comment — goes
    through the same script) — every
    issue, however filed, owner-filed included (#369) — reading each

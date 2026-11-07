@@ -298,7 +298,7 @@ printf 'STORED-SENTINEL\n' >>"$(state_file re main)"
 run_hook "$POST_HOOK" "$(event "$RE_WT" ',"source":"compact"')"
 expect_rc 0 "$rc"
 [ -z "$err" ] || bad "re-injection wrote to stderr: $err"
-for want in "STORED-SENTINEL" "trigger: auto" "issue: #629" "gh-owner-comments.sh issue 629" "## Plan (ticket-agent lane)" "gh pr list --head 629-lane" "git log --oneline origin/main..HEAD" "ticked"; do
+for want in "STORED-SENTINEL" "trigger: auto" "issue: #629" "gh-owner-comments.sh issue 629" "## Plan (ticket-agent lane)" "gh pr list --head 629-lane" "gh-owner-comments.sh pr <n>" "git log --oneline origin/main..HEAD" "ticked"; do
   expect_stdout "$want"
 done
 end

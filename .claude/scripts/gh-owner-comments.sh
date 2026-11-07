@@ -3,7 +3,8 @@
 # The mechanical filter for GitHub text the workflow reads (docs/standards/security.md rule 6;
 # #680). The repo is public, so anyone can comment on an issue or open one: what a lane takes as
 # an instruction, a decision or plan state (a PROCEED, a plan comment, an issue body) must be the
-# owner's. This script is how every reader gets it; gh-owner-comments.mjs owns the predicate.
+# owner's. This script is the read that does that; gh-owner-comments.mjs owns the predicate.
+# The files that rely on it are listed in .claude/ledgers/owner-comment-filter.ledger.
 #
 # Usage:
 #   bash .claude/scripts/gh-owner-comments.sh [--json] <issue|pr> <n>
@@ -11,8 +12,8 @@
 #
 # Default: the owner-authored records only (the issue or PR body, its comments and, for `pr`,
 # review comments and reviews), as text or --json. Everyone else's are counted on stderr.
-# --untrusted: the rest, as one JSON object marked `"untrusted": true`. A lane does not read it;
-# a fresh read-only agent reports what it says, and the report names it as untrusted.
+# --untrusted: the rest, as one JSON object marked `"untrusted": true`; who reads it is
+# docs/standards/security.md rule 6.
 #
 # Exit:  0 ok; 2 gh failed, the owner login was unreadable, or bad usage (nothing is printed:
 #        fail closed); 3 the issue or PR itself was not written by the owner, so it is no spec

@@ -81,7 +81,7 @@ $state
 This is the state of the lane for issue #$issue. If you are the agent that owns that lane, reconcile from what survives compaction, in this order:
 1. \`git log --oneline origin/main..HEAD\` and \`git status --short\` in the worktree above: what is committed and what is not. If the state says \`rebase: in progress\`, finish or abort that rebase first.
 2. Issue #$issue's plan comment (\`bash .claude/scripts/gh-owner-comments.sh issue $issue\`, the one headed \`## Plan (ticket-agent lane)\`): its ticked steps say which steps are done.
-3. Any open PR for the branch (\`gh pr list --head $branch\`): its body, checks and review state.
+3. Any open PR for the branch (\`gh pr list --head $branch\` for its number): its body and reviews through \`bash .claude/scripts/gh-owner-comments.sh pr <n>\`, its checks through \`gh pr checks <n>\`.
 Then continue from the first step that is neither committed nor ticked. Do not redo a ticked step, and do not trust a recollection of the conversation over these three.
 
 If you were dispatched by that agent for a narrower task (a review, a consultation, a plan), none of this changes your task: the state is the lane's, for orientation, and you do not take up its steps.
