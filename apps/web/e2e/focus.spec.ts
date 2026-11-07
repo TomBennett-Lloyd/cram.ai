@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { APPEARS_TO_CONTRADICT, PENDING } from '../src/copy';
+import { APPEARS_TO_CONTRADICT, NEW_QUESTION, PENDING } from '../src/copy';
 import { CONTRADICTED_QUESTION, GROUNDED_QUESTION, stubApi } from './hermetic-api';
 
 /** Whether the element paints a focus ring now: an outline style other than `none`. */
@@ -35,7 +35,7 @@ const answered = async (page: Page, question = GROUNDED_QUESTION) => {
 
 test('a keyboard reader sees the ring on a source number', async ({ page }) => {
   await answered(page);
-  await page.getByRole('button', { name: 'Ask' }).focus();
+  await page.getByRole('button', { name: NEW_QUESTION }).focus();
   await page.keyboard.press('Tab');
   const number = page.locator('.source-ref').first();
   await expect(number).toBeFocused();
@@ -51,7 +51,7 @@ test('a keyboard reader who reaches the contradiction button sees its ring and t
   });
   const label = page.locator('.contradiction-label');
   await expect(label).toBeHidden();
-  await page.getByRole('button', { name: 'Ask' }).focus();
+  await page.getByRole('button', { name: NEW_QUESTION }).focus();
   for (
     let presses = 0;
     presses < 5 && !(await button.evaluate((node) => node === document.activeElement));
@@ -104,7 +104,7 @@ test('a keyboard reader who presses Enter on a number lands on its sources entry
 }) => {
   await answered(page);
   const number = page.getByRole('button', { name: COMB_NUMBER });
-  await page.getByRole('button', { name: 'Ask' }).focus();
+  await page.getByRole('button', { name: NEW_QUESTION }).focus();
   for (let presses = 0; presses < 6; presses++) {
     if (await number.evaluate((node) => node === document.activeElement)) break;
     await page.keyboard.press('Tab');

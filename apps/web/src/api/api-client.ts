@@ -1,6 +1,7 @@
 import {
   ApiRefusal,
   AskReply,
+  type AskRequest,
   type CourseId,
   CourseList,
   CourseSummaries,
@@ -142,13 +143,13 @@ export class ApiClient {
     );
   }
 
-  ask(courseId: CourseId, question: string): Promise<ApiResult<AskReply>> {
+  ask(courseId: CourseId, request: AskRequest): Promise<ApiResult<AskReply>> {
     return this.#call(
       `/courses/${courseId}/ask`,
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify(request),
       },
       AskReply,
     );

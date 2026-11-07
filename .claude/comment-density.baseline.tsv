@@ -30,7 +30,7 @@ apps/server/src/slide-embedding.ts	454
 apps/server/src/slide-topics.ts	272
 apps/server/src/tag-handlers.ts	169
 apps/web/src/App.tsx	0
-apps/web/src/api/api-client.ts	642
+apps/web/src/api/api-client.ts	638
 apps/web/src/api/api-context.ts	1111
 apps/web/src/api/api-fixture.ts	214
 apps/web/src/api/api-result.ts	1250
@@ -48,8 +48,8 @@ apps/web/src/ask/explanation-marks-fixture.ts	666
 apps/web/src/ask/explanation-marks.ts	378
 apps/web/src/ask/explanation-view-fixture.tsx	312
 apps/web/src/ask/quote-marks.ts	322
-apps/web/src/ask/use-ask.ts	322
-apps/web/src/copy.ts	384
+apps/web/src/ask/use-thread.ts	408
+apps/web/src/copy.ts	382
 apps/web/src/courses/CoursesScreen.tsx	303
 apps/web/src/courses/course-name.ts	909
 apps/web/src/courses/use-courses.ts	500

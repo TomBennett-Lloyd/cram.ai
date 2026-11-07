@@ -1,20 +1,39 @@
 import type { CourseId } from '@cram/shared';
 import { type SubmitEvent, useState } from 'react';
 import { useApi } from '../api/api-context';
-import { failureMessage, PENDING } from '../copy';
+import { failureMessage, NEW_QUESTION, PENDING } from '../copy';
 import { Failed, Pending } from '../shell/async-states';
 import { AnswerView } from './AnswerView';
 import type { CitedSlide } from './cited-slide';
 import { SlideDialog } from './SlideDialog';
-import { useAsk } from './use-ask';
+import { type Exchange, useThread } from './use-thread';
+
+const ExchangeState = ({
+  state,
+  onOpen,
+}: {
+  readonly state: Exchange['state'];
+  readonly onOpen: (cited: CitedSlide) => void;
+}) => {
+  switch (state.status) {
+    case 'pending':
+      return <Pending label={PENDING.answer} />;
+    case 'ok':
+      return <AnswerView reply={state.value} onOpen={onOpen} />;
+    default:
+      return <Failed messages={[failureMessage(state)]} />;
+  }
+};
 
 export const AskScreen = ({ courseId }: { readonly courseId: CourseId }) => {
-  const { state, ask } = useAsk(useApi(), courseId);
+  const { exchanges, ask, reset } = useThread(useApi(), courseId);
   const [question, setQuestion] = useState('');
   const [open, setOpen] = useState<CitedSlide | null>(null);
   const onSubmit = (event: SubmitEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (question.trim() !== '') ask(question);
+    if (question.trim() === '') return;
+    ask(question);
+    setQuestion('');
   };
   return (
     <main className="screen">
@@ -31,14 +50,28 @@ export const AskScreen = ({ courseId }: { readonly courseId: CourseId }) => {
         <button type="submit" disabled={question.trim() === ''}>
           Ask
         </button>
+        {exchanges.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setQuestion('');
+            }}
+          >
+            {NEW_QUESTION}
+          </button>
+        )}
       </form>
       <section className="reply" aria-label="Answer">
-        {state.status === 'idle' ? null : state.status === 'pending' ? (
-          <Pending label={PENDING.answer} />
-        ) : state.status === 'ok' ? (
-          <AnswerView reply={state.value} onOpen={setOpen} />
-        ) : (
-          <Failed messages={[failureMessage(state)]} />
+        {exchanges.length > 0 && (
+          <ol className="thread">
+            {exchanges.map((exchange, at) => (
+              <li className="exchange" key={at}>
+                <p className="exchange-question">{exchange.question}</p>
+                <ExchangeState state={exchange.state} onOpen={setOpen} />
+              </li>
+            ))}
+          </ol>
         )}
       </section>
       {open !== null && (
