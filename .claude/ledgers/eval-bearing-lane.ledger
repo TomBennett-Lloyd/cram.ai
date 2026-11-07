@@ -1,0 +1,9 @@
+# Where the eval-bearing definition is restated (docs/standards/architecture.md rule 9; #670).
+# The procedure for an eval-bearing lane is .claude/skills/eval-lane/SKILL.md; this ledger is for the definition.
+owner: .claude/skills/run-issue/SKILL.md
+claim: a lane is eval-bearing when its predicted footprint meets a trigger path of ADR 0005 § Decision (g), or holds anything else that owes a pnpm eval run under eval/README.md's tier-1 paragraph
+cite: .claude/skills/run-issue/SKILL.md § step 1
+sweep: (?i:eval-bearing)|run-issue/SKILL\.md`? (§ )?step 1\b|\.claude/ledgers/eval-bearing-lane\.ledger
+carrier: .claude/agents/ticket-agent.md
+carrier: .claude/skills/eval-lane/SKILL.md
+carrier: .claude/skills/run-issue/merge-order.md

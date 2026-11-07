@@ -36,6 +36,10 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-dirty-revert.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-pgrep-loop.sh"
           }
         ]
       }
@@ -55,6 +59,8 @@
   "permissions": {
     "allow": [
       "Bash(bash .claude/scripts/fill-verdict.sh:*)",
+      "Bash(bash .claude/scripts/edit-comment.sh:*)",
+      "Bash(bash .claude/scripts/sweep-orphans.sh:*)",
       "Bash(gh issue comment:*)",
       "Bash(gh pr comment:*)",
       "Bash(gh issue close:*)",

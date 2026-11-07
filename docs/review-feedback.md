@@ -54,6 +54,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ---
 
+## 2026-11-07 — issue #676 — pgrep-loop-hook-registered
+
+- **Category**: approved-no-changes
+- **Feedback**: the owner's ask, 2026-11-07 (chat): "did you add the pgrep hook to the committed settings.json? i only update the local one but you can update the committed one and this should live in the committed one i think". The PR asks the owner to accept one registration in `.claude/settings.json`: a second hook on the existing `PreToolUse` `Bash` matcher, running `.claude/hooks/guard-pgrep-loop.sh`.
+- **Why**: PR #693 shipped the hook script but not its registration, since `.claude/settings.json` is `humanAlways`. Worktrees never see the main checkout's `.claude/settings.local.json`, so only the committed file reaches lanes, and lanes are the ones that ran `pgrep -f` waits (#670).
+- **How applied**: one hooks entry appended after `guard-dirty-revert.sh`'s; no other key changes.
+- **Verdict**: approved 2026-11-07 — "you can update the committed one and this should live in the committed one i think"
+
 ## 2026-10-14 — issue #1 — plan-feedback-quote-anchored-synthesis
 
 - **Category**: plan
@@ -616,3 +624,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`), and the model policy lives there by the owner's decision in #624.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approve 675
+
+## 2026-11-07 — issue #677 — durable-permissions
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to decide whether `.claude/settings.json` may gain two allow rules, `Bash(bash .claude/scripts/sweep-orphans.sh:*)` and `Bash(bash .claude/scripts/edit-comment.sh:*)`, the second naming a new script that edits one issue or PR comment on this repository from a body file and nothing else. It also asks about the host-convention members 8-12 in `docs/standards/evidence.md`, the SessionStart hook that persists the Homebrew prefix through `CLAUDE_ENV_FILE` in place of the pasted `export PATH`, and the README's note on what stays blocked by design.
+- **Why**: `.claude/settings.json` is `humanAlways`: it grants every session its permissions, and only the owner widens it (`merge.humanAlwaysRule`, #440). The owner asked for durable permissions for a fresh clone in the issue.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: can i pre-approve the settings.json changes the planned changes look good to me so i'm happy for you to merge when your happy with them

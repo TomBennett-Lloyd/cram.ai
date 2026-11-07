@@ -5,5 +5,4 @@ cite: .claude/scripts/merge-pr.sh § merge
 sweep: merge-pr\.sh § merge\b|match-head-commit|(?i:head (?:whose|those) checks)
 carrier: .claude/scripts/merge-pr.test.sh
 carrier: .claude/skills/review-loop/SKILL.md
-carrier: .claude/skills/run-issue/SKILL.md
 excluded: docs/friction-log.md
