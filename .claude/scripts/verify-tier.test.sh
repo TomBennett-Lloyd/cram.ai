@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# The fixtures write literal $CLAUDE_PROJECT_DIR into settings.json, so single quotes are the point.
-# shellcheck disable=SC2016
 # Test harness for verify-tier.sh, its neighbour in this directory.
 #
 # The assertion vocabulary is harness-lib.sh next door; the fixtures are real
@@ -163,6 +161,9 @@ write_in() { # write_in <path under the worktree> <line>
   must mkdir -p "$(dirname "$WT/$1")"
   must printf '%s\n' "$2" >"$WT/$1"
 }
+
+# write_settings <JSON> — .claude/settings.json, @DIR@ standing for the literal $CLAUDE_PROJECT_DIR.
+write_settings() { write_in .claude/settings.json "${1//@DIR@/\$CLAUDE_PROJECT_DIR}"; }
 
 commit_all() { # commit_all <message> — a commit on the branch, never pushed
   must gitc "$WT" add -A
@@ -1383,9 +1384,13 @@ seed_origin 'chore: a module'
 write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
 real_git=$(command -v git)
 must mkdir -p "$ROOT/bin"
-must printf '#!/bin/sh\nfor a in "$@"; do [ "$a" = "--untracked" ] && exit 2; done\nexec "%s" "$@"\n' "$real_git" >"$ROOT/bin/git"
+must tee "$ROOT/bin/git" >/dev/null <<'SH'
+#!/bin/sh
+for a in "$@"; do [ "$a" = "--untracked" ] && exit 2; done
+exec "$REAL_GIT" "$@"
+SH
 must chmod +x "$ROOT/bin/git"
-capture env PATH="$ROOT/bin:$PATH" bash "$TIER" --dry-run "$WT"
+capture env REAL_GIT="$real_git" PATH="$ROOT/bin:$PATH" bash "$TIER" --dry-run "$WT"
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full"
 expect_stdout "the importers scan for module tier-facts.mjs failed"
@@ -1496,7 +1501,7 @@ end
 # whose harness it has, a workflow file read by one script, and a density baseline.
 settings_fixture() {
   script_fixture "$1"
-  write_in .claude/settings.json '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tier-hook.sh" } ] } ] } }'
+  write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" } ] } ] } }'
   write_in .claude/workflow.json '{ "merge": {} }'
   write_in .claude/scripts/tier-reader.sh 'cat .claude/workflow.json'
   write_in .claude/scripts/tier-reader.test.sh 'bash .claude/scripts/tier-reader.sh'
@@ -1510,7 +1515,7 @@ SETTINGS_LEGS="pnpm check:ledgers && pnpm check:settings-hooks && bash .claude/s
 
 begin "a settings-only diff is the settings tier: the hook gate, the named hooks' harnesses, prettier"
 settings_fixture settings_only
-write_in .claude/settings.json '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tier-hook.sh" }, { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tier-hook.sh" } ] } ] } }'
+write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" }, { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" } ] } ] } }'
 for interpreter in $BASHES; do
   case_ctx="$interpreter"
   capture "$interpreter" "$TIER" --dry-run "$WT"
@@ -1526,7 +1531,7 @@ end
 
 begin "a settings diff beside a review-feedback entry keeps the markdown gates"
 settings_fixture settings_md
-write_in .claude/settings.json '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tier-hook.sh" } ] } ], "SessionStart": [] } }'
+write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/hooks/tier-hook.sh" } ] } ], "SessionStart": [] } }'
 write_in docs/review-feedback.md '- an entry, approved with no changes'
 run_tier
 expect_rc 0 "$rc"
@@ -1577,7 +1582,7 @@ end
 
 begin "a deleted script a settings entry names runs the settings gate, because the entry now dangles"
 settings_fixture settings_script_deleted
-write_in .claude/settings.json '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/scripts/tier-tool.sh" } ] } ] } }'
+write_settings '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"@DIR@\"/.claude/scripts/tier-tool.sh" } ] } ] } }'
 seed_origin 'chore: a settings entry naming a script'
 must gitc "$WT" rm --quiet .claude/scripts/tier-tool.sh
 run_tier
