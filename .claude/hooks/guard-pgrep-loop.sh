@@ -17,10 +17,10 @@
 # missing tool, an unreadable event) is exit 1 — non-blocking and loud — never exit 2: this
 # hook runs on every Bash call in every lane (hook-context.sh's header).
 #
-# The scan is lexical, with the script argument of `sh|bash|zsh|dash|ksh -c`, a heredoc fed to
-# such a shell, and `eval` read as commands too. A `pgrep` reached through a variable, `xargs`
-# or a function is not seen. A pattern holding a variable expansion, or one that does not
-# compile as a regular expression, cannot be judged and is refused.
+# The scan is lexical and shared (shell-scan.cjs, which owns what it reads), with the script
+# argument of `sh|bash|zsh|dash|ksh -c`, a heredoc fed to such a shell, and `eval` read as
+# commands too. A pattern holding a variable expansion, or one that does not compile as a
+# regular expression, cannot be judged and is refused.
 # Cases: .claude/scripts/guard-pgrep-loop.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -33,6 +33,7 @@ if ! . "$lib"; then
 fi
 
 hook_require_tools guard-pgrep-loop "$HOOK_NODE_CMD" || exit 1
+hook_require_scanner guard-pgrep-loop pgrep -f || exit 1
 
 event=$(read_hook_event) || {
   echo "guard-pgrep-loop: could not read the hook event (stdin was unreadable) — pgrep -f was not checked for this call." >&2
@@ -50,6 +51,7 @@ IFS= read -r -d '' LOOP_PROGRAM <<'NODE' || true
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const { scan } = require(path.resolve(process.argv[1]));
 
 let event;
 try {
@@ -59,157 +61,6 @@ try {
 }
 const command = event?.tool_input?.command;
 if (typeof command !== 'string') process.exit(0);
-
-// Appends each simple command's words to `commands`. A `$(…)` or backtick body is scanned
-// into the same list, after the command that holds it, so the list stays in execution order
-// for the loop count. `nested` ends the scan at the `)` that closes a `$(`. A heredoc body is
-// not scanned; it is added as `{ owner, body }` after the command that reads it, for `analyse`
-// to read when that command is a shell.
-function scan(src, i, commands, nested) {
-  const heredocs = [];
-  let depth = 0;
-  let current = [];
-  let word = null;
-  commands.push(current);
-  const end = () => {
-    if (word !== null) current.push(word);
-    word = null;
-  };
-  const split = () => {
-    end();
-    current = [];
-    commands.push(current);
-  };
-  while (i < src.length) {
-    const c = src[i];
-    // `$((…))` and a command-position `((…))` hold arithmetic, whose `<<` is a shift.
-    let unit = -1;
-    if (src.startsWith('$((', i)) unit = arithEnd(src, i + 1);
-    else if (c === '(' && src[i + 1] === '(' && word === null && current.length === 0) unit = arithEnd(src, i);
-    if (unit !== -1) {
-      word = (word ?? '') + src.slice(i, unit);
-      i = unit;
-      continue;
-    }
-    if (c === '\n') {
-      end();
-      i++;
-      for (const h of heredocs) {
-        const body = [];
-        while (i < src.length) {
-          let eol = src.indexOf('\n', i);
-          if (eol === -1) eol = src.length;
-          const line = src.slice(i, eol);
-          i = eol + 1;
-          if ((h.strip ? line.replace(/^\t+/, '') : line) === h.delim) break;
-          body.push(line);
-        }
-        commands.push({ owner: h.owner, body: body.join('\n') });
-      }
-      heredocs.length = 0;
-      current = [];
-      commands.push(current);
-    } else if (c === ' ' || c === '\t') {
-      end();
-      i++;
-    } else if (c === '#' && word === null) {
-      while (i < src.length && src[i] !== '\n') i++;
-    } else if (src.startsWith('$(', i)) {
-      word ??= '';
-      i = scan(src, i + 2, commands, true);
-    } else if (c === '(') {
-      split();
-      depth++;
-      i++;
-    } else if (c === ')') {
-      if (depth === 0 && nested) {
-        end();
-        return i + 1;
-      }
-      depth = Math.max(0, depth - 1);
-      split();
-      i++;
-    } else if (';&|'.includes(c)) {
-      split();
-      i++;
-    } else if (src.startsWith('<<<', i)) {
-      word = (word ?? '') + '<<<';
-      i += 3;
-    } else if (src.startsWith('<<', i)) {
-      end();
-      i += 2;
-      const strip = src[i] === '-';
-      if (strip) i++;
-      while (src[i] === ' ') i++;
-      let delim = '';
-      while (i < src.length && !/[\s;&|()]/.test(src[i])) {
-        if (src[i] === "'" || src[i] === '"') {
-          const q = src[i++];
-          while (i < src.length && src[i] !== q) delim += src[i++];
-          i++;
-        } else if (src[i] === '\\') {
-          delim += src[i + 1] ?? '';
-          i += 2;
-        } else delim += src[i++];
-      }
-      heredocs.push({ delim, strip, owner: current });
-    } else if (c === "'") {
-      word ??= '';
-      i++;
-      while (i < src.length && src[i] !== "'") word += src[i++];
-      i++;
-    } else if (c === '"') {
-      word ??= '';
-      i++;
-      while (i < src.length && src[i] !== '"') {
-        if (src.startsWith('$(', i)) i = scan(src, i + 2, commands, true);
-        else if (src[i] === '`') i = backtick(src, i, commands);
-        else if (src[i] === '\\' && '"\\$`'.includes(src[i + 1] ?? '')) {
-          word += src[i + 1];
-          i += 2;
-        } else word += src[i++];
-      }
-      i++;
-    } else if (src.startsWith("$'", i)) {
-      word ??= '';
-      i += 2;
-      while (i < src.length && src[i] !== "'") {
-        if (src[i] === '\\') i++;
-        word += src[i++] ?? '';
-      }
-      i++;
-    } else if (c === '`') {
-      word ??= '';
-      i = backtick(src, i, commands);
-    } else if (c === '\\') {
-      if (src[i + 1] !== '\n') word = (word ?? '') + (src[i + 1] ?? '');
-      i += 2;
-    } else {
-      word = (word ?? '') + c;
-      i++;
-    }
-  }
-  end();
-  return i;
-}
-
-// The index past the `))` that closes the `((` at `i`, or -1 when there is none.
-function arithEnd(src, i) {
-  let level = 0;
-  for (let k = i; k < src.length; k++) {
-    if (src[k] === '(') level++;
-    else if (src[k] === ')' && --level === 0) return src[k - 1] === ')' && k - 1 > i + 1 ? k + 1 : -1;
-  }
-  return -1;
-}
-
-// Scans the `` `…` `` at `i` as a command body and returns the index past its closing backtick.
-function backtick(src, i, commands) {
-  let j = i + 1;
-  while (j < src.length && src[j] !== '`') j += src[j] === '\\' ? 2 : 1;
-  scan(src.slice(i + 1, j).replace(/\\([$`\\])/g, '$1'), 0, commands, false);
-  return j + 1;
-}
 
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
 // `NAME=value` words, `NAME[sub]=value` among them, lead a command without being it.
@@ -269,6 +120,8 @@ const refused = [];
 // `stack` holds one boolean per open loop: true for `while`/`until`, false for a bounded one.
 function analyse(commands, stack, depth) {
   for (const simple of commands) {
+    // A subshell marker brackets nothing this analysis needs.
+    if (typeof simple === 'symbol') continue;
     if (!Array.isArray(simple)) {
       // A heredoc fed to a shell without `-c` is the script it runs.
       const { owner, body } = simple;
@@ -331,7 +184,7 @@ analyse(commands, [], 0);
 for (const line of refused) console.log(`  ${line}`);
 NODE
 
-hits=$(printf '%s' "$event" | "$HOOK_NODE_CMD" -e "$LOOP_PROGRAM") || {
+hits=$(printf '%s' "$event" | "$HOOK_NODE_CMD" -e "$LOOP_PROGRAM" "$HOOK_SHELL_SCAN") || {
   echo "guard-pgrep-loop: $HOOK_NODE_CMD exited non-zero — pgrep -f was not checked for this call." >&2
   exit 1
 }
