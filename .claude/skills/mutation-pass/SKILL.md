@@ -3,7 +3,7 @@ name: mutation-pass
 description: The mutation pass a lane owes before its first reviewer dispatch when its diff adds or changes a guard, parser or exclusion - the two lists, the hostile corpus with its oracle, the differential against main, and the run, which a fresh Sonnet agent does in a scratch worktree. Use when a ticket-agent plan comment names a guard.
 ---
 
-Moved out of `.claude/agents/ticket-agent.md` rule 4 by #628, which keeps the obligation and the `Mutation:` report line; this file owns the procedure. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; bare `#<n>` is this repo's.
+Moved out of `.claude/agents/ticket-agent.md` rule 4 by #628, which keeps the obligation and a pointer from the `Mutation:` report line; this file owns the procedure and, since #669, the line's multi-line form (section 5). Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; bare `#<n>` is this repo's.
 
 **Who does what.** The lane writes sections 1 to 3 inline, because a list is only worth having if it came from a source other than the lane's own guards. The lane commits first (`git status` clean), writes the lists to `<scratchpad>/mutation-<n>.md`, then dispatches one fresh synchronous `general-purpose` agent on Sonnet (`.claude/agents/ticket-agent.md` rule 3(f)) to run section 4 on that file. It keeps only the table that comes back, writes a case for each survivor, and runs section 4 again once, in a fresh agent, over the survivors alone. It then pastes the four lists into the `reviewer` dispatch and the PR body and names the two lists' sources and the corpus's oracle on the lane report's `Mutation:` line.
 
@@ -29,3 +29,16 @@ You are read-only to the lane's worktree: never write there, and never commit.
 4. Return, and nothing else: one table row per mutant (id, the edit in one line, rc, killed or survived), the list of survivors with the exit code and the last five lines of output for each, the corpus size, the count of rows where the head disagrees with the oracle, the differential's raw count and residual if one was asked for, and the path of every output file. Do not paste test logs or file contents.
 
 A positive control comes with it: run the unmutated copy once first and report its rc, which must be 0; a table whose baseline is red is a failed run, not a clean one.
+
+## 5. The report line
+
+The lane report's `Mutation:` field takes `none owed (no guard)` where the diff adds no guard, and otherwise this form:
+
+```
+Mutation: none owed (no guard) | grammar from <spec or schema>, axes <list>; criteria from <plan comment, issue invariants>;
+          corpus <n> inputs, oracle <interpreter | library | fixture> | none owed (no exclusion guard);
+          mutants <killed>/<total>, equivalent <n>: <the second shape each>; unkillable <n>: <guard — reason each>;
+          declared <n>: <issue each>
+          differential none owed (no prior version on main) | <rows> rows from list (a), head-regressions (main matches the oracle, head does not)
+          <raw> raw, <residual> after <named divergence — where it lives, fixed vocabulary by commit | none>
+```

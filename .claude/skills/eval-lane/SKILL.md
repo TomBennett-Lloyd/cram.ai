@@ -1,0 +1,14 @@
+---
+name: eval-lane
+description: What a ticket-agent lane does when its diff is eval-bearing - when the tier-2 run is recorded, what it waits for, what reviews it, and why a branch carrying an eval report takes main by merge and never by rebase. Use when the lane's footprint meets a trigger path of ADR 0005 (g), or the diff adds or updates a file under eval/reports/.
+---
+
+Moved out of `.claude/agents/ticket-agent.md` rules 6 and 8 by #669, which keeps each trigger sentence; this file owns the procedure. The moved text is verbatim except that locators relative to those rules now name the rule. Bare `#<n>` is this repo's; `cumulo#<n>` is cumulo's.
+
+## 1. Recording the tier-2 run
+
+**An eval-bearing lane** (`.claude/skills/run-issue/SKILL.md` step 1) records its tier-2 run last. It records after this pass's APPROVE where one is owed, so a re-record costs one run and not a re-review. It records only once any lane the dispatch's overlap note names for its run to wait on has merged (`gh pr view <m> --json state` reads `MERGED`). If that lane has not merged, open the PR `--draft` and report `STATUS: PARTIAL — tier-2 run owed after #<m> merges`; the merge owner's bounce after that merge starts the run. The run's commit, and any merge of `main` a re-record follows, take one confirmation pass scoped to the range they add, as `.claude/agents/ticket-agent.md` rule 6 states. That pass reads the report against its baseline (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)). A `REBASE —` round on a branch that carries its report merges `main` (`.claude/agents/ticket-agent.md` rule 8). (#486)
+
+## 2. Taking main on a branch that carries a report
+
+**A branch whose diff against `origin/main` adds or updates a file under `eval/reports/` takes `main` by merge, never by rebase** — on a `REBASE —` bounce whatever its wording, and on `.claude/agents/ticket-agent.md` rule 7's log-only `DIRTY` alike — because the report is named by the commit it measured, which under the squash stays reachable only through the PR ref (`docs/adr/0005-evaluation-as-gate.md` § Decision (f)), and a rebase rewrites that commit. Run `git -c core.commentChar=';' -c commit.cleanup=strip merge -m '#<n>: merge origin/main (<short sha>, <the PRs it brings>)' origin/main`, with the same pair on `--continue`, since without it git strips the `#<n>:` subject as a comment and aborts the commit as empty. Then the same checks, re-verify, and a plain push. Everything `.claude/agents/ticket-agent.md` and the skills say of a rebase round holds for this merge, including a classifier refusal on its conflict resolution and the merge owner finishing it. Re-record tier 2 once at the merge commit when `main`'s side (`git diff --name-only <merge-base> origin/main`) holds a path that would make a lane eval-bearing (`.claude/skills/run-issue/SKILL.md` step 1), and the merge and that run take `.claude/agents/ticket-agent.md` rule 6's one confirmation pass. (#407, #443, #450, #476)
