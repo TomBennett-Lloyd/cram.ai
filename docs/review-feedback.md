@@ -616,3 +616,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `CLAUDE.md` is `humanAlways` (`merge.humanAlwaysRule`), and the model policy lives there by the owner's decision in #624.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approve 675
+
+## 2026-11-07 — issue #677 — durable-permissions
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to decide whether `.claude/settings.json` may gain two allow rules, `Bash(bash .claude/scripts/sweep-orphans.sh:*)` and `Bash(bash .claude/scripts/edit-comment.sh:*)`, the second naming a new script that edits one issue or PR comment on this repository from a body file and nothing else. It also asks about the host-convention members 8-12 in `docs/standards/evidence.md`, the SessionStart hook that persists the Homebrew prefix through `CLAUDE_ENV_FILE` in place of the pasted `export PATH`, and the README's note on what stays blocked by design.
+- **Why**: `.claude/settings.json` is `humanAlways`: it grants every session its permissions, and only the owner widens it (`merge.humanAlwaysRule`, #440). The owner asked for durable permissions for a fresh clone in the issue.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: can i pre-approve the settings.json changes the planned changes look good to me so i'm happy for you to merge when your happy with them

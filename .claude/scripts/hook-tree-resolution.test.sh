@@ -414,6 +414,42 @@ expect_not_stderr "required tool not found"
 expect_not_out "deps are ready"
 end
 
+# --- ensure-deps: the Homebrew prefix reaches the session's Bash calls (#677) --------------
+
+BREW_BIN="$TMP_ROOT/brew-bin"
+must mkdir -p "$BREW_BIN"
+ENV_FILE="$TMP_ROOT/claude-env"
+PATH_LINE="export PATH=\"$BREW_BIN:\$PATH\""
+must printf '{"cwd":"%s"}' "$INSTALLED_WT" >"$TMP_ROOT/event.json"
+
+begin "ensure-deps appends the prefix to CLAUDE_ENV_FILE once, however many times it runs"
+rm -f "$ENV_FILE"
+capture env CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" CLAUDE_ENV_FILE="$ENV_FILE" ENSURE_DEPS_BREW_BIN="$BREW_BIN" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"
+expect_rc 0 "$rc"
+capture env CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" CLAUDE_ENV_FILE="$ENV_FILE" ENSURE_DEPS_BREW_BIN="$BREW_BIN" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"
+expect_rc 0 "$rc"
+[ "$(cat "$ENV_FILE")" = "$PATH_LINE" ] || bad "env file holds: $(cat "$ENV_FILE")"
+end
+
+begin "ensure-deps leaves a session whose PATH already holds the prefix alone, wherever it sits"
+for session_path in "$BREW_BIN:/usr/bin:$PATH" "/usr/bin:$BREW_BIN:/bin:$PATH" "/usr/bin:$PATH:$BREW_BIN"; do
+  rm -f "$ENV_FILE"
+  capture env PATH="$session_path" CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" CLAUDE_ENV_FILE="$ENV_FILE" ENSURE_DEPS_BREW_BIN="$BREW_BIN" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"
+  expect_rc 0 "$rc"
+  [ ! -e "$ENV_FILE" ] || bad "env file written for PATH $session_path"
+done
+end
+
+begin "ensure-deps writes nothing where the prefix does not exist or no env file is offered"
+rm -f "$ENV_FILE"
+capture env CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" CLAUDE_ENV_FILE="$ENV_FILE" ENSURE_DEPS_BREW_BIN="$TMP_ROOT/no-such-bin" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"
+expect_rc 0 "$rc"
+[ ! -e "$ENV_FILE" ] || bad "env file was written without a prefix directory"
+capture env -u CLAUDE_ENV_FILE CLAUDE_PROJECT_DIR="$INSTALLED_MAIN" ENSURE_DEPS_BREW_BIN="$BREW_BIN" bash "$ENSURE_DEPS_HOOK" <"$TMP_ROOT/event.json"
+expect_rc 0 "$rc"
+[ ! -e "$ENV_FILE" ] || bad "env file appeared with CLAUDE_ENV_FILE unset"
+end
+
 # --- summary -------------------------------------------------------------------------
 
 finish

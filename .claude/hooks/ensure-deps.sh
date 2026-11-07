@@ -30,7 +30,18 @@
 # a branch takes effect on merge and only for sessions started after it.
 #
 set -u
+session_path=$PATH
 export PATH="/opt/homebrew/bin:$PATH"
+
+# Persist the Homebrew prefix for the session's later Bash tool calls, so no lane pastes
+# `export PATH=…` in front of a command (#677; docs/standards/evidence.md § Host conventions
+# member 9). Only where the prefix exists and the session's own PATH lacks it, and once per file:
+# a shell that already has it keeps its order, as do a Linux contributor and a compaction's rerun.
+: "${ENSURE_DEPS_BREW_BIN:=/opt/homebrew/bin}"
+if [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -d "$ENSURE_DEPS_BREW_BIN" ] && [ "${session_path#*:"$ENSURE_DEPS_BREW_BIN":}" = "$session_path" ] && [ "${session_path%:"$ENSURE_DEPS_BREW_BIN"}" = "$session_path" ] && [ "${session_path#"$ENSURE_DEPS_BREW_BIN":}" = "$session_path" ]; then
+  path_line="export PATH=\"$ENSURE_DEPS_BREW_BIN:\$PATH\""
+  grep -qxF -- "$path_line" "$CLAUDE_ENV_FILE" 2>/dev/null || printf '%s\n' "$path_line" >>"$CLAUDE_ENV_FILE"
+fi
 
 lib="$(dirname -- "${BASH_SOURCE[0]}")/hook-context.sh"
 # shellcheck source=./hook-context.sh
