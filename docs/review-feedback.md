@@ -640,3 +640,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: both files are `humanAlways` (`merge.humanAlwaysRule`): they are the gates and the first document reviewers read. The owner's direction on #672 was concise bullets, human-reviewable, readability weighed against the gain, and clear to lower-powered models.
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: approved 2026-11-07 — "approve 702"
+
+## 2026-11-07 — PR #719 — pgrep-guard-monitor-matcher
+
+- **Category**: pending — filled at merge
+- **Feedback**: this PR asks the owner to decide whether the matcher of the first `PreToolUse` group in `.claude/settings.json` may widen from `Bash` to `Bash|Monitor`, so that `guard-pgrep-loop.sh` also refuses a self-matching `pgrep -f` wait loop written in a Monitor call, as #694's lane wrote one. The group also holds `guard-dirty-revert.sh`, so that guard now sees Monitor calls too.
+- **Why**: `.claude/settings.json` is `humanAlways` (`merge.humanAlwaysRule`): it wires every hook for every session, and only the owner widens it.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: pending — filled at merge
