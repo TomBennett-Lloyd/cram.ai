@@ -216,8 +216,8 @@
 # or .claude/hooks that names a member, until nothing more joins: a lib is
 # observed by whatever observes the scripts sourcing it, and harness-lib.sh,
 # which every harness names, selects them all. This script runs only
-# workspace-lib.sh, so it never joins. A change to either of the two is a change
-# to which legs run, and only the full composite can vouch for that.
+# workspace-lib.sh and tree-hash-lib.sh, so it never joins. A change to any of the
+# three is a change to which legs run, and only the full composite can vouch for that.
 #
 # check-ledgers.sh is a ledger's only reader, so the ledger class runs
 # check:ledgers and any test naming the ledger. The ledger's owner is not in the
@@ -891,7 +891,7 @@ classify_paths() {
         printf '%s\n' "$f" >>"$TMP/c-md"
         continue
         ;;
-      .claude/scripts/verify-tier.sh | .claude/scripts/workspace-lib.sh)
+      .claude/scripts/verify-tier.sh | .claude/scripts/workspace-lib.sh | .claude/scripts/tree-hash-lib.sh)
         reason="a change to the classifier is a change to which legs run, which only the full composite can vouch for — $f"
         return 1
         ;;
@@ -1297,19 +1297,18 @@ describe() {
   esac
 }
 
-# current_tree -> the tree object of the working tree as `git add -A` sees it,
-# over the real index's entries. Seeded with read-tree, so it holds every staged
-# path — `git add -f` of an ignored file included, which an empty index would
-# drop and check:no-course-content exists for — and no stat data, so every file
-# is hashed from its content: a copy of the real index carries its stat cache
-# under a newer mtime, which defeats git's racy-entry check.
+# current_tree -> the tree object of the working tree as `git add -A` sees it, from
+# tree-hash-lib.sh, which verify-guard.sh stamps with too: the bank and the guard's
+# void cannot disagree about a file. A lib that cannot be loaded makes the tree
+# unhashable, which is not-banked and not-narrowed, so the full composite. Loaded here
+# and not at the top: callers run this in a subshell, so the lib is sourced per call.
 current_tree() {
-  local staged
-  rm -f "$TMP/tree-index"
-  staged=$(git_at write-tree 2>/dev/null) || return 1
-  GIT_INDEX_FILE="$TMP/tree-index" git_at read-tree "$staged" >/dev/null 2>&1 || return 1
-  GIT_INDEX_FILE="$TMP/tree-index" git_at add -A >/dev/null 2>&1 || return 1
-  GIT_INDEX_FILE="$TMP/tree-index" git_at write-tree 2>/dev/null
+  if ! declare -F worktree_tree >/dev/null && [ -f "$SCRIPTS/tree-hash-lib.sh" ]; then
+    # shellcheck source=./tree-hash-lib.sh
+    . "$SCRIPTS/tree-hash-lib.sh"
+  fi
+  declare -F worktree_tree >/dev/null || return 1
+  worktree_tree "$ROOT"
 }
 
 # bank_path -> where this worktree's banked green tree lives.

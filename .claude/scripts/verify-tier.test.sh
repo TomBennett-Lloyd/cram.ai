@@ -1434,6 +1434,14 @@ expect_rc 0 "$rc"
 expect_stdout "which only the full composite can vouch for — .claude/scripts/workspace-lib.sh"
 end
 
+begin "a change to tree-hash-lib.sh, which the classifier sources, is the full tier"
+script_fixture script_tree_hash_lib
+write_in .claude/scripts/tree-hash-lib.sh 'echo a different tree'
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "which only the full composite can vouch for — .claude/scripts/tree-hash-lib.sh"
+end
+
 begin "a script change with no package.json to read the legs from is the full tier"
 must fixture script_no_manifest
 write_in .claude/scripts/tier-tool.sh 'echo tool'
@@ -1736,6 +1744,21 @@ expect_stdout "verify tier: full — 5 file(s); new package pkg-new has its mani
 expect_stdout "verify tier: narrowed to package since banked tree "
 expect_stdout "1 file(s) in new package(s) pkg-new; observing tests: none"
 expect_stdout "would run: $NEW_PACKAGE_LEGS"
+end
+
+# The hash that decides whether to bank goes through tree-hash-lib.sh's retry: the shim holds
+# the real index's lock as the leg ends and frees it 0.3 s later, so the "after" hash is the
+# call that has to wait.
+begin "a green run is still banked when another git process holds the index lock as the run ends"
+new_package_fixture new_package_locked
+must mkdir -p "$ROOT/shim"
+must printf '#!/bin/sh\ntouch "%s/.git/index.lock"\n(sleep 0.3; rm -f "%s/.git/index.lock") >/dev/null 2>&1 &\nexit 0\n' "$WT" "$WT" >"$ROOT/shim/pnpm"
+must chmod +x "$ROOT/shim/pnpm"
+run_tier_for_real
+expect_rc 0 "$rc"
+expect_stdout "verify tier: banked tree "
+expect_not_stdout "not banked"
+rm -f "$WT/.git/index.lock"
 end
 
 begin "a red full run banks nothing, so the next run is full again"
