@@ -1,6 +1,6 @@
 # 0011 — Ask holds a conversation: follow-up turns, a standalone retrieval rewrite, earlier answers never a source
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-07
 - **Issue:** #576
 

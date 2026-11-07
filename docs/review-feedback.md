@@ -667,8 +667,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-07 — issue #576 — ask-conversation
 
-- **Category**: pending — filled at merge
+- **Category**: approved-at-plan
 - **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/576#issuecomment-6655661168 in chat on 2026-11-07, relayed at https://github.com/TomBennett-Lloyd/cram.ai/issues/576#issuecomment-6704993604. PROCEED, verbatim: "i agree with the 3 plans". Offered a lighter turn window, the owner chose, verbatim: "Plan as written". So the window is 4 turns and Q1 to Q6 take the defaults the plan stated.
 - **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR that carries nothing beyond the approved plan merge on that plan's PROCEED.
 - **How applied**: new ADR 0011 (Ask holds a conversation), whose § Decision (a)–(j) is the plan's Decision outline points 1–10. ADR 0009 gains the plan's pasted diff exactly: three as-it-stood annotations and one dated § Amendments entry. The PR body pastes the mapping.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved at plan 2026-11-07 — i agree with the 3 plans
