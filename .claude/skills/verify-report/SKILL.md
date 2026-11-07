@@ -3,7 +3,7 @@ name: verify-report
 description: Run the whole pnpm verify (or any long test or build command) so its output never enters the lane's context - captured to a file, exit code read at once, the verify root line checked, only a tail read. Use before every commit and wherever a lane would otherwise read a long log.
 ---
 
-Moved out of `.claude/agents/ticket-agent.md` rule 4 by #628, which keeps the obligation (the whole `pnpm verify` before every commit, never a subset), the tier-1-red-by-design clause and the clean-merge exemption (a merge that rule 4 calls clean is CI-verified and skips this command); this file owns the command. The form is `docs/standards/evidence.md` form 1 and its member 1: a pipe reports its last command's status, so nothing is piped.
+Moved out of `.claude/agents/ticket-agent.md` rule 4 by #628, which keeps the obligation (the whole `pnpm verify` before every commit, never a subset), the tier-1-red-by-design clause and the clean-merge exemption (a merge or rebase that rule 4 calls clean is CI-verified and skips this command); this file owns the command. The form is `docs/standards/evidence.md` form 1 and its member 1: a pipe reports its last command's status, so nothing is piped.
 
 A log read into the lane's context is paid for again on every later turn of the lane (#624), and a passing verify has nothing in it worth reading.
 
