@@ -17,6 +17,8 @@ carrier: .claude/scripts/fill-verdict.test.sh
 carrier: CLAUDE.md
 carrier: .claude/skills/review-loop/SKILL.md
 carrier: .claude/skills/run-issue/SKILL.md
+carrier: .claude/skills/run-issue/batch-lane.md
+carrier: .claude/scripts/overlap-read.test.sh
 carrier: .claude/skills/retro/SKILL.md
 carrier: .claude/skills/plan-issue/SKILL.md
 carrier: .claude/agents/task-orchestrator.md
