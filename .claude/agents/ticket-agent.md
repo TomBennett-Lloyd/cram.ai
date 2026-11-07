@@ -117,7 +117,7 @@ PR: #<pr> <url>                    CI: green | red | not run — <why>; pasted c
 Verify: rc=<n>                     (pasted `verify root:` line)
 Plan comment: <url>                Footprint drift vs plan comment: <files | none>
 Changed files: (pasted git diff --name-only origin/main...HEAD, after git fetch origin)
-Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found>/<fixed>, deferred: <issues | none>
+Review: none owed (no source) | APPROVE after <k> passes — FIX-NOW <found> found, <addressed> addressed; deferred to <issues | none>
 Mutation: none owed (no guard) | <the line `.claude/skills/mutation-pass/SKILL.md` § 5 states>
 Classification: AUTO | HUMAN — source extensions <list | none>; humanAlways <paths | none>; amendmentRule (a) | (b) | none
 Extras beyond the approved plan: <list | none | n/a — no PROCEED>   (rule 7; `none` → no label)
