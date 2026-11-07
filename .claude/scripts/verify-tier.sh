@@ -13,8 +13,12 @@
 #   source-prose   source whose minified emit and comment-free reprint are unchanged
 #   source-emit    source whose minified emit is unchanged, not proven comment-only
 #   package        a file inside a workspace member new since the merge-base
-#   scripts        a .claude/scripts/*.sh file other than this one
+#   scripts        a .claude/scripts/*.sh or .claude/hooks/*.sh file other than this one,
+#                  a .claude/scripts/*.mjs or .claude/hooks/*.cjs module
 #   ledgers        a .claude/ledgers/*.ledger file
+#   settings       .claude/settings.json
+#   workflow       .claude/workflow.json
+#   density        .claude/comment-density.baseline.tsv
 #
 # The tier is DERIVED, never chosen. That distinction is the whole design:
 # CLAUDE.md bans hand-picking legs because a human picking "the relevant ones"
@@ -224,6 +228,42 @@
 # any path; and prettier --check on the changed files still present.
 #
 # ---------------------------------------------------------------------------
+# HOOKS, NODE MODULES, SETTINGS, WORKFLOW AND THE DENSITY BASELINE (#699)
+#
+# Each of these used to be outside every class and so ran the whole composite, over ten
+# minutes under load for a one-line hook registration. Each now has a class that names the
+# gates able to see it. The tier name is the class name, `+`-joined like the others.
+#
+#   hooks (.claude/hooks/*.sh)  are shell scripts: the scripts class, unchanged in what it
+#     runs. A hook below .claude/hooks' top level is still unclassified, so full.
+#   node modules (.claude/scripts/*.mjs, .claude/hooks/*.cjs)  join the scripts class with
+#     one leg of their own, `node --check` per file, run first because it is the cheapest.
+#     They stop taking the emit proof: no eslint block, no typecheck and no first-party
+#     egress census reaches a file under .claude (eslint.config.mjs `files:` and
+#     the first-party egress census's importers), so the emit proof only ever sent them to
+#     legs that cannot see them. What can see one is a script or test that names it, which
+#     the closure and the test selection find. The residual is a source file outside those
+#     directories that imports one; a changed module such a file names goes full instead.
+#   settings (.claude/settings.json)  runs check:settings-hooks (the file parses, every
+#     hook command resolves under the project root to an executable file) and the harnesses
+#     of the hook scripts it names: their basenames seed the closure, so a lib a hook
+#     sources joins as it does for a lib edit. A file the classifier cannot read still
+#     classifies, and the gate leg goes red on it.
+#   workflow (.claude/workflow.json)  adds every script and hook that names workflow.json to
+#     the closure after it has grown, so each one's harness and every package.json leg that
+#     runs it runs, and its dependants do not. prettier's parse is the JSON check. Every ledger names its owner in a carrier
+#     check:ledgers reads, and that leg runs under every class.
+#   density (.claude/comment-density.baseline.tsv)  adds check:comment-density to whatever
+#     else runs and is the whole tier on its own: the gate is the baseline's only reader,
+#     and a test naming the file is found by the usual selection.
+#
+# check:settings-hooks also runs whenever any .claude/hooks path is in the change set, since
+# a deleted or un-executable hook is what a settings entry dangles on.
+#
+# Still full: package.json, pnpm-lock.yaml and eval/recordings, eval/reports, eval/*.jsonl,
+# which no class admits; nothing else changed about the default.
+#
+# ---------------------------------------------------------------------------
 # NEW PACKAGES AND THE BANKED GREEN TREE (#12, #292)
 #
 # A new package arrives with its manifest and a lockfile edit, which no class
@@ -296,7 +336,7 @@ LIST_CAP=20
 DATA_READING='readFileSync|readFile\(|import\.meta\.glob|fs\.'
 
 # `verify:full`'s legs in its own order (see LEG ORDER above).
-LEG_ORDER="lint:js lint:css lint:sh lint:workflows typecheck check:comment-density test check:adr-index check:ledgers check:module-names check:no-course-content check:no-network-egress check:node-types check:stored-output-pin check:supply-chain-policy check:markdown-links test:scripts format:check"
+LEG_ORDER="lint:js lint:css lint:sh lint:workflows typecheck check:comment-density test check:adr-index check:ledgers check:module-names check:no-course-content check:no-network-egress check:node-types check:stored-output-pin check:supply-chain-policy check:settings-hooks check:markdown-links test:scripts format:check"
 
 DOCS_LEGS="pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:markdown-links && pnpm format:check"
 
@@ -746,22 +786,58 @@ package_admits() {
   esac
 }
 
+# settings_hook_names -> the basename of each hook command's first word in
+# .claude/settings.json, one per line. Prints nothing when the file cannot be read, which
+# leaves the closure unseeded and the settings gate to go red on the file.
+settings_hook_names() {
+  node - "$ROOT/.claude/settings.json" 2>/dev/null <<'JS'
+const settings = JSON.parse(require("fs").readFileSync(process.argv[2], "utf8"));
+const names = new Set();
+for (const entries of Object.values((settings && settings.hooks) || {})) {
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    for (const hook of Array.isArray(entry && entry.hooks) ? entry.hooks : []) {
+      const word = String((hook && hook.command) || "").trim().replace(/^"([^"]*)"/, "$1").split(/\s+/)[0];
+      if (word) names.add(word.slice(word.lastIndexOf("/") + 1));
+    }
+  }
+}
+process.stdout.write([...names].join("\n") + "\n");
+JS
+}
+
 # script_closure -> writes to $TMP/closure the basenames observed through the
-# changed scripts (see SCRIPTS AND LEDGERS above). Returns 1 with $reason set
-# when the scripts and hooks could not be listed.
+# changed scripts, modules, settings and workflow file (see SCRIPTS AND LEDGERS and
+# HOOKS, NODE MODULES, SETTINGS above). Returns 1 with $reason set when the scripts
+# and hooks could not be listed.
 script_closure() {
   local f b grown
   : >"$TMP/closure"
-  [ -s "$TMP/c-script" ] || return 0
-  while IFS= read -r f; do
-    printf '%s\n' "${f##*/}"
-  done <"$TMP/c-script" | LC_ALL=C sort -u >"$TMP/closure"
   if ! git_at ls-files --cached --others --exclude-standard -- .claude/scripts .claude/hooks \
     >"$TMP/pool-raw" 2>/dev/null; then
     reason="could not list the scripts and hooks a changed script can be observed through"
     return 1
   fi
   grep -v -x -F .claude/scripts/verify-tier.sh "$TMP/pool-raw" >"$TMP/pool"
+  {
+    while IFS= read -r f; do
+      printf '%s\n' "${f##*/}"
+    done <"$TMP/c-script"
+    while IFS= read -r f; do
+      printf '%s\n' "${f##*/}"
+    done <"$TMP/c-node"
+    [ -s "$TMP/c-settings" ] && settings_hook_names
+  } | grep -v '^$' | LC_ALL=C sort -u >"$TMP/closure"
+  # The readers of workflow.json join AFTER the growth below, so they bring their harnesses
+  # and their package.json legs and not their dependants: a changed data file reaches a
+  # script's behaviour only through the script that reads it, and a lib among its dependants
+  # would pull in every harness there is.
+  : >"$TMP/readers"
+  if [ -s "$TMP/c-workflow" ]; then
+    while IFS= read -r f; do
+      [ -f "$ROOT/$f" ] && grep -qF workflow.json -- "$ROOT/$f" && printf '%s\n' "${f##*/}" >>"$TMP/readers"
+    done <"$TMP/pool"
+  fi
+  [ -s "$TMP/closure" ] || [ -s "$TMP/readers" ] || return 0
   grown=1
   while [ "$grown" = 1 ]; do
     grown=0
@@ -775,6 +851,7 @@ script_closure() {
       fi
     done <"$TMP/pool"
   done
+  LC_ALL=C sort -u "$TMP/closure" "$TMP/readers" -o "$TMP/closure"
   if ! node -e '
 const scripts = require(process.argv[1]).scripts || {};
 for (const [name, command] of Object.entries(scripts)) console.log(name + "\t" + String(command).replace(/[\t\n]/g, " "));
@@ -785,11 +862,32 @@ for (const [name, command] of Object.entries(scripts)) console.log(name + "\t" +
   return 0
 }
 
+# node_admits <module path> -> 0 when no source file outside the scripts and hooks
+# directories names the module's basename (see HOOKS, NODE MODULES above), 1 with
+# $reason set otherwise. Tests are not scanned: the test selection finds them by name.
+node_admits() {
+  local f="$1"
+  git_at grep -lF --untracked -e "${f##*/}" -- '*.ts' '*.tsx' '*.mts' '*.cts' '*.js' '*.jsx' \
+    '*.mjs' '*.cjs' ':(exclude).claude/scripts' ':(exclude).claude/hooks' ':(exclude)*.test.*' \
+    ':(exclude)*.spec.*' >"$TMP/node-hits" 2>/dev/null
+  case $? in
+    0)
+      reason="module ${f##*/} is named by $(head -n 1 "$TMP/node-hits"), outside the scripts and hooks, so its reach is not its own — $f"
+      return 1
+      ;;
+    1) return 0 ;;
+    *)
+      reason="the importers scan for module ${f##*/} failed — $f"
+      return 1
+      ;;
+  esac
+}
+
 # classify_paths -> sorts every path in $CHANGED into $TMP/c-<class>. Returns 1
 # with $reason set at the first path no class admits.
 classify_paths() {
   local f pkg loader c
-  for c in md src comment type pkg pkgdirs script ledger; do
+  for c in md src comment type pkg pkgdirs script node settings workflow density ledger; do
     : >"$TMP/c-$c"
   done
   : >"$TMP/pkg-ok"
@@ -805,9 +903,26 @@ classify_paths() {
         reason="a change to the classifier is a change to which legs run, which only the full composite can vouch for — $f"
         return 1
         ;;
-      .claude/scripts/*/* | .claude/ledgers/*/*) ;;
-      .claude/scripts/*.sh)
+      .claude/scripts/*/* | .claude/ledgers/*/* | .claude/hooks/*/*) ;;
+      .claude/scripts/*.sh | .claude/hooks/*.sh)
         printf '%s\n' "$f" >>"$TMP/c-script"
+        continue
+        ;;
+      .claude/scripts/*.mjs | .claude/hooks/*.cjs)
+        node_admits "$f" || return 1
+        printf '%s\n' "$f" >>"$TMP/c-node"
+        continue
+        ;;
+      .claude/settings.json)
+        printf '%s\n' "$f" >>"$TMP/c-settings"
+        continue
+        ;;
+      .claude/workflow.json)
+        printf '%s\n' "$f" >>"$TMP/c-workflow"
+        continue
+        ;;
+      .claude/comment-density.baseline.tsv)
+        printf '%s\n' "$f" >>"$TMP/c-density"
         continue
         ;;
       .claude/ledgers/*.ledger)
@@ -934,6 +1049,7 @@ slot_runs_closure() {
 # with the tier's name.
 build_legs() {
   local f pkg prev args slot has_md=0 has_src=0 has_pkg=0 has_script=0 has_deleted=0
+  local has_density=0 has_hooks=0
 
   : >"$TMP/present"
   : >"$TMP/css"
@@ -952,6 +1068,8 @@ build_legs() {
   [ -s "$TMP/c-src" ] && has_src=1
   [ -s "$TMP/c-pkg" ] && has_pkg=1
   [ -s "$TMP/c-script" ] && has_script=1
+  [ -s "$TMP/c-density" ] && has_density=1
+  grep -q '^\.claude/hooks/' "$CHANGED" && has_hooks=1
 
   : >"$TMP/vitest-jobs"
   : >"$TMP/harness-jobs"
@@ -975,7 +1093,12 @@ build_legs() {
     return 1
   fi
 
+  # The syntax check of each changed module comes first: it is the cheapest leg and has no
+  # slot in verify:full to sit at.
   legs=""
+  while IFS= read -r f; do
+    [ -f "$ROOT/$f" ] && append_leg "node --check $(printf '%q' "$f")"
+  done <"$TMP/c-node"
   for slot in $LEG_ORDER; do
     if slot_runs_closure "$slot"; then
       append_leg "pnpm $slot"
@@ -1007,7 +1130,7 @@ build_legs() {
         fi
         ;;
       check:comment-density)
-        if [ "$has_src" = 1 ] || [ "$has_pkg" = 1 ]; then
+        if [ "$has_src" = 1 ] || [ "$has_pkg" = 1 ] || [ "$has_density" = 1 ]; then
           append_leg "pnpm $slot"
         fi
         ;;
@@ -1038,6 +1161,11 @@ build_legs() {
         ;;
       check:ledgers)
         append_leg "pnpm $slot"
+        ;;
+      check:settings-hooks)
+        if [ -s "$TMP/c-settings" ] || [ "$has_hooks" = 1 ]; then
+          append_leg "pnpm $slot"
+        fi
         ;;
       check:module-names)
         if [ "$has_pkg" = 1 ]; then
@@ -1090,8 +1218,13 @@ build_legs() {
     name="source-prose"
   fi
   [ "$has_pkg" = 1 ] && name="${name:+$name+}package"
-  [ "$has_script" = 1 ] && name="${name:+$name+}scripts"
+  if [ "$has_script" = 1 ] || [ -s "$TMP/c-node" ]; then
+    name="${name:+$name+}scripts"
+  fi
   [ -s "$TMP/c-ledger" ] && name="${name:+$name+}ledgers"
+  [ -s "$TMP/c-settings" ] && name="${name:+$name+}settings"
+  [ -s "$TMP/c-workflow" ] && name="${name:+$name+}workflow"
+  [ "$has_density" = 1 ] && name="${name:+$name+}density"
   return 0
 }
 
@@ -1106,8 +1239,13 @@ class_summary() {
   [ "$n" -eq 0 ] || line="${line:+$line, }$n file(s) in new package(s) $(paste -s -d ' ' "$TMP/c-pkgdirs")"
   n=$(grep -c '' <"$TMP/c-script")
   [ "$n" -eq 0 ] || line="${line:+$line, }$n shell script(s)"
+  n=$(grep -c '' <"$TMP/c-node")
+  [ "$n" -eq 0 ] || line="${line:+$line, }$n node module(s)"
   n=$(grep -c '' <"$TMP/c-ledger")
   [ "$n" -eq 0 ] || line="${line:+$line, }$n ledger(s)"
+  [ -s "$TMP/c-settings" ] && line="${line:+$line, }settings.json"
+  [ -s "$TMP/c-workflow" ] && line="${line:+$line, }workflow.json"
+  [ -s "$TMP/c-density" ] && line="${line:+$line, }the density baseline"
 
   total=$(grep -c '' <"$OBSERVING")
   if [ "$total" -eq 0 ]; then
