@@ -5,7 +5,7 @@ description: The restatement (carrier) sweep a plan comment must carry when a la
 
 Moved out of `.claude/agents/ticket-agent.md` rule 2 by #628, which keeps the obligation; this file owns the procedure. The rule it answers is `docs/standards/architecture.md` rule 9 (the recorded-sweep form) and rule 10 (the derived figures), and `docs/standards/evidence.md` form 5 (the positive control). Citations of the form `cumulo#<n>` point at cumulo's issues and PRs; bare `#<n>` is this repo's.
 
-**Why a skill and not grep by grep.** The #560 lane (PR #606) ran 778 `grep`, `sed` and `cat` calls in a context that reached 752k tokens, 68.5M effective, for a result that was a list of carrier files (#624). A sweep is one command, its output goes to a file, and the answer is a count and a short list; a fresh agent starting near 60k tokens does that for about a fortieth of the cost.
+**Why a skill and not grep by grep.** A sweep is one command, its output goes to a file, and the answer is a count and a short list; a fresh agent does it in a small context. The measurement is #624 and #628.
 
 ## What the lane gives the agent
 
