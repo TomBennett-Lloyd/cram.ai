@@ -15,6 +15,9 @@ one `ticket-agent` (`.claude/agents/ticket-agent.md`), and a **multi-ticket same
 batch** goes to one `task-orchestrator`. Neither lane's procedure is the other's, so pick
 the section before you dispatch.
 
+A session that starts as the merge owner runs `.claude/skills/merge-owner-start/SKILL.md`
+first: it reconciles state from GitHub, and its § Standing rules bind every step below.
+
 ## Ticket-agent lane
 
 1. **Admission**: the same in-flight table as below (issue, agent handle, branch, and the
@@ -80,9 +83,13 @@ the section before you dispatch.
    the lane takes a paraphrase as fact: the #36 dispatch named the wrong precedent PR
    (PR #86), and the #234 note credited `docs/standards/structure.md` with a rule it does
    not state (PR #246).
-   An issue that is a batch of a trim campaign under `docs/standards/prose.md` § Trim batches
-   (cumulo#545's batches) goes out with `model: 'sonnet'` in the Agent call, cumulo#607's pilot; the
-   `reviewer` it dispatches keeps its frontmatter model.
+   **Model**: the dispatch follows `CLAUDE.md` § Model tiers. An issue whose predicted footprint
+   is docs-tier (every changed path `.md`) or `.claude/` scripts and prose goes
+   out with `model: 'sonnet'` in the Agent call (routing experiment, owner 2026-11-04, #624), as does
+   an issue that is a batch of a trim campaign under `docs/standards/prose.md` § Trim batches
+   (cumulo#545's batches, cumulo#607's pilot); every other issue keeps the agent's frontmatter model.
+   The `reviewer` it dispatches keeps its frontmatter model. A lane whose footprint grows past its
+   route reports it and finishes: the tally records the model it ran on.
    **`run_in_background: true`**, which is the opposite of the rule in
    `.claude/agents/task-orchestrator.md` rule 4 and does not contradict it: that rule governs
    what an orchestrator spawns, and the reason it exists — a nested child's completion routing
@@ -262,8 +269,11 @@ the section before you dispatch.
    `.claude/skills/review-loop/SKILL.md` step 5 states for it — re-verify, push the branch
    (forced after a rebase, plain after a merge), then run any fill the PR still owes per
    step 4 (#205).
-6. **Release**: PR merged, issue closed, no bounce open → the `## Lane report` in the PR body
-   is the retro's first-hand input; run `/retro`; remove the row. A wedged agent (no report,
+6. **Release**: PR merged, issue closed, no bounce open → post the lane's row on #624
+   (`.claude/skills/merge-owner-start/SKILL.md` § Owed checks, retros and the tally); the
+   `## Lane report` in the PR body is the retro's first-hand input, and the retro may be a
+   combined one (`.claude/skills/retro/SKILL.md` step 0), so the row leaves the table without
+   waiting for it. A wedged agent (no report,
    no branch movement) gets the worktree and the issue inspected FIRST, then `TaskStop`, then
    a fresh `RESUME issue #n` dispatch — the new agent reconciles from
    `git log origin/main..<branch>`, `git status`, the plan comment and any PR, and adopts
