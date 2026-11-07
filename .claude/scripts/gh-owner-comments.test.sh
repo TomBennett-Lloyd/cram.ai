@@ -50,6 +50,9 @@ case "$*" in
     ;;
 esac
 if [ -f "$FX/$name.rc" ]; then
+  # A failing gh api still prints the error body as JSON on stdout (the shape a silent
+  # fail-open would swallow as an empty list), so the stub does too.
+  printf '{"message":"Server Error"}\n'
   printf 'stub failure for %s\n' "$name" >&2
   exit "$(cat "$FX/$name.rc")"
 fi
@@ -211,13 +214,18 @@ end
 
 begin "authored: an owner comment passes, a stranger's and a half-match are refused"
 reset
-for case in "owner:$OWNER:OWNER:0" "none:stranger:NONE:3" "login-only:$OWNER:NONE:3" "assoc-only:impostor:OWNER:3"; do
+for case in "owner:$OWNER:OWNER:0" "none:stranger:NONE:3" "login-only:$OWNER:NONE:3" "assoc-only:impostor:OWNER:3" \
+  "login-lowercase-assoc:$OWNER:owner:3" "login-member:$OWNER:MEMBER:3" "login-collaborator:$OWNER:COLLABORATOR:3"; do
   IFS=: read -r label login assoc want <<<"$case"
   case_ctx="$label"
   put one "$(rec 5 "$login" "$assoc" 'x')"
   capture node "$MODULE" authored "$FX/one.json" "$FX/owner.json"
   expect_rc "$want"
 done
+case_ctx="owner login with no association field"
+put one "{id:5,user:{login:'$OWNER'},body:'x'}"
+capture node "$MODULE" authored "$FX/one.json" "$FX/owner.json"
+expect_rc 3
 case_ctx="deleted account"
 put one "$(rec 5 null NONE 'x')"
 capture node "$MODULE" authored "$FX/one.json" "$FX/owner.json"
@@ -226,6 +234,15 @@ case_ctx="owner answer without a login"
 put owner "{owner:{}}"
 capture node "$MODULE" authored "$FX/one.json" "$FX/owner.json"
 expect_rc 2
+end
+
+begin "isOwnerAuthored given no owner refuses, whatever the record says"
+case_ctx="null owner, owner-looking record"
+verdict=$(node --input-type=module -e "
+import { isOwnerAuthored } from '$MODULE';
+console.log(isOwnerAuthored({ user: { login: 'x' }, author_association: 'OWNER' }, null));
+" 2>&1)
+[ "$verdict" = false ] || bad "expected false, got: $verdict"
 end
 
 # --- no unfiltered reader anywhere in the tree -----------------------------------------------
