@@ -17,8 +17,9 @@ the lane before you dispatch; the batch lane's procedure is `batch-lane.md`.
 
 ## Ticket-agent lane
 
-1. **Admission**: the same in-flight table as below (issue, agent handle, branch, and the
-   footprint once the plan comment lands). Predict the footprint from the issue body and
+1. **Admission**: maintain the in-flight table in your session-state scratchpad file
+   (issue, agent handle, phase, footprint, branch; the footprint once the plan comment
+   lands). A row leaves the table only at RELEASE. Predict the footprint from the issue body and
    name any known in-flight overlap in the dispatch prompt, so the agent either plans around
    it or expects the rebase. Before dispatch, read the issue body as it stands — every
    issue, however filed, owner-filed included (#369) — reading each
@@ -135,9 +136,7 @@ the lane before you dispatch; the batch lane's procedure is `batch-lane.md`.
    `merge-pr.sh` checks the diff for either arm.
    **Merge order** — whenever a PR is ready (this step's diff check done, CI green on the
    reported head) and another PR is ready or another lane is in flight, in both lanes: read
-   `.claude/skills/run-issue/merge-order.md` and follow it (#668). It orders the ready PRs from the
-   in-flight table and the overlap read `bash .claude/scripts/overlap-read.sh origin/<R> <H>`, and holds
-   one only for the single wait key it prices, never as a blanket hold.
+   `.claude/skills/run-issue/merge-order.md` and follow it.
    **`bash .claude/scripts/merge-pr.sh <pr>` runs that chain's mechanical half for you** —
    `gh pr update-branch` with retries against the head-sha race, the pending-aware checks
    poll, a merge taken only from `CLEAN` and pinned with `--match-head-commit` to the
@@ -227,6 +226,5 @@ the lane before you dispatch; the batch lane's procedure is `batch-lane.md`.
 
 ## Batch lane
 
-A multi-ticket same-surface batch is the rarer shape (3 dispatches against 180+ lanes, #624), so its
-procedure is `.claude/skills/run-issue/batch-lane.md`: read it when `orchestration.routeRule` picks a
-batch, and not on a single-issue run (#668).
+A multi-ticket same-surface batch follows `.claude/skills/run-issue/batch-lane.md`: read it when
+`.claude/workflow.json` → `orchestration.routeRule` picks a batch.

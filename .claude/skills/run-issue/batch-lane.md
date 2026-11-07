@@ -1,12 +1,8 @@
 # Batch lane
 
-Moved out of `.claude/skills/run-issue/SKILL.md` by #668, which keeps the pointer: read this file when
-`.claude/workflow.json` → `orchestration.routeRule` picks a batch. Step numbers without a file name are
-this file's; `SKILL.md`'s are named.
+Step numbers without a file name are this file's; `SKILL.md`'s are named.
 
-1. **Admission**: maintain the in-flight table in your session-state scratchpad file
-   (issue, agent handle, phase, footprint, branch). A row leaves the table only at
-   RELEASE. No fixed concurrency cap — **maximize safe parallelism** (owner, 2026-08-09,
+1. **Admission**: the in-flight table is `SKILL.md` step 1's. No fixed concurrency cap — **maximize safe parallelism** (owner, 2026-08-09,
    clarified 2026-08-10): isolation quality is the gate — admit every candidate whose
    footprint is cleanly isolated from (or trivially rebasable against) everything in
    flight; entangled candidates hold, or batch. `SKILL.md`'s ticket-agent lane step 1 load gate

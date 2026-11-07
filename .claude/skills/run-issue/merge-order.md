@@ -1,14 +1,10 @@
 # Merge order
 
-Moved out of `.claude/skills/run-issue/SKILL.md` step 4 by #668, which keeps the trigger: read this
-file whenever a PR is ready and another PR is ready or another lane is in flight. It is the merge
-owner's, in both lanes. Its step numbers without a file name are that skill's.
-
 **Merge order** — whenever a PR is ready (`SKILL.md` step 4's diff check done, CI green on the
 reported head) and another PR is ready or another lane is in flight, in both lanes
 (`batch-lane.md` step 4 cites this). It orders ready PRs, and holds one only for the
 single wait key (2) prices below, never as a blanket hold. Its inputs: the ready set;
-the in-flight table (`batch-lane.md` step 1) — each lane's phase (before its first
+the in-flight table (`SKILL.md` step 1) — each lane's phase (before its first
 `pnpm verify`, reviewer pass or PR, or PR open; for a ticket-agent row, read from
 `git log origin/main..<H>`, the plan comment's ticks and `gh pr list --head <H>`) and
 the `Depends on` lines of its issue body and plan comment; and, after `git fetch origin`, the overlap

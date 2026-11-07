@@ -1298,7 +1298,7 @@ end
 # 9. a batch of Closes lines merges --rebase, and is NEVER update-branch'd
 # ==========================================================================================
 # `gh pr update-branch` writes a merge commit, which breaks the one-commit-per-member
-# invariant and blocks rebase-merge outright (run-issue/batch-lane.md step 4, and the bounce
+# invariant and blocks rebase-merge outright (.claude/skills/run-issue/batch-lane.md step 4, and the bounce
 # paragraphs in task-orchestrator). Running it and then refusing at the merge step
 # would pollute the branch first — so the skip, not a late refusal, is the property.
 begin "a multi-Closes PR merges --rebase and is never update-branch'd"
