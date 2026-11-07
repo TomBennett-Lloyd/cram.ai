@@ -230,38 +230,30 @@
 # ---------------------------------------------------------------------------
 # HOOKS, NODE MODULES, SETTINGS, WORKFLOW AND THE DENSITY BASELINE (#699)
 #
-# Each of these used to be outside every class and so ran the whole composite, over ten
-# minutes under load for a one-line hook registration. Each now has a class that names the
-# gates able to see it. The tier name is the class name, `+`-joined like the others.
+# Each has a class that names the gates able to see it. The tier name is the class name,
+# `+`-joined like the others.
 #
-#   hooks (.claude/hooks/*.sh)  are shell scripts: the scripts class, unchanged in what it
-#     runs. A hook below .claude/hooks' top level is still unclassified, so full.
+#   hooks (.claude/hooks/*.sh)  are shell scripts: the scripts class. A hook below
+#     .claude/hooks' top level is unclassified, so full.
 #   node modules (.claude/scripts/*.mjs, .claude/hooks/*.cjs)  join the scripts class with
-#     one leg of their own, `node --check` per file, run first because it is the cheapest.
-#     They stop taking the emit proof: no eslint block, no typecheck and no first-party
-#     egress census reaches a file under .claude (eslint.config.mjs `files:` and
-#     the first-party egress census's importers), so the emit proof only ever sent them to
-#     legs that cannot see them. What can see one is a script or test that names it, which
+#     two legs of their own, `node --check` per file, run first because it is the cheapest,
+#     and eslint over the same files. No typecheck and no first-party egress census reaches
+#     a file under .claude; what else can see one is a script or test that names it, which
 #     the closure and the test selection find. The residual is a source file outside those
 #     directories that imports one; a changed module such a file names goes full instead.
 #   settings (.claude/settings.json)  runs check:settings-hooks (the file parses, every
 #     hook command resolves under the project root to an executable file) and the harnesses
-#     of the hook scripts it names: their basenames seed the closure, so a lib a hook
-#     sources joins as it does for a lib edit. A file the classifier cannot read still
-#     classifies, and the gate leg goes red on it.
+#     of the hook scripts it names: their basenames seed the closure. A file the
+#     classifier cannot read still classifies, and the gate leg goes red on it.
 #   workflow (.claude/workflow.json)  adds every script and hook that names workflow.json to
 #     the closure after it has grown, so each one's harness and every package.json leg that
-#     runs it runs, and its dependants do not. prettier's parse is the JSON check. Every ledger names its owner in a carrier
-#     check:ledgers reads, and that leg runs under every class.
+#     runs it runs, and its dependants do not. prettier's parse is the JSON check.
 #   density (.claude/comment-density.baseline.tsv)  adds check:comment-density to whatever
 #     else runs and is the whole tier on its own: the gate is the baseline's only reader,
 #     and a test naming the file is found by the usual selection.
 #
-# check:settings-hooks also runs whenever any .claude/hooks path is in the change set, since
-# a deleted or un-executable hook is what a settings entry dangles on.
-#
-# Still full: package.json, pnpm-lock.yaml and eval/recordings, eval/reports, eval/*.jsonl,
-# which no class admits; nothing else changed about the default.
+# check:settings-hooks also runs whenever a script, hook or node module is in the change
+# set, since a deleted or un-executable one is what a settings entry dangles on.
 #
 # ---------------------------------------------------------------------------
 # NEW PACKAGES AND THE BANKED GREEN TREE (#12, #292)
@@ -1049,7 +1041,7 @@ slot_runs_closure() {
 # with the tier's name.
 build_legs() {
   local f pkg prev args slot has_md=0 has_src=0 has_pkg=0 has_script=0 has_deleted=0
-  local has_density=0 has_hooks=0
+  local has_density=0
 
   : >"$TMP/present"
   : >"$TMP/css"
@@ -1069,7 +1061,6 @@ build_legs() {
   [ -s "$TMP/c-pkg" ] && has_pkg=1
   [ -s "$TMP/c-script" ] && has_script=1
   [ -s "$TMP/c-density" ] && has_density=1
-  grep -q '^\.claude/hooks/' "$CHANGED" && has_hooks=1
 
   : >"$TMP/vitest-jobs"
   : >"$TMP/harness-jobs"
@@ -1096,8 +1087,11 @@ build_legs() {
   # The syntax check of each changed module comes first: it is the cheapest leg and has no
   # slot in verify:full to sit at.
   legs=""
+  : >"$TMP/node-present"
   while IFS= read -r f; do
-    [ -f "$ROOT/$f" ] && append_leg "node --check $(printf '%q' "$f")"
+    [ -f "$ROOT/$f" ] || continue
+    printf '%s\n' "$f" >>"$TMP/node-present"
+    append_leg "node --check $(printf '%q' "$f")"
   done <"$TMP/c-node"
   for slot in $LEG_ORDER; do
     if slot_runs_closure "$slot"; then
@@ -1112,6 +1106,7 @@ build_legs() {
           while IFS= read -r pkg; do
             append_leg "pnpm exec eslint --no-warn-ignored --max-warnings 0 -- $(printf '%q' "$pkg")"
           done <"$TMP/c-pkgdirs"
+          append_file_leg "pnpm exec eslint --no-warn-ignored --max-warnings 0 --" "$TMP/node-present"
         fi
         ;;
       lint:css)
@@ -1163,7 +1158,7 @@ build_legs() {
         append_leg "pnpm $slot"
         ;;
       check:settings-hooks)
-        if [ -s "$TMP/c-settings" ] || [ "$has_hooks" = 1 ]; then
+        if [ -s "$TMP/c-settings" ] || [ "$has_script" = 1 ] || [ -s "$TMP/c-node" ]; then
           append_leg "pnpm $slot"
         fi
         ;;

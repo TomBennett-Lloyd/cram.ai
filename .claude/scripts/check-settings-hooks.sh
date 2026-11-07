@@ -12,7 +12,10 @@
 # only prefix this gate can resolve; its first word, with the variable replaced by the
 # repository root, must be a regular file with the execute bit. Arguments after the first
 # word are not inspected. A command in any other form is refused, not skipped: a path the
-# gate cannot resolve is a path it cannot vouch for.
+# gate cannot resolve is a path it cannot vouch for. So is a shape it cannot read: an event
+# that is not an array, an entry with no hooks array, a command hook with no command string.
+# Only a hook whose type names something else (a prompt hook) carries no command, and is
+# passed over.
 #
 # An empty set of hook commands is refused. A settings file with no hooks is legitimate,
 # but this repository's has them, and a parse that finds none has more likely misread the
@@ -70,9 +73,21 @@ const events = settings && typeof settings.hooks === "object" && settings.hooks 
 const PREFIX = /^(?:"\$CLAUDE_PROJECT_DIR"|"\$\{CLAUDE_PROJECT_DIR\}"|\$CLAUDE_PROJECT_DIR|\$\{CLAUDE_PROJECT_DIR\})(\/\S*)/;
 let seen = 0;
 for (const [event, entries] of Object.entries(events)) {
-  for (const entry of Array.isArray(entries) ? entries : []) {
-    for (const hook of Array.isArray(entry && entry.hooks) ? entry.hooks : []) {
-      if (!hook || typeof hook.command !== "string") continue;
+  if (!Array.isArray(entries)) {
+    fail(event + ": is not an array of hook entries");
+    continue;
+  }
+  for (const entry of entries) {
+    if (!entry || !Array.isArray(entry.hooks)) {
+      fail(event + ": an entry has no hooks array");
+      continue;
+    }
+    for (const hook of entry.hooks) {
+      if (hook && typeof hook.type === "string" && hook.type !== "command") continue;
+      if (!hook || typeof hook.command !== "string") {
+        fail(event + ": a command hook has no command string");
+        continue;
+      }
       seen += 1;
       const match = PREFIX.exec(hook.command.trim());
       if (!match) {

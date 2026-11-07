@@ -117,15 +117,37 @@ expect_stdout "1 hook command(s) resolve"
 end
 
 # A hook of a type that carries no command (a prompt hook) is not this gate's to resolve.
-begin "a hook entry with no command string is skipped, beside one that resolves"
-hooks_fixture commandless '{}'
+begin "a prompt hook is passed over, beside a command hook that resolves"
+hooks_fixture prompt_hook '{}'
 must printf '%s\n' '{ "hooks": { "Stop": [ { "hooks": [
   { "type": "prompt", "prompt": "check the work" },
-  { "type": "command", "command": 5 },
   { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ok.sh" } ] } ] } }' >"$DIR/.claude/settings.json"
 capture bash "$CHECK" "$DIR"
 expect_rc 0 "$rc"
 expect_stdout "1 hook command(s) resolve"
+end
+
+begin "a command hook whose command is not a string is red, and so is one with none"
+hooks_fixture no_command '{}'
+must printf '%s\n' '{ "hooks": { "Stop": [ { "hooks": [
+  { "type": "command", "command": 5 },
+  { "type": "command" },
+  { "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/gone.sh" },
+  { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ok.sh" } ] } ] } }' >"$DIR/.claude/settings.json"
+capture bash "$CHECK" "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "Stop: a command hook has no command string"
+expect_stderr "hook file does not exist: /.claude/hooks/gone.sh"
+end
+
+begin "an event that is not an array, and an entry with no hooks array, are red"
+hooks_fixture bad_shapes '{}'
+must printf '%s\n' '{ "hooks": { "Stop": { "hooks": [] }, "PreToolUse": [ { "matcher": "Bash" } ],
+  "SessionStart": [ { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ok.sh" } ] } ] } }' >"$DIR/.claude/settings.json"
+capture bash "$CHECK" "$DIR"
+expect_rc 1 "$rc"
+expect_stderr "Stop: is not an array of hook entries"
+expect_stderr "PreToolUse: an entry has no hooks array"
 end
 
 begin "one bad entry among good ones fails the run and names only the bad one"

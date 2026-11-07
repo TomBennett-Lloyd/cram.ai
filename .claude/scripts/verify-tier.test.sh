@@ -1206,7 +1206,7 @@ for interpreter in $BASHES; do
   capture "$interpreter" "$TIER" --dry-run "$WT"
   expect_rc 0 "$rc"
   expect_stdout "verify tier: scripts — 1 shell script(s); observing tests: .claude/scripts/check-module-names.test.sh"
-  expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:module-names && bash .claude/scripts/check-module-names.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/check-module-names.sh"
+  expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:module-names && pnpm check:settings-hooks && bash .claude/scripts/check-module-names.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/check-module-names.sh"
   expect_not_stdout "tier-tool.test.sh"
   expect_not_out "verify:full"
   expect_not_out "unbound variable"
@@ -1251,7 +1251,7 @@ script_fixture script_runner
 write_in .claude/scripts/run-script-tests.sh 'echo runs every harness, revised'
 run_tier
 expect_rc 0 "$rc"
-expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm test:scripts && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/run-script-tests.sh"
+expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:settings-hooks && pnpm test:scripts && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/run-script-tests.sh"
 end
 
 begin "a shell script below .claude/scripts' top level is the full tier"
@@ -1282,7 +1282,7 @@ write_in .claude/scripts/tier-facts.mjs 'export const a = 2;'
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: scripts — 1 node module(s); observing tests: .claude/scripts/tier-facts.test.sh"
-expect_stdout "would run: node --check .claude/scripts/tier-facts.mjs && pnpm check:ledgers && bash .claude/scripts/tier-facts.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/tier-facts.mjs"
+expect_stdout "would run: node --check .claude/scripts/tier-facts.mjs && pnpm exec eslint --no-warn-ignored --max-warnings 0 -- .claude/scripts/tier-facts.mjs && pnpm check:ledgers && pnpm check:settings-hooks && bash .claude/scripts/tier-facts.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/scripts/tier-facts.mjs"
 expect_not_stdout "verify:full"
 end
 
@@ -1296,7 +1296,7 @@ must gitc "$WT" rm --quiet .claude/scripts/tier-facts.mjs
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: scripts — 2 node module(s)"
-expect_stdout "would run: node --check .claude/hooks/tier-scan.cjs && pnpm check:ledgers && pnpm check:settings-hooks && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- .claude/hooks/tier-scan.cjs"
+expect_stdout "would run: node --check .claude/hooks/tier-scan.cjs && pnpm exec eslint --no-warn-ignored --max-warnings 0 -- .claude/hooks/tier-scan.cjs && pnpm check:ledgers && pnpm check:settings-hooks && pnpm check:markdown-links && pnpm exec prettier --check --ignore-unknown -- .claude/hooks/tier-scan.cjs"
 end
 
 begin "a module a source file outside the scripts and hooks names is the full tier"
@@ -1467,7 +1467,7 @@ must gitc "$WT" rm --quiet .claude/scripts/tier-lib.sh
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: scripts — 1 shell script(s)"
-expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:markdown-links"
+expect_stdout "would run: pnpm lint:sh && pnpm check:ledgers && pnpm check:settings-hooks && pnpm check:markdown-links"
 end
 
 if begin_with_esbuild "a comment-only source edit beside a script is one source-prose+scripts tier"; then
@@ -1527,11 +1527,11 @@ end
 begin "a settings diff beside a review-feedback entry keeps the markdown gates"
 settings_fixture settings_md
 write_in .claude/settings.json '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tier-hook.sh" } ] } ], "SessionStart": [] } }'
-write_in docs/tier-fixture-guide.md '# Guide, revised'
+write_in docs/review-feedback.md '- an entry, approved with no changes'
 run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: settings — settings.json; observing tests: .claude/scripts/tier-hook.test.sh"
-expect_stdout "would run: pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:settings-hooks && pnpm check:markdown-links && bash .claude/scripts/tier-hook.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/settings.json docs/tier-fixture-guide.md"
+expect_stdout "would run: pnpm check:adr-index && pnpm check:ledgers && pnpm check:no-course-content && pnpm check:settings-hooks && pnpm check:markdown-links && bash .claude/scripts/tier-hook.test.sh && pnpm exec prettier --check --ignore-unknown -- .claude/settings.json docs/review-feedback.md"
 end
 
 begin "a settings file that does not parse is still the settings tier, and the gate leg is how it goes red"
@@ -1573,6 +1573,17 @@ run_tier
 expect_rc 0 "$rc"
 expect_stdout "verify tier: full — 2 file(s)"
 expect_stdout "neither markdown nor a source type the emit proof handles — tier-fixture.bin"
+end
+
+begin "a deleted script a settings entry names runs the settings gate, because the entry now dangles"
+settings_fixture settings_script_deleted
+write_in .claude/settings.json '{ "hooks": { "PreToolUse": [ { "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/scripts/tier-tool.sh" } ] } ] } }'
+seed_origin 'chore: a settings entry naming a script'
+must gitc "$WT" rm --quiet .claude/scripts/tier-tool.sh
+run_tier
+expect_rc 0 "$rc"
+expect_stdout "verify tier: scripts"
+expect_stdout "pnpm check:settings-hooks"
 end
 
 begin "a deleted hook runs the settings gate, because a settings entry may now dangle"
