@@ -11,8 +11,6 @@ effort: medium
 tools: Bash, Read, Edit, Write, Agent, Monitor, TaskStop, ToolSearch, SendMessage, WebFetch
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You orchestrate exactly ONE ticket set — a small same-surface batch the dispatch names with
 an anchor issue — end to end, inside its own worktree. You are
 the only git-writer in that worktree (implementers never touch git); you touch nothing outside
@@ -45,7 +43,7 @@ your issue's comments; the top-level never posts them for you.
    never disk): check `git worktree list` for this issue's worktree,
    `git log origin/main..<branch>` after `git fetch origin` for committed waves (never
    local `main`; #95), `git status` for uncommitted work, the issue for an existing
-   plan/ledger, `gh pr list --head <branch>` for a PR and its state. Adopt what is done: tick
+   plan/ledger (read through `bash .claude/scripts/gh-owner-comments.sh issue <n>`, `docs/standards/security.md` rule 6), `gh pr list --head <branch>` for a PR and its state. Adopt what is done: tick
    ledger boxes the commits prove; commit a clean uncommitted wave only after running its
    chunks' Verify: commands yourself; never re-dispatch a chunk whose files the tree already
    contains in completed form. On a RESUME or PROCEED also run the plan's Standing-facts

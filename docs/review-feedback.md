@@ -633,6 +633,14 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **How applied**: the PR as proposed; revised in place on the branch if review asks.
 - **Verdict**: can i pre-approve the settings.json changes the planned changes look good to me so i'm happy for you to merge when your happy with them
 
+## 2026-11-07 — issue #672 — cite-not-restate
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to decide whether `CLAUDE.md` § Hard constraints and § Workflow may become concise bullets that cite `docs/adr/0009-explanation-answers.md` § Decision (f) and the `merge.*` keys of `.claude/workflow.json` instead of restating them, with a short per-surface summary kept in `CLAUDE.md`; and whether `.claude/workflow.json` may state "starts at this state by owner decision on 2026-10-13, and the retro loop re-earns or revokes it" once, in `provenance`, instead of seven times. Measured saving: `CLAUDE.md` 13514 to 12320 bytes, `.claude/workflow.json` 21288 to 20643 bytes.
+- **Why**: both files are `humanAlways` (`merge.humanAlwaysRule`): they are the gates and the first document reviewers read. The owner's direction on #672 was concise bullets, human-reviewable, readability weighed against the gain, and clear to lower-powered models.
+- **How applied**: the PR as proposed; revised in place on the branch if review asks.
+- **Verdict**: approved 2026-11-07 — "approve 702"
+
 ## 2026-11-07 — issue #687 — script-allow-rule-integrity
 
 - **Category**: pending — filled at merge

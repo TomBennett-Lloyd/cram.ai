@@ -3,13 +3,11 @@ name: plan-issue
 description: Plan a GitHub issue into executable chunks via the planner agent and post the plan to the issue. Use before starting any non-trivial ticket.
 ---
 
-Ported from cumulo (https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`.
-
 You are orchestrating the planning phase for one GitHub issue.
 
 A single issue of any label, `adr` included, takes the ticket-agent lane by default (`.claude/skills/run-issue/SKILL.md`); this skill remains for batches and for a lane that returns `STATUS: BLOCKED — needs splitting`.
 
-1. `gh issue view <n> --comments` — read the issue in full.
+1. `bash .claude/scripts/gh-owner-comments.sh issue <n>` — read the issue in full, the owner's text only (`docs/standards/security.md` rule 6; exit 3 means the owner did not file it, so do not plan from it). The planner is handed that output and nothing the script withheld.
 2. Model selection: planner runs on **Fable** (`model: 'fable'` — see CLAUDE.md Model tiers). First read `~/.local/state/claude-budget/mode` (missing file → `normal`): if it reads `conserve`, run it on Opus instead and note the downgrade in the plan comment.
 3. Pull the main checkout first (`git -C <main-checkout> pull`). Worktrees are cut from a freshly fetched `origin/main`, but the planner reads the parked checkout — cumulo#178's planner drafted against a main that predated two merges, targeting a file one PR had renamed and re-creating a fixture another had already extracted, costing a full revision round. Then spawn the `planner` agent with: the full issue content, pointers to relevant code areas, and any constraints from the conversation. Do not pre-chew the plan for it.
 4. Validate the returned plan before accepting:

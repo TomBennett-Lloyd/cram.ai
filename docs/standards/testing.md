@@ -1,7 +1,5 @@
 # Testing standards
 
-_Ported from [cumulo](https://github.com/TomBennett-Lloyd/cumulo) on 2026-10-13. Citations of the form `cumulo#<n>` are the issues and PRs where each rule was earned there; this repo's own evidence accrues under bare `#<n>`._
-
 **Trigger:** writing or modifying tests; finishing a change and deciding what to test; fixing a bug.
 
 ## Rules

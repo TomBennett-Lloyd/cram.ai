@@ -306,6 +306,8 @@ pr_closes=()
 pr_lanes=()
 pr_batches=()
 pr_partof=()
+pr_lane_missing=()
+pr_lane_template=''
 pr_commits=()
 pr_strays_squash=()
 pr_strays_rebase=()
@@ -341,6 +343,8 @@ read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
   pr_lanes=()
   pr_batches=()
   pr_partof=()
+  pr_lane_missing=()
+pr_lane_template=''
   pr_commits=()
   pr_strays_squash=()
   pr_strays_rebase=()
@@ -364,6 +368,8 @@ read_pr() { # read_pr -> 0 and the globals refreshed, or 1 with $last_error set
       lane) pr_lanes+=("$a") ;;
       batch) pr_batches+=("$a") ;;
       partof) pr_partof+=("$a") ;;
+      lanemissing) pr_lane_missing+=("$a") ;;
+      lanetemplate) pr_lane_template="$a" ;;
       commit) pr_commits+=("$a") ;;
       stray)
         case "$a" in
@@ -631,6 +637,12 @@ step 'classify' "PR #$pr_number is $pr_state on '$pr_head_ref'; $merge_reason; $
 # update-branch had written to the branch and the poll had waited out a full CI
 # run — the cost this script exists to save.
 if [ "$already_merged" = "0" ]; then
+  # The lane report's fields are the ticket-agent template's (.claude/agents/ticket-agent.md rule 8);
+  # pr-facts.mjs reads that list, and a report missing one is a bounce, not a merge (#671).
+  [ -z "$pr_lane_template" ] || fail 'classify' \
+    "the lane-report template cannot be read ($pr_lane_template) — no report can be checked until the \`## Lane report\` block in .claude/agents/ticket-agent.md and .claude/scripts/pr-facts.mjs agree; this is the repo's to fix, not the lane's report"
+  [ "${#pr_lane_missing[@]}" -eq 0 ] || fail 'classify' \
+    "the lane report is missing field(s): $(printf '%s, ' "${pr_lane_missing[@]}" | sed 's/, $//') — the lane refreshes its report (.claude/agents/ticket-agent.md rule 8) or the merge owner adds the field to the PR body"
   [ -n "$merge_method" ] || fail 'classify' \
     "$merge_reason — cannot tell a single-issue squash from a batch rebase. Correct the Closes or Part of lines or the lane declarations in the body, or pass --method squash|rebase"
   # Ahead of the curated-history check, so that a HUMAN batch carrying its
@@ -764,8 +776,28 @@ amendment_state() { # amendment_state <diff> <added lines> -> as feedback_state
         rc=2
       else
         printf '%s' "$comment" >"$spool.comment"
-        reason=$(node "$check" plan-named "$spool" "$spool.comment" "$issue" ${hits[@]+"${hits[@]}"} 2>&1)
+        # Anyone can comment on a public repo, so a comment headed `## Plan` that pastes an ADR
+        # diff is not evidence until the owner is shown to have written it (security.md rule 6).
+        owner=$(gh_call repo view --json owner 2>&1)
         rc=$?
+        if [ "$rc" -ne 0 ]; then
+          reason="gh repo view for the owner exited $rc: $owner"
+          rc=2
+        else
+          printf '%s' "$owner" >"$spool.owner"
+          reason=$(node "$script_dir/gh-owner-comments.mjs" authored "$spool.comment" "$spool.owner" 2>&1)
+          rc=$?
+          case "$rc" in
+            0) reason=$(node "$check" plan-named "$spool" "$spool.comment" "$issue" ${hits[@]+"${hits[@]}"} 2>&1)
+              rc=$?
+              ;;
+            3)
+              reason="the cited plan comment $id was not written by the repository owner (docs/standards/security.md rule 6)"
+              rc=1
+              ;;
+            *) rc=2 ;;
+          esac
+        fi
       fi
     else
       reason=$cite
@@ -774,7 +806,7 @@ amendment_state() { # amendment_state <diff> <added lines> -> as feedback_state
     rm -f "$spool"
     return 0
   fi
-  rm -f "$spool" "$spool.comment"
+  rm -f "$spool" "$spool.comment" "$spool.owner"
   [ "$rc" -eq 0 ] && return 0
   if [ "$rc" -eq 2 ]; then
     printf 'merge.amendmentRule: %s\n' "$reason"
