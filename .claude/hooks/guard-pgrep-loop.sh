@@ -1,28 +1,26 @@
 #!/usr/bin/env bash
 #
-# PreToolUse hook on Bash: refuses a `pgrep -f <pattern>` that sits inside a `while` or
-# `until` loop, the wait loop that never ends. `-f` matches the full command line of every
-# process, the loop's own shell included, so `until ! pgrep -f vitest; do sleep 5; done`
-# finds itself and waits for ever, and two such loops on one pattern find each other (the
-# #268 lane ran 4 h 44 min past its merge; the #629 lane wrote the same loop after the prose
-# rule landed, so the rule is enforced here: docs/standards/evidence.md § Host conventions
-# rule 2, owner decision 2026-11-07, #676).
+# PreToolUse hook on Bash: refuses a `pgrep -f <pattern>` inside a `while` or `until` loop when
+# the pattern matches the text of the call itself. `-f` reads every process's whole command
+# line, and a second shell running the same call holds that text, so two such waits never end:
+# docs/standards/evidence.md § Host conventions rule 2 owns the reason and the replacements
+# (owner decision 2026-11-07, #676).
 #
-# Refused: `pgrep -f` with a pattern that matches this call's own text, anywhere between a
-# `while`/`until` and its `done` (the condition or the body). Passed: a one-shot `pgrep -f`,
-# `pgrep -x` (and `-fx`, whose whole-command-line match a longer line never equals), `pgrep -f`
-# in a `for` loop (bounded), and the bracket form `'[v]itest'`, which does not match its own
-# text. The bracket form is judged by that match, not by its shape: it fails when the plain
-# word appears elsewhere in the same command, which the shell's own command line then holds.
+# Refused: that call anywhere between a `while`/`until` and its `done`, the condition or the
+# body. Passed: a one-shot `pgrep -f`, one in a `for` loop (bounded), `pgrep -x`, and a pattern
+# that does not match the call's own text, the bracket form `'[v]itest'` among them. The
+# bracket form is judged by that match, not by its shape: it fails when the plain word
+# appears elsewhere in the same command. `-x` anchors the pattern to the whole line, so `-fx`
+# is judged the same way, anchored.
 #
 # Exit 2 refuses the call and hands stderr to the agent; exit 0 lets it run. Cannot judge (a
 # missing tool, an unreadable event) is exit 1 — non-blocking and loud — never exit 2: this
 # hook runs on every Bash call in every lane (hook-context.sh's header).
 #
-# The scan is lexical, on the terms guard-dirty-revert.sh states, with the script argument of
-# `sh|bash|zsh|dash|ksh -c` and `eval` read as commands too. A `pgrep` reached through a
-# variable, `xargs` or a function defined in an earlier call is not seen. A `-f` pattern that
-# holds a `$` cannot be judged and is refused.
+# The scan is lexical, with the script argument of `sh|bash|zsh|dash|ksh -c`, a heredoc fed to
+# such a shell, and `eval` read as commands too. A `pgrep` reached through a variable, `xargs`
+# or a function is not seen. A pattern holding a variable expansion, or one that does not
+# compile as a regular expression, cannot be judged and is refused.
 # Cases: .claude/scripts/guard-pgrep-loop.test.sh.
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
@@ -64,7 +62,9 @@ if (typeof command !== 'string') process.exit(0);
 
 // Appends each simple command's words to `commands`. A `$(…)` or backtick body is scanned
 // into the same list, after the command that holds it, so the list stays in execution order
-// for the loop count. `nested` ends the scan at the `)` that closes a `$(`.
+// for the loop count. `nested` ends the scan at the `)` that closes a `$(`. A heredoc body is
+// not scanned; it is added as `{ owner, body }` after the command that reads it, for `analyse`
+// to read when that command is a shell.
 function scan(src, i, commands, nested) {
   const heredocs = [];
   let depth = 0;
@@ -82,19 +82,33 @@ function scan(src, i, commands, nested) {
   };
   while (i < src.length) {
     const c = src[i];
+    // `$((…))` and a command-position `((…))` hold arithmetic, whose `<<` is a shift.
+    let unit = -1;
+    if (src.startsWith('$((', i)) unit = arithEnd(src, i + 1);
+    else if (c === '(' && src[i + 1] === '(' && word === null && current.length === 0) unit = arithEnd(src, i);
+    if (unit !== -1) {
+      word = (word ?? '') + src.slice(i, unit);
+      i = unit;
+      continue;
+    }
     if (c === '\n') {
-      split();
+      end();
       i++;
       for (const h of heredocs) {
+        const body = [];
         while (i < src.length) {
           let eol = src.indexOf('\n', i);
           if (eol === -1) eol = src.length;
           const line = src.slice(i, eol);
           i = eol + 1;
           if ((h.strip ? line.replace(/^\t+/, '') : line) === h.delim) break;
+          body.push(line);
         }
+        commands.push({ owner: h.owner, body: body.join('\n') });
       }
       heredocs.length = 0;
+      current = [];
+      commands.push(current);
     } else if (c === ' ' || c === '\t') {
       end();
       i++;
@@ -133,9 +147,12 @@ function scan(src, i, commands, nested) {
           const q = src[i++];
           while (i < src.length && src[i] !== q) delim += src[i++];
           i++;
+        } else if (src[i] === '\\') {
+          delim += src[i + 1] ?? '';
+          i += 2;
         } else delim += src[i++];
       }
-      heredocs.push({ delim, strip });
+      heredocs.push({ delim, strip, owner: current });
     } else if (c === "'") {
       word ??= '';
       i++;
@@ -161,15 +178,6 @@ function scan(src, i, commands, nested) {
         word += src[i++] ?? '';
       }
       i++;
-    } else if (src.startsWith('${', i)) {
-      let level = 0;
-      const from = i;
-      do {
-        if (src[i] === '{') level++;
-        else if (src[i] === '}') level--;
-        i++;
-      } while (level > 0 && i < src.length);
-      word = (word ?? '') + src.slice(from, i);
     } else if (c === '`') {
       word ??= '';
       i = backtick(src, i, commands);
@@ -183,6 +191,16 @@ function scan(src, i, commands, nested) {
   }
   end();
   return i;
+}
+
+// The index past the `))` that closes the `((` at `i`, or -1 when there is none.
+function arithEnd(src, i) {
+  let level = 0;
+  for (let k = i; k < src.length; k++) {
+    if (src[k] === '(') level++;
+    else if (src[k] === ')' && --level === 0) return src[k - 1] === ')' && k - 1 > i + 1 ? k + 1 : -1;
+  }
+  return -1;
 }
 
 // Scans the `` `…` `` at `i` as a command body and returns the index past its closing backtick.
@@ -232,11 +250,15 @@ function pgrepFacts(args) {
   return { full, exact, ignoreCase, pattern };
 }
 
-// Whether the shell running this call would find its own command line with the pattern.
+// Whether the pattern finds the call's own text: unanchored for `-f`, over the whole line
+// for `-fx`, where the call sits among other words as it does in a second shell's line.
 function matchesOwnText(facts) {
-  if (/[$`]/.test(facts.pattern)) return true;
+  if (/\$[\w{@*#?!]/.test(facts.pattern)) return true;
   try {
-    return new RegExp(facts.pattern, facts.ignoreCase ? 'i' : '').test(command);
+    const flags = (facts.ignoreCase ? 'i' : '') + 's';
+    return facts.exact
+      ? new RegExp(`^(?:${facts.pattern})$`, flags).test(`sh -c ${command} x`)
+      : new RegExp(facts.pattern, flags).test(command);
   } catch {
     return true;
   }
@@ -247,6 +269,19 @@ const refused = [];
 // `stack` holds one boolean per open loop: true for `while`/`until`, false for a bounded one.
 function analyse(commands, stack, depth) {
   for (const simple of commands) {
+    if (!Array.isArray(simple)) {
+      // A heredoc fed to a shell without `-c` is the script it runs.
+      const { owner, body } = simple;
+      const head = owner.find((w) => !LEADERS.has(w) && !ASSIGNMENT.test(w) && !WRAPPERS.has(w) && w !== 'while' && w !== 'until');
+      if (depth < 4 && head !== undefined && SHELLS.has(path.basename(head)) && !owner.some((a) => /^-[^-]*c/.test(a))) {
+        const inner = [];
+        scan(body, 0, inner, false);
+        const open = stack.length;
+        analyse(inner, stack, depth + 1);
+        stack.length = open;
+      }
+      continue;
+    }
     let k = 0;
     let header = false;
     for (; k < simple.length && !header; k++) {
@@ -270,7 +305,7 @@ function analyse(commands, stack, depth) {
     const args = simple.slice(k + 1);
     if (name === 'pgrep') {
       const facts = pgrepFacts(args);
-      if (stack.includes(true) && facts.full && !facts.exact && facts.pattern !== undefined && matchesOwnText(facts)) {
+      if (stack.includes(true) && facts.full && facts.pattern !== undefined && matchesOwnText(facts)) {
         refused.push(`pgrep ${args.join(' ')}`);
       }
     } else if (depth < 4 && (SHELLS.has(name) || name === 'eval')) {
@@ -303,13 +338,14 @@ hits=$(printf '%s' "$event" | "$HOOK_NODE_CMD" -e "$LOOP_PROGRAM") || {
 [ -z "$hits" ] && exit 0
 
 {
-  echo "guard-pgrep-loop: refused — pgrep -f inside a while/until loop matches the loop's own shell, so the wait never ends:"
+  echo "guard-pgrep-loop: refused — pgrep -f inside a while/until loop, with a pattern that matches this command's own text:"
   printf '%s\n' "$hits"
-  echo "(docs/standards/evidence.md § Host conventions rule 2; #268 ran 4 h 44 min on this). Instead:"
+  echo "(docs/standards/evidence.md § Host conventions rule 2). Instead:"
   echo "  - run the long command as a background tool call and take the harness's exit notice, or the Monitor tool;"
   echo "  - start it with '&', keep \$!, and 'wait \$!' or poll 'kill -0 <pid>';"
   echo "  - match by name with 'pgrep -x <name>', which does not read the command line;"
   echo "  - or write the pattern in bracket form, 'pgrep -f \"[v]itest\"', which passes only while the plain"
-  echo "    word appears nowhere else in this command."
+  echo "    word appears nowhere else in this command. A pattern holding a variable expansion, or one that"
+  echo "    does not compile as a regular expression, cannot be judged and is refused too."
 } >&2
 exit 2

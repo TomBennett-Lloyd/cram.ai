@@ -78,7 +78,8 @@ refuses 'while pgrep -f vitest | grep -q .; do sleep 1; done'
 refuses 'while pgrep -f vitest; do sleep 1; done 2>&1'
 refuses 'echo before; while pgrep -f vitest; do sleep 1; done; echo after'
 
-# Each case below answers a mutant of the hook that the cases above let survive (#676).
+# --- cases a hand-picked list missed ---------------------------------------------------------
+
 refuses 'while true; do for i in 1; do :; done; pgrep -f vitest; break; done'
 refuses 'while FOO=1 pgrep -f vitest; do sleep 1; done'
 refuses 'while true; do LC_ALL=C pgrep -f vitest; done'
@@ -86,6 +87,25 @@ refuses 'while true; do pgrep -f -- -vitest; done'
 refuses 'while pgrep -f -i "[V]ITEST"; do echo vitest; sleep 1; done'
 refuses $'echo "$(true)"; while pgrep -f vitest; do sleep 1; done'
 refuses $'cat <<-EOF\n\tbody\n\tEOF\nwhile pgrep -f vitest; do sleep 1; done'
+
+refuses $'bash <<\'SH\'\nwhile pgrep -f vitest; do sleep 1; done\nSH'
+refuses $'zsh -s <<SH\nuntil ! pgrep -f vitest; do sleep 1; done\nSH'
+refuses $'while true; do bash <<SH\npgrep -f vitest\nSH\ndone'
+refuses $'(( x = 1 << 2 ))\nwhile pgrep -f vitest; do sleep 1; done'
+refuses $'echo $((1 << 2))\nwhile pgrep -f vitest; do sleep 1; done'
+refuses $'cat <<\\EOF\nbody\nEOF\nwhile pgrep -f vitest; do sleep 1; done'
+refuses 'while pgrep -fx ".*vitest.*"; do sleep 1; done'
+refuses $'echo a\nwhile pgrep -fx ".*vitest.*"; do sleep 1; done'
+refuses $'while bash <<SH\npgrep -f vitest\nSH\ndo sleep 1; done'
+refuses $'echo $((1 <<\n2))\nwhile pgrep -f vitest; do sleep 1; done'
+passes $'bash <<\'SH\'\nwhile pgrep -x node; do sleep 1; done\nSH'
+passes $'bash -c "echo hi" <<\'SH\'\nwhile pgrep -f vitest; do sleep 1; done\nSH'
+passes $'bash -ec "echo hi" <<\'SH\'\nwhile pgrep -f vitest; do sleep 1; done\nSH'
+# A loop a shell's heredoc leaves open does not reach the command after the heredoc.
+passes $'bash <<\'SH\'\nwhile true; do\nSH\npgrep -f vitest'
+passes $'cat <<\'SH\'\nwhile pgrep -f vitest; do sleep 1; done\nSH'
+passes "while pgrep -f '[v]itest\$'; do sleep 1; done"
+passes $'echo $((1 << 2)); true'
 
 # --- the #487 fixture, and the loop inside another shell ----------------------------------
 
@@ -128,6 +148,7 @@ passes "while pgrep --newest -f '[v]itest'; do sleep 1; done"
 passes 'while pgrep -x node; do sleep 1; done'
 passes 'until ! pgrep -x node; do sleep 1; done'
 passes 'while pgrep -fx "node vitest run"; do sleep 1; done'
+passes 'while pgrep -fx "vitest.*"; do sleep 1; done'
 passes "until ! pgrep -f '[v]itest'; do sleep 5; done"
 passes 'until ! pgrep -f "[v]itest"; do sleep 5; done'
 passes "zsh -c 'until ! pgrep -f \"[2]68-mut/mutate.py\"; do sleep 1; done'"
@@ -172,6 +193,7 @@ while read -r verdict row; do
       ;;
   esac
 done <<'ROWS'
+refuses while f=$(pgrep -f vitest); do sleep 1; done
 refuses while [ -n "$(pgrep -f vitest)" ]; do sleep 1; done
 refuses while [ -n "`pgrep -f vitest`" ]; do sleep 1; done
 refuses until [ -z "$(echo $(pgrep -f vitest))" ]; do sleep 1; done
