@@ -125,6 +125,26 @@ describe('POST /courses/:id/ask, a follow-up', () => {
     expect(rest).toEqual([]);
   });
 
+  it('keeps the typed question for a rewrite that differs from it only in spacing', async () => {
+    const spy = new SpyEmbedder();
+    const server = await hiveCourse(
+      (retrieved) => [
+        rewritten(FOLLOW_UP, TURNS, standaloneReply({ question: 'And  the drones?' })),
+        ...followUpReplies(retrieved, TURNS),
+      ],
+      spy,
+    );
+    spy.embedded.length = 0;
+    const reply = await askBio(server, FOLLOW_UP, TURNS);
+    expect(reply.json).not.toHaveProperty('searched');
+    expect(spy.embedded[0]).toBe(FOLLOW_UP);
+    expect(askLogs(server)[0]).toEqual({
+      operation: 'ask rewrite',
+      courseId: 'bio',
+      outcome: 'kept',
+    });
+  });
+
   it('carries the newest ASK_TURN_WINDOW turns and counts the rest as dropped', async () => {
     const thread = Array.from({ length: ASK_TURN_WINDOW + 1 }, (_, at) => ({
       question: `Question ${String(at)}?`,

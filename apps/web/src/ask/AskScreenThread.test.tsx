@@ -12,6 +12,7 @@ const NOT_COVERED_REPLY: Reply = {
 };
 const MODEL_FAILED_REPLY: Reply = { status: 502, body: { status: 'model-failed' } };
 const GROUNDED_REPLY: Reply = { status: 200, body: GROUNDED };
+const MALFORMED_REPLY: Reply = { status: 500, body: {} };
 
 /** A screen whose server answers the `n`th ask with `replies[n]`, the last reply thereafter. */
 const thread = (replies: readonly (Reply | Promise<Reply>)[]) => {
@@ -73,6 +74,23 @@ describe('AskScreen’s thread', () => {
     expect(turnsSent(1)).toEqual([]);
     const [failed] = exchanges();
     expect(failed?.querySelector('[role="alert"]')?.textContent).toBe(MODEL_FAILED);
+  });
+
+  it('never carries an exchange the server did not answer', async () => {
+    const { ask, turnsSent } = thread([MALFORMED_REPLY, GROUNDED_REPLY]);
+    await ask('What are drones?');
+    await ask('What are drones, again?');
+    expect(turnsSent(1)).toEqual([]);
+  });
+
+  it('replaces a pending exchange with a newer question, carrying neither', async () => {
+    const { ask, turnsSent } = thread([new Promise<Reply>(() => undefined), GROUNDED_REPLY]);
+    await ask('What are drones?');
+    await ask('Who are the workers?');
+    expect(turnsSent(1)).toEqual([]);
+    expect(
+      exchanges().map((item) => item.querySelector('.exchange-question')?.textContent),
+    ).toEqual(['Who are the workers?']);
   });
 
   it('offers a new question once a thread exists, which empties it and the next turns', async () => {

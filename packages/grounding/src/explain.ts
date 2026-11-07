@@ -176,7 +176,7 @@ const deep = async (
   return shown({ text, quotes, withheld }, verified.kept, spans, slides, assembled);
 };
 
-/** `docs/standards/grounding.md` rule 2's order, the verify stage by depth (`docs/adr/0009-explanation-answers.md` § Decision (b)–(g), (k)); `asked.turns` as `carriedTurns` returns them. */
+/** `docs/standards/grounding.md` rule 2's order, the verify stage by depth (`docs/adr/0009-explanation-answers.md` § Decision (b)–(g), (k)); `turns` as `carriedTurns` returns them. */
 export const explain = async (
   { question, turns }: AskRequest,
   { retrieved, summaries }: ExplainSources,
