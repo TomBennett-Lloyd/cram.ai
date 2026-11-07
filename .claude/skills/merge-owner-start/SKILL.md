@@ -3,9 +3,18 @@ name: merge-owner-start
 description: How a fresh session becomes the merge owner - reconcile from GitHub (open PRs, planned and adr issues, plan comments and what follows them), resume parked plans, run the owed checks, retros and tally, and the standing rules the role carries. Use when the start prompt says you are the merge owner.
 ---
 
-The start prompt is two lines: you are the merge owner of cram.ai; run `merge-owner-start`. Anything else in a prompt is the owner's task for this session, not state to rebuild. Written from the first session that started this way, whose log is [#659's comment](https://github.com/TomBennett-Lloyd/cram.ai/issues/659#issuecomment-6704599936): that session spent its cost locating state, not deciding what to do, so this file is the locating.
+The start prompt is two lines: you are the merge owner of cram.ai; run `merge-owner-start`. The owner's direction of 2026-11-07 (#659) is that every new session works as § How you work says, so the prompt does not repeat it. Anything else in a prompt is the owner's task for this session, not state to rebuild. Written from the first session that started this way, whose log is [#659's comment](https://github.com/TomBennett-Lloyd/cram.ai/issues/659#issuecomment-6704599936): that session spent its cost locating state, not deciding what to do, so this file is the locating.
 
 **Where state lives.** Issues and PRs are the record: plan comments, lane reports in PR bodies, the owner's `PROCEED` or `REVISE` lines, the tally on #624. Memory is a pointer to them and holds the current state in about fifteen lines (main's short sha, open PRs, parked plans by number, owed items); a handover moves history out of it, to the issue or PR that already records it, because memory loads whole every session. Re-derive state from GitHub rather than trusting a snapshot. The lane and merge procedure is `.claude/skills/run-issue/SKILL.md`, which this file does not restate.
+
+## How you work
+
+Your role is to decide the order of the work and work through the backlog. You wait for the owner only when you are actually blocked, and a blocked item does not stop the others: owner direction 2026-11-07, relayed to this lane (#659), verbatim: "i think you're being over cautious on the \"should i do this thing you asked me to do now\" the whole point of your role is to decide on the ordering of things and work through the backlog, you should only wait for me if you're actually blocked on something, if you're blocked you can still work away on things that you're not blocked on" and "we should change the start prompt, i want any new session to work like this".
+
+- **What waits for the owner:** the approval of a PR on a path `.claude/workflow.json` holds for the owner's review, an ADR plan's `PROCEED`, a question only the owner can answer, and permission or settings edits. Nothing else waits: dispatch it, discovered issues included (this replaces the start prompt's earlier line "discovered issues are mine to triage; don't dispatch them unasked").
+- **While blocked, work the unblocked items.** Technical debt, retros, triage and the tally are the usual ones, unless the owner has said to conserve tokens for feature work (read the budget mode too).
+- **A process change that cuts token burn goes first**, before more feature work, so the budget is not spent before the owner can answer: the owner's example is a lane or retro cost the tally shows to be too high.
+- Ask the owner in chat when blocked, naming what you are blocked on and what you are doing meanwhile, once, not per item.
 
 ## 1. Reconcile
 
@@ -38,7 +47,7 @@ That prints an index, time, length and first line per comment from the plan on; 
 - **An answered plan** resumes as `RESUME issue #<n>` followed by the owner's line verbatim (`PROCEED — <words>` or `REVISE — <feedback>`, `.claude/agents/ticket-agent.md` rule 2), with the four dispatch fields of `run-issue` step 2. Post the owner's words on the issue first, so the record outlives your session.
 - **A plan older than main.** The overlap note pastes `git log --oneline <the sha the plan's sweep names>..origin/main -- <the plan's files>`. A non-empty output tells the lane the plan's counts predate those commits and its sweep is re-run before the first edit (`.claude/skills/carrier-sweep/SKILL.md`); the lane decides what moved.
 - **Plans that share a file** the append-only logs do not cover, such as the tail of one ADR's Amendments, release one at a time, in `run-issue` step 4's **Merge order**; the second to merge takes a `REBASE —` bounce, and each plan's footprint says so before you dispatch.
-- **A plan with no answer** stays parked. Do not ask the owner again for what an issue comment already records.
+- **A plan with no answer** stays parked, and you work the rest of the backlog (§ How you work). Do not ask the owner again for what an issue comment already records.
 
 ## 4. Owed checks, retros and the tally
 
