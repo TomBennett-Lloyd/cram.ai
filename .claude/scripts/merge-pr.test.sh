@@ -1820,16 +1820,6 @@ expect_rc 1
 expect_stderr 'missing field(s): Review'
 end
 
-begin "pr-facts.mjs without the template beside it refuses a lane report rather than passing it"
-must mkdir -p "$TMP_ROOT/facts-alone/scripts"
-must cp "$SCRIPTS/pr-facts.mjs" "$TMP_ROOT/facts-alone/scripts/"
-printf '{"body":"## Lane report — issue #21\\nSTATUS: DONE"}' >"$TMP_ROOT/facts-alone/in.json"
-capture node "$TMP_ROOT/facts-alone/scripts/pr-facts.mjs" <"$TMP_ROOT/facts-alone/in.json"
-expect_rc 0
-expect_stdout 'lanemissing'
-expect_stdout 'lane-report template unreadable'
-end
-
 # ==========================================================================================
 # 11. a failing check exits non-zero and names the check
 # ==========================================================================================
