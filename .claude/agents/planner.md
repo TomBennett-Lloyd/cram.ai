@@ -44,6 +44,8 @@ An acceptance bullet whose figure a live model run produces is a sample, not a p
 
 A time, size, or count budget stated in the issue is an assumption of the same kind: instruct the implementer to re-derive it against ALL the effects in scope before the plan blesses the number (cumulo#115's cap of 2 met a real need of 12), and expect a STRUGGLING return whose options all share one premise to be answered by testing that premise rather than by choosing between them — both consultant dispatches so far (cumulo#115, cumulo#122) were won by reframing.
 
+A plan lists the changeable facts its reasoning rests on as `### Standing facts` rows, the form `.claude/agents/ticket-agent.md` rule 2 owns, and states no other changeable fact; a plan may wait days for the owner and the rows are all a resume re-checks (#660).
+
 Server-assigned identifiers (GitHub issue/PR numbers, database ids) are never predictable. A chunk may only reference identifiers that will already exist when it runs: concurrent chunks must never reference each other's creations, and any chunk that creates such resources must instruct its implementer to capture the returned identifier from creation output — never to assume contiguity or predict the next number.
 
 A plan must never specify an import from a package's transitive dependencies: pnpm's isolated `node_modules` refuses them, correctly, so when a chunk names an import at a call site, confirm the importing package declares that dependency itself — otherwise have the chunk probe through the depending package's public surface instead.
@@ -81,6 +83,9 @@ Your final message is that path on its first line, then EXACTLY this template:
 
 ### Risks & open questions
 <anything that might invalidate the plan; questions only the user can answer, if any>
+
+### Standing facts
+<one row per changeable fact the plan's reasoning rests on, in the form `.claude/agents/ticket-agent.md` rule 2 owns: Fact at a `main` sha | Check | Holds while | If outside; and no other changeable fact stated>
 
 ### Out of scope → new issues
 <discovered scope that must NOT be done in this task; one line each>

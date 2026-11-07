@@ -49,4 +49,4 @@ Not the hit lines themselves, and not file contents.
 
 ## What the lane does with it
 
-Paste the file into the plan comment by shell (`cat <scratchpad>/sweep-<n>.md >> <plan body file>`), so the output arrives pasted without passing through the lane's context; read only the lines of the files you edit. The proposed leaves are yours to own: the reviewer reads each against its hit.
+Paste the file into the plan comment by shell (`cat <scratchpad>/sweep-<n>.md >> <plan body file>`), so the output arrives pasted without passing through the lane's context; read only the lines of the files you edit. The proposed leaves are yours to own: the reviewer reads each against its hit. The pasted output is evidence at the plan's sha; a resume checks the plan's Standing facts and does not re-run it (`.claude/agents/ticket-agent.md` rule 2).
