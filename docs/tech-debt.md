@@ -177,3 +177,15 @@ Maintenance: a row dies with its issue; whoever closes the issue deletes the row
 - Where: `repeatedFooter` in `packages/ingest/src/adapters/pdf/page-layout.ts`
 - What: a line that recurs at one position on more than half a PDF deck's pages, in the lower half and smaller than the rest of the deck's text, is read as a footer and kept out of the body. A build's small "Source: …" line repeated on most pages is read that way too, so it reaches neither the body nor retrieval. A step repeated at body size stays. Suspected root cause: position, repetition and size are all the text layer tells a footer by.
 - Source: PR for #567 (review cycle 1)
+
+## 2026-11-07 — the two resolvers look a source id up two ways
+
+- Where: `packages/grounding/src/resolve-quotes.ts` (`resolveQuotes`, `slides.find`), `packages/grounding/src/resolve-citations.ts` (`resolveCitations`, a `Map` built from the records)
+- What: when a source id repeats among the slides, `resolveQuotes` takes the first slide and `resolveCitations` the last, so one citation can resolve against different lines on the two surfaces. The cause is that each resolver builds its own lookup. #481 changed both only as far as they read `copiedLine`. Suspected fix: one shared lookup, or a refusal of repeated ids at assembly.
+- Source: #481 (review pass)
+
+## 2026-11-07 — a declared tier-1 red hides every verify leg after it
+
+- Where: `pnpm verify` as `.claude/scripts/verify-tier.sh` composes it; `.claude/agents/ticket-agent.md` rule 4
+- What: the legs are chained with `&&`, so a tier-1 red that rule 4 allows at a commit stops the chain at `@cram/eval`'s tests. Every later leg goes unrun and unreported, and the commit's rc=1 cannot tell a clean declared red from a red that also hides other failures. #481's C2 and C4 verifies stopped there, and the reviewer ran the remaining legs by hand. Suspected fix: run the remaining legs after a tier-1 failure and report them, or give tier 1 its own exit code.
+- Source: #481 (review pass)

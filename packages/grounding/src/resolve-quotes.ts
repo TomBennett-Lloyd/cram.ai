@@ -10,8 +10,7 @@ export interface QuoteResolution {
 /**
  * Each quote pointer looked up as a line of one of `slides`, kept only if that line occurs in
  * `text`; a failing pointer is withheld as `dangling-citation` and its sentence keeps every word
- * (`docs/adr/0009-explanation-answers.md` § Decision (c)). A pointer whose copy is no line is
- * shown as the copy.
+ * (`docs/adr/0009-explanation-answers.md` § Decision (c)).
  */
 export const resolveQuotes = (
   text: string,

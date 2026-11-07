@@ -20,7 +20,7 @@ The synthetic evaluation course: its deck, golden questions, two sets of hand la
 
 `pnpm eval` is tier 2 (`docs/adr/0005-evaluation-as-gate.md` § Decision (e)), and its entry is `eval/src/live-run.measure.test.ts`, whose header names the environment it reads. It runs `runEval` over the course as ingest makes it (`ingestedCourse`, `eval/src/ingested-course.ts`), through the backends `liveConfig` (`eval/src/live-config.ts`) configures and `openLiveGateway` (`eval/src/live-gateway.ts`) opens, and refuses to run unless `measuredCommit` (`eval/src/measured-commit.ts`) finds the tree at `HEAD`.
 
-`eval/src/summary-key.measure.test.ts` runs the summary stage alone, under `CRAM_SUMMARY_KEY=1` and the same backend variables, and prints each lecture's yields, how many citations resolved by number and by copied line, and how many units' text is a slide line verbatim (#481). It writes nothing and runs on a dirty tree, naming the tree's state in its output.
+`eval/src/summary-key.measure.test.ts` runs the summary stage alone, under `CRAM_SUMMARY_KEY=1` and the same backend variables, and prints each lecture's yields, how many citations resolved by number and by copied line, and how many units' text is a verbatim span of a slide (#367's measure; #481). It writes nothing and runs on a dirty tree, naming the tree's state in its output.
 
 `writeRun` (`eval/src/run-files.ts`) writes the report to `eval/reports/<short-sha>.json` and the run's recordings to `eval/recordings/<short-sha>.jsonl`.
 

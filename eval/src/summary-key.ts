@@ -120,7 +120,7 @@ export const lectureKeyRow = (
 
 const ratio = (part: number, whole: number): string => `${String(part)}/${String(whole)}`;
 
-/** The rows summed, with the two eval yields as `eval/src/summary-rows.ts` defines them and #481's three shares. */
+/** The rows summed, with the two eval yields as `eval/src/summary-rows.ts` defines them. */
 export const keyTotals = (rows: readonly LectureKeyRow[]) => {
   const sum = (pick: (row: LectureKeyRow) => number): number =>
     rows.reduce((total, row) => total + pick(row), 0);
