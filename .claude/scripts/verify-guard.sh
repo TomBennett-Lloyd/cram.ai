@@ -15,9 +15,7 @@
 # passed; a command's own non-zero code is kept. The stamp is HEAD, the
 # `git status --porcelain` output, and the tree object of the working tree as
 # `git add -A` sees it. tree-hash-lib.sh owns that tree, what it counts and the
-# retry when another git process holds the index lock; verify-tier.sh takes the
-# same tree from it, so this stamp and its "not banked, the tree changed" line (the
-# narrower check, about whether to bank a green) cannot disagree about a file.
+# retry when another git process holds the index lock.
 #
 # FIVE PARALLEL RUNS ON TEN CORES ARE EACH SLOWER THAN ONE, and a load timeout
 # turns a green tree red (#483, #700). So a run takes one of N slots first. N is
@@ -60,13 +58,6 @@ HEARTBEAT=${CRAM_VERIFY_HEARTBEAT:-60}
 # Polls a slot may stay without an owner file before it counts as abandoned
 # between its mkdir and its first write.
 GRACE_POLLS=10
-
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
-# shellcheck source=./tree-hash-lib.sh
-. "$SCRIPT_DIR/tree-hash-lib.sh" 2>/dev/null || {
-  printf 'verify-guard: cannot load %s/tree-hash-lib.sh\n' "$SCRIPT_DIR" >&2
-  exit 2
-}
 
 die() {
   printf 'verify-guard: %s\n' "$1" >&2
@@ -116,6 +107,10 @@ ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git work 
 STATE=${CRAM_VERIFY_STATE_DIR:-$HOME/.local/state/cram-verify}
 SLOTS="$STATE/verify-slots"
 mkdir -p "$SLOTS" || die "cannot create $SLOTS"
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || die "cannot resolve the script directory"
+# shellcheck source=./tree-hash-lib.sh
+. "$SCRIPT_DIR/tree-hash-lib.sh" 2>/dev/null || die "cannot load $SCRIPT_DIR/tree-hash-lib.sh"
 
 # --- the stamp -----------------------------------------------------------------------
 

@@ -1298,17 +1298,15 @@ describe() {
 }
 
 # current_tree -> the tree object of the working tree as `git add -A` sees it, from
-# tree-hash-lib.sh, which verify-guard.sh stamps with too: the bank and the guard's
-# void cannot disagree about a file. A lib that cannot be loaded makes the tree
-# unhashable, which is not-banked and not-narrowed, so the full composite. Loaded here
-# and not at the top: callers run this in a subshell, so the lib is sourced per call.
+# tree-hash-lib.sh. A lib that cannot be loaded makes the tree unhashable, which is
+# not-banked and not-narrowed, so the full composite.
 current_tree() {
   if ! declare -F worktree_tree >/dev/null && [ -f "$SCRIPTS/tree-hash-lib.sh" ]; then
     # shellcheck source=./tree-hash-lib.sh
     . "$SCRIPTS/tree-hash-lib.sh"
   fi
   declare -F worktree_tree >/dev/null || return 1
-  worktree_tree "$ROOT"
+  TMPDIR="$TMP" worktree_tree "$ROOT"
 }
 
 # bank_path -> where this worktree's banked green tree lives.

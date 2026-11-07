@@ -90,13 +90,19 @@ end
 
 begin "a same-size edit whose mtime is untouched still moves the tree"
 reset_repo
+# ctime ignored and mtime pinned to a year the index was not written in, so the real index
+# trusts its stat entry for the edited file; only a fresh index that reads content sees it.
+must git -C "$REPO" config core.trustctime false
+touch -t 202001010000 "$REPO/tracked.txt"
+must git -C "$REPO" update-index --refresh
 tree_of
 before="$out"
-touch -r "$REPO/tracked.txt" "$TMP_ROOT/stamp-ref"
 printf 'ONE\n' >"$REPO/tracked.txt" || exit 2
-touch -r "$TMP_ROOT/stamp-ref" "$REPO/tracked.txt"
+touch -t 202001010000 "$REPO/tracked.txt"
+[ -z "$(git -C "$REPO" diff --name-only)" ] || bad "setup: git itself already sees the edit, so the stat entry is not being trusted"
 tree_of
 [ "$out" != "$before" ] || bad "content was not read: a same-size, same-mtime edit left the tree unchanged"
+must git -C "$REPO" config --unset core.trustctime
 end
 
 begin "an ignored file's edit is outside the tree"
