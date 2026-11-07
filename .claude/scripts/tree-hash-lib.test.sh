@@ -159,6 +159,47 @@ expect_rc 1
 rm -f "$REPO/.git/index.lock"
 end
 
+# A git wrapper first on PATH: it logs each subcommand it is asked to run and, when GIT_FAIL_ON
+# names one, fails that subcommand, so the tests can count attempts and fail a late step.
+GITLOG="$TMP_ROOT/git.log"
+REAL_GIT=$(command -v git) || exit 2
+must mkdir -p "$TMP_ROOT/gitwrap"
+cat >"$TMP_ROOT/gitwrap/git" <<WRAP_END || exit 2
+#!/usr/bin/env bash
+for a in "\$@"; do
+  case "\$a" in
+    write-tree | add | read-tree)
+      printf '%s\n' "\$a" >>"$GITLOG"
+      [ "\$a" != "\${GIT_FAIL_ON:-}" ] || exit 1
+      break
+      ;;
+  esac
+done
+exec "$REAL_GIT" "\$@"
+WRAP_END
+must chmod +x "$TMP_ROOT/gitwrap/git"
+
+begin "a lock that never clears is attempted exactly TREE_HASH_TRIES times"
+reset_repo
+: >"$GITLOG"
+touch "$REPO/.git/index.lock"
+tree_of PATH="$TMP_ROOT/gitwrap:$PATH" TREE_HASH_TRIES=3 TREE_HASH_PAUSE=0.01
+expect_rc 1
+[ "$(grep -c '^write-tree$' "$GITLOG")" = 3 ] || bad "write-tree ran $(grep -c '^write-tree$' "$GITLOG") times, not 3"
+rm -f "$REPO/.git/index.lock"
+end
+
+begin "a step after the seed that fails is retried, fails the call, and leaves no temporary index"
+reset_repo
+: >"$GITLOG"
+leftovers="$TMP_ROOT/tmpdir-late"
+must mkdir -p "$leftovers"
+tree_of PATH="$TMP_ROOT/gitwrap:$PATH" GIT_FAIL_ON=add TREE_HASH_TRIES=2 TREE_HASH_PAUSE=0.01 TMPDIR="$leftovers"
+expect_rc 1
+[ "$(grep -c '^add$' "$GITLOG")" = 2 ] || bad "add ran $(grep -c '^add$' "$GITLOG") times, not 2"
+[ -z "$(ls -A "$leftovers")" ] || bad "left behind: $(ls -A "$leftovers")"
+end
+
 begin "a directory that is not a repository fails"
 capture env GIT_CEILING_DIRECTORIES="$TMP_ROOT" TREE_HASH_PAUSE=0.01 bash "$DRIVER" "$TMP_ROOT"
 expect_rc 1
