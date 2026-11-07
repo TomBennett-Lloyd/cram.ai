@@ -32,7 +32,8 @@ harness_extra_cleanup() {
 REPO="$TMP_ROOT/repo"
 PLAIN="$TMP_ROOT/plain"
 STUBS="$TMP_ROOT/stubs"
-must mkdir -p "$PLAIN" "$STUBS"
+BIN="$TMP_ROOT/bin"
+must mkdir -p "$PLAIN" "$STUBS" "$BIN"
 must git init -q -b main "$REPO"
 must git -C "$REPO" config user.email "harness@example.invalid"
 must git -C "$REPO" config user.name "Harness"
@@ -106,8 +107,12 @@ reset_repo() {
 }
 must git -C "$REPO" tag seed_ref
 
+# GUARD_EXTRA: extra NAME=value words for the guard's environment, cleared by fresh_state.
+GUARD_EXTRA=()
+
 fresh_state() { # fresh_state -> STATE, an empty state directory
   STATE=$(mktemp -d "$TMP_ROOT/state.XXXXXX") || exit 2
+  GUARD_EXTRA=()
 }
 
 # guard <slots> <command...> -> capture of one guarded run in the fixture repo. The env -u
@@ -118,17 +123,20 @@ guard() {
   shift
   capture -C "$REPO" env -u CRAM_VERIFY_GUARD_HELD -u CRAM_VERIFY_SLOTS -u CRAM_VERIFY_NCPU \
     CRAM_VERIFY_STATE_DIR="$STATE" CRAM_VERIFY_SLOTS="$slots" CRAM_VERIFY_POLL=0.1 \
-    CRAM_VERIFY_HEARTBEAT=1 STUB_DIR="$TMP_ROOT" bash "$GUARD" "$@"
+    CRAM_VERIFY_HEARTBEAT=1 STUB_DIR="$TMP_ROOT" ${GUARD_EXTRA[@]+"${GUARD_EXTRA[@]}"} bash "$GUARD" "$@"
 }
 
 # guard_bg <name> <slots> <command...> -> a guarded run in the background, output in
-# $TMP_ROOT/bg-<name>.out, pid in BG_PID.
+# $TMP_ROOT/bg-<name>.out, pid in BG_PID. perl resets SIGINT to its default before it
+# execs the guard: a job started with & in a non-interactive shell ignores SIGINT, and an
+# ignored signal cannot be trapped.
 guard_bg() {
   local name="$1" slots="$2"
   shift 2
   (cd "$REPO" && exec env -u CRAM_VERIFY_GUARD_HELD -u CRAM_VERIFY_SLOTS -u CRAM_VERIFY_NCPU \
     CRAM_VERIFY_STATE_DIR="$STATE" CRAM_VERIFY_SLOTS="$slots" CRAM_VERIFY_POLL=0.1 \
-    CRAM_VERIFY_HEARTBEAT=1 STUB_DIR="$TMP_ROOT" bash "$GUARD" "$@") >"$TMP_ROOT/bg-$name.out" 2>&1 &
+    CRAM_VERIFY_HEARTBEAT=1 STUB_DIR="$TMP_ROOT" ${GUARD_EXTRA[@]+"${GUARD_EXTRA[@]}"} \
+    perl "$BIN/default-int.pl" bash "$GUARD" "$@") >"$TMP_ROOT/bg-$name.out" 2>&1 &
   BG_PID=$!
   BG_PIDS="$BG_PIDS $BG_PID"
 }
@@ -171,7 +179,35 @@ fake_slot() { # fake_slot <n> <pid> <lstart> -> a slot dir owned by that pid and
   printf '%s\n%s\n%s\n%s\n' "$2" "$3" "/elsewhere" "$(date +%s)" >"$d/owner"
 }
 
-own_start() { ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//'; }
+# own_start -> this process's start time as the guard writes it (C locale, UTC).
+own_start() { LC_ALL=C TZ=UTC ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//'; }
+
+# Stubs on a PATH of their own, put ahead of the real one only in the cases that name them.
+cat >"$BIN/default-int.pl" <<'EOF' || exit 2
+$SIG{INT} = "DEFAULT";
+exec @ARGV;
+EOF
+cat >"$BIN/sleep" <<'EOF' || exit 2
+#!/usr/bin/env bash
+echo x >>"$STUB_DIR/sleeps"
+exec /bin/sleep "$@"
+EOF
+cat >"$BIN/mv" <<'EOF' || exit 2
+#!/usr/bin/env bash
+case "$*" in
+  *owner.tmp*)
+    if [ ! -e "$STUB_DIR/mv-failed" ]; then
+      touch "$STUB_DIR/mv-failed"
+      exit 1
+    fi
+    ;;
+esac
+for m in /bin/mv /usr/bin/mv; do
+  [ -x "$m" ] && exec "$m" "$@"
+done
+exit 127
+EOF
+chmod +x "$BIN/sleep" "$BIN/mv" || exit 2
 
 # --- the tree stamp -------------------------------------------------------------------
 
@@ -254,6 +290,11 @@ for pair in "10 2" "16 4" "3 1" "1 1" "4 1" "8 2"; do
   expect_rc 0
   [ "$out" = "$want" ] || bad "expected $want slots for ncpu $ncpu, got '$out'"
 done
+case_ctx="no override, the machine's own core count"
+want=$(($(getconf _NPROCESSORS_ONLN) / 4))
+[ "$want" -ge 1 ] || want=1
+capture env -u CRAM_VERIFY_SLOTS -u CRAM_VERIFY_NCPU bash "$GUARD" --slots
+[ "$out" = "$want" ] || bad "expected $want slots from this machine's core count, got '$out'"
 case_ctx="CRAM_VERIFY_SLOTS=3"
 capture env CRAM_VERIFY_SLOTS=3 CRAM_VERIFY_NCPU=40 bash "$GUARD" --slots
 [ "$out" = "3" ] || bad "override ignored, got '$out'"
@@ -287,6 +328,26 @@ touch "$TMP_ROOT/release-b"
 wait "$pid_a"
 wait "$pid_b"
 [ "$(slot_dirs)" = "0" ] || bad "slots were left behind after every run exited: $(slot_dirs)"
+end
+
+begin "an edit made while a run is queued is not a change during its run"
+fresh_state
+reset_repo
+rm -f "$TMP_ROOT/started-qa" "$TMP_ROOT/release-qa" "$TMP_ROOT/ran-qb"
+guard_bg qa 1 -- bash "$STUBS/hold.sh" qa
+pid_a=$BG_PID
+wait_for "$TMP_ROOT/started-qa" || bad "holder qa never started"
+guard_bg qb 1 -- bash "$STUBS/mark.sh" qb
+pid_b=$BG_PID
+wait_for_text "$TMP_ROOT/bg-qb.out" "verify: queued" || bad "the second run never queued"
+echo queued-edit >>"$REPO/tracked.txt"
+touch "$TMP_ROOT/release-qa"
+wait "$pid_a"
+wait "$pid_b"
+rc_b=$?
+[ "$rc_b" = "0" ] || bad "the queued run exited $rc_b after an edit made while it queued"
+grep -qF "result void" "$TMP_ROOT/bg-qb.out" && bad "an edit made while the run queued voided it"
+[ -e "$TMP_ROOT/ran-qb" ] || bad "the queued run never ran"
 end
 
 begin "a slot is released after a passing run and after a failing one"
@@ -389,6 +450,62 @@ expect_stdout "verify: queued"
 expect_stdout "recovered a stale slot"
 end
 
+begin "each ownerless slot gets its own grace, not one shared count (two slots wait the same polls as one)"
+fresh_state
+reset_repo
+rm -f "$TMP_ROOT/sleeps"
+must mkdir -p "$STATE/verify-slots/slot-1" "$STATE/verify-slots/slot-2"
+GUARD_EXTRA=(PATH="$BIN:$PATH")
+guard 2 -- bash "$STUBS/pass.sh"
+expect_rc 0
+expect_stdout "recovered a stale slot"
+polls=$(grep -c . "$TMP_ROOT/sleeps" 2>/dev/null || true)
+[ "${polls:-0}" -ge 9 ] || bad "two ownerless slots were recovered after ${polls:-0} sleeps; the grace is ten polls each"
+end
+
+begin "a slot holder's start time is read the same way in any locale and time zone"
+fresh_state
+reset_repo
+fake_slot 1 "$$" "$(own_start)"
+GUARD_EXTRA=(TZ=Pacific/Kiritimati LC_ALL=C)
+guard_bg zone 1 -- bash "$STUBS/mark.sh" zone
+pid_zone=$BG_PID
+wait_for_text "$TMP_ROOT/bg-zone.out" "verify: queued" || bad "no queued line behind a live holder in another zone"
+sleep 0.5
+[ ! -e "$TMP_ROOT/ran-zone" ] || bad "a waiter in another time zone took the slot of a live holder"
+grep -qF "recovered a stale slot" "$TMP_ROOT/bg-zone.out" && bad "a live holder was read as stale from another time zone"
+kill "$pid_zone" 2>/dev/null
+wait "$pid_zone" 2>/dev/null
+end
+
+begin "recovery waits for the recovery lock while a live process holds it, and takes it over once that holder dies"
+fresh_state
+reset_repo
+fake_slot 1 "$(dead_pid)" "Thu Jan  1 00:00:00 1970"
+must mkdir -p "$STATE/verify-slots/recover.lock"
+printf '%s\n%s\n%s\n%s\n' "$$" "$(own_start)" "/elsewhere" "$(date +%s)" >"$STATE/verify-slots/recover.lock/owner"
+guard_bg rl 1 -- bash "$STUBS/mark.sh" rl
+pid_rl=$BG_PID
+wait_for_text "$TMP_ROOT/bg-rl.out" "verify: queued" || bad "no queued line while the recovery lock is held"
+sleep 0.5
+[ ! -e "$TMP_ROOT/ran-rl" ] || bad "a stale slot was recovered while a live process held the recovery lock"
+grep -qF "recovered a stale slot" "$TMP_ROOT/bg-rl.out" && bad "recovered under someone else's recovery lock"
+printf '%s\n%s\n%s\n%s\n' "$(dead_pid)" "x" "/elsewhere" "1" >"$STATE/verify-slots/recover.lock/owner"
+wait_for "$TMP_ROOT/ran-rl" || bad "the run never recovered once the recovery lock's holder died"
+wait "$pid_rl" || bad "the run did not exit 0"
+end
+
+begin "a slot whose owner file could not be written is removed, not left to be waited out as abandoned"
+fresh_state
+reset_repo
+rm -f "$TMP_ROOT/mv-failed"
+GUARD_EXTRA=(PATH="$BIN:$PATH")
+guard 1 -- bash "$STUBS/pass.sh"
+expect_rc 0
+expect_not_stdout "recovered a stale slot"
+[ -e "$TMP_ROOT/mv-failed" ] || bad "the stub never failed the first owner write, so this case tested nothing"
+end
+
 begin "a slot another process took over is not removed by the run that lost it"
 fresh_state
 reset_repo
@@ -399,8 +516,8 @@ expect_rc 0
 [ "$(sed -n 1p "$STATE/verify-slots/slot-1/owner")" = "$$" ] || bad "the owner file was not left as the other process wrote it"
 end
 
-begin "SIGTERM and SIGHUP let the command finish, then release the slot and exit 143 and 129"
-for pair in "TERM 143" "HUP 129"; do
+begin "SIGINT, SIGTERM and SIGHUP let the command finish, then release the slot and exit 130, 143 and 129"
+for pair in "INT 130" "TERM 143" "HUP 129"; do
   read -r sig want <<<"$pair"
   case_ctx="SIG$sig"
   fresh_state
@@ -434,6 +551,30 @@ guard 1 -- bash "$STUBS/corrupt-index.sh"
 expect_rc 1
 expect_stderr "could not stamp the work tree after the run — result void"
 reset_repo
+end
+
+begin "a stamp that fails while another git process holds the index lock is retried and then taken"
+fresh_state
+reset_repo
+touch "$REPO/.git/index.lock"
+(sleep 0.5 && rm -f "$REPO/.git/index.lock") &
+BG_PIDS="$BG_PIDS $!"
+guard 1 -- bash "$STUBS/pass.sh"
+expect_rc 0
+expect_stdout "stub ran"
+expect_not_out "could not stamp"
+rm -f "$REPO/.git/index.lock"
+end
+
+begin "with no state directory given, the slots live under the user's home, one set for every work tree"
+fresh_state
+reset_repo
+fakehome="$TMP_ROOT/home"
+must mkdir -p "$fakehome"
+capture -C "$REPO" env -u CRAM_VERIFY_GUARD_HELD -u CRAM_VERIFY_STATE_DIR HOME="$fakehome" CRAM_VERIFY_SLOTS=1 bash "$GUARD" -- bash "$STUBS/pass.sh"
+expect_rc 0
+[ -d "$fakehome/.local/state/cram-verify/verify-slots" ] || bad "no slot directory under the home: $(find "$fakehome" -maxdepth 4 | head -5)"
+[ ! -d "$REPO/.local" ] || bad "the slot directory was made inside the work tree"
 end
 
 # --- not guarded -------------------------------------------------------------------------------

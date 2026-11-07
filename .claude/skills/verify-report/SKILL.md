@@ -23,7 +23,7 @@ Capture `$?` on the line immediately after the command. Read the `verify root:` 
 `pnpm verify` runs inside `.claude/scripts/verify-guard.sh`, whose header owns both.
 
 - `verify: queued` in the capture: every machine-wide slot was held, and the run waits its turn. The wait counts toward the Bash foreground limit, so a lane that might queue starts the command with `run_in_background: true` and reads the exit code from the file.
-- `verify: tree changed during the run — result void` beside a non-zero `rc`: the work tree was edited (or committed to) while the run was going, so the run belongs to no single tree. Re-run it with the tree held still; do not triage a leg from it.
+- `verify: tree changed during the run — result void` beside a non-zero `rc`: the run belongs to no single tree. Re-run it with the tree held still; do not triage a leg from it.
 
 ## When it is red
 

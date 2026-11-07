@@ -15,9 +15,9 @@
 # passed; a command's own non-zero code is kept. The stamp is HEAD, the
 # `git status --porcelain` output, and the tree object of the working tree as
 # `git add -A` sees it, built in a throwaway index so untracked content is hashed
-# too (`git stash create`, the issue's first idea, skips untracked files, so an
-# edit to a new test file would not have moved it). Ignored files are outside the
-# stamp by design: a build or cache write is not an edit to what is being verified.
+# too. Ignored files are outside the stamp by design: a build or cache write is
+# not an edit to what is being verified. A stamp that fails because another git
+# process holds the index lock is retried a few times before it counts as failed.
 # verify-tier.sh's own "not banked, the tree changed" line is the narrower check
 # of the same fact, about whether to bank a green; this one voids the run.
 #
@@ -25,9 +25,10 @@
 # turns a green tree red (#483, #700). So a run takes one of N slots first. N is
 # max(1, ncpu / 4), a starting value to be tuned with evidence. A slot is a
 # directory made with `mkdir` (atomic, and macOS ships no flock(1)) under
-# $CRAM_VERIFY_STATE_DIR (default ~/.local/state/cram-verify/verify-slots), holding
-# an `owner` file of pid, the pid's start time (a reused pid is not the holder),
-# worktree and epoch. A waiting run says it is queued and names the holders.
+# $CRAM_VERIFY_STATE_DIR (see STATE below; one directory for the whole machine, which
+# is what makes the cap machine-wide), holding an `owner` file of pid, the pid's
+# start time (a reused pid is not the holder; read under LC_ALL=C TZ=UTC so a
+# waiter in another locale or zone reads the same string), worktree and epoch. A waiting run says it is queued and names the holders.
 # A slot whose pid is dead, or alive with another start time, is stale and is
 # recovered. Recovery runs under a second mkdir lock, `recover.lock`, because
 # judging a slot stale and renaming it must not interleave with another waiter's
@@ -47,10 +48,9 @@
 #        bash .claude/scripts/verify-guard.sh --slots   print N and exit
 # Environment: CRAM_VERIFY_SLOTS (N, 0 disables), CRAM_VERIFY_NCPU (stands in for
 #   the core count), CRAM_VERIFY_STATE_DIR, CRAM_VERIFY_POLL (seconds between
-#   attempts, default 2), CRAM_VERIFY_HEARTBEAT (seconds between "still queued"
-#   lines, default 60).
+#   attempts), CRAM_VERIFY_HEARTBEAT (seconds between "still queued" lines).
 # Exit: the command's code; 1 when it passed and the tree moved; 2 when the
-#       invocation was wrong or the tree could not be stamped.
+#       invocation was wrong.
 #
 # The harness is verify-guard.test.sh.
 set -uo pipefail
@@ -61,6 +61,7 @@ HEARTBEAT=${CRAM_VERIFY_HEARTBEAT:-60}
 # Polls a slot may stay without an owner file before it counts as abandoned
 # between its mkdir and its first write.
 GRACE_POLLS=10
+STAMP_TRIES=5
 
 die() {
   printf 'verify-guard: %s\n' "$1" >&2
@@ -131,12 +132,27 @@ tree_stamp() {
   printf '%s\n%s\n%s\n' "$head" "$tree" "$status"
 }
 
+# take_stamp -> tree_stamp, retried: `git write-tree` takes the real index's lock, which
+# another git process in the same work tree (a status refresh, a commit) may hold for a moment.
+take_stamp() {
+  local tries=0 stamp
+  while [ "$tries" -lt "$STAMP_TRIES" ]; do
+    if stamp=$(tree_stamp); then
+      printf '%s\n' "$stamp"
+      return 0
+    fi
+    tries=$((tries + 1))
+    sleep 0.2
+  done
+  return 1
+}
+
 # --- the slots -----------------------------------------------------------------------
 
 HELD=""
 
 proc_start() {
-  ps -o lstart= -p "$1" 2>/dev/null | sed 's/^ *//; s/ *$//'
+  LC_ALL=C TZ=UTC ps -o lstart= -p "$1" 2>/dev/null | sed 's/^ *//; s/ *$//'
 }
 
 # write_owner <dir>
@@ -191,18 +207,29 @@ discard() {
   fi
 }
 
-# recover_slot <dir> -> removes the slot when it is stale, under recover.lock.
+# Consecutive polls recover.lock has been seen without an owner file.
+rlock_pending=0
+
+# recover_slot <dir> <grace-met> -> removes the slot when it is stale (or ownerless
+# and the caller has waited out the grace), under recover.lock. Returns 1 when
+# it could not take recover.lock this time.
 recover_slot() {
   local rlock="$SLOTS/recover.lock" state
   if ! lock_try "$rlock"; then
     state=$(lock_state "$rlock")
-    if [ "$state" = stale ] || { [ "$state" = pending ] && [ "$pending_polls" -ge "$GRACE_POLLS" ]; }; then
+    if [ "$state" = pending ]; then
+      rlock_pending=$((rlock_pending + 1))
+    else
+      rlock_pending=0
+    fi
+    if [ "$state" = stale ] || { [ "$state" = pending ] && [ "$rlock_pending" -ge "$GRACE_POLLS" ]; }; then
       discard "$rlock"
     fi
     return 1
   fi
+  rlock_pending=0
   state=$(lock_state "$1")
-  if [ "$state" = stale ] || { [ "$state" = pending ] && [ "$pending_polls" -ge "$GRACE_POLLS" ]; }; then
+  if [ "$state" = stale ] || { [ "$state" = pending ] && [ "$2" = 1 ]; }; then
     printf 'verify: recovered a stale slot (%s)\n' "$(basename "$1")"
     discard "$1"
   fi
@@ -234,11 +261,13 @@ describe_holders() {
   done
 }
 
-pending_polls=0
+# Consecutive polls each slot has been seen ownerless, indexed by slot number; a slot
+# seen any other way resets to 0, so one ownerless episode is never added to another's.
+SLOT_PENDING=()
 
 # acquire -> 0 once a slot is held (HELD names it).
 acquire() {
-  local i dir queued_at="" last_beat=0 now
+  local i dir state grace_met queued_at="" last_beat=0 now
   while :; do
     i=1
     while [ "$i" -le "$N" ]; do
@@ -247,15 +276,20 @@ acquire() {
         HELD="$dir"
         return 0
       fi
-      case "$(lock_state "$dir")" in
-        stale | pending)
-          [ "$(lock_state "$dir")" != pending ] || pending_polls=$((pending_polls + 1))
-          if recover_slot "$dir" && lock_try "$dir"; then
-            HELD="$dir"
-            return 0
-          fi
-          ;;
-      esac
+      state=$(lock_state "$dir")
+      if [ "$state" = pending ]; then
+        SLOT_PENDING[i]=$(( ${SLOT_PENDING[i]:-0} + 1 ))
+      else
+        SLOT_PENDING[i]=0
+      fi
+      grace_met=0
+      [ "${SLOT_PENDING[i]}" -lt "$GRACE_POLLS" ] || grace_met=1
+      if [ "$state" = stale ] || [ "$grace_met" = 1 ]; then
+        if recover_slot "$dir" "$grace_met" && lock_try "$dir"; then
+          HELD="$dir"
+          return 0
+        fi
+      fi
       i=$((i + 1))
     done
     now=$(date +%s)
@@ -280,13 +314,13 @@ trap 'release; exit 129' HUP
 acquire
 printf 'verify: holding %s of %s slot(s)\n' "$(basename "$HELD")" "$N"
 
-before=$(tree_stamp) || die "could not stamp the work tree"
+before=$(take_stamp) || die "could not stamp the work tree"
 
 export CRAM_VERIFY_GUARD_HELD=1
 "$@"
 rc=$?
 
-if ! after=$(tree_stamp); then
+if ! after=$(take_stamp); then
   printf 'verify: could not stamp the work tree after the run — result void\n' >&2
   [ "$rc" -ne 0 ] || rc=1
   exit "$rc"
