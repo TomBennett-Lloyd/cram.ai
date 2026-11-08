@@ -12,8 +12,8 @@ on:
 
 jobs:
   checks:
-    # Pinned: on ubuntu-26.04, pdf.js draws non-embedded standard fonts blank, so
-    # render-page.test.ts fails (#742). Unpin when #195 ships the font data.
+    # Pinned: on ubuntu-26.04, packages/ingest/src/adapters/pdf/render-page.test.ts renders
+    # every page blank, likely the host-font fallback #195 describes (#742). Unpin when #195 lands.
     runs-on: ubuntu-24.04
     steps:
       # Full history, because check:stored-output-pin measures from the merge-base with origin/main
