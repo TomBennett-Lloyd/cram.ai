@@ -1,6 +1,9 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
   type ChatRequest,
+  type CutOffAt,
   FakeGateway,
+  type GeneratorReply,
   OutputName,
   PROVISIONAL_DEFAULT_PINS,
   RecordingMissError,
@@ -202,6 +205,50 @@ describe('RecordingGateway', () => {
       second: { reply: { content: '{ "wrong": 1 }' } },
     });
   });
+
+  const content = (text: string): GeneratorReply => ({ status: 'content', content: text });
+  const truncated = (text: string, cutOffAt: CutOffAt = 'token-limit'): GeneratorReply => ({
+    status: 'truncated',
+    content: text,
+    cutOffAt,
+  });
+  const failed = (reason: string): GeneratorReply => ({
+    status: 'backend-failed',
+    cause: 'http-status',
+    reason,
+  });
+  const twoReplies: readonly (readonly [string, GeneratorReply, GeneratorReply])[] = [
+    ['valid JSON, whitespace', content('{"text":"a"}'), content('{\n  "text" : "a"\n}')],
+    ['valid JSON, an escape', content('{"text":"a"}'), content('{"text":"\\u0061"}')],
+    ['valid JSON, a duplicate key', content('{"text":"b"}'), content('{"text":"a","text":"b"}')],
+    ['valid JSON, another value', content('{"text":"a"}'), content('{"text":"b"}')],
+    ['schema-invalid JSON, whitespace', content('{"wrong":1}'), content('{ "wrong": 1 }')],
+    ['not JSON, whitespace', content('not json'), content('not  json')],
+    ['not JSON, the same text', content('not json'), content('not json')],
+    ['truncated, whitespace', truncated('{"text":'), truncated('{ "text":')],
+    ['truncated, another cut-off', truncated('{"text":'), truncated('{"text":', 'timeout')],
+    ['content and truncated, the same text', content('{"text":"a"}'), truncated('{"text":"a"}')],
+    ['backend failure, another reason', failed('down'), failed('refused')],
+    ['backend failure, the same reason', failed('down'), failed('down')],
+  ];
+
+  it.each(twoReplies)(
+    'records one call answered %s once exactly when replaying the first reply gives the second call its live result',
+    async (_shape, first, second) => {
+      const replies = [first, second];
+      const recorder = new RecordingGateway({
+        inner: new ScriptedGateway(() => replies.shift() ?? first),
+      });
+      await recorder.generator.chat(ask('hi'));
+      const live = await recorder.generator.chat(ask('hi'));
+      const firstOnly = new RecordingGateway({ inner: new ScriptedGateway(() => first) });
+      await firstOnly.generator.chat(ask('hi'));
+      const replayed = await replayOf(firstOnly).generator.chat(ask('hi'));
+      expect(recorder.recordings().status).toBe(
+        isDeepStrictEqual(replayed, live) ? 'recorded' : 'nondeterministic',
+      );
+    },
+  );
 
   it('records the backend’s reply, so an invalid output replays as invalid', async () => {
     const garbled = new ScriptedGateway(() => ({ status: 'content', content: 'not json' }));
