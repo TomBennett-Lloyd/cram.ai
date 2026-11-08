@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { type RecordableGateway, RecordingGateway } from './recording-gateway';
 import {
+  ENTAILED,
   LENGTH_RERANKER,
   NEUTRAL,
   RERANKER_PIN,
@@ -190,22 +191,6 @@ describe('RecordingGateway', () => {
     await expect(replayOf(recorder).generator.chat(sort)).resolves.toEqual(live);
   });
 
-  it('reports an invalid output that differs only in whitespace as nondeterministic', async () => {
-    const replies = ['{"wrong": 1}', '{ "wrong": 1 }'];
-    const reformatting = new ScriptedGateway(() => ({
-      status: 'content',
-      content: replies.shift() ?? '',
-    }));
-    const recorder = new RecordingGateway({ inner: reformatting });
-    await recorder.generator.chat(ask('hi'));
-    await recorder.generator.chat(ask('hi'));
-    expect(recorder.recordings()).toMatchObject({
-      status: 'nondeterministic',
-      first: { reply: { content: '{"wrong": 1}' } },
-      second: { reply: { content: '{ "wrong": 1 }' } },
-    });
-  });
-
   const content = (text: string): GeneratorReply => ({ status: 'content', content: text });
   const truncated = (text: string, cutOffAt: CutOffAt = 'token-limit'): GeneratorReply => ({
     status: 'truncated',
@@ -256,6 +241,29 @@ describe('RecordingGateway', () => {
     const live = await recorder.generator.chat(ask('hi'));
     expect(live).toMatchObject({ status: 'invalid-output', content: 'not json' });
     await expect(replayOf(recorder).generator.chat(ask('hi'))).resolves.toEqual(live);
+  });
+
+  it('reports an encoder call scored two ways as nondeterministic', async () => {
+    const scores = [NEUTRAL, ENTAILED];
+    const { generator, embedder } = echo();
+    const inner: RecordableGateway = {
+      generator,
+      embedder,
+      reranker: null,
+      verifier: {
+        pin: PROVISIONAL_DEFAULT_PINS.verifier,
+        entail: () => Promise.resolve([scores.shift() ?? NEUTRAL]),
+      },
+    };
+    const recorder = new RecordingGateway({ inner });
+    const request = { pairs: [{ premise: 'a', hypothesis: 'b' }] };
+    await recorder.verifier.entail(request);
+    await recorder.verifier.entail(request);
+    expect(recorder.recordings()).toMatchObject({
+      status: 'nondeterministic',
+      first: { role: 'verifier', reply: { results: [NEUTRAL] } },
+      second: { role: 'verifier', reply: { results: [ENTAILED] } },
+    });
   });
 
   it('records and replays an over-length embedding as over-length', async () => {
