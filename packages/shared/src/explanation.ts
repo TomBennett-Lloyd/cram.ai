@@ -3,14 +3,18 @@ import { Citation, SourceId } from './citation';
 import { NonBlankText } from './non-blank-text';
 
 /**
- * One sentence of an explanation (`docs/adr/0009-explanation-answers.md` § Decision (a)): `slides`
- * are the candidates a search found (light) or the slides that entailed it (deep); `contradicts`
- * the slides it is marked against under § Amendments, best first.
+ * What a sentence's `slides` are (`docs/adr/0009-explanation-answers.md` § Decision (a)): a
+ * search's candidates in chat, the slides that entailed it, or none for a kept interpretation.
  */
+export const SentenceStanding = z.enum(['attributed', 'entailed', 'interpretation']);
+export type SentenceStanding = z.infer<typeof SentenceStanding>;
+
+/** One sentence of an explanation (§ Decision (a)); `contradicts` best first (§ Amendments). */
 export const AttributedSentence = z.strictObject({
   text: NonBlankText,
   slides: z.array(SourceId),
   contradicts: z.array(SourceId),
+  standing: SentenceStanding,
 });
 export type AttributedSentence = z.infer<typeof AttributedSentence>;
 

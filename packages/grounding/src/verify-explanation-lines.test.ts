@@ -49,7 +49,7 @@ describe('verifyExplanation over a slide of several lines', () => {
   it('keeps a sentence one of its lines entails though the whole slide does not, crediting the slide', async () => {
     await expect(run([stage1([SENTENCE], NEUTRAL, NEUTRAL, ENTAILED, NEUTRAL)])).resolves.toEqual({
       status: 'verified',
-      kept: [{ text: SENTENCE, slides: ['l1/3'], contradicts: [] }],
+      kept: [{ text: SENTENCE, slides: ['l1/3'], contradicts: [], standing: 'entailed' }],
       withheld: [],
     });
   });

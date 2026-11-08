@@ -43,8 +43,16 @@ describe('explanationWithheld', () => {
 
 describe('explanationEntailed', () => {
   it('counts the shown sentences some slide entailed', () => {
-    expect(explanationEntailed([asked(grounded([square, unattributed], [slide]))])).toMatchObject({
+    const entailed = sentence('Cells are square.', [slide], [], 'entailed');
+    const kept = sentence('Bees hum.', [], [], 'interpretation');
+    expect(explanationEntailed([asked(grounded([entailed, kept], [slide]))])).toMatchObject({
       ratio: { numerator: 1, denominator: 2 },
+    });
+  });
+
+  it('does not count a sentence with candidate slides that none entailed', () => {
+    expect(explanationEntailed([asked(grounded([square, busy], [slide]))])).toMatchObject({
+      ratio: { numerator: 0, denominator: 2 },
     });
   });
 });

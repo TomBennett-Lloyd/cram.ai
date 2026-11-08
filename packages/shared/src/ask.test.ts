@@ -4,7 +4,9 @@ import { AskReply, AskRequest } from './ask';
 const explanation = {
   text: 'Worker bees are male.',
   quotes: [],
-  sentences: [{ text: 'Worker bees are male.', slides: ['l1/3'], contradicts: [] }],
+  sentences: [
+    { text: 'Worker bees are male.', slides: ['l1/3'], contradicts: [], standing: 'attributed' },
+  ],
   sources: ['l1/3'],
 };
 

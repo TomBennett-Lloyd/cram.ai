@@ -57,8 +57,8 @@ describe('explain at the light depth', () => {
         text: TEXT,
         quotes: [{ sourceId: 'l1/1', quote: MALE }],
         sentences: [
-          { text: FIRST, slides: ['l1/2', 'l1/1'], contradicts: [] },
-          { text: SQUARE, slides: ['l5/6', 'l1/2'], contradicts: [] },
+          { text: FIRST, slides: ['l1/2', 'l1/1'], contradicts: [], standing: 'attributed' },
+          { text: SQUARE, slides: ['l5/6', 'l1/2'], contradicts: [], standing: 'attributed' },
         ],
         sources: ['l1/2', 'l1/1', 'l5/6'],
       },
@@ -87,8 +87,8 @@ describe('explain at the light depth', () => {
       explanation: {
         quotes: [{ sourceId: 'l1/1', quote: MALE }],
         sentences: [
-          { text: quoted, slides: ['l1/2', 'l1/1'], contradicts: [] },
-          { text: SQUARE, slides: ['l5/6'], contradicts: [] },
+          { text: quoted, slides: ['l1/2', 'l1/1'], contradicts: [], standing: 'attributed' },
+          { text: SQUARE, slides: ['l5/6'], contradicts: [], standing: 'attributed' },
         ],
       },
     });
@@ -120,7 +120,7 @@ describe('explain at the light depth', () => {
       explanation: {
         text: SQUARE,
         quotes: [],
-        sentences: [{ text: SQUARE, slides: ['l1/2'], contradicts: [] }],
+        sentences: [{ text: SQUARE, slides: ['l1/2'], contradicts: [], standing: 'attributed' }],
         sources: ['l1/2'],
       },
       withheld: [
@@ -162,7 +162,7 @@ describe('explain at the light depth', () => {
     ).resolves.toMatchObject({
       status: 'grounded',
       explanation: {
-        sentences: [{ text: SQUARE, slides: [], contradicts: [] }],
+        sentences: [{ text: SQUARE, slides: [], contradicts: [], standing: 'attributed' }],
         sources: ['l1/1', 'l1/2'],
       },
     });

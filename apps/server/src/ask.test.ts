@@ -128,6 +128,7 @@ const sentenceOf = (
   text,
   slides: slides.map(({ sourceId }) => sourceId),
   contradicts,
+  standing: 'attributed',
 });
 
 describe('POST /courses/:id/ask', () => {

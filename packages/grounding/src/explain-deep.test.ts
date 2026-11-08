@@ -51,7 +51,7 @@ describe('explain at the deep depth', () => {
       explanation: {
         text: SQUARE,
         quotes: [],
-        sentences: [{ text: SQUARE, slides: ['l1/2'], contradicts: [] }],
+        sentences: [{ text: SQUARE, slides: ['l1/2'], contradicts: [], standing: 'entailed' }],
         sources: ['l1/2'],
       },
       withheld: [{ reason: 'contradicted', text: FIRST, sourceId: 'l1/1' }],
@@ -128,8 +128,8 @@ describe('explain at the deep depth', () => {
         text: TEXT,
         quotes: [],
         sentences: [
-          { text: FIRST, slides: ['l1/1'], contradicts: [] },
-          { text: SQUARE, slides: [], contradicts: [] },
+          { text: FIRST, slides: ['l1/1'], contradicts: [], standing: 'entailed' },
+          { text: SQUARE, slides: [], contradicts: [], standing: 'interpretation' },
         ],
         sources: ['l1/1'],
       },
@@ -219,7 +219,7 @@ describe('explain at the deep depth', () => {
         explanation: {
           text: DRONES,
           quotes: [],
-          sentences: [{ text: DRONES, slides: ['l1/3'], contradicts: [] }],
+          sentences: [{ text: DRONES, slides: ['l1/3'], contradicts: [], standing: 'entailed' }],
           sources: ['l1/3'],
         },
         withheld: [],

@@ -51,7 +51,12 @@ export {
   SummaryRemakeRequest,
   SummaryUnit,
 } from './lecture-summary';
-export { AttributedSentence, Explanation, ExplanationSurface } from './explanation';
+export {
+  AttributedSentence,
+  Explanation,
+  ExplanationSurface,
+  SentenceStanding,
+} from './explanation';
 export { PartialPolicy, Verdict, VerificationDepth, WithheldReason } from './verification';
 export { VERIFICATION_DEPTH } from './verification-depth';
 export { type DroppedPointer, WithheldSentence, WithheldUnit } from './withheld';

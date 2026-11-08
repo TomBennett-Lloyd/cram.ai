@@ -56,5 +56,6 @@ export const markContradictions = async (
     text,
     slides: slides.map(({ sourceId }) => sourceId),
     contradicts: [...(contradicts[index] ?? [])],
+    standing: 'attributed',
   }));
 };

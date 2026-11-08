@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Explanation } from './explanation';
 
-const sentence = { text: 'Worker bees are male.', slides: ['l1/3'], contradicts: [] };
+const sentence = {
+  text: 'Worker bees are male.',
+  slides: ['l1/3'],
+  contradicts: [],
+  standing: 'attributed',
+};
 const explanation = {
   text: 'Worker bees are male.',
   quotes: [{ sourceId: 'l1/3', quote: 'Worker bees are male.' }],
@@ -23,5 +28,12 @@ describe('Explanation', () => {
     expect(Explanation.safeParse({ ...explanation, text: ' ' }).success).toBe(false);
     const unmarked = { text: sentence.text, slides: sentence.slides };
     expect(Explanation.safeParse({ ...explanation, sentences: [unmarked] }).success).toBe(false);
+  });
+
+  it('refuses a sentence without its standing, or with one outside the enum', () => {
+    const unstood = { text: sentence.text, slides: sentence.slides, contradicts: [] };
+    expect(Explanation.safeParse({ ...explanation, sentences: [unstood] }).success).toBe(false);
+    const guessed = { ...sentence, standing: 'guess' };
+    expect(Explanation.safeParse({ ...explanation, sentences: [guessed] }).success).toBe(false);
   });
 });

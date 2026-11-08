@@ -6,6 +6,7 @@ import {
   CourseId,
   Deck,
   type RetrievedSlide,
+  type SentenceStanding,
   SlideRecord,
 } from '@cram/shared';
 import type { z } from 'zod';
@@ -60,10 +61,12 @@ export const sentence = (
   text: string,
   slides: readonly SlideRecord[],
   contradicts: readonly SlideRecord[] = [],
+  standing: SentenceStanding = 'attributed',
 ): AttributedSentence => ({
   text,
   slides: slides.map(sourceIdOf),
   contradicts: contradicts.map(sourceIdOf),
+  standing,
 });
 
 export const grounded = (

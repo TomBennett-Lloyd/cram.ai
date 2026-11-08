@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import { ChunkTag, TagEdit } from '@cram/shared';
+import { ChunkTag, type SentenceStanding, TagEdit } from '@cram/shared';
 
 /** A synthetic course: two slides about bees, authored for these specs. */
 const slide = (
@@ -43,10 +43,12 @@ const sentence = (
   text: string,
   slides: readonly string[],
   contradicts: readonly string[] = [],
+  standing: SentenceStanding = 'attributed',
 ) => ({
   text,
   slides,
   contradicts,
+  standing,
 });
 
 export const GROUNDED_QUESTION = 'What are drones?';

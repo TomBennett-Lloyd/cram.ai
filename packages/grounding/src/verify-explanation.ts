@@ -145,12 +145,12 @@ export const verifyExplanation = async (
     if (verdict === undefined) throw new Error('verifyExplanation: no verdict');
     if (verdict.label === 'entailed')
       return {
-        kept: { text, slides: [...verdict.slides], contradicts: [] },
+        kept: { text, slides: [...verdict.slides], contradicts: [], standing: 'entailed' },
       };
     if (verdict.label === 'contradicted')
       return { cut: { reason: 'contradicted', text, sourceId: verdict.slide } };
     return kindOf.get(index) === 'interpretation'
-      ? { kept: { text, slides: [], contradicts: [] } }
+      ? { kept: { text, slides: [], contradicts: [], standing: 'interpretation' } }
       : { cut: { reason: 'unsupported', text } };
   });
   if (verdicts.some(({ label }) => label === 'entailed'))
