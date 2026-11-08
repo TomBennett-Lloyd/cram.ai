@@ -44,39 +44,36 @@ export type RecordingsResult =
   | { readonly status: 'recorded'; readonly recordings: readonly Recording[] }
   | { readonly status: 'nondeterministic'; readonly first: Recording; readonly second: Recording };
 
-interface Answered {
-  readonly recording: Recording;
-  readonly answer: unknown;
-}
-
-/** Each distinct call once, first reply kept; two answers its caller can tell apart are a conflict, never either (#732). */
+/** Each distinct call once, first reply kept; a call the first reply would replay differently is a conflict, never either (#732). */
 class RecordingLog {
-  readonly #byKey = new Map<string, Answered>();
+  readonly #byKey = new Map<string, Recording>();
   #conflict: { readonly first: Recording; readonly second: Recording } | undefined;
 
   add(recording: Recording): void {
     const parsed = Recording.parse(recording);
-    this.#add({ recording: parsed, answer: parsed.reply });
+    this.#add(parsed, (first) => isDeepStrictEqual(first.reply, parsed.reply));
   }
 
-  addChat(recording: Recording, result: ChatResult<unknown>): void {
-    this.#add({ recording: Recording.parse(recording), answer: result });
+  addChat<T>(recording: Recording, request: ChatRequest<T>, result: ChatResult<T>): void {
+    this.#add(
+      Recording.parse(recording),
+      (first) =>
+        first.role === 'generator' &&
+        isDeepStrictEqual(chatResult(first.reply, request.output.schema), result),
+    );
   }
 
-  #add(answered: Answered): void {
-    const key = recordingKey(answered.recording);
+  #add(recording: Recording, replays: (first: Recording) => boolean): void {
+    const key = recordingKey(recording);
     const first = this.#byKey.get(key);
-    if (first === undefined) this.#byKey.set(key, answered);
-    else if (this.#conflict === undefined && !isDeepStrictEqual(first.answer, answered.answer))
-      this.#conflict = { first: first.recording, second: answered.recording };
+    if (first === undefined) this.#byKey.set(key, recording);
+    else if (this.#conflict === undefined && !replays(first))
+      this.#conflict = { first, second: recording };
   }
 
   result(): RecordingsResult {
     return this.#conflict === undefined
-      ? {
-          status: 'recorded',
-          recordings: [...this.#byKey.values()].map(({ recording }) => recording),
-        }
+      ? { status: 'recorded', recordings: [...this.#byKey.values()] }
       : { status: 'nondeterministic', ...this.#conflict };
   }
 }
@@ -111,6 +108,7 @@ class RecordingGenerator implements Generator {
         request: wire,
         reply,
       },
+      request,
       result,
     );
     return result;

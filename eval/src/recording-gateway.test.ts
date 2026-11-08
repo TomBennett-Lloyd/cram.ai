@@ -182,13 +182,24 @@ describe('RecordingGateway', () => {
     const recorder = new RecordingGateway({ inner: reformatting });
     const live = await recorder.generator.chat(sort);
     await expect(recorder.generator.chat(sort)).resolves.toEqual(live);
-    const result = recorder.recordings();
-    expect(result).toMatchObject({
+    expect(recorder.recordings()).toMatchObject({
       status: 'recorded',
       recordings: [{ reply: { content: compact } }],
     });
-    expect(result.status === 'recorded' ? result.recordings : []).toHaveLength(1);
     await expect(replayOf(recorder).generator.chat(sort)).resolves.toEqual(live);
+  });
+
+  it('maps the first reply through each later call’s own schema, as the replay does', async () => {
+    const recorder = new RecordingGateway({ inner: echo() });
+    const refusing = {
+      ...ask('hi'),
+      output: { ...ask('hi').output, schema: Answer.refine(() => false) },
+    };
+    await recorder.generator.chat(ask('hi'));
+    const live = await recorder.generator.chat(refusing);
+    expect(live.status).toBe('invalid-output');
+    expect(recorder.recordings().status).toBe('recorded');
+    await expect(replayOf(recorder).generator.chat(refusing)).resolves.toEqual(live);
   });
 
   const content = (text: string): GeneratorReply => ({ status: 'content', content: text });
