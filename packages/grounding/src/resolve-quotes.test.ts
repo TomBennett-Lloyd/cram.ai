@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { line, slide } from './fake-gateway-fixture';
-import { resolveQuotes } from './resolve-quotes';
+import { FOUND_QUOTE_MIN_WORDS, resolveQuotes } from './resolve-quotes';
 
 const hive = slide('l1/1', 'Worker bees are male.\nThe queen is the colony’s only female.');
 const comb = slide('l1/2', 'Bees build comb from square cells.');
@@ -41,7 +41,7 @@ describe('resolveQuotes', () => {
     ['numbered zero', line('l1/2', 0), '[0]'],
     ['on a slide not retrieved', line('l9/9', 1), '[1]'],
   ])('withholds a pointer %s, shown as the prompt numbers it', (_, pointer, text) => {
-    expect(resolveQuotes('Bees build comb from square cells.', [pointer], retrieved)).toEqual({
+    expect(resolveQuotes('Bees build comb.', [pointer], retrieved)).toEqual({
       quotes: [],
       withheld: [{ reason: 'dangling-citation', text, sourceId: pointer.sourceId }],
     });
@@ -56,5 +56,62 @@ describe('resolveQuotes', () => {
     );
     expect(resolved.quotes.map(({ sourceId }) => sourceId)).toEqual(['l1/2', 'l1/1']);
     expect(resolved.withheld).toHaveLength(1);
+  });
+
+  it('marks a whole slide line the text repeats and the model did not list', () => {
+    const text = 'Comb is how they store food. Bees build comb from square cells.';
+    expect(resolveQuotes(text, [], retrieved)).toEqual({
+      quotes: [{ sourceId: 'l1/2', quote: 'Bees build comb from square cells.' }],
+      withheld: [],
+    });
+  });
+
+  it('lists a found line once when a pointer already names it', () => {
+    const text = 'Bees build comb from square cells.';
+    expect(resolveQuotes(text, [line('l1/2', 1)], retrieved).quotes).toEqual([
+      { sourceId: 'l1/2', quote: 'Bees build comb from square cells.' },
+    ]);
+  });
+
+  it(`leaves a line under ${String(FOUND_QUOTE_MIN_WORDS)} words unmarked`, () => {
+    const labelled = slide('l1/3', 'The bloom count\nDrones never forage at night.');
+    expect(resolveQuotes('The bloom count rises.', [], [labelled]).quotes).toEqual([]);
+  });
+
+  it('puts found lines after the listed ones, each once, from every field of every slide', () => {
+    const twice = slide(
+      'l1/3',
+      'Bees build comb from square cells.\nBees build comb from square cells.',
+      {
+        speakerNotes: 'Drones never forage at night.',
+      },
+    );
+    const text =
+      'Worker bees are male. Bees build comb from square cells. Drones never forage at night.';
+    expect(resolveQuotes(text, [line('l1/1', 1)], [comb, twice, hive]).quotes).toEqual([
+      { sourceId: 'l1/1', quote: 'Worker bees are male.' },
+      { sourceId: 'l1/2', quote: 'Bees build comb from square cells.' },
+      { sourceId: 'l1/3', quote: 'Bees build comb from square cells.' },
+      { sourceId: 'l1/3', quote: 'Drones never forage at night.' },
+    ]);
+  });
+
+  it('finds a line with the text’s whitespace collapsed and not with its case changed', () => {
+    expect(
+      resolveQuotes('Bees build\n comb from square cells.', [], retrieved).quotes,
+    ).toHaveLength(1);
+    expect(resolveQuotes('bees build comb from square cells.', [], retrieved).quotes).toEqual([]);
+  });
+
+  it('keeps a dangling pointer withheld beside a found line', () => {
+    const resolved = resolveQuotes('Worker bees are male.', [line('l1/1', 2)], retrieved);
+    expect(resolved.quotes).toEqual([{ sourceId: 'l1/1', quote: 'Worker bees are male.' }]);
+    expect(resolved.withheld).toEqual([
+      {
+        reason: 'dangling-citation',
+        text: 'The queen is the colony’s only female.',
+        sourceId: 'l1/1',
+      },
+    ]);
   });
 });

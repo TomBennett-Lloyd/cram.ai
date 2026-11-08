@@ -7,6 +7,7 @@ import {
   contextOf,
   explained,
   FIRST,
+  hive,
   hiveSummary,
   QUESTION,
   retrieved,
@@ -36,7 +37,10 @@ describe('explain with carried turns', () => {
   const candidates = { [FIRST]: [comb], [SQUARE]: [winter, comb] };
   const recordings = [
     explained(TEXT, [], retrieved, [hiveSummary], TURNS),
-    verified(scored(FIRST, [comb], NEUTRAL), scored(SQUARE, [winter, comb], NEUTRAL, NEUTRAL)),
+    verified(
+      scored(FIRST, [comb, hive], NEUTRAL, NEUTRAL),
+      scored(SQUARE, [winter, comb], NEUTRAL, NEUTRAL),
+    ),
   ];
 
   const answered = async () => {
@@ -79,7 +83,7 @@ describe('explain with carried turns', () => {
   it('scores each sentence against slide premises only, none holding a turn’s text', async () => {
     const { entailed } = await answered();
     const slideTexts = new Set(
-      [comb, winter].flatMap((slide) =>
+      [comb, winter, hive].flatMap((slide) =>
         scoredPremises([slidePremise(slide)]).map(({ text }) => text),
       ),
     );
@@ -97,10 +101,10 @@ describe('explain with carried turns', () => {
       status: 'grounded',
       explanation: {
         sentences: [
-          { text: FIRST, slides: ['l1/2'] },
+          { text: FIRST, slides: ['l1/2', 'l1/1'] },
           { text: SQUARE, slides: ['l5/6', 'l1/2'] },
         ],
-        sources: ['l1/2', 'l5/6'],
+        sources: ['l1/2', 'l1/1', 'l5/6'],
       },
     });
   });
