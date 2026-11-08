@@ -675,8 +675,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-08 — issue #459 — interpretation-supplementary-label
 
-- **Category**: pending — filled at merge
+- **Category**: approved-at-plan
 - **Feedback**: the owner decided on the issue (https://github.com/TomBennett-Lloyd/cram.ai/issues/459#issuecomment-6633488663) that the interpretation class stays and its sentence-kind precision is accepted, provided a kept interpretation is shown with a visible "supplementary" label and ADR 0009 § Decision (r)'s trigger is amended. The owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/459#issuecomment-6721905609 on 2026-11-08, relayed by the merge owner. PROCEED, verbatim: "Proceed as recommended". That confirms the label word `supplementary` and the note text as planned, no `CLAUDE.md` clause, and the field `standing` with values `attributed | entailed | interpretation`.
 - **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR carrying nothing beyond the approved plan merge on that plan's PROCEED, and `merge.amendmentRule` (a) holds an amendment footprint to the plan comment having pasted the amendment before the first edit.
 - **How applied**: ADR 0009 takes the plan's five pasted blocks exactly: an as-it-stood annotation on § Decision (a), the supplementary label in (i), (r)'s Given up and Revisit reworded, and a dated § Amendments entry. No other ADR is edited.
-- **Verdict**: pending — filled at merge
+- **Verdict**: approved at plan 2026-11-08 — Proceed as recommended — https://github.com/TomBennett-Lloyd/cram.ai/issues/459#issuecomment-6721905609
