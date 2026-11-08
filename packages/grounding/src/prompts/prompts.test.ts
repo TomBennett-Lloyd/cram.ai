@@ -95,7 +95,7 @@ describe('generationRequest', () => {
     expect(rules).toMatch(/own words only where/);
   });
 
-  it('asks for no slide text to be copied, into a unit or a citation', () => {
+  it('never tells the model to copy, quote or reproduce slide text exactly', () => {
     expect(summarised('The Hive').messages[0].content).not.toMatch(
       /\b(cop(y|ied|ying)|quot(e|es|ed|ing)|verbatim|word for word|exact(ly)?|character for character)\b/i,
     );

@@ -13,6 +13,20 @@ export const FOUND_QUOTE_MIN_WORDS = 4;
 const isListed = (quotes: readonly Citation[], sourceId: Citation['sourceId'], quote: string) =>
   quotes.some((listed) => listed.sourceId === sourceId && listed.quote === quote);
 
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+const joins = (left: string, right: string) =>
+  WORD_CHARACTER.test(left) && WORD_CHARACTER.test(right);
+
+/** Where the renderer marks `quote` (its first span), no word runs past either end: a found quote is a whole line (#679's review). */
+const standsWhole = (text: string, quote: string): boolean => {
+  const span = quoteSpan(text, quote);
+  return (
+    span !== undefined &&
+    !joins(text.charAt(span.start - 1), text.charAt(span.start)) &&
+    !joins(text.charAt(span.end - 1), text.charAt(span.end))
+  );
+};
+
 const foundQuotes = (
   text: string,
   slides: readonly RetrievedSlide[],
@@ -23,7 +37,7 @@ const foundQuotes = (
     for (const quote of slideLines(record))
       if (
         quote.split(/\s+/).length >= FOUND_QUOTE_MIN_WORDS &&
-        quoteSpan(text, quote) !== undefined &&
+        standsWhole(text, quote) &&
         !isListed([...listed, ...found], sourceId, quote)
       )
         found.push({ sourceId, quote });

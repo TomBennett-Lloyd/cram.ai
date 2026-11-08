@@ -78,6 +78,16 @@ describe('resolveQuotes', () => {
     expect(resolveQuotes('The bloom count rises.', [], [labelled]).quotes).toEqual([]);
   });
 
+  it('leaves unmarked a line the text holds only inside a longer word, at either end', () => {
+    const health = slide('l1/3', 'Hive health and inspection');
+    expect(resolveQuotes('Hive health and inspections matter.', [], [health]).quotes).toEqual([]);
+    const combs = slide('l1/4', 'combs hold honey and pollen');
+    expect(resolveQuotes('Honeycombs hold honey and pollen.', [], [combs]).quotes).toEqual([]);
+    expect(resolveQuotes('Hive health and inspection, weekly.', [], [health]).quotes).toEqual([
+      { sourceId: 'l1/3', quote: 'Hive health and inspection' },
+    ]);
+  });
+
   it('counts a whitespace run inside a slide line as one gap between words', () => {
     const spaced = slide('l1/3', 'The  bloom count');
     expect(resolveQuotes('The bloom count rises.', [], [spaced]).quotes).toEqual([]);
