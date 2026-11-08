@@ -65,9 +65,11 @@ export const removeTagLabel = (tag: string, origin: TopicOrigin): string =>
 
 export const MAY_BE_RELEVANT = 'may be relevant';
 export const APPEARS_TO_CONTRADICT = 'appears to contradict';
+export const SUPPLEMENTARY = 'supplementary';
 export const SOURCES = 'Sources';
 export const ATTRIBUTED_NOTE =
   'Written from your slides. Each sentence is checked only for whether a slide appears to contradict it; the slides listed below are where to look.';
+export const SUPPLEMENTARY_NOTE = `Sentences marked ${SUPPLEMENTARY} are the tutor’s own reading of the slides, added to help you understand them; no slide was found to say them.`;
 export const DERIVED_SOURCE = 'Text read from the picture';
 
 type SlideName = Pick<SlideRecord, 'slideNo' | 'lectureTitle' | 'derived'>;

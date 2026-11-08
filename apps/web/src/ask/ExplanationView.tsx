@@ -7,6 +7,8 @@ import {
   MAY_BE_RELEVANT,
   SOURCE_MISSING,
   sourceRefLabel,
+  SUPPLEMENTARY,
+  SUPPLEMENTARY_NOTE,
 } from '../copy';
 import { type CitedSlide, citedSlide } from './cited-slide';
 import {
@@ -114,9 +116,16 @@ const SentenceView = ({
       </Fragment>
     ),
   );
+  const supplementary = sentence.standing === 'interpretation';
   return (
     <>
-      {sentence.contradicts.length === 0 ? words : <span className="contradicted">{words}</span>}
+      {sentence.contradicts.length > 0 ? (
+        <span className="contradicted">{words}</span>
+      ) : supplementary ? (
+        <span className="supplementary">{words}</span>
+      ) : (
+        words
+      )}
       {sentence.contradicts.length > 0 && (
         <>
           {' '}
@@ -132,6 +141,12 @@ const SentenceView = ({
               <SourceRef key={sourceId} sourceId={sourceId} refs={refs} />
             ))}
           </span>
+        </>
+      )}
+      {supplementary && (
+        <>
+          {' '}
+          <span className="supplementary-label">{SUPPLEMENTARY}</span>
         </>
       )}{' '}
     </>
@@ -176,6 +191,9 @@ export const ExplanationView = ({
           </p>
         ))}
       </div>
+      {explanation.sentences.some(({ standing }) => standing === 'interpretation') && (
+        <p className="supplementary-note">{SUPPLEMENTARY_NOTE}</p>
+      )}
       {depth === 'light' && <p className="attributed-note">{ATTRIBUTED_NOTE}</p>}
       <SourcesList
         sources={explanation.sources}

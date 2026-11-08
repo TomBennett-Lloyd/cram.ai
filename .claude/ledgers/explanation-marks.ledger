@@ -10,6 +10,8 @@ carrier: apps/web/src/ask/explanation-marks.ts
 carrier: apps/web/src/ask/ExplanationView.test.tsx
 carrier: apps/web/src/ask/ExplanationViewDerived.test.tsx
 carrier: apps/web/src/ask/AskScreen.test.tsx
+carrier: apps/web/src/ask/ExplanationViewSupplementary.test.tsx
+carrier: apps/web/e2e/ask-supplementary.spec.ts
 carrier: apps/web/e2e/ask.spec.ts
 carrier: apps/web/e2e/layout.spec.ts
 carrier: apps/web/e2e/slides.spec.ts

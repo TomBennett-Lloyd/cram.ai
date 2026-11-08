@@ -202,7 +202,8 @@ input:not([type='file']) {
 }
 
 .explanation-text p,
-.attributed-note {
+.attributed-note,
+.supplementary-note {
   margin: 0;
 }
 
@@ -227,13 +228,16 @@ input:not([type='file']) {
 }
 
 .contradiction-label,
-.sentence-refs-label {
+.sentence-refs-label,
+.supplementary-label {
   padding-inline: var(--space-1);
   font-size: var(--text-xs);
   white-space: nowrap;
 }
 
-.sentence-refs-label {
+/* The supplementary mark is this label, never an underline (`docs/adr/0009-explanation-answers.md` § Decision (i)). */
+.sentence-refs-label,
+.supplementary-label {
   color: var(--color-text-muted);
 }
 
@@ -261,7 +265,8 @@ input:not([type='file']) {
   font-weight: var(--font-weight-medium);
 }
 
-.attributed-note {
+.attributed-note,
+.supplementary-note {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
