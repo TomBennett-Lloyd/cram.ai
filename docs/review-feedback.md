@@ -675,8 +675,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-08 — PR #743 — egress-allowlist-runner-wording
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: this PR asks the owner to approve one wording change in `.claude/network-egress.allowlist`. The `@napi-rs/canvas-linux-x64-gnu` reason changes from "for CI's ubuntu-latest runner" to "for CI's Linux runners". The PR pins the `checks` job, which loads that binary, to `ubuntu-24.04` (#742).
 - **Why**: the allowlist is `humanAlways`. Review found the old wording false once `checks` leaves `ubuntu-latest`, and a claim-accuracy finding is fixed rather than deferred (`.claude/skills/review-loop/SKILL.md` step 2).
 - **How applied**: the one line, in the same PR as the pin.
-- **Verdict**: pending — filled at merge
+- **Verdict**: Approve 743
