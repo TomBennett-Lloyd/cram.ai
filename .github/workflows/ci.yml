@@ -12,7 +12,9 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # Pinned: on ubuntu-26.04, pdf.js draws non-embedded standard fonts blank, so
+    # render-page.test.ts fails (#742). Unpin when #195 ships the font data.
+    runs-on: ubuntu-24.04
     steps:
       # Full history, because check:stored-output-pin measures from the merge-base with origin/main
       # (.claude/scripts/check-stored-output-pin.sh's header).
@@ -120,7 +122,7 @@ jobs:
       #
       # THIS COMMENT OWNS THE IMAGE'S SHELLCHECK VERSIONS, and it is the only site
       # that carries them: verified against actions/runner-images rather than
-      # assumed — images/ubuntu/Ubuntu2404-Readme.md (ubuntu-latest today) lists
+      # assumed — images/ubuntu/Ubuntu2404-Readme.md (the image this job is pinned to) lists
       # 0.9.0-1 and Ubuntu2204-Readme.md lists 0.8.0-2. Restatement ledger, a
       # floor rather than a census (swept in cumulo 2026-09-12, before the port
       # to this repo, with

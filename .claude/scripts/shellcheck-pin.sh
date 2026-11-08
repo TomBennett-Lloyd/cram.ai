@@ -6,7 +6,7 @@
 # resolved from whatever the machine happens to have installed cannot make that
 # prediction, and twice it did not: cumulo#499 went red on SC2015 and cumulo#524 on
 # SC2120/SC2119, both after a locally green composite, because developers run
-# Homebrew's shellcheck while the ubuntu-latest runner image ships an older one
+# Homebrew's shellcheck while the CI runner image ships an older one
 # (the image's versions are stated once, on the `pnpm verify:full` step in
 # .github/workflows/ci.yml, which is the only site that cites its source). Each
 # release adds checks, so the skew ran in the direction that costs a CI round
