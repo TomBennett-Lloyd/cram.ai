@@ -103,7 +103,7 @@ eval/src/live-gateway.ts	243
 eval/src/measured-commit.ts	769
 eval/src/metric-row.ts	666
 eval/src/read-eval-course.ts	0
-eval/src/recording-gateway.ts	337
+eval/src/recording-gateway.ts	309
 eval/src/render-deck.ts	709
 eval/src/replay-run.ts	714
 eval/src/report.ts	490

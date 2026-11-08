@@ -1,6 +1,9 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
   type ChatRequest,
+  type CutOffAt,
   FakeGateway,
+  type GeneratorReply,
   OutputName,
   PROVISIONAL_DEFAULT_PINS,
   RecordingMissError,
@@ -10,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { type RecordableGateway, RecordingGateway } from './recording-gateway';
 import {
+  ENTAILED,
   LENGTH_RERANKER,
   NEUTRAL,
   RERANKER_PIN,
@@ -162,12 +166,115 @@ describe('RecordingGateway', () => {
     });
   });
 
+  it('records replies whose ChatResult agrees once, keeping the first: llama.cpp at temperature 0 can reformat its JSON (#732)', async () => {
+    const compact = '{"kinds": ["course-claim"]}';
+    const pretty = '{\n  "kinds": [\n    "course-claim"\n  ]\n}';
+    const replies = [compact, pretty];
+    const reformatting = new ScriptedGateway(() => ({
+      status: 'content',
+      content: replies.shift() ?? '',
+    }));
+    const Kinds = z.strictObject({ kinds: z.array(z.string()) });
+    const sort: ChatRequest<z.infer<typeof Kinds>> = {
+      messages: [{ role: 'user', content: 'sort' }],
+      output: { name: OutputName.parse('sentence-kinds'), schema: Kinds },
+    };
+    const recorder = new RecordingGateway({ inner: reformatting });
+    const live = await recorder.generator.chat(sort);
+    await expect(recorder.generator.chat(sort)).resolves.toEqual(live);
+    expect(recorder.recordings()).toMatchObject({
+      status: 'recorded',
+      recordings: [{ reply: { content: compact } }],
+    });
+    await expect(replayOf(recorder).generator.chat(sort)).resolves.toEqual(live);
+  });
+
+  it('maps the first reply through each later call’s own schema, as the replay does', async () => {
+    const recorder = new RecordingGateway({ inner: echo() });
+    const refusing = {
+      ...ask('hi'),
+      output: { ...ask('hi').output, schema: Answer.refine(() => false) },
+    };
+    await recorder.generator.chat(ask('hi'));
+    const live = await recorder.generator.chat(refusing);
+    expect(live.status).toBe('invalid-output');
+    expect(recorder.recordings().status).toBe('recorded');
+    await expect(replayOf(recorder).generator.chat(refusing)).resolves.toEqual(live);
+  });
+
+  const content = (text: string): GeneratorReply => ({ status: 'content', content: text });
+  const truncated = (text: string, cutOffAt: CutOffAt = 'token-limit'): GeneratorReply => ({
+    status: 'truncated',
+    content: text,
+    cutOffAt,
+  });
+  const failed = (reason: string): GeneratorReply => ({
+    status: 'backend-failed',
+    cause: 'http-status',
+    reason,
+  });
+  const twoReplies: readonly (readonly [string, GeneratorReply, GeneratorReply])[] = [
+    ['valid JSON, whitespace', content('{"text":"a"}'), content('{\n  "text" : "a"\n}')],
+    ['valid JSON, an escape', content('{"text":"a"}'), content('{"text":"\\u0061"}')],
+    ['valid JSON, a duplicate key', content('{"text":"b"}'), content('{"text":"a","text":"b"}')],
+    ['valid JSON, another value', content('{"text":"a"}'), content('{"text":"b"}')],
+    ['schema-invalid JSON, whitespace', content('{"wrong":1}'), content('{ "wrong": 1 }')],
+    ['not JSON, whitespace', content('not json'), content('not  json')],
+    ['not JSON, the same text', content('not json'), content('not json')],
+    ['truncated, whitespace', truncated('{"text":'), truncated('{ "text":')],
+    ['truncated, another cut-off', truncated('{"text":'), truncated('{"text":', 'timeout')],
+    ['content and truncated, the same text', content('{"text":"a"}'), truncated('{"text":"a"}')],
+    ['backend failure, another reason', failed('down'), failed('refused')],
+    ['backend failure, the same reason', failed('down'), failed('down')],
+  ];
+
+  it.each(twoReplies)(
+    'records one call answered %s once exactly when replaying the first reply gives the second call its live result',
+    async (_shape, first, second) => {
+      const replies = [first, second];
+      const recorder = new RecordingGateway({
+        inner: new ScriptedGateway(() => replies.shift() ?? first),
+      });
+      await recorder.generator.chat(ask('hi'));
+      const live = await recorder.generator.chat(ask('hi'));
+      const firstOnly = new RecordingGateway({ inner: new ScriptedGateway(() => first) });
+      await firstOnly.generator.chat(ask('hi'));
+      const replayed = await replayOf(firstOnly).generator.chat(ask('hi'));
+      expect(recorder.recordings().status).toBe(
+        isDeepStrictEqual(replayed, live) ? 'recorded' : 'nondeterministic',
+      );
+    },
+  );
+
   it('records the backend’s reply, so an invalid output replays as invalid', async () => {
     const garbled = new ScriptedGateway(() => ({ status: 'content', content: 'not json' }));
     const recorder = new RecordingGateway({ inner: garbled });
     const live = await recorder.generator.chat(ask('hi'));
     expect(live).toMatchObject({ status: 'invalid-output', content: 'not json' });
     await expect(replayOf(recorder).generator.chat(ask('hi'))).resolves.toEqual(live);
+  });
+
+  it('reports an encoder call scored two ways as nondeterministic', async () => {
+    const scores = [NEUTRAL, ENTAILED];
+    const { generator, embedder } = echo();
+    const inner: RecordableGateway = {
+      generator,
+      embedder,
+      reranker: null,
+      verifier: {
+        pin: PROVISIONAL_DEFAULT_PINS.verifier,
+        entail: () => Promise.resolve([scores.shift() ?? NEUTRAL]),
+      },
+    };
+    const recorder = new RecordingGateway({ inner });
+    const request = { pairs: [{ premise: 'a', hypothesis: 'b' }] };
+    await recorder.verifier.entail(request);
+    await recorder.verifier.entail(request);
+    expect(recorder.recordings()).toMatchObject({
+      status: 'nondeterministic',
+      first: { role: 'verifier', reply: { results: [NEUTRAL] } },
+      second: { role: 'verifier', reply: { results: [ENTAILED] } },
+    });
   });
 
   it('records and replays an over-length embedding as over-length', async () => {
