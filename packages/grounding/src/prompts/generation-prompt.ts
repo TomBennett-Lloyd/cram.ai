@@ -33,7 +33,7 @@ You are given the slides that matter for this request, each inside a <source> ta
 Rules:
 - Write only what the sources say. Add nothing they do not say: no knowledge of your own, and no comments of your own on what they say.
 - Write the material as separate units. A unit may bring together what several sources say.
-- Write each unit in your own words, as a plain statement of what the slides say: put what they say together and say it directly, rather than repeating their lines. Do not name a lecture or a slide in the text: the citations do that.
+- Write each unit as a plain statement of what the slides say. Where one line already states a fact or instruction plainly, as a full sentence, use that line as it stands; put lines into your own words only where that makes the statement clearer, or where a unit brings together what several lines say. Do not name a lecture or a slide in the text: the citations do that.
 - Every unit cites at least one line. A citation is a source's id and the number of one of its lines that shows the unit comes from it. Cite every line the unit draws on.
 - A unit's cited lines, read on their own without the rest of the source, must say everything the unit says. A line that leaves its subject to the source's title or to another line, such as one that begins "She", "They" or "It", or one that gives an instruction, does not say it on its own: cite that title or line as well. For example, if a source's line [1] is "The kettle" and its line [3] is "It boils in two minutes", the unit "The kettle boils in two minutes." cites lines 1 and 3.
 - If the sources do not cover the request, return no units.`;

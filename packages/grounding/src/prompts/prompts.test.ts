@@ -89,6 +89,12 @@ describe('generationRequest', () => {
     expect(request.messages[0].content).toMatch(/\bat most 2 units\b/);
   });
 
+  it('asks for a line that already says it plainly to be used as it stands', () => {
+    const rules = summarised('The Hive').messages[0].content;
+    expect(rules).toMatch(/as it stands/);
+    expect(rules).toMatch(/own words only where/);
+  });
+
   it('asks for no slide text to be copied, into a unit or a citation', () => {
     expect(summarised('The Hive').messages[0].content).not.toMatch(
       /\b(cop(y|ied|ying)|quot(e|es|ed|ing)|verbatim|word for word|exact(ly)?|character for character)\b/i,
@@ -138,10 +144,12 @@ describe('explanationRequest', () => {
     expect(rules).toMatch(/no row of a summary/);
   });
 
-  it('asks for the model’s own words, and lets it say the slides do not cover the question', () => {
+  it('asks for a source line as it stands, own words only where clearer, and lets it say the slides do not cover the question', () => {
     const rules = explanationRequest('Who are the workers?', { raw: [hive], summaries: [] }, [])
       .messages[0].content;
-    expect(rules).toMatch(/in your own words/);
+    expect(rules).toMatch(/as it stands/);
+    expect(rules).toMatch(/own words only where/);
+    expect(rules).not.toMatch(/written in your own words/);
     expect(rules).toMatch(/the answer is null/);
     expect(GeneratedExplanation.safeParse({ answer: null }).success).toBe(true);
     expect(GeneratedExplanation.safeParse({}).success).toBe(false);
