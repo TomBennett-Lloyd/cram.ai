@@ -154,9 +154,8 @@ const SentenceView = ({
 };
 
 /**
- * One explanation: its sentences with their marks and numbers, the attributed note at the light
- * depth, and the sources list (`docs/adr/0009-explanation-answers.md` § Decision (i)). The deep
- * depth's reference label is the revision guide's.
+ * One explanation (`docs/adr/0009-explanation-answers.md` § Decision (i)); at the deep
+ * depth its reference label is the revision guide's.
  */
 export const ExplanationView = ({
   explanation,
