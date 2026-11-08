@@ -672,3 +672,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR that carries nothing beyond the approved plan merge on that plan's PROCEED.
 - **How applied**: new ADR 0011 (Ask holds a conversation), whose § Decision (a)–(j) is the plan's Decision outline points 1–10. ADR 0009 gains the plan's pasted diff exactly: three as-it-stood annotations and one dated § Amendments entry. The PR body pastes the mapping.
 - **Verdict**: approved at plan 2026-11-07 — i agree with the 3 plans
+
+## 2026-11-08 — issue #679 — verbatim-in-context
+
+- **Category**: pending — filled at merge
+- **Feedback**: the owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/679#issuecomment-6715008144 in chat on 2026-11-08; the merge owner relayed it, and the plan comment quotes it at its head. PROCEED, verbatim: "Proceed as recommended". Q1 yes (resolution marks found quotes), Q2 `FOUND_QUOTE_MIN_WORDS = 4`, Q3 yes (`CLAUDE.md` unedited).
+- **Why**: `docs/adr/**` is a `humanAlways` path. `.claude/workflow.json` → `merge.approvedAtPlanRule` lets an ADR PR that carries nothing beyond the approved plan merge on that plan's PROCEED. On an amendment footprint the entry is also held to `merge.amendmentRule` (a), and the plan comment pastes the ADR diff.
+- **How applied**: ADR 0009 gets exactly the plan's pasted diff: four as-it-stood annotations, on (b)'s register bullet, (c)'s heading and (c)'s two string-match bullets, plus one dated § Amendments entry. The PR body pastes the mapping from plan points D1–D4 to the ADR.
+- **Verdict**: pending — filled at merge
