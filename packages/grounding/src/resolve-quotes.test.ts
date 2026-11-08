@@ -78,6 +78,11 @@ describe('resolveQuotes', () => {
     expect(resolveQuotes('The bloom count rises.', [], [labelled]).quotes).toEqual([]);
   });
 
+  it('counts a whitespace run inside a slide line as one gap between words', () => {
+    const spaced = slide('l1/3', 'The  bloom count');
+    expect(resolveQuotes('The bloom count rises.', [], [spaced]).quotes).toEqual([]);
+  });
+
   it('puts found lines after the listed ones, each once, from every field of every slide', () => {
     const twice = slide(
       'l1/3',
