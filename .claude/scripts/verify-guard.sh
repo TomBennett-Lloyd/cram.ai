@@ -14,12 +14,8 @@
 # `verify: tree changed during the run — result void`, even when the command
 # passed; a command's own non-zero code is kept. The stamp is HEAD, the
 # `git status --porcelain` output, and the tree object of the working tree as
-# `git add -A` sees it, built in a throwaway index so untracked content is hashed
-# too. Ignored files are outside the stamp by design: a build or cache write is
-# not an edit to what is being verified. A stamp that fails because another git
-# process holds the index lock is retried a few times before it counts as failed.
-# verify-tier.sh's own "not banked, the tree changed" line is the narrower check
-# of the same fact, about whether to bank a green; this one voids the run.
+# `git add -A` sees it. tree-hash-lib.sh owns that tree, what it counts and the
+# retry when another git process holds the index lock.
 #
 # FIVE PARALLEL RUNS ON TEN CORES ARE EACH SLOWER THAN ONE, and a load timeout
 # turns a green tree red (#483, #700). So a run takes one of N slots first. N is
@@ -62,7 +58,6 @@ HEARTBEAT=${CRAM_VERIFY_HEARTBEAT:-60}
 # Polls a slot may stay without an owner file before it counts as abandoned
 # between its mkdir and its first write.
 GRACE_POLLS=10
-STAMP_TRIES=5
 
 die() {
   printf 'verify-guard: %s\n' "$1" >&2
@@ -113,39 +108,19 @@ STATE=${CRAM_VERIFY_STATE_DIR:-$HOME/.local/state/cram-verify}
 SLOTS="$STATE/verify-slots"
 mkdir -p "$SLOTS" || die "cannot create $SLOTS"
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || die "cannot resolve the script directory"
+# shellcheck source=./tree-hash-lib.sh
+. "$SCRIPT_DIR/tree-hash-lib.sh" 2>/dev/null || die "cannot load $SCRIPT_DIR/tree-hash-lib.sh"
+
 # --- the stamp -----------------------------------------------------------------------
 
 # tree_stamp -> three lines on stdout: HEAD, the working tree's tree object, the porcelain status digest.
 tree_stamp() {
-  local idx staged tree head status
-  idx=$(mktemp "${TMPDIR:-/tmp}/verify-guard-index.XXXXXX") || return 1
-  rm -f "$idx"
-  if ! staged=$(git -C "$ROOT" write-tree 2>/dev/null) ||
-    ! GIT_INDEX_FILE="$idx" git -C "$ROOT" read-tree "$staged" 2>/dev/null ||
-    ! GIT_INDEX_FILE="$idx" git -C "$ROOT" add -A 2>/dev/null ||
-    ! tree=$(GIT_INDEX_FILE="$idx" git -C "$ROOT" write-tree 2>/dev/null); then
-    rm -f "$idx"
-    return 1
-  fi
-  rm -f "$idx"
+  local tree head status
+  tree=$(worktree_tree "$ROOT") || return 1
   head=$(git -C "$ROOT" rev-parse -q --verify HEAD 2>/dev/null || echo none)
   status=$(git -C "$ROOT" status --porcelain 2>/dev/null | git hash-object --stdin) || return 1
   printf '%s\n%s\n%s\n' "$head" "$tree" "$status"
-}
-
-# take_stamp -> tree_stamp, retried: `git write-tree` takes the real index's lock, which
-# another git process in the same work tree (a status refresh, a commit) may hold for a moment.
-take_stamp() {
-  local tries=0 stamp
-  while [ "$tries" -lt "$STAMP_TRIES" ]; do
-    if stamp=$(tree_stamp); then
-      printf '%s\n' "$stamp"
-      return 0
-    fi
-    tries=$((tries + 1))
-    sleep 0.2
-  done
-  return 1
 }
 
 # --- the slots -----------------------------------------------------------------------
@@ -315,13 +290,13 @@ trap 'release; exit 129' HUP
 acquire
 printf 'verify: holding %s of %s slot(s)\n' "$(basename "$HELD")" "$N"
 
-before=$(take_stamp) || die "could not stamp the work tree"
+before=$(tree_stamp) || die "could not stamp the work tree"
 
 export CRAM_VERIFY_GUARD_HELD=1
 "$@"
 rc=$?
 
-if ! after=$(take_stamp); then
+if ! after=$(tree_stamp); then
   printf 'verify: could not stamp the work tree after the run — result void\n' >&2
   [ "$rc" -ne 0 ] || rc=1
   exit "$rc"

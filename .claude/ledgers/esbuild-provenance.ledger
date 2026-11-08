@@ -17,3 +17,5 @@ excluded: package.json
 excluded: .claude/scripts/check-settings-hooks.sh
 excluded: .claude/scripts/verify-guard.sh
 excluded: .claude/scripts/verify-guard.test.sh
+excluded: .claude/scripts/tree-hash-lib.sh
+excluded: .claude/scripts/tree-hash-lib.test.sh
