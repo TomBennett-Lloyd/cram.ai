@@ -162,6 +162,47 @@ describe('RecordingGateway', () => {
     });
   });
 
+  it('records replies whose ChatResult agrees once, keeping the first: llama.cpp at temperature 0 can reformat its JSON (#732)', async () => {
+    const compact = '{"kinds": ["course-claim"]}';
+    const pretty = '{\n  "kinds": [\n    "course-claim"\n  ]\n}';
+    const replies = [compact, pretty];
+    const reformatting = new ScriptedGateway(() => ({
+      status: 'content',
+      content: replies.shift() ?? '',
+    }));
+    const Kinds = z.strictObject({ kinds: z.array(z.string()) });
+    const sort: ChatRequest<z.infer<typeof Kinds>> = {
+      messages: [{ role: 'user', content: 'sort' }],
+      output: { name: OutputName.parse('sentence-kinds'), schema: Kinds },
+    };
+    const recorder = new RecordingGateway({ inner: reformatting });
+    const live = await recorder.generator.chat(sort);
+    await expect(recorder.generator.chat(sort)).resolves.toEqual(live);
+    const result = recorder.recordings();
+    expect(result).toMatchObject({
+      status: 'recorded',
+      recordings: [{ reply: { content: compact } }],
+    });
+    expect(result.status === 'recorded' ? result.recordings : []).toHaveLength(1);
+    await expect(replayOf(recorder).generator.chat(sort)).resolves.toEqual(live);
+  });
+
+  it('reports an invalid output that differs only in whitespace as nondeterministic', async () => {
+    const replies = ['{"wrong": 1}', '{ "wrong": 1 }'];
+    const reformatting = new ScriptedGateway(() => ({
+      status: 'content',
+      content: replies.shift() ?? '',
+    }));
+    const recorder = new RecordingGateway({ inner: reformatting });
+    await recorder.generator.chat(ask('hi'));
+    await recorder.generator.chat(ask('hi'));
+    expect(recorder.recordings()).toMatchObject({
+      status: 'nondeterministic',
+      first: { reply: { content: '{"wrong": 1}' } },
+      second: { reply: { content: '{ "wrong": 1 }' } },
+    });
+  });
+
   it('records the backend’s reply, so an invalid output replays as invalid', async () => {
     const garbled = new ScriptedGateway(() => ({ status: 'content', content: 'not json' }));
     const recorder = new RecordingGateway({ inner: garbled });

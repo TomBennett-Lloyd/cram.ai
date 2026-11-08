@@ -44,23 +44,39 @@ export type RecordingsResult =
   | { readonly status: 'recorded'; readonly recordings: readonly Recording[] }
   | { readonly status: 'nondeterministic'; readonly first: Recording; readonly second: Recording };
 
-/** Each distinct call once; the same call answered two ways is kept as a conflict, never as either answer. */
+interface Answered {
+  readonly recording: Recording;
+  readonly answer: unknown;
+}
+
+/** Each distinct call once, first reply kept; two answers its caller can tell apart are a conflict, never either (#732). */
 class RecordingLog {
-  readonly #byKey = new Map<string, Recording>();
+  readonly #byKey = new Map<string, Answered>();
   #conflict: { readonly first: Recording; readonly second: Recording } | undefined;
 
   add(recording: Recording): void {
     const parsed = Recording.parse(recording);
-    const key = recordingKey(parsed);
+    this.#add({ recording: parsed, answer: parsed.reply });
+  }
+
+  addChat(recording: Recording, result: ChatResult<unknown>): void {
+    this.#add({ recording: Recording.parse(recording), answer: result });
+  }
+
+  #add(answered: Answered): void {
+    const key = recordingKey(answered.recording);
     const first = this.#byKey.get(key);
-    if (first === undefined) this.#byKey.set(key, parsed);
-    else if (this.#conflict === undefined && !isDeepStrictEqual(first.reply, parsed.reply))
-      this.#conflict = { first, second: parsed };
+    if (first === undefined) this.#byKey.set(key, answered);
+    else if (this.#conflict === undefined && !isDeepStrictEqual(first.answer, answered.answer))
+      this.#conflict = { first: first.recording, second: answered.recording };
   }
 
   result(): RecordingsResult {
     return this.#conflict === undefined
-      ? { status: 'recorded', recordings: [...this.#byKey.values()] }
+      ? {
+          status: 'recorded',
+          recordings: [...this.#byKey.values()].map(({ recording }) => recording),
+        }
       : { status: 'nondeterministic', ...this.#conflict };
   }
 }
@@ -85,15 +101,19 @@ class RecordingGenerator implements Generator {
   async chat<T>(request: ChatRequest<T>): Promise<ChatResult<T>> {
     const wire = chatWireRequest(request);
     const reply = await this.#inner.reply(wire);
-    this.#log.add({
-      role: 'generator',
-      pin: this.pin,
-      sampling: this.sampling,
-      maxOutputTokens: this.maxOutputTokens,
-      request: wire,
-      reply,
-    });
-    return chatResult(reply, request.output.schema);
+    const result = chatResult(reply, request.output.schema);
+    this.#log.addChat(
+      {
+        role: 'generator',
+        pin: this.pin,
+        sampling: this.sampling,
+        maxOutputTokens: this.maxOutputTokens,
+        request: wire,
+        reply,
+      },
+      result,
+    );
+    return result;
   }
 }
 
