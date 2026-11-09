@@ -126,7 +126,7 @@ describe('explain at the deep depth', () => {
       status: 'grounded',
       explanation: {
         text: TEXT,
-        quotes: [],
+        quotes: [{ sourceId: 'l1/1', quote: MALE }],
         sentences: [
           { text: FIRST, slides: ['l1/1'], contradicts: [], standing: 'entailed' },
           { text: SQUARE, slides: [], contradicts: [], standing: 'interpretation' },

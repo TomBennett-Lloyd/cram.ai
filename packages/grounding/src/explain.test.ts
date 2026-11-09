@@ -248,7 +248,7 @@ describe('explain’s context', () => {
 
   it('then drops slides from the bottom, never the last, and a pointer to a dropped slide dangles', async () => {
     const result = await run(
-      [explained(MALE, [line('l1/2', 1)], [hive]), verified()],
+      [explained(SQUARE, [line('l1/2', 1)], [hive]), verified()],
       light(),
       retrieved,
       [hiveSummary],
