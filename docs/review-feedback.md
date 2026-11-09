@@ -680,3 +680,11 @@ A category going quiet across consecutive reviews is the evidence for graduating
 - **Why**: `docs/adr/**` is a `humanAlways` path. On this amendment footprint `merge.approvedAtPlanRule`'s fill also needs `merge.amendmentRule` (a). `adr-amendment-check.mjs plan-named` refuses it: the plan comment pasted ADR lines 55 and 56 as two `-`/`+` pairs, and git groups those adjacent lines into one block (`-55 -56 +55 +56`). So the PR takes the HUMAN order (`.claude/skills/adr-lane/SKILL.md` § 4). The plan comment was not regrouped after the fact.
 - **How applied**: ADR 0009 gets the plan's four pasted as-it-stood annotations, on (b)'s register bullet, (c)'s heading and (c)'s two string-match bullets, plus its dated § Amendments entry. It also gets two extras from review: a fifth annotation on (a)'s `quotes` bullet, and three corrected sentences in the entry. The PR body pastes the mapping from plan points D1–D4 to the ADR and lists the extras.
 - **Verdict**: Approve 738
+
+## 2026-11-08 — PR #743 — egress-allowlist-runner-wording
+
+- **Category**: approved-no-changes
+- **Feedback**: this PR asks the owner to approve one wording change in `.claude/network-egress.allowlist`. The `@napi-rs/canvas-linux-x64-gnu` reason changes from "for CI's ubuntu-latest runner" to "for CI's Linux runners". The PR pins the `checks` job, which loads that binary, to `ubuntu-24.04` (#742).
+- **Why**: the allowlist is `humanAlways`. Review found the old wording false once `checks` leaves `ubuntu-latest`, and a claim-accuracy finding is fixed rather than deferred (`.claude/skills/review-loop/SKILL.md` step 2).
+- **How applied**: the one line, in the same PR as the pin.
+- **Verdict**: Approve 743
