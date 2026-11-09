@@ -177,7 +177,7 @@ packages/grounding/src/prompts/statement-block.ts	0
 packages/grounding/src/prompts/tag-prompt.ts	1304
 packages/grounding/src/prompts/verifier-prompt.ts	434
 packages/grounding/src/resolve-citations.ts	172
-packages/grounding/src/resolve-quotes.ts	1764
+packages/grounding/src/resolve-quotes.ts	1212
 packages/grounding/src/slide-text.ts	1111
 packages/grounding/src/standalone-question.ts	2500
 packages/grounding/src/summarise-lecture.ts	252
