@@ -3,6 +3,7 @@ import {
   type Explanation,
   type QuoteSpan,
   quoteSpan,
+  type SentenceStanding,
   type SourceId,
 } from '@cram/shared';
 
@@ -16,6 +17,7 @@ export interface MarkedSentence {
   readonly runs: readonly Run[];
   readonly contradicts: readonly SourceId[];
   readonly mayBeRelevant: readonly SourceId[];
+  readonly standing: SentenceStanding;
   readonly opensParagraph: boolean;
 }
 
@@ -121,6 +123,7 @@ export const markExplanation = (explanation: Explanation): readonly MarkedSenten
       ),
       contradicts: sentence.contradicts,
       mayBeRelevant: sentence.slides.filter((slide) => !contradicts.has(slide)),
+      standing: sentence.standing,
       opensParagraph: opensParagraph(text, spans, index),
     };
   });

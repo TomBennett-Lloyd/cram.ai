@@ -56,8 +56,8 @@ describe('verifyExplanation', () => {
     await expect(verify([recording], false, two)).resolves.toEqual({
       status: 'verified',
       kept: [
-        { text: 'Workers are male.', slides: ['l1/1'], contradicts: [] },
-        { text: 'Cells are square.', slides: ['l1/2'], contradicts: [] },
+        { text: 'Workers are male.', slides: ['l1/1'], contradicts: [], standing: 'entailed' },
+        { text: 'Cells are square.', slides: ['l1/2'], contradicts: [], standing: 'entailed' },
       ],
       withheld: [],
     });
@@ -111,7 +111,7 @@ describe('verifyExplanation', () => {
   it('keeps a sentence one slide entails though another contradicts it', async () => {
     await expect(verify([judged(SENTENCE, retrieved, CONTRADICTED, ENTAILED)])).resolves.toEqual({
       status: 'verified',
-      kept: [{ text: SENTENCE, slides: ['l1/2'], contradicts: [] }],
+      kept: [{ text: SENTENCE, slides: ['l1/2'], contradicts: [], standing: 'entailed' }],
       withheld: [],
     });
   });
@@ -174,9 +174,9 @@ describe('verifyExplanation', () => {
       await expect(verify([stage1, kinds], false, FIVE)).resolves.toEqual({
         status: 'verified',
         kept: [
-          { text: FIVE[0], slides: [], contradicts: [] },
-          { text: FIVE[1], slides: ['l1/1'], contradicts: [] },
-          { text: FIVE[3], slides: [], contradicts: [] },
+          { text: FIVE[0], slides: [], contradicts: [], standing: 'interpretation' },
+          { text: FIVE[1], slides: ['l1/1'], contradicts: [], standing: 'entailed' },
+          { text: FIVE[3], slides: [], contradicts: [], standing: 'interpretation' },
         ],
         withheld: [
           { reason: 'unsupported', text: FIVE[2] },
@@ -221,7 +221,7 @@ describe('verifyExplanation', () => {
       const kinds = kindsRecording(NEUTRAL_ONES, retrieved, reply);
       await expect(verify([stage1, kinds], false, FIVE)).resolves.toEqual({
         status: 'verified',
-        kept: [{ text: FIVE[1], slides: ['l1/1'], contradicts: [] }],
+        kept: [{ text: FIVE[1], slides: ['l1/1'], contradicts: [], standing: 'entailed' }],
         withheld: NEUTRAL_ONES.map((text) => ({ reason: 'unsupported', text })),
       });
     });
@@ -286,7 +286,7 @@ describe('verifyExplanation', () => {
     ];
     await expect(verify(recordings, true)).resolves.toEqual({
       status: 'verified',
-      kept: [{ text: SENTENCE, slides: ['l1/2'], contradicts: [] }],
+      kept: [{ text: SENTENCE, slides: ['l1/2'], contradicts: [], standing: 'entailed' }],
       withheld: [],
     });
   });

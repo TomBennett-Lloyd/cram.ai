@@ -1,0 +1,20 @@
+# The explanation's visible marks and what tells them apart (docs/standards/architecture.md rule 9; #459).
+owner: docs/adr/0009-explanation-answers.md
+claim: the marks an explanation's text carries — the quote's solid accent underline, the contradiction's wavy danger underline, the derived quote's dotted underline, the tagger tag's dashed one, and the supplementary label with no underline — one meaning each, as § Decision (i) declares them
+cite: docs/adr/0009-explanation-answers.md § Decision (i)
+sweep: 0009-explanation-answers\.md`? § Decision \(i\)|\.contradicted\b|explanation-quote|supplementary-label|\.supplementary\b|(solid|wavy|dotted|dashed)[^\n]{0,120}(solid|wavy|dotted|dashed)|\.claude/ledgers/explanation-marks\.ledger
+scope: :!docs/review-feedback.md :!docs/friction-log.md :!docs/tech-debt.md :!eval/recordings :!eval/reports
+carrier: apps/web/src/app.css
+carrier: apps/web/src/ask/ExplanationView.tsx
+carrier: apps/web/src/ask/explanation-marks.ts
+carrier: apps/web/src/ask/ExplanationView.test.tsx
+carrier: apps/web/src/ask/ExplanationViewDerived.test.tsx
+carrier: apps/web/src/ask/AskScreen.test.tsx
+carrier: apps/web/src/ask/ExplanationViewSupplementary.test.tsx
+carrier: apps/web/e2e/ask-supplementary.spec.ts
+carrier: apps/web/e2e/ask.spec.ts
+carrier: apps/web/e2e/layout.spec.ts
+carrier: apps/web/e2e/slides.spec.ts
+carrier: docs/standards/grounding.md
+excluded: packages/shared/src/withheld.ts
+excluded: stylelint.config.mjs

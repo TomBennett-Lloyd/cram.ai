@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import { ChunkTag, TagEdit } from '@cram/shared';
+import { ChunkTag, type SentenceStanding, TagEdit } from '@cram/shared';
 
 /** A synthetic course: two slides about bees, authored for these specs. */
 const slide = (
@@ -43,10 +43,12 @@ const sentence = (
   text: string,
   slides: readonly string[],
   contradicts: readonly string[] = [],
+  standing: SentenceStanding = 'attributed',
 ) => ({
   text,
   slides,
   contradicts,
+  standing,
 });
 
 export const GROUNDED_QUESTION = 'What are drones?';
@@ -64,6 +66,10 @@ export const PARAGRAPHS_QUESTION = 'How is the hive organised?';
 export const DERIVED_QUESTION = 'Are comb cells hexagonal?';
 /** A quote inside the contradicted sentence, so its underline and the mark's meet. */
 const QUOTE_IN_MARK = { sourceId: 's2', quote: 'cells are hexagonal' };
+
+/** Its answer's second sentence is a kept interpretation, labelled supplementary (#459). */
+export const SUPPLEMENTARY_QUESTION = 'Why are drones kept?';
+export const SUPPLEMENTARY_SENTENCE = 'In other words, the colony keeps drones only to mate.';
 
 /** A line of HIVE each answer marks as a quote without repeating it word for word, so its mark is dropped. */
 export const DROPPED_LINE = 'Worker bees are female.';
@@ -117,6 +123,12 @@ const askReply = (question: string, turns: number) => {
       return grounded(SENTENCES, [{ sourceId: 's2', quote: 'comb cells are hexagonal' }], ' ', [
         HIVE,
         { ...COMB, record: { ...COMB.record, derived: true } },
+      ]);
+    case SUPPLEMENTARY_QUESTION:
+      return grounded([
+        sentence('Drones are male.', ['s1'], [], 'entailed'),
+        sentence(SUPPLEMENTARY_SENTENCE, [], [], 'interpretation'),
+        sentence('Comb cells are hexagonal.', ['s2'], [], 'entailed'),
       ]);
     default:
       return grounded(SENTENCES);

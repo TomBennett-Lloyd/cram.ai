@@ -63,7 +63,9 @@ describe('markContradictions', () => {
     const verifier = scripted(contradiction(0.99), NEUTRAL, entailment(entailedAt), NEUTRAL);
     await expect(
       mark([{ text: 'Workers are male.', slides: [workers] }], verifier.entail),
-    ).resolves.toEqual([{ text: 'Workers are male.', slides: ['l1/3'], contradicts: [] }]);
+    ).resolves.toEqual([
+      { text: 'Workers are male.', slides: ['l1/3'], contradicts: [], standing: 'attributed' },
+    ]);
     expect(verifier.calls[0]?.pairs.map(({ premise }) => premise)).toEqual([
       'The workers\nWorker bees are male.\nWorkers forage.',
       'The workers',
@@ -75,7 +77,7 @@ describe('markContradictions', () => {
   it('makes no call when no sentence has a slide', async () => {
     const verifier = scripted();
     await expect(mark([{ text: 'Bees hibernate.', slides: [] }], verifier.entail)).resolves.toEqual(
-      [{ text: 'Bees hibernate.', slides: [], contradicts: [] }],
+      [{ text: 'Bees hibernate.', slides: [], contradicts: [], standing: 'attributed' }],
     );
     expect(verifier.calls).toEqual([]);
   });
@@ -99,6 +101,7 @@ describe('markContradictions', () => {
       text: 'Workers are female.',
       slides: ['l1/1', 'l1/2', 'l5/6'],
       contradicts: ['l5/6', 'l1/1'],
+      standing: 'attributed',
     });
   });
 

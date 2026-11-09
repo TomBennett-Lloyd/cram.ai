@@ -49,7 +49,7 @@ export const explanationWithheld = (asked: readonly AskedQuestion[]): BaselineRo
 
 export const explanationEntailed = (asked: readonly AskedQuestion[]): BaselineRow => {
   const shown = asked.flatMap(({ result }) => shownSentences(result));
-  const entailed = shown.filter(({ slides }) => slides.length > 0);
+  const entailed = shown.filter(({ standing }) => standing === 'entailed');
   return baselineRow(entailed.length, shown.length, 'no sentence was shown');
 };
 

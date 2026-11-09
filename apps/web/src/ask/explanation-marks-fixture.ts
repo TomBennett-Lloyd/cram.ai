@@ -1,10 +1,10 @@
-import { type Explanation, SourceId } from '@cram/shared';
+import { type Explanation, type SentenceStanding, SourceId } from '@cram/shared';
 import { markExplanation } from './explanation-marks';
 
 export const id = (value: string) => SourceId.parse(value);
 
-/** A sentence: its text, its slides, and the ones it is marked against. */
-type Row = readonly [string, readonly string[], (readonly string[])?];
+/** A sentence: its text, its slides, the ones it is marked against, and its standing. */
+type Row = readonly [string, readonly string[], (readonly string[])?, SentenceStanding?];
 
 export const explanation = (
   text: string,
@@ -13,10 +13,11 @@ export const explanation = (
 ): Explanation => ({
   text,
   quotes: quotes.map(([sourceId, quote]) => ({ sourceId: id(sourceId), quote })),
-  sentences: sentences.map(([sentence, slides, contradicts = []]) => ({
+  sentences: sentences.map(([sentence, slides, contradicts = [], standing = 'attributed']) => ({
     text: sentence,
     slides: slides.map(id),
     contradicts: contradicts.map(id),
+    standing,
   })),
   sources: [id('s1')],
 });

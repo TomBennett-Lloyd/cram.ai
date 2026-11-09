@@ -7,6 +7,8 @@ import {
   MAY_BE_RELEVANT,
   SOURCE_MISSING,
   sourceRefLabel,
+  SUPPLEMENTARY,
+  SUPPLEMENTARY_NOTE,
 } from '../copy';
 import { type CitedSlide, citedSlide } from './cited-slide';
 import {
@@ -114,9 +116,16 @@ const SentenceView = ({
       </Fragment>
     ),
   );
+  const supplementary = sentence.standing === 'interpretation';
   return (
     <>
-      {sentence.contradicts.length === 0 ? words : <span className="contradicted">{words}</span>}
+      {sentence.contradicts.length > 0 ? (
+        <span className="contradicted">{words}</span>
+      ) : supplementary ? (
+        <span className="supplementary">{words}</span>
+      ) : (
+        words
+      )}
       {sentence.contradicts.length > 0 && (
         <>
           {' '}
@@ -133,15 +142,20 @@ const SentenceView = ({
             ))}
           </span>
         </>
+      )}
+      {supplementary && (
+        <>
+          {' '}
+          <span className="supplementary-label">{SUPPLEMENTARY}</span>
+        </>
       )}{' '}
     </>
   );
 };
 
 /**
- * One explanation: its sentences with their marks and numbers, the attributed note at the light
- * depth, and the sources list (`docs/adr/0009-explanation-answers.md` § Decision (i)). The deep
- * depth's reference label is the revision guide's.
+ * One explanation (`docs/adr/0009-explanation-answers.md` § Decision (i)); at the deep
+ * depth its reference label is the revision guide's.
  */
 export const ExplanationView = ({
   explanation,
@@ -176,6 +190,9 @@ export const ExplanationView = ({
           </p>
         ))}
       </div>
+      {explanation.sentences.some(({ standing }) => standing === 'interpretation') && (
+        <p className="supplementary-note">{SUPPLEMENTARY_NOTE}</p>
+      )}
       {depth === 'light' && <p className="attributed-note">{ATTRIBUTED_NOTE}</p>}
       <SourcesList
         sources={explanation.sources}

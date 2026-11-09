@@ -8,6 +8,7 @@ import {
   SourceHash,
   SourceId,
   type AttributedSentence,
+  type SentenceStanding,
   type Explanation,
   type WithheldSentence,
 } from '@cram/shared';
@@ -60,10 +61,15 @@ export const HOLLOWMERE_COMB_CHART = retrievedSlide('h3-3', {
   kind: 'image-only',
 });
 
-export const sentence = (text: string, slides: readonly string[]): AttributedSentence => ({
+export const sentence = (
+  text: string,
+  slides: readonly string[],
+  standing: SentenceStanding = 'attributed',
+): AttributedSentence => ({
   text,
   slides: slides.map((id) => SourceId.parse(id)),
   contradicts: [],
+  standing,
 });
 
 export const HIVE = retrievedSlide('s1', {
