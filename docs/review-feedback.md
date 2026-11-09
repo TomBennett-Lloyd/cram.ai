@@ -675,8 +675,8 @@ A category going quiet across consecutive reviews is the evidence for graduating
 
 ## 2026-11-08 — issue #679 — verbatim-in-context
 
-- **Category**: pending — filled at merge
+- **Category**: approved-no-changes
 - **Feedback**: please read two things. First, ADR 0009's lines 55–56, which git shows as one block and the plan pasted as two pairs. Second, the extras beyond the plan's pasted ADR text, both from review: (a)'s `quotes` bullet takes an as-it-stood annotation, and the entry's Was/Now sentences on string matching and attribution are corrected. The owner approved the plan at https://github.com/TomBennett-Lloyd/cram.ai/issues/679#issuecomment-6715008144 in chat on 2026-11-08; the merge owner relayed it, and the plan comment quotes it at its head. PROCEED, verbatim: "Proceed as recommended". Q1 yes (resolution marks found quotes), Q2 `FOUND_QUOTE_MIN_WORDS = 4`, Q3 yes (`CLAUDE.md` unedited).
 - **Why**: `docs/adr/**` is a `humanAlways` path. On this amendment footprint `merge.approvedAtPlanRule`'s fill also needs `merge.amendmentRule` (a). `adr-amendment-check.mjs plan-named` refuses it: the plan comment pasted ADR lines 55 and 56 as two `-`/`+` pairs, and git groups those adjacent lines into one block (`-55 -56 +55 +56`). So the PR takes the HUMAN order (`.claude/skills/adr-lane/SKILL.md` § 4). The plan comment was not regrouped after the fact.
 - **How applied**: ADR 0009 gets the plan's four pasted as-it-stood annotations, on (b)'s register bullet, (c)'s heading and (c)'s two string-match bullets, plus its dated § Amendments entry. It also gets two extras from review: a fifth annotation on (a)'s `quotes` bullet, and three corrected sentences in the entry. The PR body pastes the mapping from plan points D1–D4 to the ADR and lists the extras.
-- **Verdict**: pending — filled at merge
+- **Verdict**: Approve 738
